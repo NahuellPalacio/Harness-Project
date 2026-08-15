@@ -31,6 +31,25 @@ def test_secreto_entre_comillas_invertidas(t):
             None, secretos.buscar_secreto("`password = xxxxxxxx`", catalogo))
 
 
+def test_precedencia_alta_sobre_media(t):
+    """E-01 precedencia — un texto que matchea un patron alta y uno media a la vez
+    tiene que devolver el alta: "si hay uno, gana sobre cualquier ambiguo"
+    (docstring de buscar_secreto). Construido a mano, no del testigo: una variable
+    llamada api_key (dispara asignacion-sospechosa, media) asignada a un token de
+    GitHub (dispara token-github, alta).
+
+    Literal armado por concatenacion, como tests/casos/04-secretos.ps1: un fuente
+    que dispara el propio detector de secretos es un fuente que nadie puede editar
+    en una maquina donde el harness ya esta instalado.
+    """
+    catalogo = secretos.importar_patrones(str(RAIZ / "comun/reglas/secretos.patrones.json"))
+    texto = 'api_key = "' + 'ghp_' + 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8' + '"'
+    h = secretos.buscar_secreto(texto, catalogo)
+    t.verdadero("E-01 precedencia (debe disparar)", h is not None)
+    t.igual("E-01 precedencia id", "token-github", h["id"] if h else None)
+    t.igual("E-01 precedencia confianza", "alta", h["confianza"] if h else None)
+
+
 def test_catalogo_compila(t):
     """E-02 — sobre el catalogo real, no sobre una copia."""
     cat = json.loads((RAIZ / "comun/reglas/secretos.patrones.json").read_text("utf-8"))
