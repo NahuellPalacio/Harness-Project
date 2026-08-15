@@ -40,14 +40,22 @@ def valor_de_asignacion(coincidencia):
 def es_valor_ignorable(valor, catalogo):
     """Se prueba contra el valor aislado Y contra la coincidencia entera: hay
     patrones de ignorar anclados al valor (^x{3,}$) y otros que aparecen en
-    cualquier lado (process.env)."""
+    cualquier lado (process.env).
+
+    re.IGNORECASE en las dos comparaciones: en PowerShell, -match es case-insensitive
+    siempre, tenga o no (?i) el patron. Catorce de los quince patrones de ignorar
+    traen (?i) -alli redundante-, pero \\$env: no lo trae porque alli nunca hizo
+    falta. Sin IGNORECASE aca, "$Env:" o "$ENV:" dejan de matchear ese patron y un
+    valor benigno como "password = $Env:DB_PASSWORD" se bloquea como si fuera un
+    secreto real.
+    """
     if not valor or not valor.strip():
         return True
     aislado = valor_de_asignacion(valor)
     if not aislado or not aislado.strip():
         return True
     for p in catalogo["ignorar"]["patrones"]:
-        if re.search(p, aislado) or re.search(p, valor):
+        if re.search(p, aislado, re.IGNORECASE) or re.search(p, valor, re.IGNORECASE):
             return True
     return False
 
@@ -80,8 +88,9 @@ def texto_de_herramienta(evento):
     ediciones = hook.campo(evento, "tool_input.edits", None)
     if ediciones:
         for e in ediciones:
-            if isinstance(e, dict) and "new_string" in e:
-                partes.append(str(e["new_string"]))
+            valor = hook.campo(e, "new_string", "")
+            if valor:
+                partes.append(str(valor))
 
     return "\n".join(partes)
 

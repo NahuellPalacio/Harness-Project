@@ -139,10 +139,19 @@ if ($Solo -in @('todos', 'secretos')) {
 # -- Testigo 1: secretos --------------------------------------------------------
 # Find-Secreto sobre cada linea del corpus. El corpus junta las 29 cadenas de
 # tests\casos\04-secretos.ps1 (Assert-Detecta + Assert-NoDetecta, concatenaciones ya
-# resueltas), mas 2 cadenas de contenido tomadas de tests\payloads\, mas 1 caso
-# agregado a mano: el catalogo tiene 12 patrones y 04-secretos.ps1 solo ejercita 11
-# -entropia-en-variable-sensible no tenia ningun caso positivo en todo el repo-, asi
-# que sin este agregado el testigo hubiera atestiguado 11 de 12 sin decirlo.
+# resueltas), mas 2 cadenas de contenido tomadas de tests\payloads\, mas 2 casos
+# agregados a mano:
+#
+#   - El catalogo tiene 12 patrones y 04-secretos.ps1 solo ejercita 11
+#     -entropia-en-variable-sensible no tenia ningun caso positivo en todo el
+#     repo-, asi que sin este agregado el testigo hubiera atestiguado 11 de 12
+#     sin decirlo.
+#   - "password = $Env:DB_PASSWORD": -match es case-insensitive siempre en
+#     PowerShell, tenga o no (?i) el patron. El corpus solo tenia "$env:" en
+#     minuscula, asi que el testigo nunca ejercito la variante de mayusculas
+#     -"$Env:", "$ENV:"- del patron de ignorar. Se agrega para que un port a un
+#     motor de regex case-sensitive por defecto (Python) tenga que replicar esa
+#     insensibilidad explicitamente en vez de heredarla gratis.
 
 $catalogo = Import-PatronesSecretos -Ruta (Join-Path $raiz 'comun\reglas\secretos.patrones.json')
 $corpus   = Get-Content (Join-Path $PSScriptRoot 'fixtures\corpus-secretos.txt') -Encoding UTF8
