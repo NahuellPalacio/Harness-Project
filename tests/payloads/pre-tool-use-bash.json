@@ -1,0 +1,11 @@
+{
+  "session_id": "test-sesion-0001",
+  "transcript_path": "C:\\Users\\ejemplo\\.claude\\projects\\demo\\transcript.jsonl",
+  "cwd": "C:\\Work\\GCBA\\IGE",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git status --short",
+    "description": "Ver estado del repositorio"
+  }
+}

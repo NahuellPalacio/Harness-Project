@@ -1,0 +1,33 @@
+# Saltos de línea, fijados a propósito.
+#
+# Sin esto manda core.autocrlf de cada máquina, que en Windows suele estar en true y
+# convierte todo a CRLF al hacer checkout. Para los .ps1 da igual, pero un .sh con
+# CRLF no ejecuta en Linux — falla con "bad interpreter: /bin/sh^M", que es un error
+# que no nombra su causa.
+
+*           text=auto
+
+# Scripts de Windows: CRLF es lo nativo, y un .cmd con LF puede fallar
+*.ps1       text eol=crlf
+*.psm1      text eol=crlf
+*.psd1      text eol=crlf
+*.cmd       text eol=crlf
+*.bat       text eol=crlf
+
+# Scripts de shell: LF obligatorio, incluso escritos desde Windows
+*.sh        text eol=lf
+
+# Contenido: LF, que es lo que espera cualquier herramienta que los procese
+*.md        text eol=lf
+*.json      text eol=lf
+*.jsonc     text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+VERSION     text eol=lf
+
+# Binarios: que git no los toque
+*.png       binary
+*.jpg       binary
+*.pdf       binary
+*.docx      binary
+*.xlsx      binary

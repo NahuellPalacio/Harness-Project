@@ -1,0 +1,42 @@
+{
+  "_comentario": [
+    "Plantilla del registro de hooks. install.ps1 reemplaza {{SHIM}} por la ruta del",
+    "lanzador, siempre relativa a $CLAUDE_PROJECT_DIR: este archivo nunca contiene una",
+    "ruta absoluta ni nada que dependa de la maquina.",
+    "Los matchers son estrictos a proposito. Un matcher '*' en PreToolUse agrega el",
+    "arranque de un proceso a CADA llamada a herramienta."
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          { "type": "command", "command": "{{SHIM}} session-start" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "{{SHIM}} user-prompt-submit" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          { "type": "command", "command": "{{SHIM}} pre-tool-use" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          { "type": "command", "command": "{{SHIM}} post-tool-use" }
+        ]
+      }
+    ]
+  }
+}

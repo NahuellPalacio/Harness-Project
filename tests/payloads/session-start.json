@@ -1,0 +1,7 @@
+{
+  "session_id": "test-sesion-0001",
+  "transcript_path": "C:\\Users\\ejemplo\\.claude\\projects\\demo\\transcript.jsonl",
+  "cwd": "C:\\Work\\GCBA\\IGE",
+  "hook_event_name": "SessionStart",
+  "source": "startup"
+}

@@ -1,0 +1,30 @@
+{
+  "_comentario": [
+    "Primera linea de defensa contra secretos: impide LEER rutas sensibles.",
+    "Costo cero (no arranca ningun proceso) y sigue funcionando aunque los hooks esten rotos.",
+    "Verificado: un Read sobre secrets/ devuelve 'denied by your permission settings'.",
+    "LIMITE: cubre lo que Claude Code puede resolver como una ruta. Una lectura indirecta,",
+    "construyendo el path en una variable, puede escapar. Es best-effort, no una garantia.",
+    "La segunda linea es el hook de PreToolUse, que impide ESCRIBIR un secreto literal."
+  ],
+  "permissions": {
+    "deny": [
+      "Read(./secrets/**)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/*.secret)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/*.pfx)",
+      "Read(./**/*.p12)",
+      "Read(./**/*.keystore)",
+      "Read(./**/*.jks)",
+      "Read(./**/id_rsa)",
+      "Read(./**/id_rsa.*)",
+      "Read(./**/id_ed25519)",
+      "Read(./**/.npmrc)",
+      "Read(./**/.pypirc)",
+      "Read(./**/credentials.json)"
+    ]
+  }
+}

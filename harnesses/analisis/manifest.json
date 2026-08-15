@@ -1,0 +1,19 @@
+{
+  "id": "analisis",
+  "descripcion": "Relevar, escribir historias de usuario, leer maquetas y normativa funcional.",
+  "prefijo": "hu",
+  "requiereClaudeCode": "2.1.0",
+  "claudeMd": "claude-md/bloque.md",
+  "aporta": {
+    "skills": "skills",
+    "agents": "agents",
+    "checks": "checks"
+  },
+  "config": {
+    "rutaHU": "docs/HistoriasUsuario",
+    "rutaMaquetas": "backofficeMockup",
+    "rutaDefinicionesPendientes": "docs/definiciones-pendientes.md",
+    "gestorTickets": "jira",
+    "gestorTicketsModo": "solo-lectura"
+  }
+}

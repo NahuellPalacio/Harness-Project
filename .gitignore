@@ -1,0 +1,30 @@
+# Secretos — nunca versionar
+secrets/
+!secrets/*.example
+.env
+.env.*
+!.env.example
+*.secret
+*.pem
+*.pfx
+*.p12
+*.keystore
+id_rsa*
+.npmrc
+
+# Documentación interna del GCBA — el repo es público
+# Los PDF de la normativa son insumo de autoría, no dependencia de ejecución: el harness
+# funciona sin ellos y nunca los copia a un proyecto. Lo que se distribuye son los extractos
+# en markdown, que son destilado propio. Cada quien pone sus fuentes acá.
+normativa/fuentes/*
+!normativa/fuentes/.gitkeep
+!normativa/fuentes/LEEME.md
+
+# Salidas de prueba y trabajo local
+tests/out/
+*.log
+*.tmp
+
+# Windows
+Thumbs.db
+desktop.ini

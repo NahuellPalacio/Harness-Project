@@ -1,0 +1,15 @@
+{
+  "session_id": "test-sesion-0001",
+  "transcript_path": "C:\\Users\\ejemplo\\.claude\\projects\\demo\\transcript.jsonl",
+  "cwd": "C:\\Work\\GCBA\\IGE",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "C:\\Work\\GCBA\\IGE\\docs\\ejemplo.md",
+    "content": "Contenido de prueba sin nada sensible."
+  },
+  "tool_response": {
+    "filePath": "C:\\Work\\GCBA\\IGE\\docs\\ejemplo.md",
+    "success": true
+  }
+}

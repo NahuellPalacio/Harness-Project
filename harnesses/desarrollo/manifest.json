@@ -1,0 +1,19 @@
+{
+  "id": "desarrollo",
+  "descripcion": "Código, APIs y deploy. Hace cumplir ES0901, ES0903 y Obelisco v2.",
+  "prefijo": "dev",
+  "requiereClaudeCode": "2.1.0",
+  "claudeMd": "claude-md/bloque.md",
+  "aporta": {
+    "skills": "skills",
+    "agents": "agents",
+    "checks": "checks"
+  },
+  "config": {
+    "umbralCobertura": 80,
+    "versionObelisco": "1.8.4",
+    "nivelAccesibilidad": "WCAG 2.2 AA",
+    "prefijoApi": "api",
+    "verificarVersionesHomologadas": true
+  }
+}

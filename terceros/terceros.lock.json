@@ -1,0 +1,39 @@
+{
+  "$comentario": [
+    "Procedencia de todo el material de terceros. Se mantiene a mano.",
+    "Un origen sin registrar es peor que no tener este archivo: da falsa sensacion de control.",
+    "El commit va exacto y completo. Nunca una rama: las ramas se mueven.",
+    "Ver terceros/LEEME.md y docs/adr/0005-terceros-separados-de-lo-propio.md"
+  ],
+  "origenes": [
+    {
+      "id": "gentle-ai",
+      "repo": "https://github.com/Gentleman-Programming/gentle-ai",
+      "commit": "07f75262ad5f6438a8ecae8cfe0334e5d3db2689",
+      "licencia": "MIT",
+      "incorporado": "2026-08-10",
+      "revisadoPor": "Nahue + Claude",
+      "leidoEntero": true,
+      "riesgosDetectados": "ninguno en los cuatro archivos leidos: no cambian el rol del modelo, no leen fuera del proyecto, no ejecutan nada, no contienen URLs de exfiltracion ni credenciales",
+      "tomado": [
+        "internal/assets/claude/agents/review-refuter.md — refutador desacoplado read-only, tres veredictos, default a inconclusive",
+        "internal/assets/claude/agents/review-risk.md — precision gate, sweep budget, severity floor, techo estructural de refutacion, ledger con esquema fijo",
+        "internal/assets/skills/_shared/skill-resolver.md — registro de skills como indice, pasar rutas y no resumenes, reporte de resolucion",
+        "internal/assets/skills/_shared/SKILL.md — frontmatter de paquete de soporte no invocable"
+      ],
+      "dejado": [
+        "El binario. Es un configurador de agentes igual que nuestro harness y los dos escriben en .claude/settings.json: dos configuradores no pueden ser duenos del mismo archivo",
+        "Go 1.25.10+ como runtime nuevo. No esta instalado y no figura en la tabla de versiones homologadas de ES0901",
+        "Su memoria persistente (Engram). Choca con el CLAUDE.md de zonas y docs/conocimiento/ de ADR-0003",
+        "SDD y RDD completos. Es una metodologia entera; adoptarla es una decision mucho mas grande que este harness",
+        "El modelo de cuatro severidades. Nuestro harness avisa o bloquea, y el bloqueo es solo para secretos",
+        "Los revisores por lente de codigo (readability, reliability, resilience). Sirven para el harness desarrollo cuando exista"
+      ],
+      "adaptadoEn": [
+        "harnesses/analisis/agents/hu-refutador.md — de review-refuter.md y review-risk.md. Adapta el refutador desacoplado a la verificacion de una historia contra su maqueta: tres veredictos, default a sin-sustento ante evidencia faltante, una pasada por lote, una invocacion por modulo. El cambio de fondo es que sin-sustento no es un descarte sino el entregable mas valioso, porque es una definicion pendiente que alguien iba a inventar",
+        "harnesses/analisis/agents/hu-redactor.md — de skill-resolver.md. Toma el reporte de resolucion de skill (skill-invocada / leida-por-ruta / no-encontrada / sin-cargar) para que una falla de carga deje de ser silenciosa"
+      ],
+      "observaciones": "En Windows no hay binario oficial: el proyecto retuvo la distribucion por falta de firma Authenticode. La palabra 'uninstall' no aparece en su README. Ver terceros/gentle-ai/ORIGEN.md para la lectura completa."
+    }
+  ]
+}

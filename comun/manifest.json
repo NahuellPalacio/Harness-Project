@@ -1,0 +1,25 @@
+{
+  "id": "comun",
+  "descripcion": "Esqueleto del harness. Se instala siempre, con cualquier harness.",
+  "prefijo": "",
+  "requiereClaudeCode": "2.1.0",
+  "claudeMd": "claude-md/bloque-comun.md",
+  "aporta": {
+    "hooks": "hooks",
+    "reglas": "reglas",
+    "checks": "checks",
+    "bin": "bin",
+    "skills": "skills",
+    "agents": "agents"
+  },
+  "config": {
+    "usuario": "",
+    "rutaMemoria": "docs/conocimiento",
+    "ramaDesarrollo": "develop",
+    "techoZonaFija": 60,
+    "techoZonaMapa": 20,
+    "techoZonaIndice": 25,
+    "techoZonaCache": 80,
+    "techoFueraDeZonas": 12
+  }
+}
