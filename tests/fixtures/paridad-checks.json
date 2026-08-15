@@ -1,0 +1,63 @@
+{
+  "generado": "0.12.0",
+  "casos": [
+    {
+      "check": "claude-md-zonas",
+      "ruta": "comun/checks/claude-md-zonas.ps1",
+      "payload": "post-tool-use-write.json",
+      "proyecto": "tests/fixtures/proyecto-checks",
+      "config": {
+        "techoZonaFija": 5
+      },
+      "hallazgos": [
+        "[CLAUDE.md] ZONA FIJA tiene 6 lineas y su techo es 5. Este archivo ocupa ventana de contexto toda la sesion: lo que no se necesita en cada turno va en una skill.",
+        "[CLAUDE.md] falta la zona ZONA INDICE. Corre install.ps1 -Update para reponerla."
+      ]
+    },
+    {
+      "check": "dev-accesibilidad-html",
+      "ruta": "harnesses/desarrollo/checks/dev-accesibilidad-html.ps1",
+      "payload": "post-tool-use-write.json",
+      "proyecto": "tests/fixtures/proyecto-checks",
+      "config": null,
+      "hallazgos": [
+        "[a11y] pagina.html: <html> sin atributo lang. El lector de pantalla necesita saber el idioma para elegir la fonetica; sin eso lee el castellano como si fuera ingles.",
+        "[a11y] pagina.html: 1 <img> sin atributo alt — L5. Si la imagen es decorativa va alt=\"\" vacio, que es una afirmacion; que el atributo falte no dice nada.",
+        "[a11y] pagina.html: 1 control(es) de formulario sin forma de nombrarlos — L6. Sin id que un <label for> pueda apuntar, ni aria-label, el control se anuncia como \"cuadro de edicion\" y nada mas.",
+        "[a11y] pagina.html: hay 2 elementos <h1>. Va uno solo: los demas niveles son h2 en adelante, sin saltos."
+      ]
+    },
+    {
+      "check": "dev-api-rutas",
+      "ruta": "harnesses/desarrollo/checks/dev-api-rutas.ps1",
+      "payload": "post-tool-use-write.json",
+      "proyecto": "tests/fixtures/proyecto-checks",
+      "config": null,
+      "hallazgos": [
+        "[ES0903] rutas.ts: ruta(s) de API sin version — /api/crearUsuario (L2), /api/usuario/{id} (L3). Deberia ser /api/v1/... : sin la version en la ruta no hay forma de cambiar el contrato sin romperle la aplicacion a quien ya la consume.",
+        "[ES0903] rutas.ts: la accion va en el metodo HTTP, no en la ruta — /api/crearUsuario (L2). El recurso se nombra con un sustantivo; que sea alta, consulta o baja lo dice POST, GET o DELETE.",
+        "[ES0903] rutas.ts: coleccion en singular — /api/usuario/{id} (L3). El segmento que lleva un identificador atras es una coleccion y va en plural."
+      ]
+    },
+    {
+      "check": "dev-dependencias",
+      "ruta": "harnesses/desarrollo/checks/dev-dependencias.ps1",
+      "payload": "post-tool-use-write.json",
+      "proyecto": "tests/fixtures/proyecto-checks",
+      "config": null,
+      "hallazgos": [
+        "[ES0901] package.json: 2 dependencia(s) con rango en vez de version exacta — express ^4.18.0, lodash ~4.17.21. La version la fija el estandar, no el gestor de paquetes: un rango resuelve distinto en tu maquina, en el pipeline y en produccion, y la diferencia aparece en el ambiente donde mas duele."
+      ]
+    },
+    {
+      "check": "dev-infra-en-codigo",
+      "ruta": "harnesses/desarrollo/checks/dev-infra-en-codigo.ps1",
+      "payload": "post-tool-use-write.json",
+      "proyecto": "tests/fixtures/proyecto-checks",
+      "config": null,
+      "hallazgos": [
+        "[ES0901] config.ts: servidor referenciado por IP — 10.51.2.30 (L1). Los servidores se nombran por DNS. Una IP en el fuente ata el codigo a una maquina: el dia que cambia hay que tocar y desplegar el aplicativo para arreglar algo que era configuracion."
+      ]
+    }
+  ]
+}
