@@ -1,4 +1,4 @@
-import json, subprocess, sys, os, re
+import json, subprocess, sys, os, re, types
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -128,3 +128,87 @@ def test_stdin_con_bom_parsea(t):
     salida = resultado.stdout.decode("utf-8")
     t.igual("E-11 codigo 0 con BOM", 0, resultado.returncode)
     t.contiene("E-11 el BOM no rompe el parseo", "hola", salida)
+
+
+def test_sys_exit_no_cero_se_normaliza(t):
+    # Fix 2: un sys.exit con codigo distinto de 0 o None, aunque salga del cuerpo del
+    # hook, no puede escapar. El contrato es salir 0 siempre.
+    resultado = _ejecutar(
+        "hook-sale-con-codigo.py", json.dumps({"session_id": "s-fix2"}).encode("utf-8"))
+    t.igual("fix2 codigo se normaliza a 0", 0, resultado.returncode)
+    t.igual("fix2 no emite nada", "", resultado.stdout.decode("utf-8"))
+
+
+def test_bloquear_emite_deny(t):
+    # Fix 3: bloquear es la unica salida capaz de impedir una herramienta y no tenia
+    # ningun test. Se verifica la forma completa del JSON, no solo que la palabra
+    # "deny" aparezca en algun lado.
+    salida = _correr("hook-deny.py", {"session_id": "s-deny"})
+    objeto = json.loads(salida)
+    especifico = objeto.get("hookSpecificOutput", {})
+    t.igual("bloquear declara su evento", "PreToolUse", especifico.get("hookEventName"))
+    t.igual("bloquear decide deny", "deny", especifico.get("permissionDecision"))
+    t.contiene("bloquear dice que hacer, no solo que se impidio",
+               "variable de entorno", especifico.get("permissionDecisionReason", ""))
+
+
+def test_preguntar_emite_ask(t):
+    # Fix 3: preguntar no tenia ni fixture. Misma verificacion de forma completa.
+    salida = _correr("hook-preguntar.py", {"session_id": "s-preguntar"})
+    objeto = json.loads(salida)
+    especifico = objeto.get("hookSpecificOutput", {})
+    t.igual("preguntar declara su evento", "PreToolUse", especifico.get("hookEventName"))
+    t.igual("preguntar decide ask", "ask", especifico.get("permissionDecision"))
+    t.verdadero("preguntar trae un motivo", bool(especifico.get("permissionDecisionReason")))
+
+
+def test_doble_emision_gana_la_primera(t):
+    # Fix 4: un cuerpo que avisa y despues explota no puede dejar dos JSON
+    # concatenados en stdout. json.loads revienta solo si hay "extra data" -es decir,
+    # si el bug esta presente-, asi que la asercion mas fuerte es que el parseo ni
+    # siquiera tire excepcion.
+    session_id = "s-fix4-doble-emision"
+    _limpiar_marca(session_id, "PostToolUse")
+    try:
+        entrada = json.dumps({"session_id": session_id}).encode("utf-8")
+        resultado = _ejecutar("hook-avisa-y-explota.py", entrada)
+        salida = resultado.stdout.decode("utf-8")
+        t.igual("fix4 codigo 0", 0, resultado.returncode)
+        objeto = json.loads(salida)  # explota con "Extra data" si hay dos JSON pegados
+        t.verdadero("fix4 la salida es un unico objeto JSON", isinstance(objeto, dict))
+        t.contiene("fix4 sobrevive el primer aviso", "aviso legitimo antes de explotar", salida)
+        t.no_contiene("fix4 el systemMessage descartado no aparece", "systemMessage", salida)
+    finally:
+        _limpiar_marca(session_id, "PostToolUse")
+
+
+def test_mensaje_de_sistema_sobrevive_pipe_roto(t):
+    # Fix 1: si escribir el systemMessage revienta (el padre cerro el pipe), la
+    # excepcion no puede escapar de mensaje_de_sistema -es la ultima red del harness.
+    # Se simula en proceso, sin subprocess: reproducir un BrokenPipeError real via
+    # pipes de SO es no determinista (el buffer del kernel puede absorber un JSON
+    # chico sin que nadie lo lea), asi que se reemplaza sys.stdout.buffer por un doble
+    # que revienta al escribir.
+    def _escribir_roto(_datos):
+        raise BrokenPipeError("simulado: el padre cerro el pipe")
+
+    falso_stdout = types.SimpleNamespace(
+        buffer=types.SimpleNamespace(write=_escribir_roto, flush=lambda: None))
+
+    session_id = "s-fix1-pipe-roto"
+    clave = "prueba-pipe-roto"
+    _limpiar_marca(session_id, clave)
+    original_stdout = sys.stdout
+    hook._ya_emitido = False
+    sys.stdout = falso_stdout
+    try:
+        no_exploto = True
+        try:
+            hook.mensaje_de_sistema("prueba", session_id=session_id, clave=clave)
+        except BaseException:
+            no_exploto = False
+        t.verdadero("fix1 mensaje_de_sistema no propaga el BrokenPipeError", no_exploto)
+    finally:
+        sys.stdout = original_stdout
+        hook._ya_emitido = False
+        _limpiar_marca(session_id, clave)

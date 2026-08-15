@@ -12,6 +12,11 @@ import tempfile
 
 DIR_ESTADO = os.path.join(tempfile.gettempdir(), "gcba-harness")
 
+# Se emite un unico JSON por corrida. Dos objetos concatenados sin separador rompen
+# el parseo de Claude Code y se llevan puesto el primer aviso, que ya era valido:
+# gana la primera escritura, cualquier otra se descarta en silencio.
+_ya_emitido = False
+
 
 def leer_evento():
     """Lee el JSON de stdin. Devuelve None si vino vacio.
@@ -40,12 +45,20 @@ def campo(evento, ruta, default=None):
 
 
 def _emitir(objeto):
+    """Escribe un JSON por stdout. Devuelve True si escribio, False si ya se habia
+    emitido algo en esta corrida (ver `_ya_emitido`) y este llamado se descarto.
+    """
+    global _ya_emitido
+    if _ya_emitido:
+        return False
+    _ya_emitido = True
     # ensure_ascii=False: sin esto un aviso con tilde llega escapado al contexto.
     # Y se escriben bytes UTF-8 al buffer: en Windows sys.stdout sale en cp1252 y
     # el aviso llegaria corrupto -o el hook explotaria- justo cuando tiene tildes.
     crudo = json.dumps(objeto, ensure_ascii=False, separators=(",", ":"))
     sys.stdout.buffer.write(crudo.encode("utf-8"))
     sys.stdout.buffer.flush()
+    return True
 
 
 def avisar(evento_nombre, texto):
@@ -72,18 +85,40 @@ def preguntar(evento_nombre, motivo):
 
 def mensaje_de_sistema(texto, session_id="sin-sesion", clave="general"):
     """Avisa de un problema del propio harness, una sola vez por sesion y evento."""
+    marca = None
     try:
         os.makedirs(DIR_ESTADO, exist_ok=True)
         seguro = re.sub(r"[^A-Za-z0-9._-]", "_", "%s.%s" % (session_id, clave))
         marca = os.path.join(DIR_ESTADO, seguro + ".avisado")
         if os.path.exists(marca):
             return
-        open(marca, "w").close()
     except OSError:
-        # Si no se puede escribir la marca se avisa igual: perder el aviso es peor
-        # que repetirlo.
+        # Si no se puede ni preguntar por la marca, se avisa igual: perder el aviso
+        # es peor que repetirlo.
         pass
-    _emitir({"systemMessage": texto})
+
+    try:
+        emitido = _emitir({"systemMessage": texto})
+    except BaseException:              # noqa: BLE001 - la ultima red no puede fallar
+        # El padre pudo haber cerrado el pipe (BrokenPipeError adentro de un except
+        # que ya esta manejando otra falla): no hay adonde avisar, pero invoke_hook
+        # tiene que poder seguir camino a salir 0 igual.
+        return
+
+    if not emitido or marca is None:
+        return
+
+    # La marca se escribe DESPUES de emitir, no antes: si algo interrumpe la emision
+    # el proximo intento tiene que poder avisar de nuevo, no encontrarse ya silenciado.
+    # "x" es atomico -crea y falla si ya existe- a diferencia de comprobar con
+    # os.path.exists y despues abrir en "w", que deja una ventana entre las dos
+    # operaciones.
+    try:
+        open(marca, "x").close()
+    except OSError:
+        # FileExistsError (otra invocacion concurrente ya la dejo) u otro problema de
+        # disco: en cualquier caso, el aviso de esta corrida ya salio.
+        pass
 
 
 def invoke_hook(evento_nombre, cuerpo):
@@ -96,8 +131,12 @@ def invoke_hook(evento_nombre, cuerpo):
             sys.exit(0)
         session_id = campo(evento, "session_id", "sin-sesion")
         cuerpo(evento)
-    except SystemExit:
-        raise
+    except SystemExit as e:
+        if e.code in (0, None):
+            raise
+        # El contrato es salir 0 siempre: un sys.exit con otro codigo -aunque venga
+        # del cuerpo del hook- no se deja escapar, se normaliza en el sys.exit(0) de
+        # mas abajo.
     except BaseException as e:            # noqa: BLE001 - a proposito: nada escapa
         mensaje_de_sistema(
             "harness: fallo el hook %s (%s). Se omite hasta el proximo reinicio."
