@@ -6,19 +6,17 @@ sys.path.insert(0, str(RAIZ / "comun" / "hooks"))
 from lib import hook   # noqa: E402
 
 
-def _ejecutar(fixture, entrada_bytes):
+def _ejecutar(fixture, entrada_bytes, entorno=None):
     """Corre un fixture de hook como subproceso con `entrada_bytes` crudos en stdin.
 
     A diferencia de `_correr`, devuelve el CompletedProcess completo: da acceso al
     codigo de salida ademas del stdout, y acepta stdin roto o con BOM tal cual.
 
-    PYTHONUTF8 fuerza el modo UTF-8 de Python (PEP 540) en el subproceso: sin esto,
-    en Windows sys.stdout usa la codepage ANSI de la consola y un aviso con tilde
-    llega corrupto, el mismo problema que Hook.psm1 resuelve con
-    Initialize-HookEncoding en la version PowerShell.
+    Sin `entorno`, hereda el del proceso actual tal cual: el hook tiene que garantizar
+    su propio encoding de salida, no depender de que quien lo invoque se lo prepare
+    (ver `test_avisar_sobrevive_consola_cp1252`, que lo fuerza al peor caso a proposito).
     """
     ruta = RAIZ / "tests" / "fixtures" / fixture
-    entorno = dict(os.environ, PYTHONUTF8="1")
     return subprocess.run(
         [sys.executable, str(ruta)],
         input=entrada_bytes,
@@ -59,6 +57,21 @@ def test_avisar_no_escapa_no_ascii(t):
     salida = _correr("hook-eco.py", {"session_id": "s", "prompt": "definición"})
     t.contiene("E-10 tilde intacta", "definición", salida)
     t.no_contiene("E-10 sin \\u", "\\u00f3", salida)
+
+
+def test_avisar_sobrevive_consola_cp1252(t):
+    # E-10 tal cual la escribe la spec: el aviso llega integro "aunque la consola este
+    # en CP1252". Se fuerza el peor caso a proposito -PYTHONIOENCODING=cp1252, sin
+    # PYTHONUTF8- para probar que el hook garantiza su propio encoding de salida en vez
+    # de depender de que quien lo invoque (el shim, en produccion) se lo prepare.
+    entorno = dict(os.environ)
+    entorno.pop("PYTHONUTF8", None)
+    entorno["PYTHONIOENCODING"] = "cp1252"
+    entrada = json.dumps({"session_id": "s-e10-cp1252", "prompt": "definición"}).encode("utf-8")
+    resultado = _ejecutar("hook-eco.py", entrada, entorno=entorno)
+    salida = resultado.stdout.decode("utf-8")
+    t.igual("E-10 cp1252 codigo 0", 0, resultado.returncode)
+    t.contiene("E-10 cp1252 tilde intacta", "definición", salida)
 
 
 def test_silencio_es_silencio(t):

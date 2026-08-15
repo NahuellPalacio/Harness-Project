@@ -41,7 +41,11 @@ def campo(evento, ruta, default=None):
 
 def _emitir(objeto):
     # ensure_ascii=False: sin esto un aviso con tilde llega escapado al contexto.
-    sys.stdout.write(json.dumps(objeto, ensure_ascii=False, separators=(",", ":")))
+    # Y se escriben bytes UTF-8 al buffer: en Windows sys.stdout sale en cp1252 y
+    # el aviso llegaria corrupto -o el hook explotaria- justo cuando tiene tildes.
+    crudo = json.dumps(objeto, ensure_ascii=False, separators=(",", ":"))
+    sys.stdout.buffer.write(crudo.encode("utf-8"))
+    sys.stdout.buffer.flush()
 
 
 def avisar(evento_nombre, texto):
