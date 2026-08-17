@@ -80,6 +80,40 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
 
 Its last finding was corrected by hand and never went back through adversarial refutation.
 
+### What the checks witness never exercised, written down the day before the originals died
+
+`tests/fixtures/paridad-checks.json` holds 5 cases and 11 findings, and it is what proved the
+Python checks answer exactly what the PowerShell ones answered. It was never a coverage claim: it
+proves parity on what it covers and says nothing about the rest. The rest is this list, read off
+the five `.ps1` originals by the refuter on 2026-08-17, the day before `hooks-en-python` Task 8
+deleted them. After that commit there is no implementation left to compare against, so anything
+below that diverges today will diverge unnoticed.
+
+- **`claude-md-zonas`** — a zone whose marker is misspelled ("similar name"), the excess of lines
+  outside every zone, the ZONA CACHE warning at 75% or more, and a `CLAUDE.md` with no zones at
+  all (the early empty return).
+- **`dev.py`** — a file over 512 KB (silently discarded), and `es_ruta_generada` never returning
+  `True`: no case runs a check against a path under `node_modules`, `vendor` or the like.
+- **`dev-accesibilidad-html`** — a missing `<h1>` (only the duplicated one is exercised), the
+  `.blade.php` and `.component.html` extensions, and a fragment with no `<html>`, which should
+  skip the lang and heading rules.
+- **`dev-api-rutas`** — `prefijoApi` coming from config (always `null` in the witness), a route
+  that already carries its version (to prove it is *not* reported), the deduplication of a
+  repeated route, and the documented false negative on camelCase verbs (`posts` vs
+  `postulaciones`).
+- **`dev-dependencias`** — `composer.json` with `require` and `require-dev`, the range forms
+  `>=`, `<=`, `||`, the interval (` - `) and the `x`/`*` wildcards, invalid JSON, JSON that is
+  not an object, and the documented defect with `false`, `0` or `null` as a dependency value.
+- **`dev-infra-en-codigo`** — three of the four IP position patterns (`https://…`,
+  `Data Source=…`, and the `jdbc/mongodb/redis/amqp/mysql/postgres` one, which is where its
+  documented defect lives), the harmless-IP filter (loopback, `0.0.0.0`), the RFC 5737 range
+  filter, the out-of-range octet discard, and the deduplication of a repeated IP.
+
+Fix. Not a bug, a hole in the net: every line above is a case somebody can add to
+`tests/casos/07_checks.py` as a plain assertion — no witness needed, since the expected answer is
+whatever the rule says it should be. Worth doing before the checks are touched again for any
+reason.
+
 ### Four behaviour fixes rode inside the Python port, so their diff never said one thing
 
 The `hooks-en-python` change was bound to parity: port the behaviour, defects included, so that the
