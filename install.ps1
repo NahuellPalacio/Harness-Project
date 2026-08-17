@@ -780,6 +780,70 @@ function Test-HooksInstalados {
 }
 
 
+function Measure-LatenciaHook {
+    <#
+    .SYNOPSIS
+        Corre pre-tool-use.py cinco veces sobre un payload real y devuelve el p50, en ms.
+    .DESCRIPTION
+        E-25b: es el número que justifica todo este cambio -Python en vez de PowerShell
+        para los hooks-, así que -Doctor lo mide y lo dice en vez de darlo por sentado.
+
+        Devuelve $null si no hay Python o no encuentra el hook/el payload: no mide, y eso
+        NO es una falla propia — el chequeo del intérprete (Test-Entorno) ya la reportó, y
+        -Doctor no puede fallar dos veces por lo mismo ni dejar de terminar el resto del
+        diagnóstico por esto (misma regla que E-23).
+
+        Costo deliberado: cinco corridas de un intérprete completo cuestan del orden de
+        3 segundos de reloj en esta máquina. Es aceptable porque -Doctor se corre a mano y
+        rara vez -nunca en un hook ni en la instalación misma-, pero es un costo elegido a
+        propósito, no un descuido: si algún día -Doctor se invoca en un camino caliente,
+        esto es lo primero que hay que sacar de ahí.
+    #>
+    param([int] $Corridas = 5)
+
+    $python = Resolve-Python
+    if (-not $python) { return $null }
+
+    $rutaHook    = Join-Path $script:Repo 'comun\hooks\pre-tool-use.py'
+    $rutaPayload = Join-Path $script:Repo 'tests\payloads\pre-tool-use-write.json'
+    if (-not (Test-Path $rutaHook) -or -not (Test-Path $rutaPayload)) { return $null }
+
+    $json = Read-TextoUtf8 $rutaPayload
+    $tiempos = New-Object System.Collections.ArrayList
+
+    for ($i = 0; $i -lt $Corridas; $i++) {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName               = $python
+        $psi.Arguments              = '"' + $rutaHook + '"'
+        $psi.UseShellExecute        = $false
+        $psi.RedirectStandardInput  = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError  = $true
+        $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
+        $psi.StandardErrorEncoding  = New-Object System.Text.UTF8Encoding $false
+
+        $reloj = [System.Diagnostics.Stopwatch]::StartNew()
+        try {
+            $p = [System.Diagnostics.Process]::Start($psi)
+            $w = New-Object System.IO.StreamWriter($p.StandardInput.BaseStream,
+                                                   (New-Object System.Text.UTF8Encoding $false))
+            $w.Write($json); $w.Flush(); $w.Close()
+            $p.StandardOutput.ReadToEnd() | Out-Null
+            $p.StandardError.ReadToEnd()  | Out-Null
+            $p.WaitForExit()
+        } catch {
+            return $null
+        }
+        $reloj.Stop()
+        [void] $tiempos.Add($reloj.Elapsed.TotalMilliseconds)
+    }
+
+    $ordenados = @($tiempos | Sort-Object)
+    $medio = [int][math]::Floor($ordenados.Count / 2)
+    return [math]::Round($ordenados[$medio], 0)
+}
+
+
 # ── Operaciones ─────────────────────────────────────────────────────────────────
 
 function Invoke-Doctor {
@@ -793,6 +857,20 @@ function Invoke-Doctor {
             'ok'    { EscribirOk    $x.Texto }
             'aviso' { EscribirAviso $x.Texto }
             'falla' { EscribirMal   $x.Texto; $fallas++ }
+        }
+    }
+
+    # E-25b: informa, nunca bloquea. Si no hay Python, Measure-LatenciaHook devuelve $null
+    # y esto no suma a $fallas — ya lo reportó el chequeo de arriba, y -Doctor tiene que
+    # seguir diagnosticando igual en la máquina rota.
+    $umbralLatenciaMs = 400
+    $p50 = Measure-LatenciaHook
+    if ($null -ne $p50) {
+        $detalle = "latencia de hook: p50 de $p50 ms sobre 5 corridas de pre-tool-use.py (umbral $umbralLatenciaMs ms)"
+        if ($p50 -gt $umbralLatenciaMs) {
+            EscribirAviso $detalle
+        } else {
+            EscribirOk $detalle
         }
     }
 

@@ -352,3 +352,16 @@ try {
 finally {
     if (Test-Path $demoUninstSinPython) { Remove-Item $demoUninstSinPython -Recurse -Force -ErrorAction SilentlyContinue }
 }
+
+
+# ── -Doctor mide la latencia de un hook (E-25b) ──────────────────────────────────
+#
+# El p50 de un hook real sobre un payload real es el numero que justifica todo este
+# cambio -Python en vez de PowerShell-. Si nadie lo mide, la promesa de latencia queda
+# en intencion. -Doctor nunca bloquea por esto: informa, y avisa si pasa el umbral.
+
+Set-Grupo 'Instalador - Doctor mide latencia'
+
+$rDoctorLatencia = Invoke-Instalador @('-Doctor')
+Assert-Contiene 'E-25b reporta latencia' 'latencia de hook' $rDoctorLatencia.Salida
+Assert-Igual    'E-25b no bloquea'       0                  $rDoctorLatencia.Codigo
