@@ -151,7 +151,7 @@ try {
     Assert-Igual 'reinstalar no duplica el bloque en CLAUDE.md' 2 $bloques
 
     # ── Deriva ──────────────────────────────────────────────────────────────────
-    $hookEditado = Join-Path $demo '.claude\harness\hooks\post-tool-use.ps1'
+    $hookEditado = Join-Path $demo '.claude\harness\hooks\post-tool-use.py'
     Add-Content -Path $hookEditado -Value '# editado a mano' -Encoding UTF8
 
     $r = Invoke-Instalador @('-Doctor', '-Project', $demo)

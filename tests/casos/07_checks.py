@@ -28,9 +28,12 @@ def _evento_real(payload_generico, proyecto, ruta_archivo):
 def test_paridad_de_hallazgos(t):
     """E-16 — mismos hallazgos, texto incluido, que la version PowerShell."""
     testigo = json.loads((RAIZ / "tests/fixtures/paridad-checks.json").read_text("utf-8"))
-    payload_generico = json.loads((RAIZ / "tests/payloads/post-tool-use-write.json").read_text("utf-8"))
 
     for caso in testigo["casos"]:
+        # La forma del payload la dice el propio testigo, caso por caso: hoy los cinco
+        # declaran el mismo archivo, pero leerlo de aca -y no de una ruta clavada- es lo
+        # que evita que el dia que diverjan el test siga probando el payload de otro caso.
+        payload_generico = json.loads((RAIZ / "tests/payloads" / caso["payload"]).read_text("utf-8"))
         # El testigo guarda la ruta que corrio PowerShell (.ps1); _cargar es un
         # cargador de Python, asi que se traduce al hermano .py.
         ruta_check = RAIZ / Path(caso["ruta"]).with_suffix(".py")

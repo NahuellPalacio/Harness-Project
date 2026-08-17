@@ -424,6 +424,32 @@ function Test-Entorno {
 
 # ── Generación de artefactos ────────────────────────────────────────────────────
 
+function Resolve-Python {
+    <#
+    .SYNOPSIS
+        Devuelve la ruta del python.exe REAL, o $null.
+    .DESCRIPTION
+        Se pide sys.executable y no se usa lo que haya en el PATH: en una máquina con
+        PyManager, `python` es un shim que cuesta 260 ms de más en CADA hook.
+
+        NOTA: versión mínima trasplantada por la Task 8/9/12 para que el instalador
+        siga funcionando apenas los hooks pasan a Python — el borrado de los .ps1 no
+        puede dejar el shim apuntando a un archivo que ya no existe. La Task 10 es la
+        dueña del diseño completo: resolución cacheada, versión mínima de Python
+        (Test-Entorno), shim POSIX y la migración de Zonas.psm1 a JSON. Esta función
+        se limita a lo mínimo indispensable para no romper -Project/-Update, y se
+        espera que la Task 10 la reemplace o la reconcilie.
+    #>
+    foreach ($c in @('python', 'py', 'python3')) {
+        try {
+            $ruta = (& $c -c "import sys; print(sys.executable)" 2>$null)
+            if ($ruta -and (Test-Path $ruta)) { return $ruta.Trim() }
+        } catch { }
+    }
+    return $null
+}
+
+
 function New-Shim {
     <#
     .SYNOPSIS
@@ -432,16 +458,18 @@ function New-Shim {
         -NoProfile no es opcional: si el $PROFILE de quien instala imprime algo, ese
         texto se mezcla con el JSON de stdout y el hook falla de una forma que nadie
         asocia a su perfil de PowerShell.
-    #>
-    param([string] $Ruta)
 
-    $exe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        Los hooks son Python desde la Task 8: el shim invoca el intérprete real, no
+        "python" a secas (ver Resolve-Python). El resto del diseño -shim POSIX,
+        versión mínima- es de la Task 10.
+    #>
+    param([string] $Ruta, [string] $Python)
 
     $cmd = @"
 @echo off
 rem Generado por install.ps1 del harness GCBA. Se regenera en cada -Update.
 rem Es el unico archivo del harness que contiene una ruta absoluta de esta maquina.
-"$exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0hooks\%1.ps1"
+"$Python" "%~dp0hooks\%1.py"
 "@
 
     # Los .cmd necesitan CRLF.
@@ -859,7 +887,11 @@ function Invoke-Instalar {
 
     # 4. Shim y settings.
     $rutaShim = Join-Path $dirHarness 'run-hook.cmd'
-    New-Shim -Ruta $rutaShim
+    $python = Resolve-Python
+    if (-not $python) {
+        throw 'no se encontró un intérprete de Python instalado (se probó python, py y python3). Los hooks del harness lo necesitan desde esta versión: instalalo y volvé a correr.'
+    }
+    New-Shim -Ruta $rutaShim -Python $python
     [void] $instalados.Add($rutaShim)
 
     $rutaSettings = Join-Path $dirClaude 'settings.json'
