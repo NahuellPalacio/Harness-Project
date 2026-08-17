@@ -1,0 +1,3 @@
+#!/bin/sh
+# Generado por install.ps1 del harness GCBA. Se regenera en cada -Update.
+exec python3 "$(dirname "$0")/hooks/$1.py"

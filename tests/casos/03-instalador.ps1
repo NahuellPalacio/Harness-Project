@@ -180,6 +180,12 @@ try {
     Assert-Verdadero 'no quedan archivos .nuevo huerfanos' `
         (@(Get-ChildItem $demo -Recurse -File -Filter '*.nuevo' -ErrorAction SilentlyContinue).Count -eq 0)
 
+    # E-26: -Uninstall saca los .py de los hooks y los dos shims.
+    Assert-Verdadero 'E-26 no queda run-hook.cmd' (-not (Test-Path (Join-Path $demo '.claude\harness\run-hook.cmd')))
+    Assert-Verdadero 'E-26 no queda run-hook.sh'  (-not (Test-Path (Join-Path $demo '.claude\harness\run-hook.sh')))
+    Assert-Verdadero 'E-26 no quedan hooks .py'   `
+        (@(Get-ChildItem $demo -Recurse -File -Filter '*.py' -ErrorAction SilentlyContinue).Count -eq 0)
+
     # Lo que SI tiene que sobrevivir a una desinstalacion.
     Assert-Verdadero 'conserva harness.config.json, que es del humano' `
         (Test-Path (Join-Path $demo '.claude\harness.config.json'))
@@ -188,4 +194,88 @@ try {
 }
 finally {
     if (Test-Path $demo) { Remove-Item $demo -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+
+# ── -Doctor sin Python ───────────────────────────────────────────────────────────
+#
+# -Doctor es la herramienta que diagnostica una máquina rota: si dependiera de lo que
+# diagnostica, no arrancaría justo cuando hace falta (E-23). Y esa garantía solo vale si
+# nada en el nivel superior del script -lo que corre para CUALQUIER verbo, -Doctor
+# incluido- invoca Python (E-23b): una dependencia en la línea 58, diagnóstico muerto
+# antes de imprimir la primera línea, sin importar cuán prolijo sea el resto.
+
+Set-Grupo 'Instalador - Doctor sin Python'
+
+$comandoDoctorSinPython = "`$env:PATH = 'C:\no-existe'; & '$instalador' -Doctor 2>&1 | Out-String"
+$salidaSinPython = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+                                    -Command $comandoDoctorSinPython | Out-String
+
+Assert-Contiene 'E-23 imprime el diagnostico completo' 'PowerShell' $salidaSinPython
+Assert-Contiene 'E-23 reporta la falta de Python'       'Python'    $salidaSinPython
+Assert-Contiene 'E-23 dice que hacer'                   'instala'  $salidaSinPython
+
+$primeraFuncion = (Select-String -Path $instalador -Pattern '^function ' | Select-Object -First 1).LineNumber
+$cabecera = (Get-Content $instalador -TotalCount $primeraFuncion) -join "`n"
+Assert-Vacio 'E-23b sin zonas.py ni Resolve-Python en el nivel superior' `
+    (($cabecera | Select-String -Pattern 'zonas\.py|Resolve-Python') -join '')
+
+
+# ── Version minima de Python (E-24) ──────────────────────────────────────────────
+#
+# Un Python viejo alcanzado en el PATH es una FALLA, no un aviso: los hooks no van a
+# correr igual. El mínimo vive en comun/manifest.json, junto a requiereClaudeCode. Se
+# prueba con dot-source -no un -Doctor real- porque hace falta simular una versión que
+# la máquina que corre la suite probablemente no tenga instalada.
+
+Set-Grupo 'Instalador - version minima de Python'
+
+function Invoke-TestEntornoSimulado {
+    param([string] $VersionPython)
+    $codigoHijo = @"
+. '$instalador'
+`$hallazgos = Test-Entorno -PythonSimulado '$VersionPython'
+`$hallazgos | ConvertTo-Json -Depth 5 -Compress
+"@
+    $json = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command $codigoHijo | Out-String
+    return @($json | ConvertFrom-Json)
+}
+
+$hallazgosViejo = Invoke-TestEntornoSimulado -VersionPython '3.6'
+$fallaViejo = @($hallazgosViejo | Where-Object { $_.Nivel -eq 'falla' -and $_.Texto -match 'Python' })
+Assert-Igual    'E-24 un Python 3.6 es una falla, no un aviso' 1     $fallaViejo.Count
+Assert-Contiene 'E-24 el mensaje dice cual es el minimo'       '3.9' $fallaViejo[0].Texto
+
+$hallazgosNuevo = Invoke-TestEntornoSimulado -VersionPython '3.11'
+$fallaNuevo = @($hallazgosNuevo | Where-Object { $_.Nivel -eq 'falla' -and $_.Texto -match 'Python' })
+Assert-Igual 'E-24 un Python por encima del minimo no falla' 0 $fallaNuevo.Count
+
+
+# ── Shims: el interprete real y el POSIX en LF (E-21, E-22) ─────────────────────
+
+Set-Grupo 'Instalador - shims'
+
+$demoShim = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-shim-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path $demoShim -Force | Out-Null
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoShim -Harness analisis -Usuario 'Prueba Shim' | Out-Null
+    Assert-Igual 'instala para probar los shims' 0 $LASTEXITCODE
+
+    $rutaCmd = Join-Path $demoShim '.claude\harness\run-hook.cmd'
+    $txtCmd = [System.IO.File]::ReadAllText($rutaCmd)
+    Assert-Vacio    'E-21 el shim no invoca powershell'         (($txtCmd | Select-String 'powershell\.exe') -join '')
+    Assert-Contiene 'E-21 el shim lleva un .exe'                '.exe' $txtCmd
+    $exe = ([regex]::Match($txtCmd, '"([^"]+\.exe)"')).Groups[1].Value
+    Assert-Verdadero 'E-21 el .exe resuelto existe'             (Test-Path $exe)
+    Assert-Verdadero 'E-21 no es el shim suelto de PyManager'   ($exe -notmatch '\\PyManager\\')
+
+    $rutaSh = Join-Path $demoShim '.claude\harness\run-hook.sh'
+    Assert-Verdadero 'E-22 se genera run-hook.sh' (Test-Path $rutaSh)
+    $bytesSh = [System.IO.File]::ReadAllBytes($rutaSh)
+    Assert-Igual     'E-22 ningun CR en el shim POSIX' 0 (@($bytesSh | Where-Object { $_ -eq 13 }).Count)
+    Assert-Contiene  'E-22 invoca python3' 'python3' ([System.IO.File]::ReadAllText($rutaSh))
+}
+finally {
+    if (Test-Path $demoShim) { Remove-Item $demoShim -Recurse -Force -ErrorAction SilentlyContinue }
 }
