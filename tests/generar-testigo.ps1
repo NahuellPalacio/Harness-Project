@@ -217,6 +217,7 @@ function Get-CasoCheck {
         ruta      = (ConvertTo-RutaRelativa -Ruta $RutaCheck)
         payload   = 'post-tool-use-write.json'
         proyecto  = (ConvertTo-RutaRelativa -Ruta $proyectoChecks)
+        archivo   = (ConvertTo-RutaRelativa -Ruta $rutaArchivo)
         config    = $Config
         hallazgos = @($hallazgos)
     }

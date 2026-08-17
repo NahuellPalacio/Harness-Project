@@ -6,6 +6,7 @@
       "ruta": "comun/checks/claude-md-zonas.ps1",
       "payload": "post-tool-use-write.json",
       "proyecto": "tests/fixtures/proyecto-checks",
+      "archivo": "tests/fixtures/proyecto-checks/CLAUDE.md",
       "config": {
         "techoZonaFija": 5
       },
@@ -19,6 +20,7 @@
       "ruta": "harnesses/desarrollo/checks/dev-accesibilidad-html.ps1",
       "payload": "post-tool-use-write.json",
       "proyecto": "tests/fixtures/proyecto-checks",
+      "archivo": "tests/fixtures/proyecto-checks/pagina.html",
       "config": null,
       "hallazgos": [
         "[a11y] pagina.html: <html> sin atributo lang. El lector de pantalla necesita saber el idioma para elegir la fonetica; sin eso lee el castellano como si fuera ingles.",
@@ -32,6 +34,7 @@
       "ruta": "harnesses/desarrollo/checks/dev-api-rutas.ps1",
       "payload": "post-tool-use-write.json",
       "proyecto": "tests/fixtures/proyecto-checks",
+      "archivo": "tests/fixtures/proyecto-checks/rutas.ts",
       "config": null,
       "hallazgos": [
         "[ES0903] rutas.ts: ruta(s) de API sin version — /api/crearUsuario (L2), /api/usuario/{id} (L3). Deberia ser /api/v1/... : sin la version en la ruta no hay forma de cambiar el contrato sin romperle la aplicacion a quien ya la consume.",
@@ -44,6 +47,7 @@
       "ruta": "harnesses/desarrollo/checks/dev-dependencias.ps1",
       "payload": "post-tool-use-write.json",
       "proyecto": "tests/fixtures/proyecto-checks",
+      "archivo": "tests/fixtures/proyecto-checks/package.json",
       "config": null,
       "hallazgos": [
         "[ES0901] package.json: 2 dependencia(s) con rango en vez de version exacta — express ^4.18.0, lodash ~4.17.21. La version la fija el estandar, no el gestor de paquetes: un rango resuelve distinto en tu maquina, en el pipeline y en produccion, y la diferencia aparece en el ambiente donde mas duele."
@@ -54,6 +58,7 @@
       "ruta": "harnesses/desarrollo/checks/dev-infra-en-codigo.ps1",
       "payload": "post-tool-use-write.json",
       "proyecto": "tests/fixtures/proyecto-checks",
+      "archivo": "tests/fixtures/proyecto-checks/config.ts",
       "config": null,
       "hallazgos": [
         "[ES0901] config.ts: servidor referenciado por IP — 10.51.2.30 (L1). Los servidores se nombran por DNS. Una IP en el fuente ata el codigo a una maquina: el dia que cambia hay que tocar y desplegar el aplicativo para arreglar algo que era configuracion."

@@ -31,10 +31,13 @@ def _medir_con_techos(texto, config):
         clave = claves_de_techo.get(z["nombre"])
         techo = 0
         if config is not None and clave and clave in config:
-            try:
-                techo = int(config[clave])
-            except (TypeError, ValueError):
-                techo = 0
+            # Defecto portado a proposito: un valor no numerico hace explotar int()
+            # sin atajarlo, igual que "[int]$Config.($zona.Techo)" en
+            # claude-md-zonas.ps1 (sin try/catch alrededor). La excepcion se propaga
+            # hasta reglas.correr_checks, que la atrapa y saltea TODO el check -no
+            # solo esta zona-, igual que Invoke-Checks con el original. No se
+            # corrige aca: si un dia se decide, va en su propio cambio.
+            techo = int(config[clave])
         fila = dict(z)
         fila["techo"] = techo
         fila["excedida"] = techo > 0 and z["lineas"] > techo
