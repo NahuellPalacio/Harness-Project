@@ -279,3 +279,34 @@ try {
 finally {
     if (Test-Path $demoShim) { Remove-Item $demoShim -Recurse -Force -ErrorAction SilentlyContinue }
 }
+
+
+# ── -Update no deja huerfanos .ps1 (E-25) ────────────────────────────────────────
+#
+# Un proyecto instalado con una versión vieja del harness -cuando los hooks todavía eran
+# .ps1- no puede quedar con esos .ps1 sueltos después de actualizar: el manifiesto nuevo
+# ya no los genera, y -Update tiene que sacar lo que sobra.
+
+Set-Grupo 'Instalador - Update sin huerfanos'
+
+$demoUpdate = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-update-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path $demoUpdate -Force | Out-Null
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoUpdate -Harness analisis -Usuario 'Prueba Update' | Out-Null
+
+    # Simula lo que dejaría una instalación de una versión anterior a la migración a Python.
+    New-Item -ItemType File -Path (Join-Path $demoUpdate '.claude\harness\hooks\pre-tool-use.ps1') -Force | Out-Null
+
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoUpdate -Update | Out-Null
+
+    $huerfanos = @(Get-ChildItem (Join-Path $demoUpdate '.claude\harness') -Recurse -Filter '*.ps1' -ErrorAction SilentlyContinue)
+    Assert-Igual 'E-25 -Update no deja ningun .ps1 huerfano' 0 $huerfanos.Count
+
+    Assert-Verdadero 'E-25 conserva harness.config.json' (Test-Path (Join-Path $demoUpdate '.claude\harness.config.json'))
+    Assert-Verdadero 'E-25 conserva los backups'          (Test-Path (Join-Path $demoUpdate '.claude\.harness-backup'))
+}
+finally {
+    if (Test-Path $demoUpdate) { Remove-Item $demoUpdate -Recurse -Force -ErrorAction SilentlyContinue }
+}

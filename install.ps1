@@ -1171,6 +1171,19 @@ function Invoke-Actualizar {
         $guardados[$e] = [System.IO.File]::ReadAllBytes($ruta)
     }
 
+    # E-25: lo que .claude\harness\ traía de una versión anterior y el manifiesto nuevo ya
+    # no genera no puede sobrevivir a un -Update — el caso real es el .ps1 de un hook que
+    # la migración a Python dejó de copiar. .claude\ es 100% regenerable (ver la cabecera
+    # del script), así que un borrado completo de .claude\harness\ antes de reinstalar es
+    # seguro: lo único que hay que preservar de ahí es lo que el humano editó, y eso ya
+    # quedó a salvo arriba, en $guardados, para restaurarse después de la reinstalación.
+    # harness.config.json y .harness-backup\ viven un nivel más arriba, en .claude\
+    # directamente, así que este borrado no los alcanza nunca.
+    $dirHarnessViejo = Join-Path $Project '.claude\harness'
+    if (Test-Path $dirHarnessViejo) {
+        Remove-Item $dirHarnessViejo -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     $codigo = Invoke-Instalar -Ids $ids
     if ($codigo -ne 0) { return $codigo }
 
