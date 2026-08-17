@@ -1252,15 +1252,26 @@ function Invoke-Desinstalar {
     Remove-BloqueMarcado -Ruta (Join-Path $Project '.gitignore') -MarcaIni $script:MarcaGitIni    -MarcaFin $script:MarcaGitFin    | Out-Null
 
     # Las zonas vacías son andamiaje que nadie usó. Las que tienen contenido se quedan:
-    # adentro está el trabajo de alguien.
-    $zonasSacadas = Remove-ZonasVacias -RutaClaudeMd $rutaClaudeMd
+    # adentro está el trabajo de alguien. Esta es la ÚNICA parte de -Uninstall que necesita
+    # Python -pasa por zonas.py-, y -Uninstall es justo la herramienta que corre cuando algo
+    # anda mal: "el Python que el instalador fijó ya no está" es uno de los motivos por los
+    # que alguien la usaría. No puede depender de lo mismo que el harness necesita para
+    # andar, así que si no hay intérprete esto se saltea -avisando qué quedó sin hacer- y la
+    # desinstalación sigue y termina bien. Nunca aborta.
+    $zonasSacadas = @()
     $zonasQueQuedan = @()
-    foreach ($z in (Get-ZonasPorJson)) {
-        if ($zonasSacadas -notcontains $z.nombre) {
-            $contenido = $null
-            if (Test-Path $rutaClaudeMd) { $contenido = Get-ContenidoZonaPorJson -RutaClaudeMd $rutaClaudeMd -Zona $z }
-            if ($null -ne $contenido) { $zonasQueQuedan += $z.nombre }
+    $zonasSinPython = $false
+    if (Resolve-Python) {
+        $zonasSacadas = Remove-ZonasVacias -RutaClaudeMd $rutaClaudeMd
+        foreach ($z in (Get-ZonasPorJson)) {
+            if ($zonasSacadas -notcontains $z.nombre) {
+                $contenido = $null
+                if (Test-Path $rutaClaudeMd) { $contenido = Get-ContenidoZonaPorJson -RutaClaudeMd $rutaClaudeMd -Zona $z }
+                if ($null -ne $contenido) { $zonasQueQuedan += $z.nombre }
+            }
         }
+    } else {
+        $zonasSinPython = $true
     }
 
     if ($Silencioso) { return 0 }
@@ -1270,11 +1281,15 @@ function Invoke-Desinstalar {
         EscribirOk "$($sobrantes.Count) archivo(s) .nuevo de un -Update previo, borrados"
     }
     EscribirOk 'bloques sacados de CLAUDE.md y .gitignore'
-    if ($zonasSacadas.Count -gt 0) {
-        EscribirOk ('zonas vacías sacadas del CLAUDE.md — ' + ($zonasSacadas -join ', '))
-    }
-    if ($zonasQueQuedan.Count -gt 0) {
-        EscribirAviso ('quedan zonas con contenido, no se tocaron — ' + ($zonasQueQuedan -join ', '))
+    if ($zonasSinPython) {
+        EscribirAviso 'no se pudieron limpiar las zonas del CLAUDE.md: no hay Python instalado. Quedaron puestas — sacalas a mano, o instalá Python y corré -Uninstall de nuevo.'
+    } else {
+        if ($zonasSacadas.Count -gt 0) {
+            EscribirOk ('zonas vacías sacadas del CLAUDE.md — ' + ($zonasSacadas -join ', '))
+        }
+        if ($zonasQueQuedan.Count -gt 0) {
+            EscribirAviso ('quedan zonas con contenido, no se tocaron — ' + ($zonasQueQuedan -join ', '))
+        }
     }
     EscribirOk 'se conservan: los backups y tu harness.config.json'
     Escribir ''

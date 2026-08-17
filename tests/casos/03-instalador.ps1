@@ -310,3 +310,45 @@ try {
 finally {
     if (Test-Path $demoUpdate) { Remove-Item $demoUpdate -Recurse -Force -ErrorAction SilentlyContinue }
 }
+
+
+# ── -Uninstall sin Python (E-26b) ─────────────────────────────────────────────────
+#
+# -Uninstall es la herramienta que corre justo cuando algo anda mal, y "el Python que el
+# instalador fijó ya no está" es uno de los motivos por los que alguien la usaría. No puede
+# depender de lo mismo que el harness necesita para andar: la única parte que usa Python es
+# la limpieza de zonas del CLAUDE.md, y esa es la única que se saltea si no hay intérprete
+# -avisando qué quedó sin hacer y por qué- nunca abortando la desinstalación entera.
+
+Set-Grupo 'Instalador - Uninstall sin Python'
+
+$demoUninstSinPython = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-uninst-sp-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path $demoUninstSinPython -Force | Out-Null
+    # Un CLAUDE.md previo, para que la instalación deje un backup de verdad que verificar.
+    [System.IO.File]::WriteAllText((Join-Path $demoUninstSinPython 'CLAUDE.md'), "# CLAUDE.md previo`r`n")
+
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoUninstSinPython -Harness analisis -Usuario 'Prueba Sin Python' | Out-Null
+
+    $comandoDesinstalarSinPython = "`$env:PATH = 'C:\no-existe'; & '$instalador' -Project '$demoUninstSinPython' -Uninstall 2>&1 | Out-String"
+    $salidaDesinstalar = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+                                          -Command $comandoDesinstalarSinPython | Out-String
+    $codigoDesinstalar = $LASTEXITCODE
+
+    Assert-Igual 'E-26b -Uninstall sin Python no aborta' 0 $codigoDesinstalar
+    Assert-Verdadero 'E-26b saca los .py' `
+        (@(Get-ChildItem $demoUninstSinPython -Recurse -Filter '*.py' -ErrorAction SilentlyContinue).Count -eq 0)
+    Assert-Verdadero 'E-26b saca run-hook.cmd' `
+        (-not (Test-Path (Join-Path $demoUninstSinPython '.claude\harness\run-hook.cmd')))
+    Assert-Verdadero 'E-26b saca run-hook.sh' `
+        (-not (Test-Path (Join-Path $demoUninstSinPython '.claude\harness\run-hook.sh')))
+    Assert-Verdadero 'E-26b conserva harness.config.json' `
+        (Test-Path (Join-Path $demoUninstSinPython '.claude\harness.config.json'))
+    Assert-Verdadero 'E-26b conserva los backups' `
+        (Test-Path (Join-Path $demoUninstSinPython '.claude\.harness-backup'))
+    Assert-Contiene 'E-26b avisa que no pudo limpiar las zonas, y por que' 'Python' $salidaDesinstalar
+}
+finally {
+    if (Test-Path $demoUninstSinPython) { Remove-Item $demoUninstSinPython -Recurse -Force -ErrorAction SilentlyContinue }
+}
