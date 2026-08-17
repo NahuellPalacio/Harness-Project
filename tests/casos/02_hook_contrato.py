@@ -8,14 +8,19 @@ RAIZ = Path(__file__).resolve().parents[2]
 HOOKS = RAIZ / "comun" / "hooks"
 
 
-def _correr(script, payload):
+def _correr_proceso(script, payload):
     """Corre un hook real de comun/hooks/ con `payload` (dict) por stdin y devuelve
-    su stdout decodificado."""
+    el CompletedProcess entero: da acceso al codigo de salida ademas del stdout, para
+    no confundir "silencio correcto" con "silencio porque no corrio nada"."""
     entrada = json.dumps(payload).encode("utf-8")
-    resultado = subprocess.run(
+    return subprocess.run(
         [sys.executable, str(HOOKS / script)],
         input=entrada, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return resultado.stdout.decode("utf-8")
+
+
+def _correr(script, payload):
+    """Como `_correr_proceso`, pero devuelve solo el stdout decodificado."""
+    return _correr_proceso(script, payload).stdout.decode("utf-8")
 
 
 def test_deny_con_secreto_alto(t):
@@ -43,11 +48,20 @@ def test_ask_con_secreto_medio(t):
     salida = json.loads(_correr("pre-tool-use.py", payload))
     hs = salida["hookSpecificOutput"]
     t.igual("E-03 ask", "ask", hs["permissionDecision"])
-    t.verdadero("E-03 ask no es deny", hs["permissionDecision"] != "deny")
+    t.contiene("E-03 ask dice que hacer", "variable de entorno", hs["permissionDecisionReason"])
 
 
 def test_placeholder_no_dispara(t):
-    """E-04 — ${DB_PASSWORD} no es un secreto."""
+    """E-04 — ${DB_PASSWORD} no es un secreto.
+
+    Se ata al codigo de salida ademas del stdout: `stdout == ""` tambien es cierto si
+    el script no existe, si el import explota antes de invoke_hook, o si el proceso
+    revienta de cualquier forma que mande el traceback a stderr. Sin el codigo 0, este
+    test pasa vacuamente y no ejercita nada -paso de verdad durante la rotura
+    deliberada de la rama alta, sin fallar-.
+    """
     payload = {"session_id": "s1", "hook_event_name": "PreToolUse", "tool_name": "Write",
                "tool_input": {"file_path": "a.cs", "content": "password = ${DB_PASSWORD}"}}
-    t.igual("E-04 silencio", "", _correr("pre-tool-use.py", payload))
+    resultado = _correr_proceso("pre-tool-use.py", payload)
+    t.igual("E-04 codigo 0", 0, resultado.returncode)
+    t.igual("E-04 silencio", "", resultado.stdout.decode("utf-8"))
