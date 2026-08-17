@@ -45,11 +45,6 @@ ourselves is 2800, and a third party takes close to a third of it, invisible to 
 The hook exists, it is registered and it does nothing. Its intended job was a single routing line
 when the prompt matches the triggers of an installed skill.
 
-### There is no `.sh` shim
-
-Only `run-hook.cmd` exists. If someone uses WSL or Mac, the hooks do not start. The
-`.gitattributes` is already prepared so their line endings do not break.
-
 ### The reviewer panel is planned and deferred
 
 Three reviewers with different lenses, correctness, security and data, plus an infrastructure

@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.13.0](0.13.0.md) | 17-08-2026 | Los cuatro hooks, los cinco checks y la suite, de PowerShell a Python; el shim `.sh` que faltaba |
 | [0.12.0](0.12.0.md) | 13-08-2026 | Esta bitácora, y el detector de secretos que bloqueaba su propia documentación |
 | [0.11.0](0.11.0.md) | 13-08-2026 | `desarrollo` ya sabe: 8 skills, `dev-refutador` y la normativa destilada |
 | [0.10.0](0.10.0.md) | 12-08-2026 | `desarrollo` deja de estar vacío: sus primeros cuatro checks |

@@ -12,15 +12,19 @@ dos formas de invocarlo. Lo que cambia es la sintaxis de la línea de comandos, 
 | Windows | 10 u 11 | — |
 | PowerShell | 5.1 (el que ya trae Windows) | `$PSVersionTable.PSVersion` |
 | Claude Code | 2.1.0 | `claude --version` |
+| Python | 3.9 | `python --version` |
 | Git | cualquiera | `git --version` |
 
-> 🔴 **Hoy el harness es de Windows.** Los hooks se lanzan desde un `run-hook.cmd` que apunta
-> a `powershell.exe`. Eso significa que **el harness se instala y corre en Windows**, y que
-> desde WSL, macOS o Linux los hooks no arrancan. Falta el shim `.sh` — está anotado en
-> `Pendientes/Fix-Harness/PENDIENTES-FH.md`. Cuando este documento dice "bash" quiere decir
-> **Git Bash sobre Windows**, que es lo que hoy funciona de verdad.
+> 📌 **La instalación es de Windows; los hooks ya no lo son.** `install.ps1` sigue siendo
+> PowerShell y sigue corriendo sobre Windows —es el bootstrap, y PowerShell 5.1 es lo único
+> garantizado antes de que exista nada instalado—. Pero desde 0.13.0 los hooks son Python, y
+> `install.ps1` escribe **dos** lanzadores: `run-hook.cmd`, con la ruta del `python.exe` de esta
+> máquina, y `run-hook.sh`, genérico, para la sesión de Claude Code que corra sobre WSL, macOS o
+> Linux contra un proyecto instalado desde Windows. Cuando este documento dice "bash" sigue
+> siendo **Git Bash sobre Windows**, porque `install.ps1` en sí no corre en otro lado.
 
-No hace falta instalar PowerShell 7. No hace falta ser administrador.
+No hace falta instalar PowerShell 7. No hace falta ser administrador. Python se usa con el que
+ya esté en el `PATH` de la máquina — no se empaqueta ningún intérprete.
 
 ## 1. Traer el harness
 
@@ -170,7 +174,7 @@ Para quedarte con un conjunto exacto, el camino es `-Uninstall` y volver a insta
 | `no se pudo determinar la versión de Claude Code` | `claude` no está en el PATH | Abrí una consola nueva después de instalarlo |
 | `falta -Usuario` | Invocado sin consola interactiva | Pasá `-Usuario 'Tu Nombre'` |
 | `el proyecto no existe` | Ruta en formato bash (`/c/...`) | Pasala en formato Windows: `C:/Work/...` |
-| Los hooks no hacen nada | Estás en WSL, macOS o Linux | Todavía no está soportado: falta el shim `.sh` |
+| Los hooks no hacen nada, en WSL/macOS/Linux | No hay `python3` en el `PATH` de esa sesión | Instalá Python ≥ 3.9 ahí; `run-hook.sh` invoca `python3` del sistema, no una ruta de Windows |
 | Acentos rotos en la salida | Consola en codepage vieja | `chcp 65001` antes de correr |
 
 Si `-Doctor` cierra con `Todo en orden.` y aun así algo no anda, eso es un bug del harness:

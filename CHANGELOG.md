@@ -3,6 +3,42 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.13.0] — 2026-08-17
+
+**Los hooks corren en Python.** El hook que corre en cada tool call tardaba 981 ms, 2,5× por
+encima del umbral de ~400 ms que el plan de 0.6.0 nunca había medido. Los cuatro hooks, los
+cinco checks y la suite se portaron de PowerShell a Python — a paridad de comportamiento,
+defectos incluidos — y de arrastre se cerró el shim `.sh` que faltaba.
+
+### Agregado
+
+- **Python ≥ 3.9** como requisito de instalación, declarado en `comun/manifest.json` junto a
+  `requiereClaudeCode`. `-Doctor` lo verifica y falla con instrucciones si no está o es anterior
+- **`run-hook.sh`** — el shim POSIX que faltaba. `install.ps1` ahora escribe dos lanzadores:
+  `run-hook.cmd` con la ruta absoluta del `python.exe` de la máquina, y `run-hook.sh`, genérico,
+  para la sesión de Claude Code que corra sobre WSL, macOS o Linux
+- `lib/zonas.py` — la definición de zonas en un solo lugar, con verbos de línea de comandos que
+  `install.ps1` consume por JSON en vez de tener la lógica escrita dos veces
+- 309 tests en verde: 93 en PowerShell (lo que sigue siéndolo: `install.ps1`,
+  `03-instalador.ps1`, `00-encoding-fuentes.ps1`, `06-composicion.ps1`, `08-bitacora.ps1`) más
+  216 en Python, bajo un único comando y un único código de salida
+
+### Cambiado
+
+- 🔴 **El contrato de un check rompe.** `param($Evento, $Proyecto, $Config)` en PowerShell pasa
+  a ser `def verificar(evento, proyecto, config) -> list[str]` en Python. Un check propio en
+  `.ps1` deja de descubrirse — ver [UPGRADE.md](UPGRADE.md)
+- `docs/contrato-hooks.md`, reescrito sobre las trampas de Python: `-I` rompe el import,
+  `ensure_ascii=False` en la salida, escribir bytes UTF-8 al buffer y no con `print`, `utf-8-sig`
+  al leer stdin, los checks se cargan por ruta porque su nombre lleva guiones
+
+### Lo que no se cumplió, sin maquillar
+
+- 🔴 **E-29 no se cumple.** El umbral era 400 ms y `pre-tool-use` da 558 ms de p50 (14 corridas,
+  Stopwatch). La causa está medida: el arranque desnudo del intérprete en esta máquina ya se
+  come el umbral solo, así que ni con el código del hook en cero se llegaría por debajo. La
+  mejora real es 981 → 558 ms, un 43%. `-Doctor` medirá este número — pendiente, Task 13
+
 ## [0.12.0] — 2026-08-13
 
 **Una bitácora por versión.** El `CHANGELOG` cuenta qué cambió para quien actualiza; lo que no

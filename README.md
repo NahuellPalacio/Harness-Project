@@ -36,9 +36,10 @@ un conjunto exacto, el camino es `-Uninstall` y volver a instalar.
 
 | | |
 |---|---|
-| Windows | 10 u 11. Los hooks se lanzan con `powershell.exe`: todavía no hay shim `.sh` |
+| Windows | 10 u 11, para instalar. Los hooks corren en Python: con el shim `.sh`, la sesión funciona también desde WSL, macOS o Linux |
 | Claude Code | ≥ 2.1.0 |
 | PowerShell | ≥ 5.1 (el que viene con Windows; no hace falta PowerShell 7) |
+| Python | ≥ 3.9 (el de la máquina; no se empaqueta ningún intérprete) |
 | Git | cualquiera |
 
 ## Instalación

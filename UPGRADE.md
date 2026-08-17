@@ -20,6 +20,46 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.12.0 → 0.13.0
+
+**Rompe.** Agrega un requisito y cambia el contrato de los checks. `-Update` alcanza para
+recibir el harness nuevo, pero si escribiste un check propio hay un paso manual.
+
+**Python ≥ 3.9 pasa a ser requisito de instalación**, no solo de ejecución: `install.ps1`
+resuelve el intérprete y lo usa para leer las zonas del `CLAUDE.md`. `-Doctor` lo verifica y
+falla con instrucciones si no está o es anterior a 3.9. Correr `-Doctor` antes que nada:
+
+```powershell
+.\install.ps1 -Doctor
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Update
+```
+
+**Si escribiste un check propio en `.ps1`, hay que portarlo.** Los cuatro hooks, los cinco
+checks del harness y sus bibliotecas pasaron de PowerShell a Python. El contrato de un check
+cambió de forma:
+
+```powershell
+param($Evento, $Proyecto, $Config)   ->   devuelve cero o mas strings
+```
+```python
+def verificar(evento, proyecto, config) -> list[str]
+```
+
+Un `.ps1` en el directorio de checks deja de descubrirse: `lib/reglas.py` solo carga `.py`. El
+detalle completo, con las trampas de Python que hay que conocer para escribirlo, está en
+[docs/contrato-hooks.md](docs/contrato-hooks.md).
+
+**Qué no cambia:** el catálogo de secretos, los umbrales, los mensajes y el veredicto de cada
+regla — el port se hizo a paridad de comportamiento a propósito, defectos incluidos. Si un
+check tuyo depende de algo del harness que no sea el contrato de arriba (una función de
+`Zonas.psm1`, por ejemplo), mirá `lib/zonas.py`, que es su reemplazo directo.
+
+**Lo que trae de arrastre:** `run-hook.sh` — el shim que faltaba. Una sesión de Claude Code
+sobre WSL, macOS o Linux, contra un proyecto instalado desde Windows, ya arranca los hooks.
+Necesita `python3` en el `PATH` de esa sesión.
+
+---
+
 ## 0.8.0 → 0.9.0
 
 `-Update` alcanza. Pero después de correrlo puede aparecer un aviso nuevo, y conviene saber
