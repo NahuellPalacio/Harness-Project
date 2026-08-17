@@ -80,6 +80,43 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
 
 Its last finding was corrected by hand and never went back through adversarial refutation.
 
+### Four behaviour fixes rode inside the Python port, so their diff never said one thing
+
+The `hooks-en-python` change was bound to parity: port the behaviour, defects included, so that the
+migration cannot hide a rule change. Four fixes broke that rule. They are in
+`comun/hooks/lib/hook.py`, they are real, and `Hook.psm1` had every one of them identical:
+
+- `mensaje_de_sistema` emitted outside its own `try`. A `BrokenPipeError` — the parent stopped
+  reading — escaped `invoke_hook` and the process died with a non-zero exit code, in the very path
+  that exists as the last line of defence.
+- `except SystemExit: raise` re-raised any code, so a non-zero exit could leak out of a hook whose
+  entire contract is that it always exits 0.
+- Nothing stopped two JSON objects reaching stdout: a body that warned and then threw wrote both,
+  concatenated without a separator, which breaks parsing and loses the legitimate warning too.
+- The "already warned" marker was written before emitting and with a non-atomic check, so a failed
+  emission lost the warning for the whole session.
+
+They were closed on the argument that "a hook never breaks the session" is a global constraint of
+the change and is scenario E-06 — not a business rule. The argument holds. What does not hold is
+that they landed mixed into a port, which is exactly what the change promised not to do.
+
+Fix. Nothing to write: the code is in and tested, with the red seen for the first and the third.
+What is owed is the review this never got as its own change — read those four hunks on their own,
+against `Hook.psm1`, and decide whether each one was worth taking. If any was not, it comes out.
+
+### The Python port left four minor divergences written down and unfixed
+
+None of them changes a verdict. They are here so they are not rediscovered as surprises.
+
+- `texto_de_herramienta` has no test covering `new_string: null` inside `tool_input.edits`. The
+  handling is correct by inspection; a regression there would not be caught by the suite.
+- `importar_patrones` uses `os.path.isfile`, stricter than the `Test-Path` it ports, which also
+  accepts a directory. No impact: the catalogue path is a fixed literal of the repo.
+- There is no end-to-end case with a corrupt or missing catalogue. The path is covered by the
+  generic mechanism of `invoke_hook` (E-07 and E-08), not by a case tied to the real hook.
+- `_correr` and `_correr_proceso` live duplicated as local functions in each case file. It is a
+  pre-existing pattern; if a third variant appears, that is when it earns a shared module.
+
 ## Outside the harness, written down so it is not lost
 
 ### Four IGE documents nobody read
