@@ -44,3 +44,29 @@ foreach ($f in $fuentes) {
 
 Assert-Verdadero 'ningun fuente con acentos quedo sin BOM' ($culpables.Count -eq 0) `
     ("se corrompen al cargar: " + ($culpables -join ', '))
+
+
+# ── Los .py del harness: la regla dada vuelta ────────────────────────────────────
+#
+# Python siempre lee un .py en UTF-8 -no depende de la codepage del sistema, a
+# diferencia de PowerShell 5.1-, asi que el problema que motiva la regla de arriba no
+# existe del lado de Python. Ahi el BOM es el problema: un BOM al principio de un .py
+# se cuela como caracter dentro del primer token si algo lo concatena sin filtrarlo -y
+# es exactamente lo que hace lib.hook.leer_evento con el stdin de un hook, aunque ahi
+# se descarta a proposito con utf-8-sig-. Se guarda siempre sin BOM.
+#
+# E-28: los .py del harness NO llevan BOM. Los .ps1 que quedan SI, cuando tienen
+# acentos -es la seccion de arriba, sin tocar-.
+
+$fuentesPy = Get-ChildItem $script:Raiz -Recurse -Filter '*.py' -File -ErrorAction SilentlyContinue |
+             Where-Object { $_.FullName -notmatch '\\\.git\\' -and $_.FullName -notmatch '\\tests\\out\\' -and $_.FullName -notmatch '\\__pycache__\\' }
+
+Assert-Verdadero 'hay fuentes .py para revisar' ($fuentesPy.Count -gt 0) `
+    'no se encontro ningun .py'
+
+$conBom = @($fuentesPy | Where-Object {
+    $b = [System.IO.File]::ReadAllBytes($_.FullName)
+    $b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF
+})
+
+Assert-Igual 'E-28 ningun .py con BOM' 0 $conBom.Count
