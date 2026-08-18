@@ -21,6 +21,30 @@ Status. Open, accepted or rejected, with the reason.
 
 ## Open
 
+### The workflow of each harness cannot be drawn
+
+Stated by Nahue on 2026-08-17, and it is the sharpest description of the problem so far: *if you
+draw what each harness does, the workflow is not clear.*
+
+The harness today is a set of parts that work — hooks, checks, skills, agents, zones — grouped by
+what they are, not by what somebody does with them. `analisis` has a writer and a refuter, which is
+half a method with no cycle around it. `desarrollo` enforces standards but nobody can say at which
+moment of the work each rule lands. `comun` is infrastructure. Nothing in the repo answers "what
+does a day of work with this look like", so each part is judged on its own instead of by the result
+it contributes to.
+
+Problem it solves. A harness whose workflow cannot be drawn cannot be argued about, taught, or
+trimmed: there is no way to say a part is missing, or that another one is in the way, because there
+is no shape to compare against. It is also why the question "is a session with the harness better
+than one without it" has never been answerable.
+
+Cost. Unknown until it is scoped, and it is a redefinition, not a feature: it deserves the
+architectural path — questions, two or three approaches, a design in sections, and only then a spec
+under `docs/cambios/`.
+
+Status. Open, parked by Nahue's own call: *we will look at this later*. Written down so the framing
+is not lost, because it is the framing, not a task.
+
 ### ADR-0007 — this repository adopts SDD for its own development
 
 ADR-0006 decided that the projects installing the harness work by SDD, and rule 5 left this

@@ -158,9 +158,21 @@ They were closed on the argument that "a hook never breaks the session" is a glo
 the change and is scenario E-06 — not a business rule. The argument holds. What does not hold is
 that they landed mixed into a port, which is exactly what the change promised not to do.
 
-Fix. Nothing to write: the code is in and tested, with the red seen for the first and the third.
-What is owed is the review this never got as its own change — read those four hunks on their own,
-against `Hook.psm1`, and decide whether each one was worth taking. If any was not, it comes out.
+Reviewed adversarially on 2026-08-17, with the burden of proof inverted — the default was that
+each one comes out, and only what could not be knocked down survives. **The four survived.** The
+first and the fourth close a promise the module already made, cheaply, with a test that sees the
+real failure. The second is unreachable in today's code but costs nothing and changes no output.
+
+What is still owed, and it is narrower than the original item:
+
+- **The single-emission guard trades a noise for a silence.** If a future hook warns and then
+  throws on every run, its `systemMessage` is never seen, not even once. Nothing keeps a trace of
+  the discarded message anywhere.
+- **Nobody checked whether `systemMessage` and `hookSpecificOutput` are allowed as sibling keys of
+  the same top-level object.** If Claude Code accepts that, the right design was never "first write
+  wins" — it was merging both into one JSON, and this fix should be replaced rather than kept.
+- **There is no test that forces the marker write to fail** (permission denied, full disk) and
+  confirms the message still went out. That path is covered by reading, not by a red.
 
 ### The Python port left four minor divergences written down and unfixed
 
