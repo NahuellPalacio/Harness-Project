@@ -1300,8 +1300,17 @@ function Invoke-Actualizar {
     # no hubo excepción, osea que ya salió bien. La única forma de no perder nada si
     # Invoke-Instalar tira es no borrar antes de tener la reinstalación en pie: se MUEVE
     # .claude\harness\ a un directorio temporal -no se borra- y si algo tira, se lo mueve
-    # de vuelta a su lugar antes de propagar el error. Un -Update que falla deja el
-    # proyecto exactamente como estaba, nunca a mitad de camino.
+    # de vuelta a su lugar antes de propagar el error.
+    #
+    # Esto deja el proyecto exactamente como estaba en el caso normal — que es el único
+    # que se puede probar sin fixturar un archivo bloqueado por otro proceso, y por eso es
+    # el único que tiene test (E-30). Lo que sigue es el camino que NO se puede probar:
+    # si la restauración misma falla -el Move-Item de vuelta tropieza, por ejemplo porque
+    # algo dejó un archivo abierto- el error original de Invoke-Instalar no se puede
+    # perder, y el mensaje tiene que decir dónde quedaron los archivos para que la persona
+    # los recupere a mano. Ninguna de las dos ramas de abajo debería ejecutarse nunca en
+    # la práctica; están ahí para que, el día que pase, el mensaje sea accionable en vez
+    # de un error de Move-Item que no explica nada de lo que falló primero.
     $dirHarnessViejo = Join-Path $Project '.claude\harness'
     $dirHarnessTemp = $null
     if (Test-Path $dirHarnessViejo) {
@@ -1312,11 +1321,30 @@ function Invoke-Actualizar {
     try {
         Invoke-Instalar -Ids $ids | Out-Null
     } catch {
-        if ($dirHarnessTemp -and (Test-Path $dirHarnessTemp)) {
-            if (Test-Path $dirHarnessViejo) { Remove-Item $dirHarnessViejo -Recurse -Force -ErrorAction SilentlyContinue }
-            Move-Item -Path $dirHarnessTemp -Destination $dirHarnessViejo -Force
+        $mensajeOriginal = $_.Exception.Message
+
+        if (-not $dirHarnessTemp) {
+            # Nunca hubo nada que mover: no hay nada que restaurar ni que perder.
+            throw $mensajeOriginal
         }
-        throw
+
+        if (-not (Test-Path $dirHarnessTemp)) {
+            # No debería pasar nunca: el temporal que ESTE mismo proceso acaba de crear
+            # desapareció antes de poder restaurarlo. El error original por sí solo no
+            # explica por qué .claude\harness\ tampoco está en su lugar.
+            throw "$mensajeOriginal -- además, .claude\harness\ no está ni en su lugar ni en el temporal esperado ($dirHarnessTemp). Revisá el proyecto a mano antes de reintentar."
+        }
+
+        try {
+            if (Test-Path $dirHarnessViejo) { Remove-Item $dirHarnessViejo -Recurse -Force -ErrorAction Stop }
+            Move-Item -Path $dirHarnessTemp -Destination $dirHarnessViejo -Force -ErrorAction Stop
+        } catch {
+            # La restauración misma falló: el error original no se pierde, y el mensaje
+            # dice dónde quedó lo que no se pudo mover, para recuperarlo a mano.
+            throw "$mensajeOriginal -- además, no se pudo restaurar .claude\harness\ desde el temporal: $($_.Exception.Message). Lo que tenías antes de -Update sigue en $dirHarnessTemp; movelo a mano a $dirHarnessViejo."
+        }
+
+        throw $mensajeOriginal
     }
 
     # Llegar hasta acá significa que Invoke-Instalar terminó bien: el temporal ya no hace

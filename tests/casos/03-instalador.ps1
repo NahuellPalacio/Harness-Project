@@ -420,17 +420,25 @@ finally {
 # que empareje el nombre de una zona con la clave de su techo- las dos quedan
 # desincronizadas en silencio, que es justo lo que la migración cerró.
 #
-# Una DEFINICIÓN empareja el nombre de la clave "techo" con el valor "techoZonaFija" en
-# la misma expresión -`"techo": "techoZonaFija"` en JSON/Python, `Techo = 'techoZonaFija'`
-# en PowerShell, como tenía la Zonas.psm1 borrada-. Un VALOR de configuración o de test
-# (`"techoZonaFija": 60`, `config_extra={"techoZonaFija": 1}`) no tiene esa forma: nombra
-# la clave compuesta, no la define. El patrón no matchea sobre el prefijo compartido
-# porque exige un separador -dos puntos o igual- inmediatamente después de la palabra
-# "techo" sola, y en un VALOR lo que sigue a "techo" es "ZonaFija", no el separador.
+# Una DEFINICIÓN empareja el nombre de la clave del techo con el valor de esa clave en la
+# misma expresión, en cualquiera de los dos idiomas que tuvo esta definición -JSON/Python
+# hoy, PowerShell en la Zonas.psm1 ya borrada-. Un VALOR de configuración o de test nombra
+# la clave compuesta entera, pero no la empareja con ningún separador inmediatamente
+# después de la palabra que identifica al techo sola: ahí lo que sigue es el resto del
+# nombre de la clave, no un separador. Esa ausencia es lo que distingue un valor de una
+# definición, y es lo que el patrón de abajo verifica.
+#
+# El patrón se arma por concatenación -mismo truco que 04_secretos.py usa con los
+# literales de secretos, por la misma razón- para que este archivo no pueda, él mismo,
+# contener la forma completa que busca. Es la lección de la primera versión de este test:
+# describía las dos formas escritas tal cual, a modo de ejemplo, en este mismo comentario
+# -y el propio comentario se detectaba a sí mismo como si fuera la definición real-.
 
 Set-Grupo 'Composicion - la definicion de zonas vive en un solo lado (E-17)'
 
-$patronDefinicionZona = '["'']?[Tt]echo["'']?\s*[:=]\s*["'']techoZonaFija["'']'
+$fragmentoClave = '["'']?[Tt]ec' + 'ho["'']?\s*[:=]\s*["'']'
+$fragmentoValor = 'tec' + 'hoZonaFija["'']'
+$patronDefinicionZona = $fragmentoClave + $fragmentoValor
 $archivosFuente = Get-ChildItem $script:Raiz -Recurse -File -Include '*.py', '*.ps1', '*.psm1' -ErrorAction SilentlyContinue |
                   Where-Object { $_.FullName -notlike '*\.git\*' -and $_.FullName -notlike '*\__pycache__\*' }
 
