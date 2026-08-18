@@ -5,15 +5,26 @@ it matters and what should be done.
 
 When an item closes it leaves this file and lands in its version note, under `docs/versiones/`.
 
-## Distribution
+## What to take first
 
-### The closure of the remote is not in a version note yet
+Ordered by risk times cost, not by section. The sections below group by theme; this is the
+running order.
 
-The remote exists: `https://github.com/NahuellPalacio/Harness-Project`, public, `main`. The
-README and `docs/instalacion.md` document both install paths, and `normativa/fuentes/` is
-gitignored so the internal GCBA PDFs never go public. What is missing is the release itself:
-a `docs/versiones/0.13.0.md` and the `VERSION` bump. Until that happens the repo says 0.12.0
-while it already carries distribution.
+| | What | Why now |
+|---|---|---|
+| 1 | Two installer tests break versioned files | It can leave `pre-tool-use.py` — the only blocking rule of the harness — broken in the tree, and four agents were killed by a watchdog during 0.13.0 |
+| 2 | Review the four contract fixes on their own diff | They rode inside a port that promised not to change behaviour. Until somebody reads them alone, the promise is unverified |
+| 3 | The IGE stayed on v0.9.0 | It is now four versions behind, and 0.13.0 breaks the check contract: any `.ps1` check written there stops running |
+| 4 | What the checks witness never exercised | 25 branches with no test and no implementation left to compare against |
+| 5 | The always loaded cost of agents and skills | The repo went from 53 to 449 tokens per turn during 0.13.0 and nothing caps it |
+| 6 | The budget has to measure the session | Same blind spot, one level up |
+| 7 | The four minor port divergences | None changes a verdict. Cheap to close while touching the files anyway |
+| 8 | Skill routing in `UserPromptSubmit` is mute | A capability that was never built, not a defect |
+| 9 | `ES0902.md` did not close as faithful | Predates all of this |
+| 10 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
+
+Items 1 and 2 are what 0.13.1 is for. Item 3 is not code: it is running `-Update` on a real
+project, and it is what tells whether any of this works outside this repo.
 
 ## Missing measurement
 
