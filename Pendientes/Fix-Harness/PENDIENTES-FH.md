@@ -104,6 +104,29 @@ Fix. Not a bug, a hole in the net: every line above is a case somebody can add t
 whatever the rule says it should be. Worth doing before the checks are touched again for any
 reason.
 
+### Two installer tests break versioned files, and `finally` does not survive a killed process
+
+`tests/casos/03-instalador.ps1` covers E-20 and E-27 by appending a syntax error to a real,
+versioned file — `comun/hooks/lib/zonas.py` for one, `comun/hooks/pre-tool-use.py` for the other —
+running the installer against it, and restoring the file in a `finally`.
+
+`try/finally` only unwinds inside a live process. If the PowerShell process running the suite is
+killed outright — `Stop-Process -Force`, a CI timeout, an agent watchdog — the `finally` never
+runs and the file stays broken in the working tree. During the `hooks-en-python` change four
+agents were killed by a watchdog, so the window is not theoretical. The worst case leaves
+`pre-tool-use.py` — the hook that carries the only blocking rule in the harness — with a syntax
+error, and nothing detects it beyond somebody running `git status`.
+
+Recovery, if it ever happens:
+
+```bash
+git checkout -- comun/hooks/pre-tool-use.py comun/hooks/lib/zonas.py
+```
+
+Fix. Run those two cases against a copy of the repo in a temporary directory instead of against
+the working tree. It is a change to how the suite is built, not a one-line patch, which is why it
+was left out of 0.13.0 rather than rushed into it.
+
 ### Four behaviour fixes rode inside the Python port, so their diff never said one thing
 
 The `hooks-en-python` change was bound to parity: port the behaviour, defects included, so that the
