@@ -27,11 +27,6 @@ claims to guard and does not measure. Nothing stops the next piece from doubling
 Fix. `-Doctor` measures and reports the total; new cap `techoAssetsSiempreCargados` in
 `comun/manifest.json`. It warns, it never blocks.
 
-### `-Doctor` does not measure hook latency
-
-The original plan said to evaluate rewriting them in Node if the p50 went above roughly 400 ms,
-but not before measuring it. It was never measured.
-
 ### The budget has to measure the session, not the harness
 
 `superpowers` injects about 900 tokens per session with its `SessionStart` hook. The cap we set
@@ -44,11 +39,6 @@ ourselves is 2800, and a third party takes close to a third of it, invisible to 
 
 The hook exists, it is registered and it does nothing. Its intended job was a single routing line
 when the prompt matches the triggers of an installed skill.
-
-### There is no `.sh` shim
-
-Only `run-hook.cmd` exists. If someone uses WSL or Mac, the hooks do not start. The
-`.gitattributes` is already prepared so their line endings do not break.
 
 ### The reviewer panel is planned and deferred
 
@@ -79,6 +69,100 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
 ### `ES0902.md` was the only extract that did not close as faithful
 
 Its last finding was corrected by hand and never went back through adversarial refutation.
+
+### What the checks witness never exercised, written down the day before the originals died
+
+`tests/fixtures/paridad-checks.json` holds 5 cases and 11 findings, and it is what proved the
+Python checks answer exactly what the PowerShell ones answered. It was never a coverage claim: it
+proves parity on what it covers and says nothing about the rest. The rest is this list, read off
+the five `.ps1` originals by the refuter on 2026-08-17, the day before `hooks-en-python` Task 8
+deleted them. After that commit there is no implementation left to compare against, so anything
+below that diverges today will diverge unnoticed.
+
+- **`claude-md-zonas`** — a zone whose marker is misspelled ("similar name"), the excess of lines
+  outside every zone, the ZONA CACHE warning at 75% or more, and a `CLAUDE.md` with no zones at
+  all (the early empty return).
+- **`dev.py`** — a file over 512 KB (silently discarded), and `es_ruta_generada` never returning
+  `True`: no case runs a check against a path under `node_modules`, `vendor` or the like.
+- **`dev-accesibilidad-html`** — a missing `<h1>` (only the duplicated one is exercised), the
+  `.blade.php` and `.component.html` extensions, and a fragment with no `<html>`, which should
+  skip the lang and heading rules.
+- **`dev-api-rutas`** — `prefijoApi` coming from config (always `null` in the witness), a route
+  that already carries its version (to prove it is *not* reported), the deduplication of a
+  repeated route, and the documented false negative on camelCase verbs (`posts` vs
+  `postulaciones`).
+- **`dev-dependencias`** — `composer.json` with `require` and `require-dev`, the range forms
+  `>=`, `<=`, `||`, the interval (` - `) and the `x`/`*` wildcards, invalid JSON, JSON that is
+  not an object, and the documented defect with `false`, `0` or `null` as a dependency value.
+- **`dev-infra-en-codigo`** — three of the four IP position patterns (`https://…`,
+  `Data Source=…`, and the `jdbc/mongodb/redis/amqp/mysql/postgres` one, which is where its
+  documented defect lives), the harmless-IP filter (loopback, `0.0.0.0`), the RFC 5737 range
+  filter, the out-of-range octet discard, and the deduplication of a repeated IP.
+
+Fix. Not a bug, a hole in the net: every line above is a case somebody can add to
+`tests/casos/07_checks.py` as a plain assertion — no witness needed, since the expected answer is
+whatever the rule says it should be. Worth doing before the checks are touched again for any
+reason.
+
+### Two installer tests break versioned files, and `finally` does not survive a killed process
+
+`tests/casos/03-instalador.ps1` covers E-20 and E-27 by appending a syntax error to a real,
+versioned file — `comun/hooks/lib/zonas.py` for one, `comun/hooks/pre-tool-use.py` for the other —
+running the installer against it, and restoring the file in a `finally`.
+
+`try/finally` only unwinds inside a live process. If the PowerShell process running the suite is
+killed outright — `Stop-Process -Force`, a CI timeout, an agent watchdog — the `finally` never
+runs and the file stays broken in the working tree. During the `hooks-en-python` change four
+agents were killed by a watchdog, so the window is not theoretical. The worst case leaves
+`pre-tool-use.py` — the hook that carries the only blocking rule in the harness — with a syntax
+error, and nothing detects it beyond somebody running `git status`.
+
+Recovery, if it ever happens:
+
+```bash
+git checkout -- comun/hooks/pre-tool-use.py comun/hooks/lib/zonas.py
+```
+
+Fix. Run those two cases against a copy of the repo in a temporary directory instead of against
+the working tree. It is a change to how the suite is built, not a one-line patch, which is why it
+was left out of 0.13.0 rather than rushed into it.
+
+### Four behaviour fixes rode inside the Python port, so their diff never said one thing
+
+The `hooks-en-python` change was bound to parity: port the behaviour, defects included, so that the
+migration cannot hide a rule change. Four fixes broke that rule. They are in
+`comun/hooks/lib/hook.py`, they are real, and `Hook.psm1` had every one of them identical:
+
+- `mensaje_de_sistema` emitted outside its own `try`. A `BrokenPipeError` — the parent stopped
+  reading — escaped `invoke_hook` and the process died with a non-zero exit code, in the very path
+  that exists as the last line of defence.
+- `except SystemExit: raise` re-raised any code, so a non-zero exit could leak out of a hook whose
+  entire contract is that it always exits 0.
+- Nothing stopped two JSON objects reaching stdout: a body that warned and then threw wrote both,
+  concatenated without a separator, which breaks parsing and loses the legitimate warning too.
+- The "already warned" marker was written before emitting and with a non-atomic check, so a failed
+  emission lost the warning for the whole session.
+
+They were closed on the argument that "a hook never breaks the session" is a global constraint of
+the change and is scenario E-06 — not a business rule. The argument holds. What does not hold is
+that they landed mixed into a port, which is exactly what the change promised not to do.
+
+Fix. Nothing to write: the code is in and tested, with the red seen for the first and the third.
+What is owed is the review this never got as its own change — read those four hunks on their own,
+against `Hook.psm1`, and decide whether each one was worth taking. If any was not, it comes out.
+
+### The Python port left four minor divergences written down and unfixed
+
+None of them changes a verdict. They are here so they are not rediscovered as surprises.
+
+- `texto_de_herramienta` has no test covering `new_string: null` inside `tool_input.edits`. The
+  handling is correct by inspection; a regression there would not be caught by the suite.
+- `importar_patrones` uses `os.path.isfile`, stricter than the `Test-Path` it ports, which also
+  accepts a directory. No impact: the catalogue path is a fixed literal of the repo.
+- There is no end-to-end case with a corrupt or missing catalogue. The path is covered by the
+  generic mechanism of `invoke_hook` (E-07 and E-08), not by a case tied to the real hook.
+- `_correr` and `_correr_proceso` live duplicated as local functions in each case file. It is a
+  pre-existing pattern; if a third variant appears, that is when it earns a shared module.
 
 ## Outside the harness, written down so it is not lost
 

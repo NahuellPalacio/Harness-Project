@@ -28,3 +28,7 @@ tests/out/
 # Windows
 Thumbs.db
 desktop.ini
+
+# Cache de bytecode de Python. La suite lo genera en cada corrida.
+__pycache__/
+*.pyc

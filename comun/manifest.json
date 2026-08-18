@@ -3,6 +3,7 @@
   "descripcion": "Esqueleto del harness. Se instala siempre, con cualquier harness.",
   "prefijo": "",
   "requiereClaudeCode": "2.1.0",
+  "requierePython": "3.9",
   "claudeMd": "claude-md/bloque-comun.md",
   "aporta": {
     "hooks": "hooks",

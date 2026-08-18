@@ -182,7 +182,7 @@ foreach ($caso in $casos) {
 }
 
 
-# ── Resumen ─────────────────────────────────────────────────────────────────────
+# ── Resumen del motor PowerShell ────────────────────────────────────────────────
 
 $fallados = @($script:Resultados | Where-Object { -not $_.Ok })
 $grupos   = $script:Resultados | Group-Object Grupo
@@ -214,12 +214,74 @@ if ($fallados.Count -gt 0) {
 }
 
 Write-Host ''
-$total = $script:Resultados.Count
-$ok    = $total - $fallados.Count
+$totalPs = $script:Resultados.Count
+$okPs    = $totalPs - $fallados.Count
 if ($fallados.Count -eq 0) {
+    Write-Host ("$okPs/$totalPs pasaron (PowerShell).") -ForegroundColor Green
+} else {
+    Write-Host ("$okPs/$totalPs pasaron (PowerShell). $($fallados.Count) fallaron.") -ForegroundColor Red
+}
+
+
+# ── El segundo motor: python tests/correr.py ────────────────────────────────────
+#
+# Invoke-Tests.ps1 sigue siendo EL comando: adentro corre lo que sigue siendo
+# PowerShell (00-encoding-fuentes.ps1, 03-instalador.ps1, y lo que compone/audita el
+# repo en 06-composicion.ps1 y 08-bitacora.ps1) y delega el resto a Python. Una sola
+# cuenta, un solo codigo de salida: 0 solo si los dos motores pasaron.
+
+Write-Host ''
+Write-Host '── python tests/correr.py ──────────────────────────────────────────' -ForegroundColor Cyan
+Write-Host ''
+
+$argsPython = @((Join-Path $PSScriptRoot 'correr.py'))
+if ($Detallado) { $argsPython += '--detallado' }
+
+$python = $null
+foreach ($c in @('python', 'py', 'python3')) {
+    if (Get-Command $c -ErrorAction SilentlyContinue) { $python = $c; break }
+}
+
+if (-not $python) {
+    Write-Host '  No se encontró un intérprete de Python (python, py, python3).' -ForegroundColor Red
+    Write-Host '  La mitad de la suite no pudo correr: la compuerta no puede dar OK.' -ForegroundColor Red
+    exit 1
+}
+
+$salidaPython = & $python @argsPython 2>&1 | Out-String
+Write-Host $salidaPython
+$codigoPython = $LASTEXITCODE
+
+$totalPy = 0
+$okPy    = 0
+if ($salidaPython -match '(\d+)/(\d+) pasaron\.') {
+    $okPy    = [int] $Matches[1]
+    $totalPy = [int] $Matches[2]
+} else {
+    # La suite Python no imprimió su resumen: se cuenta como una falla propia, no
+    # como "cero tests" — eso escondería que el motor entero se cayó.
+    Write-Host '  No se pudo leer el resumen de python tests/correr.py.' -ForegroundColor Red
+    $codigoPython = 1
+}
+
+
+# ── Resumen combinado, una sola cuenta ──────────────────────────────────────────
+
+$total = $totalPs + $totalPy
+$ok    = $okPs + $okPy
+
+# La compuerta no se apoya solo en el codigo de salida de python: se recalcula acá,
+# de los conteos que el propio resumen imprimió. Un correr.py que devolviera 0 con la
+# suite en rojo -el bug que esto tiene que atrapar- igual queda detectado, porque
+# $okPy < $totalPy lo delata aunque el codigo de salida mienta.
+$pasoTodo = ($fallados.Count -eq 0) -and ($codigoPython -eq 0) -and ($ok -eq $total)
+
+Write-Host ''
+Write-Host '══════════════════════════════════════════════════════════════════' -ForegroundColor Cyan
+if ($pasoTodo) {
     Write-Host ("$ok/$total pasaron.") -ForegroundColor Green
     exit 0
 } else {
-    Write-Host ("$ok/$total pasaron. $($fallados.Count) fallaron.") -ForegroundColor Red
+    Write-Host ("$ok/$total pasaron. $($total - $ok) fallaron.") -ForegroundColor Red
     exit 1
 }

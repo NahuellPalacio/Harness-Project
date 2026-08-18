@@ -58,12 +58,15 @@ sin nada contra qué comparar.
 
 **Files:**
 - Create: `tests/generar-testigo.ps1`
+- Create: `tests/fixtures/corpus-secretos.txt`
+- Create: `tests/fixtures/claude-md-de-prueba.md`
 - Create: `tests/fixtures/paridad-secretos.json`
 - Create: `tests/fixtures/paridad-checks.json`
+- Create: `tests/fixtures/paridad-zonas.json`
 
 **Interfaces:**
 - Consumes: nada.
-- Produces: dos JSON con esta forma exacta, que consumen las tareas 3 y 7.
+- Produces: tres JSON con esta forma exacta, que consumen las tareas 3, 6 y 7.
 
 ```jsonc
 // paridad-secretos.json
@@ -75,15 +78,34 @@ sin nada contra qué comparar.
 
 // paridad-checks.json
 { "generado": "0.12.0",
-  "casos": [ { "check": "claude-md-zonas", "payload": "post-tool-use-write.json",
-               "proyecto": "<fixture>", "hallazgos": ["texto exacto del hallazgo"] } ] }
+  "casos": [ { "check": "claude-md-zonas",
+               "ruta": "comun/checks/claude-md-zonas.ps1",
+               "payload": "post-tool-use-write.json",
+               "proyecto": "<ruta del proyecto de fixture>",
+               "config": { "techoZonaFija": 60 },
+               "hallazgos": ["texto exacto del hallazgo"] } ] }
+
+// paridad-zonas.json
+{ "generado": "0.12.0",
+  "archivo": "tests/fixtures/claude-md-de-prueba.md",
+  "zonas": { "ZONA FIJA": 12, "ZONA MAPA": 3, "ZONA INDICE": 0, "ZONA CACHE": 7 },
+  "fueraDeZonas": 4 }
 ```
 
-- [ ] **Step 1: Juntar el corpus de secretos**
+📌 **`ruta` y `config` en `paridad-checks.json` no son decorativos:** el test de la tarea 7 carga
+el módulo por esa ruta y le pasa esa config. Sin los dos campos, el caso no se puede reproducir.
+
+- [ ] **Step 1: Escribir el corpus a un archivo**
 
 Todas las cadenas que hoy prueba `tests/casos/04-secretos.ps1` — las de `Assert-Detecta` y las
-de `Assert-NoDetecta`— más las de `tests/payloads/`. Leer el archivo y extraerlas a mano: son
-31 y están todas en literales.
+de `Assert-NoDetecta`— más las de `tests/payloads/`. Son 31 y están todas en literales.
+
+Van a `tests/fixtures/corpus-secretos.txt`, **una cadena por línea, en UTF-8 sin BOM**. Es el
+archivo que lee el generador del paso 2, y además deja a la vista qué se probó.
+
+Armar también `tests/fixtures/claude-md-de-prueba.md`: un `CLAUDE.md` con las cuatro zonas, algo
+de contenido en cada una y algunas líneas fuera de toda zona, para que las mediciones del testigo
+de zonas no sean todas cero.
 
 - [ ] **Step 2: Escribir el generador**
 
@@ -125,9 +147,28 @@ la migración en una mentira verificada**, así que este paso se mira, no se sal
 - [ ] **Step 4: Capturar el testigo de los checks**
 
 Mismo procedimiento con `Invoke-Checks`, corriendo los cinco checks contra un proyecto de
-fixture y los payloads de `tests/payloads/`, y guardando el texto exacto de cada hallazgo.
+fixture y los payloads de `tests/payloads/`, y guardando el texto exacto de cada hallazgo, con
+la `ruta` del check y la `config` que se le pasó.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Capturar el testigo de zonas**
+
+Sobre `tests/fixtures/claude-md-de-prueba.md`, con `Measure-Zonas` y `Measure-FueraDeZonas` de
+`Zonas.psm1`. Es el mismo motivo que los otros dos: se toma ahora, con la implementación
+PowerShell viva.
+
+- [ ] **Step 6: Verificar que los tres testigos tienen contenido**
+
+```powershell
+Get-ChildItem tests\fixtures\paridad-*.json | ForEach-Object {
+    $d = Get-Content $_.FullName -Raw | ConvertFrom-Json
+    "{0}: {1}" -f $_.Name, (@($d.casos).Count)
+}
+```
+Expected: `paridad-secretos.json` con 31 casos, `paridad-checks.json` con al menos uno por
+check, y `paridad-zonas.json` con las cuatro zonas y un `fueraDeZonas` distinto de cero.
+**Un testigo vacío pasa todos los tests que lo consumen y no prueba nada.**
+
+- [ ] **Step 7: Commit**
 
 ```bash
 git add tests/generar-testigo.ps1 tests/fixtures/
@@ -139,6 +180,7 @@ git commit -m "El testigo: los veredictos de la implementacion PowerShell, captu
 ## Task 2: `lib/hook.py` — el contrato
 
 **Files:**
+- Create: `tests/correr.py` (versión mínima — ver Step 0)
 - Create: `comun/hooks/lib/__init__.py` (vacío)
 - Create: `comun/hooks/lib/hook.py`
 - Test: `tests/casos/01_hook_lib.py`
@@ -155,6 +197,95 @@ def bloquear(evento_nombre: str, motivo: str) -> None
 def preguntar(evento_nombre: str, motivo: str) -> None
 def mensaje_de_sistema(texto: str, session_id: str = "sin-sesion", clave: str = "general") -> None
 def invoke_hook(evento_nombre: str, cuerpo) -> None   # no retorna: termina con sys.exit(0)
+```
+
+- [ ] **Step 0: El runner mínimo, porque todo lo que sigue lo invoca**
+
+Todas las tareas de acá en adelante verifican con `python tests/correr.py`, así que existe desde
+ahora. Mínimo y sin dependencias: descubre `tests/casos/*.py`, importa cada uno por ruta,
+corre las funciones que empiezan con `test_` pasándoles el objeto `t`, y sale 0 si pasa todo.
+
+```python
+# tests/correr.py — sin dependencias: no hace falta pytest ni nada instalado.
+import argparse, importlib.util, sys, traceback
+from pathlib import Path
+
+RAIZ = Path(__file__).resolve().parent.parent
+
+
+class Resultados:
+    def __init__(self):
+        self.filas = []          # (grupo, nombre, ok, detalle)
+        self.grupo = "(sin grupo)"
+
+    def _add(self, nombre, ok, detalle=""):
+        self.filas.append((self.grupo, nombre, ok, detalle))
+
+    def igual(self, nombre, esperado, obtenido):
+        self._add(nombre, esperado == obtenido,
+                  "" if esperado == obtenido else "esperado <%r> / obtenido <%r>" % (esperado, obtenido))
+
+    def contiene(self, nombre, aguja, pajar):
+        self._add(nombre, aguja in (pajar or ""), "" if aguja in (pajar or "") else "no contiene <%s>" % aguja)
+
+    def no_contiene(self, nombre, aguja, pajar):
+        self._add(nombre, aguja not in (pajar or ""), "" if aguja not in (pajar or "") else "contiene <%s>" % aguja)
+
+    def vacio(self, nombre, valor):
+        self._add(nombre, not valor, "" if not valor else "no esta vacio: <%r>" % (valor,))
+
+    def verdadero(self, nombre, condicion):
+        self._add(nombre, bool(condicion), "" if condicion else "es falso")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-k", default="")
+    ap.add_argument("--detallado", action="store_true")
+    args = ap.parse_args()
+
+    t = Resultados()
+    casos = sorted((RAIZ / "tests" / "casos").glob("*.py"))
+    if args.k:
+        casos = [c for c in casos if args.k in c.name]
+
+    for caso in casos:
+        t.grupo = caso.stem
+        spec = importlib.util.spec_from_file_location("caso_" + caso.stem, caso)
+        modulo = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(modulo)
+        except Exception:
+            t._add("el archivo de casos se pudo cargar", False, traceback.format_exc(limit=3))
+            continue
+        for nombre in sorted(dir(modulo)):
+            if not nombre.startswith("test_"):
+                continue
+            try:
+                getattr(modulo, nombre)(t)
+            except Exception:
+                t._add(nombre, False, traceback.format_exc(limit=3))
+
+    fallaron = [f for f in t.filas if not f[2]]
+    grupos = {}
+    for grupo, nombre, ok, detalle in t.filas:
+        g = grupos.setdefault(grupo, [0, 0])
+        g[0] += 1
+        if ok:
+            g[1] += 1
+    print("\ngcba-harness - tests (python)\n")
+    for grupo, (total, ok) in grupos.items():
+        estado = "OK   " if total == ok else "FALLA"
+        print("  %s %s  (%d)" % (estado, grupo, total))
+    for grupo, nombre, ok, detalle in t.filas:
+        if not ok or args.detallado:
+            print("    %s %s / %s %s" % ("ok " if ok else "MAL", grupo, nombre, detalle))
+    print("\n%d/%d pasaron." % (len(t.filas) - len(fallaron), len(t.filas)))
+    sys.exit(1 if fallaron else 0)
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 - [ ] **Step 1: Escribir los tests que fallan**
@@ -701,7 +832,11 @@ git commit -m "Descubrimiento y corrida de checks en Python, con el tope de 8 in
 **Files:**
 - Create: `comun/hooks/lib/zonas.py`
 - Test: `tests/casos/09_zonas.py`
-- Delete al final de la tarea: `comun/hooks/lib/Zonas.psm1`
+
+🔴 **`Zonas.psm1` NO se borra en esta tarea.** `install.ps1:58` lo importa en el nivel superior
+y `03-instalador.ps1` corre en cada `Invoke-Tests`: borrarlo ahora deja la suite en rojo hasta
+la Task 10, y una suite roja durante cuatro tareas deja de ser señal. Convive con `zonas.py`
+hasta que el instalador deje de importarlo, y se borra en la Task 10.
 
 **Interfaces:**
 - Consumes: nada.
@@ -974,9 +1109,13 @@ Expected: PASS.
 - [ ] **Step 5: Borrar la implementación PowerShell**
 
 ```bash
-git rm comun/hooks/*.ps1 comun/hooks/lib/*.psm1 comun/checks/*.ps1 \
+git rm comun/hooks/*.ps1 comun/checks/*.ps1 \
+       comun/hooks/lib/Hook.psm1 comun/hooks/lib/Secretos.psm1 comun/hooks/lib/Reglas.psm1 \
        harnesses/desarrollo/checks/*.ps1 harnesses/desarrollo/checks/lib/Dev.psm1
 ```
+
+🔴 **`Zonas.psm1` queda.** Se borra en la Task 10, después de que `install.ps1` deje de
+importarlo. Borrarlo acá rompe el instalador y la suite entra en rojo por cuatro tareas.
 
 - [ ] **Step 6: Commit**
 
@@ -990,22 +1129,23 @@ git commit -m "Los cuatro hooks en Python; sale la implementacion PowerShell"
 ## Task 9: El runner de tests
 
 **Files:**
-- Create: `tests/correr.py`
+- Modify: `tests/correr.py` (creado mínimo en la Task 2; acá se completa)
 - Modify: `tests/Invoke-Tests.ps1`
 - Delete: `tests/casos/*.ps1` salvo `03-instalador.ps1` y `00-encoding-fuentes.ps1`
 
 **Interfaces:**
-- Consumes: nada.
+- Consumes: `tests/correr.py` de la Task 2.
 - Produces: `python tests/correr.py [-k <filtro>] [--detallado]`, código 0 si pasa todo.
   El objeto `t` que reciben los tests expone `igual(nombre, esperado, obtenido)`,
   `contiene(nombre, aguja, pajar)`, `no_contiene(...)`, `vacio(nombre, valor)` y
   `verdadero(nombre, condicion)` — los mismos cinco de `Invoke-Tests.ps1`.
 
-- [ ] **Step 1: Escribir `tests/correr.py`**
+- [ ] **Step 1: Completar `tests/correr.py`**
 
-Sin dependencias: descubre `tests/casos/*.py`, importa cada uno por ruta y corre las funciones
-que empiezan con `test_`, acumulando resultados. Mismo formato de salida que hoy —grupo, nombre,
-`N/M pasaron`— para que nadie tenga que aprender a leer otra cosa.
+Ya existe desde la Task 2 con lo mínimo. Acá se le agrega lo que faltaba: `--detallado` que
+imprima también los que pasaron, el corte con código 1 ante cualquier falla, y el mismo formato
+de salida que la suite PowerShell —grupo, nombre, `N/M pasaron`— para que nadie tenga que
+aprender a leer otra cosa.
 
 - [ ] **Step 2: Correr y comparar contra la suite vieja**
 
@@ -1147,6 +1287,13 @@ Assert-Contiene  'E-22 invoca python3' 'python3' ([System.IO.File]::ReadAllText(
 Los tres puntos que usaban `Get-DefinicionZonas`, `Get-ContenidoZona` y
 `Find-ZonasNoReconocidas` pasan a invocar `zonas.py` y parsear su JSON. Si la invocación falla,
 se aborta con el mensaje del error: no se instala un `CLAUDE.md` a medias (E-20).
+
+Recién ahora, con el último consumidor migrado, se borra el módulo que las tareas 6 y 8 dejaron
+a propósito:
+
+```bash
+git rm comun/hooks/lib/Zonas.psm1
+```
 
 - [ ] **Step 7: Correr los tests**
 

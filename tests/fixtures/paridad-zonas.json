@@ -1,0 +1,11 @@
+{
+  "generado": "0.12.0",
+  "archivo": "tests/fixtures/claude-md-de-prueba.md",
+  "zonas": {
+    "ZONA FIJA": 12,
+    "ZONA MAPA": 3,
+    "ZONA INDICE": 0,
+    "ZONA CACHE": 7
+  },
+  "fueraDeZonas": 4
+}

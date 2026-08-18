@@ -53,9 +53,12 @@ try { [Console]::OutputEncoding = $utf8 } catch { }
 $script:Repo    = $PSScriptRoot
 $script:Version = (Get-Content (Join-Path $script:Repo 'VERSION') -Raw).Trim()
 
-# La definición de las zonas del CLAUDE.md vive en un solo lado. El instalador las crea y
-# el check las mide, y los dos leen de acá.
-Import-Module (Join-Path $script:Repo 'comun\hooks\lib\Zonas.psm1') -Force
+# La definición de las zonas del CLAUDE.md vive en un solo lado: el módulo Python que
+# también usa el check que las mide. El instalador la lee invocando ese módulo -no la
+# reimplementa- pero esa invocación NO puede vivir acá arriba: esto corre para CUALQUIER
+# verbo, -Doctor incluido, y -Doctor tiene que poder diagnosticar una máquina que todavía
+# no tiene Python (E-23). La llamada real vive dentro de Invoke-ZonasPy, invocada solo
+# desde las rutas de instalar/actualizar.
 
 # Marcadores de los bloques que el instalador administra dentro de archivos que también
 # edita el humano. Todo lo que está entre ellos es del harness; el resto es intocable.
@@ -248,22 +251,27 @@ function Add-ZonasSiFaltan {
     $actual    = Read-TextoUtf8 $RutaClaudeMd
     $agregadas = @()
 
+    # RutaClaudeMd no se vuelve a escribir hasta el final de esta función (recién si
+    # $agregadas.Count -gt 0), así que su contenido en disco es el mismo $actual con el
+    # que arrancó toda la vuelta: preguntarle a zonas.py por ese archivo, zona por zona,
+    # da la misma respuesta que preguntarle sobre $actual en memoria.
+    #
     # Sin @() a proposito. Estas funciones devuelven la coleccion como UN objeto -es lo
     # que hace `return ,$x`, y es lo que evita que un resultado vacio se desenvuelva a
     # $null- asi que envolverla otra vez da un arreglo de un elemento que es la
     # coleccion entera. Se asigna derecho y se recorre con foreach o con la tuberia.
-    $raras   = Find-ZonasNoReconocidas -Texto $actual
+    $raras   = Find-ZonasNoReconocidasPorJson -RutaClaudeMd $RutaClaudeMd
     $tomadas = @($raras | Where-Object { $_.Parecida } | Select-Object -ExpandProperty Parecida)
 
-    foreach ($zona in (Get-DefinicionZonas)) {
-        if ($null -ne (Get-ContenidoZona -Texto $actual -Zona $zona)) { continue }
-        if ($tomadas -contains $zona.Nombre) { continue }
+    foreach ($zona in (Get-ZonasPorJson)) {
+        if ($null -ne (Get-ContenidoZonaPorJson -RutaClaudeMd $RutaClaudeMd -Zona $zona)) { continue }
+        if ($tomadas -contains $zona.nombre) { continue }
 
         $bloque = Get-BloqueZonaCompleto -Texto $plantilla -Zona $zona
         if (-not $bloque) { continue }
 
         $actual = $actual.TrimEnd() + "`r`n`r`n" + $bloque + "`r`n"
-        $agregadas += $zona.Nombre
+        $agregadas += $zona.nombre
     }
 
     if ($agregadas.Count -gt 0) { Write-TextoUtf8 -Ruta $RutaClaudeMd -Texto $actual }
@@ -289,8 +297,11 @@ function Remove-ZonasVacias {
     $texto   = Read-TextoUtf8 $RutaClaudeMd
     $sacadas = @()
 
-    foreach ($zona in (Get-DefinicionZonas)) {
-        $contenido = Get-ContenidoZona -Texto $texto -Zona $zona
+    # RutaClaudeMd no se reescribe hasta el final (recién si $sacadas.Count -gt 0), así
+    # que preguntarle a zonas.py por el archivo en disco equivale a preguntarle sobre
+    # este mismo $texto, incluso mientras el bucle lo va recortando en memoria.
+    foreach ($zona in (Get-ZonasPorJson)) {
+        $contenido = Get-ContenidoZonaPorJson -RutaClaudeMd $RutaClaudeMd -Zona $zona
         if ($null -eq $contenido) { continue }
 
         $utiles = @($contenido -split "`n" | Where-Object {
@@ -302,7 +313,7 @@ function Remove-ZonasVacias {
         $bloque = Get-BloqueZonaCompleto -Texto $texto -Zona $zona
         if ($bloque) {
             $texto = $texto.Replace($bloque, '')
-            $sacadas += $zona.Nombre
+            $sacadas += $zona.nombre
         }
     }
 
@@ -367,7 +378,19 @@ function Test-VersionMinima {
 
 
 function Test-Entorno {
-    <# Devuelve una lista de hallazgos: Nivel = ok | aviso | falla #>
+    <#
+    .SYNOPSIS
+        Devuelve una lista de hallazgos: Nivel = ok | aviso | falla
+    .PARAMETER PythonSimulado
+        Solo para tests (E-24): si viene, reemplaza la versión de Python detectada en vez
+        de resolver un intérprete real. Así se prueba el chequeo del mínimo sin tener que
+        instalar de verdad un Python viejo en la máquina que corre la suite.
+    .DESCRIPTION
+        No ejecuta código del harness: ni zonas.py ni ningún hook. La única invocación es
+        "-c" con una línea fija para preguntar versiones, la misma idea que Resolve-Python.
+    #>
+    param([string] $PythonSimulado)
+
     $h = New-Object System.Collections.ArrayList
 
     $psv = $PSVersionTable.PSVersion.ToString()
@@ -385,6 +408,32 @@ function Test-Entorno {
         [void] $h.Add(@{ Nivel='ok'; Texto="Claude Code $vcc (mínimo $($manifiestoComun.requiereClaudeCode))" })
     } else {
         [void] $h.Add(@{ Nivel='falla'; Texto="Claude Code $vcc es anterior al mínimo $($manifiestoComun.requiereClaudeCode)" })
+    }
+
+    # Python: desde que los hooks son Python, es tan indispensable como PowerShell mismo.
+    # E-23: esto tiene que poder reportar "falla" sin morir, incluso si no hay ningún
+    # intérprete alcanzable — es exactamente el caso que -Doctor existe para diagnosticar.
+    $requierePython = '3.9'
+    if ($manifiestoComun.PSObject.Properties['requierePython']) { $requierePython = $manifiestoComun.requierePython }
+
+    if ($PythonSimulado) {
+        $verPython = $PythonSimulado
+    } else {
+        $verPython = ''
+        $rutaPython = Resolve-Python
+        if ($rutaPython) {
+            try {
+                $verPython = (& $rutaPython -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>$null | Out-String).Trim()
+            } catch { $verPython = '' }
+        }
+    }
+
+    if (-not $verPython) {
+        [void] $h.Add(@{ Nivel='falla'; Texto="no se encontró un intérprete de Python instalado (se probó python, py y python3). Hace falta instalar Python $requierePython o superior: los hooks del harness lo necesitan." })
+    } elseif (Test-VersionMinima -Actual $verPython -Minima $requierePython) {
+        [void] $h.Add(@{ Nivel='ok'; Texto="Python $verPython (mínimo $requierePython)" })
+    } else {
+        [void] $h.Add(@{ Nivel='falla'; Texto="Python $verPython es anterior al mínimo $requierePython" })
     }
 
     # ExecutionPolicy: el riesgo número uno de este harness en máquinas con GPO.
@@ -424,29 +473,154 @@ function Test-Entorno {
 
 # ── Generación de artefactos ────────────────────────────────────────────────────
 
+function Resolve-Python {
+    <#
+    .SYNOPSIS
+        Devuelve la ruta del python.exe REAL, o $null.
+    .DESCRIPTION
+        Se pide sys.executable y no se usa lo que haya en el PATH: en una máquina con
+        PyManager, `python` es un shim que cuesta 260 ms de más en CADA hook (547 ms
+        contra 284 del .exe directo).
+
+        Solo se llama desde las rutas de -Instalar y -Update (y, a través de ellas, desde
+        Invoke-ZonasPy): nunca en el nivel superior del script, donde correría también
+        para -Doctor y le impediría diagnosticar la máquina que justo no tiene Python.
+    #>
+    foreach ($c in @('python', 'py', 'python3')) {
+        try {
+            $ruta = (& $c -c "import sys; print(sys.executable)" 2>$null)
+            if ($ruta -and (Test-Path $ruta)) { return $ruta.Trim() }
+        } catch { }
+    }
+    return $null
+}
+
+
+function Invoke-ZonasPy {
+    <#
+    .SYNOPSIS
+        Invoca comun/hooks/lib/zonas.py y devuelve su salida ya parseada de JSON.
+    .DESCRIPTION
+        Único punto del instalador que sabe que la definición de las zonas vive en
+        Python (E-17). Si no hay intérprete o zonas.py falla, se aborta con el mensaje
+        del error: no se instala un CLAUDE.md a medias (E-20). El encoding de la salida
+        se controla a mano, igual que en Test-HooksInstalados, porque zonas.py escribe
+        UTF-8 crudo al buffer y la consola de quien instala puede estar en cualquier
+        codepage.
+    #>
+    param([Parameter(Mandatory)] [string[]] $Argumentos)
+
+    $python = Resolve-Python
+    if (-not $python) {
+        throw 'no se encontró un intérprete de Python instalado (se probó python, py y python3). El instalador lo necesita para leer la definición de las zonas del CLAUDE.md: instalalo y volvé a correr.'
+    }
+
+    $rutaZonas = Join-Path $script:Repo 'comun\hooks\lib\zonas.py'
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName  = $python
+    $psi.Arguments = (@($rutaZonas) + $Argumentos | ForEach-Object { '"' + $_ + '"' }) -join ' '
+    $psi.UseShellExecute        = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
+    $psi.StandardErrorEncoding  = New-Object System.Text.UTF8Encoding $false
+
+    try {
+        $p = [System.Diagnostics.Process]::Start($psi)
+    } catch {
+        throw "no se pudo ejecutar zonas.py: $($_.Exception.Message)"
+    }
+    $salida  = $p.StandardOutput.ReadToEnd()
+    $errores = $p.StandardError.ReadToEnd()
+    $p.WaitForExit()
+
+    if ($p.ExitCode -ne 0) {
+        $detalle = $errores.Trim()
+        if (-not $detalle) { $detalle = "código de salida $($p.ExitCode)" }
+        throw "zonas.py $($Argumentos -join ' ') falló: $detalle"
+    }
+
+    if (-not $salida.Trim()) { return $null }
+    try {
+        return ($salida | ConvertFrom-Json)
+    } catch {
+        # Salió con código 0 pero lo que escribió no es JSON: un cambio en zonas.py que
+        # rompió el contrato sin que Python lo detecte como error. El mensaje crudo de
+        # ConvertFrom-Json no dice ni qué comando lo produjo ni qué mirar; este sí.
+        throw "zonas.py $($Argumentos -join ' ') salió con código 0 pero su salida no es JSON válido: $($salida.Trim())"
+    }
+}
+
+
+function Get-ZonasPorJson {
+    <# La definición de las zonas, leída de zonas.py. Reemplaza a Get-DefinicionZonas
+       de Zonas.psm1, que ya no existe: la definición vive en un solo lado (E-17). #>
+    return ,@(Invoke-ZonasPy -Argumentos @('definicion'))
+}
+
+
+function Get-ContenidoZonaPorJson {
+    <# El texto de una zona en un CLAUDE.md ya escrito en disco, o $null si no la tiene.
+       Reemplaza a Get-ContenidoZona de Zonas.psm1. #>
+    param([string] $RutaClaudeMd, $Zona)
+    $r = Invoke-ZonasPy -Argumentos @('contenido', $RutaClaudeMd, $Zona.nombre)
+    if ($null -eq $r) { return $null }
+    return $r.contenido
+}
+
+
+function Find-ZonasNoReconocidasPorJson {
+    <# Marcadores con forma de zona que el harness no reconoce, en un CLAUDE.md ya
+       escrito en disco. Reemplaza a Find-ZonasNoReconocidas de Zonas.psm1. #>
+    param([string] $RutaClaudeMd)
+    $r = Invoke-ZonasPy -Argumentos @('no-reconocidas', $RutaClaudeMd)
+    if ($null -eq $r) { return ,@() }
+    return ,@($r)
+}
+
+
 function New-Shim {
     <#
     .SYNOPSIS
-        Escribe el lanzador de hooks. Único artefacto que depende de esta máquina.
+        Escribe los dos lanzadores de hooks: run-hook.cmd y run-hook.sh.
     .DESCRIPTION
-        -NoProfile no es opcional: si el $PROFILE de quien instala imprime algo, ese
-        texto se mezcla con el JSON de stdout y el hook falla de una forma que nadie
-        asocia a su perfil de PowerShell.
-    #>
-    param([string] $Ruta)
+        run-hook.cmd es el único artefacto de todo el harness instalado que contiene
+        una ruta absoluta de esta máquina (E-21): fija el python.exe que resolvió
+        Resolve-Python, no "python" a secas -en una máquina con PyManager eso es un
+        shim que cuesta 260 ms de más en CADA hook.
 
-    $exe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        run-hook.sh es genérico -invoca "python3" del sistema que lo corra, no una
+        ruta de esta máquina Windows- y existe para el caso POSIX (E-22). Sale de una
+        plantilla versionada, no de un heredoc acá: así el archivo del repo ya viene
+        con LF fijo por .gitattributes (*.sh text eol=lf) y no depende de que nadie
+        recuerde no tocarle los saltos de línea. Igual se normaliza a mano antes de
+        escribir, por si el checkout local convirtió a CRLF: un .sh con CRLF falla con
+        "bad interpreter" y el mensaje no menciona en ningún momento los finales de
+        línea, así que no hay forma de diagnosticarlo desde el síntoma.
+
+        -NoProfile no es opcional en quien invoca esto: si el $PROFILE de quien instala
+        imprime algo, ese texto se mezcla con el JSON de stdout y el hook falla de una
+        forma que nadie asocia a su perfil de PowerShell.
+    #>
+    param([string] $DirDestino, [string] $Python)
 
     $cmd = @"
 @echo off
 rem Generado por install.ps1 del harness GCBA. Se regenera en cada -Update.
 rem Es el unico archivo del harness que contiene una ruta absoluta de esta maquina.
-"$exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0hooks\%1.ps1"
+"$Python" "%~dp0hooks\%1.py"
 "@
-
     # Los .cmd necesitan CRLF.
     $cmd = ($cmd -replace "`r?`n", "`r`n")
-    [System.IO.File]::WriteAllText($Ruta, $cmd, (New-Object System.Text.UTF8Encoding $false))
+    [System.IO.File]::WriteAllText((Join-Path $DirDestino 'run-hook.cmd'), $cmd,
+        (New-Object System.Text.UTF8Encoding $false))
+
+    $plantillaSh = Join-Path $script:Repo 'comun\settings\run-hook.sh.plantilla'
+    $sh = [System.IO.File]::ReadAllText($plantillaSh, (New-Object System.Text.UTF8Encoding $false))
+    $sh = ($sh -replace "`r`n", "`n")
+    [System.IO.File]::WriteAllText((Join-Path $DirDestino 'run-hook.sh'), $sh,
+        (New-Object System.Text.UTF8Encoding $false))
 }
 
 
@@ -613,6 +787,79 @@ function Test-HooksInstalados {
 }
 
 
+function Measure-LatenciaHook {
+    <#
+    .SYNOPSIS
+        Corre pre-tool-use.py cinco veces sobre un payload real y devuelve el p50, en ms.
+    .DESCRIPTION
+        E-25b: es el número que justifica todo este cambio -Python en vez de PowerShell
+        para los hooks-, así que -Doctor lo mide y lo dice en vez de darlo por sentado.
+
+        Devuelve $null si no hay Python o no encuentra el hook/el payload: no mide, y eso
+        NO es una falla propia — el chequeo del intérprete (Test-Entorno) ya la reportó, y
+        -Doctor no puede fallar dos veces por lo mismo ni dejar de terminar el resto del
+        diagnóstico por esto (misma regla que E-23).
+
+        Costo deliberado: cinco corridas de un intérprete completo cuestan del orden de
+        3 segundos de reloj en esta máquina. Es aceptable porque -Doctor se corre a mano y
+        rara vez -nunca en un hook ni en la instalación misma-, pero es un costo elegido a
+        propósito, no un descuido: si algún día -Doctor se invoca en un camino caliente,
+        esto es lo primero que hay que sacar de ahí.
+    #>
+    param([int] $Corridas = 5)
+
+    $python = Resolve-Python
+    if (-not $python) { return $null }
+
+    $rutaHook    = Join-Path $script:Repo 'comun\hooks\pre-tool-use.py'
+    $rutaPayload = Join-Path $script:Repo 'tests\payloads\pre-tool-use-write.json'
+    if (-not (Test-Path $rutaHook) -or -not (Test-Path $rutaPayload)) { return $null }
+
+    $json = Read-TextoUtf8 $rutaPayload
+    $tiempos = New-Object System.Collections.ArrayList
+
+    for ($i = 0; $i -lt $Corridas; $i++) {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName               = $python
+        $psi.Arguments              = '"' + $rutaHook + '"'
+        $psi.UseShellExecute        = $false
+        $psi.RedirectStandardInput  = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError  = $true
+        $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
+        $psi.StandardErrorEncoding  = New-Object System.Text.UTF8Encoding $false
+
+        $reloj = [System.Diagnostics.Stopwatch]::StartNew()
+        try {
+            $p = [System.Diagnostics.Process]::Start($psi)
+            $w = New-Object System.IO.StreamWriter($p.StandardInput.BaseStream,
+                                                   (New-Object System.Text.UTF8Encoding $false))
+            $w.Write($json); $w.Flush(); $w.Close()
+
+            # "Nunca bloquea" vale para el resultado, no puede valer menos para la
+            # espera: un hook que se cuelga -no explota, se queda esperando algo que no
+            # llega- no puede colgar a -Doctor con él. Si no salió en 5 s -veinte veces
+            # el p50 observado en esta máquina-, se lo mata y esta medición completa se
+            # descarta: un p50 con una corrida artificialmente cortada no sería el p50.
+            if (-not $p.WaitForExit(5000)) {
+                try { $p.Kill() } catch { }
+                return $null
+            }
+            $p.StandardOutput.ReadToEnd() | Out-Null
+            $p.StandardError.ReadToEnd()  | Out-Null
+        } catch {
+            return $null
+        }
+        $reloj.Stop()
+        [void] $tiempos.Add($reloj.Elapsed.TotalMilliseconds)
+    }
+
+    $ordenados = @($tiempos | Sort-Object)
+    $medio = [int][math]::Floor($ordenados.Count / 2)
+    return [math]::Round($ordenados[$medio], 0)
+}
+
+
 # ── Operaciones ─────────────────────────────────────────────────────────────────
 
 function Invoke-Doctor {
@@ -626,6 +873,20 @@ function Invoke-Doctor {
             'ok'    { EscribirOk    $x.Texto }
             'aviso' { EscribirAviso $x.Texto }
             'falla' { EscribirMal   $x.Texto; $fallas++ }
+        }
+    }
+
+    # E-25b: informa, nunca bloquea. Si no hay Python, Measure-LatenciaHook devuelve $null
+    # y esto no suma a $fallas — ya lo reportó el chequeo de arriba, y -Doctor tiene que
+    # seguir diagnosticando igual en la máquina rota.
+    $umbralLatenciaMs = 400
+    $p50 = Measure-LatenciaHook
+    if ($null -ne $p50) {
+        $detalle = "latencia de hook: p50 de $p50 ms sobre 5 corridas de pre-tool-use.py (umbral $umbralLatenciaMs ms)"
+        if ($p50 -gt $umbralLatenciaMs) {
+            EscribirAviso $detalle
+        } else {
+            EscribirOk $detalle
         }
     }
 
@@ -857,10 +1118,14 @@ function Invoke-Instalar {
     }
     EscribirOk "$($instalados.Count) archivo(s) copiados"
 
-    # 4. Shim y settings.
-    $rutaShim = Join-Path $dirHarness 'run-hook.cmd'
-    New-Shim -Ruta $rutaShim
-    [void] $instalados.Add($rutaShim)
+    # 4. Shims y settings.
+    $python = Resolve-Python
+    if (-not $python) {
+        throw 'no se encontró un intérprete de Python instalado (se probó python, py y python3). Los hooks del harness lo necesitan desde esta versión: instalalo y volvé a correr.'
+    }
+    New-Shim -DirDestino $dirHarness -Python $python
+    [void] $instalados.Add((Join-Path $dirHarness 'run-hook.cmd'))
+    [void] $instalados.Add((Join-Path $dirHarness 'run-hook.sh'))
 
     $rutaSettings = Join-Path $dirClaude 'settings.json'
     New-SettingsProyecto -RutaSettings $rutaSettings
@@ -883,13 +1148,34 @@ function Invoke-Instalar {
     }
     $nombreProyecto = Split-Path -Leaf $Project
     $rutaClaudeMd = Join-Path $Project 'CLAUDE.md'
-    $accion = Set-BloqueMarcado -Ruta $rutaClaudeMd `
-                                -MarcaIni $script:MarcaClaudeIni -MarcaFin $script:MarcaClaudeFin `
-                                -Contenido $bloqueClaude -Encabezado "# CLAUDE.md — $nombreProyecto"
-    EscribirOk "CLAUDE.md: bloque $accion (el resto del archivo no se tocó)"
 
-    $zonas = Add-ZonasSiFaltan -RutaClaudeMd $rutaClaudeMd `
-                               -RutaPlantilla (Join-Path $origenComun 'claude-md\plantilla-proyecto.md')
+    # E-20: si zonas.py falla ADENTRO de Add-ZonasSiFaltan, el CLAUDE.md no puede quedar
+    # con el bloque HARNESS:COMUN puesto y sin sus zonas — no está corrupto, pero tampoco
+    # intacto, y "casi intacto" no se distingue de "instalación terminada" con solo
+    # mirarlo. Se guarda el estado de ANTES de tocar nada acá (bytes, o "no existía"), y
+    # si algo de este bloque tira, se restaura ese estado exacto antes de propagar el
+    # error: no se instala un CLAUDE.md a medias.
+    $existiaClaudeMd = Test-Path $rutaClaudeMd
+    $bytesClaudeMdPrevios = $null
+    if ($existiaClaudeMd) { $bytesClaudeMdPrevios = [System.IO.File]::ReadAllBytes($rutaClaudeMd) }
+
+    try {
+        $accion = Set-BloqueMarcado -Ruta $rutaClaudeMd `
+                                    -MarcaIni $script:MarcaClaudeIni -MarcaFin $script:MarcaClaudeFin `
+                                    -Contenido $bloqueClaude -Encabezado "# CLAUDE.md — $nombreProyecto"
+        EscribirOk "CLAUDE.md: bloque $accion (el resto del archivo no se tocó)"
+
+        $zonas = Add-ZonasSiFaltan -RutaClaudeMd $rutaClaudeMd `
+                                   -RutaPlantilla (Join-Path $origenComun 'claude-md\plantilla-proyecto.md')
+    } catch {
+        if ($existiaClaudeMd) {
+            [System.IO.File]::WriteAllBytes($rutaClaudeMd, $bytesClaudeMdPrevios)
+        } elseif (Test-Path $rutaClaudeMd) {
+            Remove-Item $rutaClaudeMd -Force -ErrorAction SilentlyContinue
+        }
+        throw
+    }
+
     if ($zonas.Agregadas.Count -gt 0) {
         EscribirOk ("CLAUDE.md: zonas agregadas vacías — " + ($zonas.Agregadas -join ', '))
     } else {
@@ -1000,8 +1286,72 @@ function Invoke-Actualizar {
         $guardados[$e] = [System.IO.File]::ReadAllBytes($ruta)
     }
 
-    $codigo = Invoke-Instalar -Ids $ids
-    if ($codigo -ne 0) { return $codigo }
+    # E-25: lo que .claude\harness\ traía de una versión anterior y el manifiesto nuevo ya
+    # no genera no puede sobrevivir a un -Update — el caso real es el .ps1 de un hook que
+    # la migración a Python dejó de copiar. .claude\ es 100% regenerable (ver la cabecera
+    # del script), así que reemplazar .claude\harness\ entero antes de reinstalar es
+    # seguro en el caso feliz.
+    #
+    # E-30 (hallazgo del revisor, regresión que este mismo cambio introdujo): "seguro en
+    # el caso feliz" no alcanza. Invoke-Instalar no devuelve nunca distinto de 0 -SIEMPRE
+    # tira, nunca hace return de un código de error: falta de Python, zonas.py roto, un id
+    # inválido, prefijos repetidos, hooks que no responden- así que un borrado y DESPUÉS
+    # un `if ($codigo -ne 0)` es una red que no existe: para cuando ese `if` se evalúa, ya
+    # no hubo excepción, osea que ya salió bien. La única forma de no perder nada si
+    # Invoke-Instalar tira es no borrar antes de tener la reinstalación en pie: se MUEVE
+    # .claude\harness\ a un directorio temporal -no se borra- y si algo tira, se lo mueve
+    # de vuelta a su lugar antes de propagar el error.
+    #
+    # Esto deja el proyecto exactamente como estaba en el caso normal — que es el único
+    # que se puede probar sin fixturar un archivo bloqueado por otro proceso, y por eso es
+    # el único que tiene test (E-30). Lo que sigue es el camino que NO se puede probar:
+    # si la restauración misma falla -el Move-Item de vuelta tropieza, por ejemplo porque
+    # algo dejó un archivo abierto- el error original de Invoke-Instalar no se puede
+    # perder, y el mensaje tiene que decir dónde quedaron los archivos para que la persona
+    # los recupere a mano. Ninguna de las dos ramas de abajo debería ejecutarse nunca en
+    # la práctica; están ahí para que, el día que pase, el mensaje sea accionable en vez
+    # de un error de Move-Item que no explica nada de lo que falló primero.
+    $dirHarnessViejo = Join-Path $Project '.claude\harness'
+    $dirHarnessTemp = $null
+    if (Test-Path $dirHarnessViejo) {
+        $dirHarnessTemp = Join-Path $Project ('.claude\.harness-update-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+        Move-Item -Path $dirHarnessViejo -Destination $dirHarnessTemp -Force
+    }
+
+    try {
+        Invoke-Instalar -Ids $ids | Out-Null
+    } catch {
+        $mensajeOriginal = $_.Exception.Message
+
+        if (-not $dirHarnessTemp) {
+            # Nunca hubo nada que mover: no hay nada que restaurar ni que perder.
+            throw $mensajeOriginal
+        }
+
+        if (-not (Test-Path $dirHarnessTemp)) {
+            # No debería pasar nunca: el temporal que ESTE mismo proceso acaba de crear
+            # desapareció antes de poder restaurarlo. El error original por sí solo no
+            # explica por qué .claude\harness\ tampoco está en su lugar.
+            throw "$mensajeOriginal -- además, .claude\harness\ no está ni en su lugar ni en el temporal esperado ($dirHarnessTemp). Revisá el proyecto a mano antes de reintentar."
+        }
+
+        try {
+            if (Test-Path $dirHarnessViejo) { Remove-Item $dirHarnessViejo -Recurse -Force -ErrorAction Stop }
+            Move-Item -Path $dirHarnessTemp -Destination $dirHarnessViejo -Force -ErrorAction Stop
+        } catch {
+            # La restauración misma falló: el error original no se pierde, y el mensaje
+            # dice dónde quedó lo que no se pudo mover, para recuperarlo a mano.
+            throw "$mensajeOriginal -- además, no se pudo restaurar .claude\harness\ desde el temporal: $($_.Exception.Message). Lo que tenías antes de -Update sigue en $dirHarnessTemp; movelo a mano a $dirHarnessViejo."
+        }
+
+        throw $mensajeOriginal
+    }
+
+    # Llegar hasta acá significa que Invoke-Instalar terminó bien: el temporal ya no hace
+    # falta.
+    if ($dirHarnessTemp -and (Test-Path $dirHarnessTemp)) {
+        Remove-Item $dirHarnessTemp -Recurse -Force -ErrorAction SilentlyContinue
+    }
 
     foreach ($e in $editados) {
         $ruta = Join-Path $Project $e
@@ -1068,15 +1418,26 @@ function Invoke-Desinstalar {
     Remove-BloqueMarcado -Ruta (Join-Path $Project '.gitignore') -MarcaIni $script:MarcaGitIni    -MarcaFin $script:MarcaGitFin    | Out-Null
 
     # Las zonas vacías son andamiaje que nadie usó. Las que tienen contenido se quedan:
-    # adentro está el trabajo de alguien.
-    $zonasSacadas = Remove-ZonasVacias -RutaClaudeMd $rutaClaudeMd
+    # adentro está el trabajo de alguien. Esta es la ÚNICA parte de -Uninstall que necesita
+    # Python -pasa por zonas.py-, y -Uninstall es justo la herramienta que corre cuando algo
+    # anda mal: "el Python que el instalador fijó ya no está" es uno de los motivos por los
+    # que alguien la usaría. No puede depender de lo mismo que el harness necesita para
+    # andar, así que si no hay intérprete esto se saltea -avisando qué quedó sin hacer- y la
+    # desinstalación sigue y termina bien. Nunca aborta.
+    $zonasSacadas = @()
     $zonasQueQuedan = @()
-    foreach ($z in (Get-DefinicionZonas)) {
-        if ($zonasSacadas -notcontains $z.Nombre) {
-            $texto = ''
-            if (Test-Path $rutaClaudeMd) { $texto = Read-TextoUtf8 $rutaClaudeMd }
-            if ($null -ne (Get-ContenidoZona -Texto $texto -Zona $z)) { $zonasQueQuedan += $z.Nombre }
+    $zonasSinPython = $false
+    if (Resolve-Python) {
+        $zonasSacadas = Remove-ZonasVacias -RutaClaudeMd $rutaClaudeMd
+        foreach ($z in (Get-ZonasPorJson)) {
+            if ($zonasSacadas -notcontains $z.nombre) {
+                $contenido = $null
+                if (Test-Path $rutaClaudeMd) { $contenido = Get-ContenidoZonaPorJson -RutaClaudeMd $rutaClaudeMd -Zona $z }
+                if ($null -ne $contenido) { $zonasQueQuedan += $z.nombre }
+            }
         }
+    } else {
+        $zonasSinPython = $true
     }
 
     if ($Silencioso) { return 0 }
@@ -1086,11 +1447,15 @@ function Invoke-Desinstalar {
         EscribirOk "$($sobrantes.Count) archivo(s) .nuevo de un -Update previo, borrados"
     }
     EscribirOk 'bloques sacados de CLAUDE.md y .gitignore'
-    if ($zonasSacadas.Count -gt 0) {
-        EscribirOk ('zonas vacías sacadas del CLAUDE.md — ' + ($zonasSacadas -join ', '))
-    }
-    if ($zonasQueQuedan.Count -gt 0) {
-        EscribirAviso ('quedan zonas con contenido, no se tocaron — ' + ($zonasQueQuedan -join ', '))
+    if ($zonasSinPython) {
+        EscribirAviso 'no se pudieron limpiar las zonas del CLAUDE.md: no hay Python instalado. Quedaron puestas — sacalas a mano, o instalá Python y corré -Uninstall de nuevo.'
+    } else {
+        if ($zonasSacadas.Count -gt 0) {
+            EscribirOk ('zonas vacías sacadas del CLAUDE.md — ' + ($zonasSacadas -join ', '))
+        }
+        if ($zonasQueQuedan.Count -gt 0) {
+            EscribirAviso ('quedan zonas con contenido, no se tocaron — ' + ($zonasQueQuedan -join ', '))
+        }
     }
     EscribirOk 'se conservan: los backups y tu harness.config.json'
     Escribir ''
@@ -1101,7 +1466,14 @@ function Invoke-Desinstalar {
 
 
 # ── Despacho ────────────────────────────────────────────────────────────────────
+#
+# Si el script se carga con dot-source (". install.ps1") no se ejecuta ningún verbo:
+# quedan las funciones definidas, nada más. Es la costura que usa la suite para probar
+# una función interna -Test-Entorno con -PythonSimulado, por ejemplo (E-24)- sin levantar
+# un proceso hijo por caso y sin arrastrar el "exit" del despacho normal a la sesión de
+# quien está corriendo los tests. La invocación real (.\install.ps1 ...) no cambia.
 
+if ($MyInvocation.InvocationName -ne '.') {
 try {
     # Resolve-Path devuelve $null si la ruta no existe: pedirle .Path a eso, bajo StrictMode,
     # muere con "No se encuentra la propiedad 'Path'", que no nombra ni el parámetro ni la ruta.
@@ -1128,4 +1500,5 @@ catch {
     Write-Host ('  ' + $_.Exception.Message) -ForegroundColor Red
     Escribir ''
     exit 1
+}
 }

@@ -151,7 +151,7 @@ try {
     Assert-Igual 'reinstalar no duplica el bloque en CLAUDE.md' 2 $bloques
 
     # ── Deriva ──────────────────────────────────────────────────────────────────
-    $hookEditado = Join-Path $demo '.claude\harness\hooks\post-tool-use.ps1'
+    $hookEditado = Join-Path $demo '.claude\harness\hooks\post-tool-use.py'
     Add-Content -Path $hookEditado -Value '# editado a mano' -Encoding UTF8
 
     $r = Invoke-Instalador @('-Doctor', '-Project', $demo)
@@ -180,6 +180,12 @@ try {
     Assert-Verdadero 'no quedan archivos .nuevo huerfanos' `
         (@(Get-ChildItem $demo -Recurse -File -Filter '*.nuevo' -ErrorAction SilentlyContinue).Count -eq 0)
 
+    # E-26: -Uninstall saca los .py de los hooks y los dos shims.
+    Assert-Verdadero 'E-26 no queda run-hook.cmd' (-not (Test-Path (Join-Path $demo '.claude\harness\run-hook.cmd')))
+    Assert-Verdadero 'E-26 no queda run-hook.sh'  (-not (Test-Path (Join-Path $demo '.claude\harness\run-hook.sh')))
+    Assert-Verdadero 'E-26 no quedan hooks .py'   `
+        (@(Get-ChildItem $demo -Recurse -File -Filter '*.py' -ErrorAction SilentlyContinue).Count -eq 0)
+
     # Lo que SI tiene que sobrevivir a una desinstalacion.
     Assert-Verdadero 'conserva harness.config.json, que es del humano' `
         (Test-Path (Join-Path $demo '.claude\harness.config.json'))
@@ -189,3 +195,347 @@ try {
 finally {
     if (Test-Path $demo) { Remove-Item $demo -Recurse -Force -ErrorAction SilentlyContinue }
 }
+
+
+# ── -Doctor sin Python ───────────────────────────────────────────────────────────
+#
+# -Doctor es la herramienta que diagnostica una máquina rota: si dependiera de lo que
+# diagnostica, no arrancaría justo cuando hace falta (E-23). Y esa garantía solo vale si
+# nada en el nivel superior del script -lo que corre para CUALQUIER verbo, -Doctor
+# incluido- invoca Python (E-23b): una dependencia en la línea 58, diagnóstico muerto
+# antes de imprimir la primera línea, sin importar cuán prolijo sea el resto.
+
+Set-Grupo 'Instalador - Doctor sin Python'
+
+$comandoDoctorSinPython = "`$env:PATH = 'C:\no-existe'; & '$instalador' -Doctor 2>&1 | Out-String"
+$salidaSinPython = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+                                    -Command $comandoDoctorSinPython | Out-String
+
+Assert-Contiene 'E-23 imprime el diagnostico completo' 'PowerShell' $salidaSinPython
+Assert-Contiene 'E-23 reporta la falta de Python'       'Python'    $salidaSinPython
+Assert-Contiene 'E-23 dice que hacer'                   'instala'  $salidaSinPython
+
+$primeraFuncion = (Select-String -Path $instalador -Pattern '^function ' | Select-Object -First 1).LineNumber
+$cabecera = (Get-Content $instalador -TotalCount $primeraFuncion) -join "`n"
+Assert-Vacio 'E-23b sin zonas.py ni Resolve-Python en el nivel superior' `
+    (($cabecera | Select-String -Pattern 'zonas\.py|Resolve-Python') -join '')
+
+
+# ── Version minima de Python (E-24) ──────────────────────────────────────────────
+#
+# Un Python viejo alcanzado en el PATH es una FALLA, no un aviso: los hooks no van a
+# correr igual. El mínimo vive en comun/manifest.json, junto a requiereClaudeCode. Se
+# prueba con dot-source -no un -Doctor real- porque hace falta simular una versión que
+# la máquina que corre la suite probablemente no tenga instalada.
+
+Set-Grupo 'Instalador - version minima de Python'
+
+function Invoke-TestEntornoSimulado {
+    param([string] $VersionPython)
+    $codigoHijo = @"
+. '$instalador'
+`$hallazgos = Test-Entorno -PythonSimulado '$VersionPython'
+`$hallazgos | ConvertTo-Json -Depth 5 -Compress
+"@
+    $json = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command $codigoHijo | Out-String
+    return @($json | ConvertFrom-Json)
+}
+
+$hallazgosViejo = Invoke-TestEntornoSimulado -VersionPython '3.6'
+$fallaViejo = @($hallazgosViejo | Where-Object { $_.Nivel -eq 'falla' -and $_.Texto -match 'Python' })
+Assert-Igual    'E-24 un Python 3.6 es una falla, no un aviso' 1     $fallaViejo.Count
+Assert-Contiene 'E-24 el mensaje dice cual es el minimo'       '3.9' $fallaViejo[0].Texto
+
+$hallazgosNuevo = Invoke-TestEntornoSimulado -VersionPython '3.11'
+$fallaNuevo = @($hallazgosNuevo | Where-Object { $_.Nivel -eq 'falla' -and $_.Texto -match 'Python' })
+Assert-Igual 'E-24 un Python por encima del minimo no falla' 0 $fallaNuevo.Count
+
+
+# ── Shims: el interprete real y el POSIX en LF (E-21, E-22) ─────────────────────
+
+Set-Grupo 'Instalador - shims'
+
+$demoShim = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-shim-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path $demoShim -Force | Out-Null
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoShim -Harness analisis -Usuario 'Prueba Shim' | Out-Null
+    Assert-Igual 'instala para probar los shims' 0 $LASTEXITCODE
+
+    $rutaCmd = Join-Path $demoShim '.claude\harness\run-hook.cmd'
+    $txtCmd = [System.IO.File]::ReadAllText($rutaCmd)
+    Assert-Vacio    'E-21 el shim no invoca powershell'         (($txtCmd | Select-String 'powershell\.exe') -join '')
+    Assert-Contiene 'E-21 el shim lleva un .exe'                '.exe' $txtCmd
+    $exe = ([regex]::Match($txtCmd, '"([^"]+\.exe)"')).Groups[1].Value
+    Assert-Verdadero 'E-21 el .exe resuelto existe'             (Test-Path $exe)
+    Assert-Verdadero 'E-21 no es el shim suelto de PyManager'   ($exe -notmatch '\\PyManager\\')
+
+    $rutaSh = Join-Path $demoShim '.claude\harness\run-hook.sh'
+    Assert-Verdadero 'E-22 se genera run-hook.sh' (Test-Path $rutaSh)
+    $bytesSh = [System.IO.File]::ReadAllBytes($rutaSh)
+    Assert-Igual     'E-22 ningun CR en el shim POSIX' 0 (@($bytesSh | Where-Object { $_ -eq 13 }).Count)
+    Assert-Contiene  'E-22 invoca python3' 'python3' ([System.IO.File]::ReadAllText($rutaSh))
+}
+finally {
+    if (Test-Path $demoShim) { Remove-Item $demoShim -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+
+# ── -Update no deja huerfanos .ps1 (E-25) ────────────────────────────────────────
+#
+# Un proyecto instalado con una versión vieja del harness -cuando los hooks todavía eran
+# .ps1- no puede quedar con esos .ps1 sueltos después de actualizar: el manifiesto nuevo
+# ya no los genera, y -Update tiene que sacar lo que sobra.
+
+Set-Grupo 'Instalador - Update sin huerfanos'
+
+$demoUpdate = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-update-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path $demoUpdate -Force | Out-Null
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoUpdate -Harness analisis -Usuario 'Prueba Update' | Out-Null
+
+    # Simula lo que dejaría una instalación de una versión anterior a la migración a Python.
+    New-Item -ItemType File -Path (Join-Path $demoUpdate '.claude\harness\hooks\pre-tool-use.ps1') -Force | Out-Null
+
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoUpdate -Update | Out-Null
+
+    $huerfanos = @(Get-ChildItem (Join-Path $demoUpdate '.claude\harness') -Recurse -Filter '*.ps1' -ErrorAction SilentlyContinue)
+    Assert-Igual 'E-25 -Update no deja ningun .ps1 huerfano' 0 $huerfanos.Count
+
+    Assert-Verdadero 'E-25 conserva harness.config.json' (Test-Path (Join-Path $demoUpdate '.claude\harness.config.json'))
+    Assert-Verdadero 'E-25 conserva los backups'          (Test-Path (Join-Path $demoUpdate '.claude\.harness-backup'))
+}
+finally {
+    if (Test-Path $demoUpdate) { Remove-Item $demoUpdate -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+
+# ── -Uninstall sin Python (E-26b) ─────────────────────────────────────────────────
+#
+# -Uninstall es la herramienta que corre justo cuando algo anda mal, y "el Python que el
+# instalador fijó ya no está" es uno de los motivos por los que alguien la usaría. No puede
+# depender de lo mismo que el harness necesita para andar: la única parte que usa Python es
+# la limpieza de zonas del CLAUDE.md, y esa es la única que se saltea si no hay intérprete
+# -avisando qué quedó sin hacer y por qué- nunca abortando la desinstalación entera.
+
+Set-Grupo 'Instalador - Uninstall sin Python'
+
+$demoUninstSinPython = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-uninst-sp-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path $demoUninstSinPython -Force | Out-Null
+    # Un CLAUDE.md previo, para que la instalación deje un backup de verdad que verificar.
+    [System.IO.File]::WriteAllText((Join-Path $demoUninstSinPython 'CLAUDE.md'), "# CLAUDE.md previo`r`n")
+
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoUninstSinPython -Harness analisis -Usuario 'Prueba Sin Python' | Out-Null
+
+    $comandoDesinstalarSinPython = "`$env:PATH = 'C:\no-existe'; & '$instalador' -Project '$demoUninstSinPython' -Uninstall 2>&1 | Out-String"
+    $salidaDesinstalar = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+                                          -Command $comandoDesinstalarSinPython | Out-String
+    $codigoDesinstalar = $LASTEXITCODE
+
+    Assert-Igual 'E-26b -Uninstall sin Python no aborta' 0 $codigoDesinstalar
+    Assert-Verdadero 'E-26b saca los .py' `
+        (@(Get-ChildItem $demoUninstSinPython -Recurse -Filter '*.py' -ErrorAction SilentlyContinue).Count -eq 0)
+    Assert-Verdadero 'E-26b saca run-hook.cmd' `
+        (-not (Test-Path (Join-Path $demoUninstSinPython '.claude\harness\run-hook.cmd')))
+    Assert-Verdadero 'E-26b saca run-hook.sh' `
+        (-not (Test-Path (Join-Path $demoUninstSinPython '.claude\harness\run-hook.sh')))
+    Assert-Verdadero 'E-26b conserva harness.config.json' `
+        (Test-Path (Join-Path $demoUninstSinPython '.claude\harness.config.json'))
+    Assert-Verdadero 'E-26b conserva los backups' `
+        (Test-Path (Join-Path $demoUninstSinPython '.claude\.harness-backup'))
+    Assert-Contiene 'E-26b avisa que no pudo limpiar las zonas, y por que' 'Python' $salidaDesinstalar
+}
+finally {
+    if (Test-Path $demoUninstSinPython) { Remove-Item $demoUninstSinPython -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+
+# ── -Doctor mide la latencia de un hook (E-25b) ──────────────────────────────────
+#
+# El p50 de un hook real sobre un payload real es el numero que justifica todo este
+# cambio -Python en vez de PowerShell-. Si nadie lo mide, la promesa de latencia queda
+# en intencion. -Doctor nunca bloquea por esto: informa, y avisa si pasa el umbral.
+
+Set-Grupo 'Instalador - Doctor mide latencia'
+
+$rDoctorLatencia = Invoke-Instalador @('-Doctor')
+Assert-Contiene 'E-25b reporta latencia' 'latencia de hook' $rDoctorLatencia.Salida
+Assert-Igual    'E-25b no bloquea'       0                  $rDoctorLatencia.Codigo
+
+
+# ── -Update que falla no puede destruir antes de saber que puede construir ───────
+#
+# Hallazgo del revisor: E-25 (arriba) borra .claude\harness\ ANTES de reinstalar. Si
+# Invoke-Instalar tira por cualquier motivo que no sea "los hooks no responden" -falta
+# Python, zonas.py falla, un id invalido, prefijos repetidos: todos usan throw- esa
+# excepcion se propaga y el borrado nunca se deshace. El proyecto queda sin harness, y
+# lo que el humano habia editado a mano -que solo vivia en la variable $guardados de ese
+# proceso- se pierde para siempre. Un -Update que falla tiene que dejar el proyecto como
+# estaba, no a mitad de camino.
+
+Set-Grupo 'Instalador - Update que falla no destruye'
+
+$demoUpdateFalla = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-update-falla-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path $demoUpdateFalla -Force | Out-Null
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoUpdateFalla -Harness analisis -Usuario 'Prueba Update Falla' | Out-Null
+
+    # Trabajo humano: un hook editado a mano, que -Update tiene que conservar.
+    $hookEditadoFalla = Join-Path $demoUpdateFalla '.claude\harness\hooks\pre-tool-use.py'
+    Add-Content -Path $hookEditadoFalla -Value '# editado a mano, no se puede perder' -Encoding UTF8
+
+    # El mismo truco de E-23: sin Python alcanzable, Invoke-Instalar tira temprano
+    # (Test-Entorno lo detecta como falla) antes de escribir un solo archivo nuevo.
+    $comandoUpdateSinPython = "`$env:PATH = 'C:\no-existe'; & '$instalador' -Project '$demoUpdateFalla' -Update 2>&1 | Out-String"
+    $salidaUpdateFalla = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+                                          -Command $comandoUpdateSinPython | Out-String
+    $codigoUpdateFalla = $LASTEXITCODE
+
+    Assert-Verdadero 'E-30 -Update sin Python sale con codigo de fallo' ($codigoUpdateFalla -ne 0) `
+        "codigo obtenido: $codigoUpdateFalla"
+    Assert-Verdadero 'E-30 el proyecto sigue teniendo .claude\harness\' `
+        (Test-Path (Join-Path $demoUpdateFalla '.claude\harness'))
+    Assert-Verdadero 'E-30 el hook editado a mano sigue existiendo' (Test-Path $hookEditadoFalla)
+    if (Test-Path $hookEditadoFalla) {
+        Assert-Contiene 'E-30 y conserva la edicion humana' 'no se puede perder' `
+            ([System.IO.File]::ReadAllText($hookEditadoFalla))
+    }
+    Assert-Verdadero 'E-30 conserva harness.config.json' `
+        (Test-Path (Join-Path $demoUpdateFalla '.claude\harness.config.json'))
+}
+finally {
+    if (Test-Path $demoUpdateFalla) { Remove-Item $demoUpdateFalla -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+
+# ── La definición de zonas vive en un solo lado (E-17) ───────────────────────────
+#
+# Zonas.psm1 se borró en la Task 10 porque install.ps1 pasó a leer la definición de
+# comun/hooks/lib/zonas.py. Si algún día reaparece una segunda definición -otro lugar
+# que empareje el nombre de una zona con la clave de su techo- las dos quedan
+# desincronizadas en silencio, que es justo lo que la migración cerró.
+#
+# Una DEFINICIÓN empareja el nombre de la clave del techo con el valor de esa clave en la
+# misma expresión, en cualquiera de los dos idiomas que tuvo esta definición -JSON/Python
+# hoy, PowerShell en la Zonas.psm1 ya borrada-. Un VALOR de configuración o de test nombra
+# la clave compuesta entera, pero no la empareja con ningún separador inmediatamente
+# después de la palabra que identifica al techo sola: ahí lo que sigue es el resto del
+# nombre de la clave, no un separador. Esa ausencia es lo que distingue un valor de una
+# definición, y es lo que el patrón de abajo verifica.
+#
+# El patrón se arma por concatenación -mismo truco que 04_secretos.py usa con los
+# literales de secretos, por la misma razón- para que este archivo no pueda, él mismo,
+# contener la forma completa que busca. Es la lección de la primera versión de este test:
+# describía las dos formas escritas tal cual, a modo de ejemplo, en este mismo comentario
+# -y el propio comentario se detectaba a sí mismo como si fuera la definición real-.
+
+Set-Grupo 'Composicion - la definicion de zonas vive en un solo lado (E-17)'
+
+$fragmentoClave = '["'']?[Tt]ec' + 'ho["'']?\s*[:=]\s*["'']'
+$fragmentoValor = 'tec' + 'hoZonaFija["'']'
+$patronDefinicionZona = $fragmentoClave + $fragmentoValor
+$archivosFuente = Get-ChildItem $script:Raiz -Recurse -File -Include '*.py', '*.ps1', '*.psm1' -ErrorAction SilentlyContinue |
+                  Where-Object { $_.FullName -notlike '*\.git\*' -and $_.FullName -notlike '*\__pycache__\*' }
+
+$conDefinicionDeZona = @()
+foreach ($f in $archivosFuente) {
+    $t = [System.IO.File]::ReadAllText($f.FullName)
+    if ($t -match $patronDefinicionZona) {
+        $conDefinicionDeZona += $f.FullName.Replace($script:Raiz + '\', '')
+    }
+}
+
+Assert-Igual 'E-17 solo zonas.py define el par nombre/techo de una zona' `
+    'comun\hooks\lib\zonas.py' ($conDefinicionDeZona -join ', ')
+
+
+# ── zonas.py roto aborta sin dejar un CLAUDE.md a medias (E-20) ──────────────────
+#
+# Si la invocación a zonas.py falla, la instalación aborta con el mensaje del error: no
+# se instala un CLAUDE.md a medias. Criterio fijado acá porque no era obvio del código:
+# el CLAUDE.md tiene que quedar EXACTAMENTE como estaba, sin el bloque HARNESS:COMUN ni
+# las zonas vacías que el instalador agrega después de invocar zonas.py -un archivo con
+# el bloque puesto pero sin las zonas no está corrupto, pero tampoco intacto, y "casi
+# intacto" es peor que "no tocado": no hay forma de saber, mirándolo, si terminó de
+# instalarse o no.
+#
+# Rotura temporal y reversible de comun/hooks/lib/zonas.py -no es mío, y tiene que quedar
+# bit a bit igual al terminar-: un error de sintaxis, que ninguna defensa en tiempo de
+# ejecución puede atrapar porque Python ni siquiera puede compilarlo.
+
+Set-Grupo 'Instalador - zonas.py roto aborta sin CLAUDE.md a medias (E-20)'
+
+$rutaZonasPy = Join-Path $script:Raiz 'comun\hooks\lib\zonas.py'
+$bytesZonasOriginales = [System.IO.File]::ReadAllBytes($rutaZonasPy)
+$demoZonasRotas = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-zonasrotas-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+$claudeMdPrevioE20 = "# CLAUDE.md - previo a la instalacion`r`n`r`nEsta linea es del humano.`r`n"
+
+try {
+    New-Item -ItemType Directory -Path $demoZonasRotas -Force | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $demoZonasRotas 'CLAUDE.md'), $claudeMdPrevioE20)
+
+    [System.IO.File]::AppendAllText($rutaZonasPy, "`ndef (((`n")
+
+    $rZonasRotas = Invoke-Instalador @('-Project', $demoZonasRotas, '-Harness', 'analisis', '-Usuario', 'Prueba Zonas Rotas')
+
+    Assert-Igual 'E-20 la instalacion aborta' 1 $rZonasRotas.Codigo
+    Assert-Contiene 'E-20 el mensaje nombra el error de zonas.py' 'zonas.py' $rZonasRotas.Salida
+    Assert-Igual 'E-20 el CLAUDE.md queda exactamente como estaba' `
+        $claudeMdPrevioE20 ([System.IO.File]::ReadAllText((Join-Path $demoZonasRotas 'CLAUDE.md')))
+    Assert-Verdadero 'E-20 no deja lockfile' `
+        (-not (Test-Path (Join-Path $demoZonasRotas '.claude\harness.lock.json')))
+}
+finally {
+    [System.IO.File]::WriteAllBytes($rutaZonasPy, $bytesZonasOriginales)
+    if (Test-Path $demoZonasRotas) { Remove-Item $demoZonasRotas -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+$bytesZonasFinales = [System.IO.File]::ReadAllBytes($rutaZonasPy)
+Assert-Igual 'E-20 zonas.py quedo exactamente igual' `
+    ([System.BitConverter]::ToString($bytesZonasOriginales)) ([System.BitConverter]::ToString($bytesZonasFinales))
+
+
+# ── La compuerta revierte si un hook responde mal (E-27) ─────────────────────────
+#
+# Test-HooksInstalados es lo que hace que "instalado" signifique "funciona": si algún
+# hook no responde con JSON válido y código 0, la instalación entera se revierte y no
+# deja un harness a medias. El revisor lo verificó a mano rompiendo pre-tool-use.py para
+# que emita una salida que no es JSON; esto lo deja clavado en la suite.
+#
+# Misma técnica que E-20: rotura temporal y reversible de un archivo que no es mío
+# -comun/hooks/pre-tool-use.py-, con un error de sintaxis que ninguna defensa en tiempo
+# de ejecución de lib.hook puede atrapar -es justo el punto: el hook no puede ni arrancar.
+
+Set-Grupo 'Instalador - la compuerta revierte un hook roto (E-27)'
+
+$rutaHookRoto = Join-Path $script:Raiz 'comun\hooks\pre-tool-use.py'
+$bytesHookOriginales = [System.IO.File]::ReadAllBytes($rutaHookRoto)
+$demoHookRoto = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-hookroto-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+
+try {
+    New-Item -ItemType Directory -Path $demoHookRoto -Force | Out-Null
+
+    [System.IO.File]::AppendAllText($rutaHookRoto, "`ndef (((`n")
+
+    $rHookRoto = Invoke-Instalador @('-Project', $demoHookRoto, '-Harness', 'analisis', '-Usuario', 'Prueba Hook Roto')
+
+    Assert-Igual 'E-27 la instalacion sale con codigo de fallo' 1 $rHookRoto.Codigo
+    Assert-Contiene 'E-27 avisa que revierte' 'Revirtiendo' $rHookRoto.Salida
+    Assert-Verdadero 'E-27 no deja lockfile' `
+        (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness.lock.json')))
+    Assert-Verdadero 'E-27 no deja .claude\harness a medias' `
+        (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness')))
+}
+finally {
+    [System.IO.File]::WriteAllBytes($rutaHookRoto, $bytesHookOriginales)
+    if (Test-Path $demoHookRoto) { Remove-Item $demoHookRoto -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+$bytesHookFinales = [System.IO.File]::ReadAllBytes($rutaHookRoto)
+Assert-Igual 'E-27 pre-tool-use.py quedo exactamente igual' `
+    ([System.BitConverter]::ToString($bytesHookOriginales)) ([System.BitConverter]::ToString($bytesHookFinales))

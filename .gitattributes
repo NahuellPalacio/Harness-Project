@@ -15,7 +15,8 @@
 *.bat       text eol=crlf
 
 # Scripts de shell: LF obligatorio, incluso escritos desde Windows
-*.sh        text eol=lf
+*.sh              text eol=lf
+*.sh.plantilla    text eol=lf
 
 # Contenido: LF, que es lo que espera cualquier herramienta que los procese
 *.md        text eol=lf
