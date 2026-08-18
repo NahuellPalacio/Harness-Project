@@ -1132,13 +1132,34 @@ function Invoke-Instalar {
     }
     $nombreProyecto = Split-Path -Leaf $Project
     $rutaClaudeMd = Join-Path $Project 'CLAUDE.md'
-    $accion = Set-BloqueMarcado -Ruta $rutaClaudeMd `
-                                -MarcaIni $script:MarcaClaudeIni -MarcaFin $script:MarcaClaudeFin `
-                                -Contenido $bloqueClaude -Encabezado "# CLAUDE.md — $nombreProyecto"
-    EscribirOk "CLAUDE.md: bloque $accion (el resto del archivo no se tocó)"
 
-    $zonas = Add-ZonasSiFaltan -RutaClaudeMd $rutaClaudeMd `
-                               -RutaPlantilla (Join-Path $origenComun 'claude-md\plantilla-proyecto.md')
+    # E-20: si zonas.py falla ADENTRO de Add-ZonasSiFaltan, el CLAUDE.md no puede quedar
+    # con el bloque HARNESS:COMUN puesto y sin sus zonas — no está corrupto, pero tampoco
+    # intacto, y "casi intacto" no se distingue de "instalación terminada" con solo
+    # mirarlo. Se guarda el estado de ANTES de tocar nada acá (bytes, o "no existía"), y
+    # si algo de este bloque tira, se restaura ese estado exacto antes de propagar el
+    # error: no se instala un CLAUDE.md a medias.
+    $existiaClaudeMd = Test-Path $rutaClaudeMd
+    $bytesClaudeMdPrevios = $null
+    if ($existiaClaudeMd) { $bytesClaudeMdPrevios = [System.IO.File]::ReadAllBytes($rutaClaudeMd) }
+
+    try {
+        $accion = Set-BloqueMarcado -Ruta $rutaClaudeMd `
+                                    -MarcaIni $script:MarcaClaudeIni -MarcaFin $script:MarcaClaudeFin `
+                                    -Contenido $bloqueClaude -Encabezado "# CLAUDE.md — $nombreProyecto"
+        EscribirOk "CLAUDE.md: bloque $accion (el resto del archivo no se tocó)"
+
+        $zonas = Add-ZonasSiFaltan -RutaClaudeMd $rutaClaudeMd `
+                                   -RutaPlantilla (Join-Path $origenComun 'claude-md\plantilla-proyecto.md')
+    } catch {
+        if ($existiaClaudeMd) {
+            [System.IO.File]::WriteAllBytes($rutaClaudeMd, $bytesClaudeMdPrevios)
+        } elseif (Test-Path $rutaClaudeMd) {
+            Remove-Item $rutaClaudeMd -Force -ErrorAction SilentlyContinue
+        }
+        throw
+    }
+
     if ($zonas.Agregadas.Count -gt 0) {
         EscribirOk ("CLAUDE.md: zonas agregadas vacías — " + ($zonas.Agregadas -join ', '))
     } else {
