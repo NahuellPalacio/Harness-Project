@@ -365,3 +365,49 @@ Set-Grupo 'Instalador - Doctor mide latencia'
 $rDoctorLatencia = Invoke-Instalador @('-Doctor')
 Assert-Contiene 'E-25b reporta latencia' 'latencia de hook' $rDoctorLatencia.Salida
 Assert-Igual    'E-25b no bloquea'       0                  $rDoctorLatencia.Codigo
+
+
+# ── -Update que falla no puede destruir antes de saber que puede construir ───────
+#
+# Hallazgo del revisor: E-25 (arriba) borra .claude\harness\ ANTES de reinstalar. Si
+# Invoke-Instalar tira por cualquier motivo que no sea "los hooks no responden" -falta
+# Python, zonas.py falla, un id invalido, prefijos repetidos: todos usan throw- esa
+# excepcion se propaga y el borrado nunca se deshace. El proyecto queda sin harness, y
+# lo que el humano habia editado a mano -que solo vivia en la variable $guardados de ese
+# proceso- se pierde para siempre. Un -Update que falla tiene que dejar el proyecto como
+# estaba, no a mitad de camino.
+
+Set-Grupo 'Instalador - Update que falla no destruye'
+
+$demoUpdateFalla = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-update-falla-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+try {
+    New-Item -ItemType Directory -Path $demoUpdateFalla -Force | Out-Null
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
+                     -Project $demoUpdateFalla -Harness analisis -Usuario 'Prueba Update Falla' | Out-Null
+
+    # Trabajo humano: un hook editado a mano, que -Update tiene que conservar.
+    $hookEditadoFalla = Join-Path $demoUpdateFalla '.claude\harness\hooks\pre-tool-use.py'
+    Add-Content -Path $hookEditadoFalla -Value '# editado a mano, no se puede perder' -Encoding UTF8
+
+    # El mismo truco de E-23: sin Python alcanzable, Invoke-Instalar tira temprano
+    # (Test-Entorno lo detecta como falla) antes de escribir un solo archivo nuevo.
+    $comandoUpdateSinPython = "`$env:PATH = 'C:\no-existe'; & '$instalador' -Project '$demoUpdateFalla' -Update 2>&1 | Out-String"
+    $salidaUpdateFalla = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+                                          -Command $comandoUpdateSinPython | Out-String
+    $codigoUpdateFalla = $LASTEXITCODE
+
+    Assert-Verdadero 'E-30 -Update sin Python sale con codigo de fallo' ($codigoUpdateFalla -ne 0) `
+        "codigo obtenido: $codigoUpdateFalla"
+    Assert-Verdadero 'E-30 el proyecto sigue teniendo .claude\harness\' `
+        (Test-Path (Join-Path $demoUpdateFalla '.claude\harness'))
+    Assert-Verdadero 'E-30 el hook editado a mano sigue existiendo' (Test-Path $hookEditadoFalla)
+    if (Test-Path $hookEditadoFalla) {
+        Assert-Contiene 'E-30 y conserva la edicion humana' 'no se puede perder' `
+            ([System.IO.File]::ReadAllText($hookEditadoFalla))
+    }
+    Assert-Verdadero 'E-30 conserva harness.config.json' `
+        (Test-Path (Join-Path $demoUpdateFalla '.claude\harness.config.json'))
+}
+finally {
+    if (Test-Path $demoUpdateFalla) { Remove-Item $demoUpdateFalla -Recurse -Force -ErrorAction SilentlyContinue }
+}
