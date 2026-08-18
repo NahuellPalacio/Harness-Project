@@ -27,11 +27,6 @@ claims to guard and does not measure. Nothing stops the next piece from doubling
 Fix. `-Doctor` measures and reports the total; new cap `techoAssetsSiempreCargados` in
 `comun/manifest.json`. It warns, it never blocks.
 
-### `-Doctor` does not measure hook latency
-
-The original plan said to evaluate rewriting them in Node if the p50 went above roughly 400 ms,
-but not before measuring it. It was never measured.
-
 ### The budget has to measure the session, not the harness
 
 `superpowers` injects about 900 tokens per session with its `SessionStart` hook. The cap we set

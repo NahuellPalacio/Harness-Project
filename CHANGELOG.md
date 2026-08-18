@@ -19,9 +19,12 @@ defectos incluidos — y de arrastre se cerró el shim `.sh` que faltaba.
   para la sesión de Claude Code que corra sobre WSL, macOS o Linux
 - `lib/zonas.py` — la definición de zonas en un solo lugar, con verbos de línea de comandos que
   `install.ps1` consume por JSON en vez de tener la lógica escrita dos veces
-- 309 tests en verde: 93 en PowerShell (lo que sigue siéndolo: `install.ps1`,
+- 318 tests en verde: 102 en PowerShell (lo que sigue siéndolo: `install.ps1`,
   `03-instalador.ps1`, `00-encoding-fuentes.ps1`, `06-composicion.ps1`, `08-bitacora.ps1`) más
   216 en Python, bajo un único comando y un único código de salida
+- **`-Doctor` mide la latencia de hook**: corre `pre-tool-use.py` cinco veces sobre el payload
+  real y avisa si el p50 pasa los 400 ms. Nunca suma a las fallas; si no hay Python, no mide y
+  no falla por eso
 
 ### Cambiado
 
@@ -37,7 +40,7 @@ defectos incluidos — y de arrastre se cerró el shim `.sh` que faltaba.
 - 🔴 **E-29 no se cumple.** El umbral era 400 ms y `pre-tool-use` da 558 ms de p50 (14 corridas,
   Stopwatch). La causa está medida: el arranque desnudo del intérprete en esta máquina ya se
   come el umbral solo, así que ni con el código del hook en cero se llegaría por debajo. La
-  mejora real es 981 → 558 ms, un 43%. `-Doctor` medirá este número — pendiente, Task 13
+  mejora real es 981 → 558 ms, un 43%. `-Doctor` ya vigila este número en cada corrida
 
 ## [0.12.0] — 2026-08-13
 
