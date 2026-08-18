@@ -542,7 +542,14 @@ function Invoke-ZonasPy {
     }
 
     if (-not $salida.Trim()) { return $null }
-    return ($salida | ConvertFrom-Json)
+    try {
+        return ($salida | ConvertFrom-Json)
+    } catch {
+        # Salió con código 0 pero lo que escribió no es JSON: un cambio en zonas.py que
+        # rompió el contrato sin que Python lo detecte como error. El mensaje crudo de
+        # ConvertFrom-Json no dice ni qué comando lo produjo ni qué mirar; este sí.
+        throw "zonas.py $($Argumentos -join ' ') salió con código 0 pero su salida no es JSON válido: $($salida.Trim())"
+    }
 }
 
 
@@ -828,9 +835,18 @@ function Measure-LatenciaHook {
             $w = New-Object System.IO.StreamWriter($p.StandardInput.BaseStream,
                                                    (New-Object System.Text.UTF8Encoding $false))
             $w.Write($json); $w.Flush(); $w.Close()
+
+            # "Nunca bloquea" vale para el resultado, no puede valer menos para la
+            # espera: un hook que se cuelga -no explota, se queda esperando algo que no
+            # llega- no puede colgar a -Doctor con él. Si no salió en 5 s -veinte veces
+            # el p50 observado en esta máquina-, se lo mata y esta medición completa se
+            # descarta: un p50 con una corrida artificialmente cortada no sería el p50.
+            if (-not $p.WaitForExit(5000)) {
+                try { $p.Kill() } catch { }
+                return $null
+            }
             $p.StandardOutput.ReadToEnd() | Out-Null
             $p.StandardError.ReadToEnd()  | Out-Null
-            $p.WaitForExit()
         } catch {
             return $null
         }
