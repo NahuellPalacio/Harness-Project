@@ -122,19 +122,38 @@ después solo la ficha que hace falta.
 
 - **E-01** — Con `desarrollo` en `harness.lock.json` y sin `docs/codebase/indice.md`, la salida de
   `SessionStart` contiene una línea que nombra a `dev-iniciador-code`.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-02** — Con `docs/codebase/indice.md` presente, esa línea no aparece.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-03** — Sin `desarrollo` en el lockfile, la línea no aparece aunque el índice no exista.
-  · rojo visto: no consta
-- **E-04** — Con el aviso incluido, la salida de `SessionStart` no supera sus 12 líneas.
-  · rojo visto: no consta
+  · rojo visto: si
+- **E-04** — El aviso agrega **exactamente una** línea a la salida de `SessionStart`.
+  · rojo visto: si
+
+  🔴 **Corregido el 2026-08-21, durante la construcción.** Decía *"con el aviso incluido, la
+  salida no supera sus 12 líneas"*, y ese escenario es falso por una razón anterior a este
+  cambio: el peor caso se midió y da **13 líneas sin el aviso** —encabezado, `git:`, «Ultimo
+  trabajo» con tres commits, «En la cache quedo anotado» con cuatro ítems más el «y N mas», y
+  las definiciones pendientes—. El techo de 12 es un comentario del hook que nadie mide y que ya
+  estaba pasado. El escenario pasa a afirmar lo que este cambio sí controla, que es su propio
+  costo; el exceso preexistente queda anotado en `Pendientes/Fix-Harness/PENDIENTES-FH.md`,
+  bajo *Missing measurement*, que es donde se arregla.
 - **E-05** — El aviso sale como `additionalContext`. `SessionStart` no devuelve `deny` ni `ask` en
   ningún caso de este cambio.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-06** — Si `docs/codebase/` no se puede leer —no existe el directorio, o falla el acceso—
   `SessionStart` sale con código 0 y el resto de su bloque se emite igual.
   · rojo visto: no consta
+- **E-06b** — Si `rutaCodebase` trae un valor que no es una ruta, `SessionStart` sale con código
+  0, cae al default y el resto de su bloque se emite igual.
+  · rojo visto: si
+
+  Agregado el 2026-08-21. `harness.config.json` es el archivo de la persona y el harness no lo
+  valida ni lo pisa nunca, así que un valor de otro tipo llega hasta acá. Sin guarda de tipo,
+  `os.path.join` levanta `TypeError` y se pierde **el bloque entero**, no solo esta línea.
+  🔴 El `except (OSError, ValueError)` que rodea al `isfile` es defensivo y **la suite no lo
+  alcanza**: se rompió a propósito y los tests siguieron verdes. Queda porque el resto del hook
+  lee disco con la misma red, no porque esté verificado. Por eso E-06 sigue en `no consta`.
 
 ### Lo que queda escrito
 
@@ -182,7 +201,7 @@ después solo la ficha que hace falta.
   · rojo visto: no consta
 - **E-20** — Sobre un proyecto con `harness.config.json` preexistente y sin la clave, el recorrido
   y el aviso usan `docs/codebase` igual.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-21** — `-Uninstall` deja `docs/codebase/` intacto. Es conocimiento del proyecto, no material
   del harness.
   · rojo visto: no consta

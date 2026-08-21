@@ -51,11 +51,13 @@ def cuerpo(e):
     if config and config.get("usuario"):
         encabezado = str(config["usuario"])
 
+    harness_instalados = []
     ruta_lock = os.path.join(proyecto, ".claude", "harness.lock.json")
     if os.path.isfile(ruta_lock):
         try:
             datos = json.loads(_leer_utf8(ruta_lock))
-            ids = ", ".join(datos.get("harness") or [])
+            harness_instalados = datos.get("harness") or []
+            ids = ", ".join(harness_instalados)
             texto = "harness: %s v%s" % (ids, datos.get("version", ""))
             encabezado = "%s - %s" % (encabezado, texto) if encabezado else texto
         except (OSError, ValueError):
@@ -113,6 +115,27 @@ def cuerpo(e):
                     lineas.append("%d definiciones pendientes abiertas" % abiertas)
             except OSError:
                 pass
+
+    # --- El primer recorrido del codigo, mientras no exista --------------------------
+    # Solo con `desarrollo` instalado -un proyecto de solo analisis no tiene codigo que
+    # recorrer- y solo hasta que el indice exista. Un aviso permanente se vuelve ruido y
+    # se deja de leer, y ahi se pierde tambien el resto del bloque.
+    #
+    # El orden importa: el chequeo de disco va ultimo y no corre en un proyecto sin
+    # `desarrollo`.
+    if "desarrollo" in harness_instalados:
+        ruta_codebase = (config or {}).get("rutaCodebase")
+        # harness.config.json solo se crea si no existe y no se reescribe nunca: un
+        # proyecto instalado antes de este cambio no va a ver la clave jamas. El default
+        # vive aca a proposito, no en el manifiesto.
+        if not isinstance(ruta_codebase, str) or not ruta_codebase.strip():
+            ruta_codebase = "docs/codebase"
+        try:
+            hay_indice = os.path.isfile(os.path.join(proyecto, ruta_codebase, "indice.md"))
+        except (OSError, ValueError):
+            hay_indice = True   # ante la duda, callarse
+        if not hay_indice:
+            lineas.append("Sin indice del codigo todavia: dev-iniciador-code lo arma en una pasada.")
 
     if not lineas:
         return

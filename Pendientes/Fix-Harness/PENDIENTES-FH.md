@@ -44,6 +44,31 @@ Fix. `-Doctor` measures and reports the total; new cap `techoAssetsSiempreCargad
 ourselves is 2800, and a third party takes close to a third of it, invisible to the current
 `-Doctor`.
 
+### `SessionStart` declares a 12-line budget it already exceeds
+
+`comun/hooks/session-start.py` opens with *"Presupuesto: 12 lineas. Se paga una vez por sesion,
+pero ocupa ventana todo el rato."* Nothing measures it. Measured by hand on 2026-08-21, before
+`iniciador-code` added anything, the worst case comes to **13**: the header, `git:`, «Ultimo
+trabajo» with its three commits, «En la cache quedo anotado» with four items plus the «y N mas»
+line, and the open pending definitions. Every one of those is reachable in a normal project.
+
+Reproduce it with a throwaway project carrying all five sections at once — a `harness.config.json`
+with `usuario` and `rutaDefinicionesPendientes`, a lockfile, a git repo with three commits, a
+`CLAUDE.md` whose cache zone holds more than four lines, and a pendings file with four unchecked
+boxes — then feed a `SessionStart` payload to the hook and count the lines of
+`additionalContext`.
+
+This is the same blind spot as the two items above it, one level down: a number written in a
+comment is an intention, and intentions do not survive a busy week. It is what made scenario E-04
+of `docs/cambios/iniciador-code/spec.md` false as first written, and the correction is recorded
+there.
+
+No `Fix.` yet, and the two obvious directions are not equivalent, so it is not this change's call
+to make: either the hook trims itself to its budget — and then somebody has to decide which of the
+five sections loses lines first, which is a product decision, not a defect — or the budget is
+raised to whatever it actually costs and the comment stops lying. What is not defensible is
+leaving a cap written down that nothing checks.
+
 ## Incomplete capabilities
 
 ### Skill routing in `UserPromptSubmit` is mute
