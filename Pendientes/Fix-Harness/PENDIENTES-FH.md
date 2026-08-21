@@ -134,10 +134,31 @@ walk the deterministic suite cannot invoke, or a second walk that costs another 
 root cause is one and it is written down under *Incomplete capabilities*: nothing enforces the
 agent's three invariants.
 
-Fix. Not one fix but a decision first: whether an agent's invariants are allowed to live only in
-its prompt. If they are, those scenarios never become mechanical and the spec should say so instead
-of listing them as verifiable. If they are not, it needs a mechanism, and that is a change of its
-own.
+**Decided on 2026-08-21, and not by whoever built it: move to a mechanism whatever is already
+within reach, and only then declare the rest as contract.** Two of the eight moved the same day.
+
+- **E-07** — `SessionStart` already resolved the index path for E-01. It now tells the two
+  states apart: nothing written yet (suggest the first walk) versus cards with no `indice.md`,
+  which is a walk cut in half and where suggesting a first walk sends someone to redo what is
+  already written. Exclusive red, measured: 270/272.
+- **E-13** — `dev-codebase-forma.py` reports a card with a copy suffix when the original is
+  still beside it. Exclusive red, measured: 269/271; and removing the guard that requires the
+  original to exist reddens only `test_e13b`.
+
+Both entered with their limit written into the scenario: they prove the harness **sees** the bad
+state, not that the agent does not produce it. Same distance E-08 and E-09 already carry as
+`sostenido`. The refuter rules; the builder does not get to call them supported.
+
+**E-14 was left alone on purpose.** Dropping `PowerShell` from the agent's tools would turn *does
+not delete* into a capability boundary, but `PowerShell` is also how it runs `git ls-files`, which
+is what holds E-12 by construction. Trading a supported E-14 for an unsupported E-12 is a swap,
+not a gain. Listing with `Grep` — ripgrep honours `.gitignore` and the agent already has it —
+keeps both and was weighed; the call on 2026-08-21 was to leave the working mechanism in place
+rather than touch a walk nobody can re-run cheaply.
+
+Still owed: E-11, E-12, E-14, E-15, E-16, E-17 and E-20b. Under the decision above they are the
+**contract** group, and the spec has to say so — with a named reader who is not the builder —
+instead of listing them as verifiable.
 
 ### The agent's three invariants are enforced by nothing
 
@@ -158,6 +179,16 @@ Fix. Unknown, and the two directions are not equivalent. A `PostToolUse` check c
 outside the declared directory after the fact, which is cheap and late. A `PreToolUse` matcher
 scoped to an agent would be a second blocking rule, and the harness has exactly one on purpose.
 Neither should be picked while writing this down.
+
+🔴 **And a `PreToolUse` matcher may not be reachable at all.** The hook contract's payload carries
+`session_id`, `cwd`, `tool_name` and `tool_input` — nothing that says **which agent** is writing.
+A path rule written today would land on the person's whole session, not on the walker. Whoever
+picks this up starts there: either the event grows a field that identifies the caller, or the
+mechanical form of E-11 does not exist and the scenario belongs in the contract group.
+
+Same for E-16: the report is the subagent's answer, and none of the four events the harness
+registers sees it. Claude Code has `SubagentStop`, which reads the transcript; that would be a
+fifth hook and a change of its own.
 
 ### `tests/generar-testigo.ps1` imports four modules that no longer exist
 

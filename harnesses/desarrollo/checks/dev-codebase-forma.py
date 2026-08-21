@@ -1,13 +1,16 @@
 """Check: la forma del indice del codigo que escribe dev-iniciador-code.
 
 El indice sirve para leer una linea y despues UNA ficha, en vez de cargar el codigo
-entero. Eso se sostiene sobre dos cosas, y las dos se rompen en silencio:
+entero. Eso se sostiene sobre tres cosas, y las tres se rompen en silencio:
 
   - que el indice y las fichas se correspondan en los dos sentidos. Una linea que
     apunta a un archivo que no existe manda a leer la nada; una ficha que nadie
     indexo es invisible, y el trabajo de escribirla ya se pago.
   - que cada ficha tenga sus cuatro secciones. Una ficha sin "De que depende" se lee
     igual de bien y contesta una pregunta menos.
+  - que haya UNA ficha por modulo. El recorrido regenera el indice entero y pisa lo
+    que habia; una copia al lado del original deja dos versiones del mismo modulo y
+    ninguna que se sepa cual manda.
 
 Solo mira lo que se acaba de escribir, y solo si cayo adentro del directorio del
 indice. En cualquier otro proyecto -y en cualquier otra escritura- no hace nada.
@@ -36,6 +39,13 @@ SECCIONES = ["## Qué es", "## Qué expone", "## De qué depende", "## Dónde es
 # Un enlace markdown a una ficha: [`comun-hooks.md`](comun-hooks.md). Se lee el destino
 # del parentesis, que es lo que un lector va a seguir de verdad.
 ENLACE = re.compile(r"\]\(\s*([^)\s]+\.md)\s*\)")
+
+# Un nombre con sufijo de copia: `comun-hooks-1`, `comun-hooks (2)`, `comun-hooks-copia`.
+# El sufijo solo, sin el original al lado, no prueba nada: un modulo puede llamarse
+# `docs-adr-0001` con todo derecho. Por eso el hallazgo pide las DOS fichas.
+DUPLICADA = re.compile(
+    r"^(?P<base>.+?)(?:[-_ ](?:\d+|copia|copy)|\s*\((?:\d+|copia|copy)\))$",
+    re.IGNORECASE)
 
 
 def _ruta_codebase(proyecto, config):
@@ -75,7 +85,7 @@ def verificar(evento, proyecto, config):
 
     if archivo["nombre"].lower() == INDICE:
         return _revisar_indice(archivo, directorio)
-    return _revisar_ficha(archivo)
+    return _revisar_ficha(archivo) + _revisar_duplicada(archivo, directorio)
 
 
 def _revisar_indice(archivo, directorio):
@@ -117,4 +127,37 @@ def _revisar_ficha(archivo):
         "Van con ese titulo exacto y con tilde: son las cuatro preguntas que alguien "
         "le va a hacer a la ficha, y una que falte se lee como si no tuviera respuesta."
         % (archivo["nombre"], len(faltantes), dev.formatear_lista(faltantes))
+    ]
+
+
+def _revisar_duplicada(archivo, directorio):
+    """E-13 — un segundo recorrido regenera la ficha; no deja otra al lado.
+
+    El recorrido es completo o no es: la segunda pasada PISA `comun-hooks.md`. Si
+    aparece `comun-hooks-1.md` con el original todavia ahi, lo que se rompio no es esta
+    ficha sino la promesa de que el indice se puede regenerar entero, y a partir de ahi
+    hay dos versiones del mismo modulo y ninguna se sabe cual manda.
+
+    Se mira el NOMBRE y no el contenido: dos fichas del mismo modulo pueden decir cosas
+    distintas y las dos ser ciertas en el momento en que se escribieron. Lo unico que
+    las distingue de dos modulos parecidos es el sufijo sobre un original que existe.
+    """
+    m = DUPLICADA.match(os.path.splitext(archivo["nombre"])[0])
+    if m is None:
+        return []
+
+    en_disco = _fichas_en_disco(directorio)
+    if en_disco is None:
+        return []
+
+    original = m.group("base") + ".md"
+    hermanas = {n.lower(): n for n in en_disco}
+    if original.lower() not in hermanas:
+        return []
+
+    return [
+        "[codebase] %s parece una copia de %s, que sigue ahi. El recorrido regenera el "
+        "indice entero y pisa la ficha: dos con el mismo modulo dejan al que lee sin "
+        "saber cual manda. Se conserva una sola."
+        % (archivo["nombre"], hermanas[original.lower()])
     ]

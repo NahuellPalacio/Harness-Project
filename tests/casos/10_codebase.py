@@ -30,11 +30,12 @@ def _correr_proceso(payload):
 
 
 def _proyecto(harness=("comun", "desarrollo"), config_extra=None, con_indice=False,
-              ruta_codebase=None):
+              ruta_codebase=None, con_ficha=False):
     """Un proyecto descartable como los deja install.ps1.
 
     `ruta_codebase` es donde se crea el indice cuando `con_indice`; por defecto, el mismo
-    default que resuelve el hook."""
+    default que resuelve el hook. `con_ficha` deja una ficha SIN indice: el estado en que
+    queda un recorrido cortado a la mitad, que es lo que mira E-07."""
     proy = Path(tempfile.gettempdir()) / ("harness-cb-" + uuid.uuid4().hex[:8])
     proy.mkdir(parents=True, exist_ok=True)
 
@@ -46,6 +47,9 @@ def _proyecto(harness=("comun", "desarrollo"), config_extra=None, con_indice=Fal
 
     if con_indice:
         _escribir(proy / (ruta_codebase or "docs/codebase") / "indice.md", "# Indice del codigo\n")
+
+    if con_ficha:
+        _escribir(proy / (ruta_codebase or "docs/codebase") / "comun-hooks.md", "# comun/hooks\n")
 
     return proy
 
@@ -73,6 +77,27 @@ def test_e02_calla_cuando_el_indice_existe(t):
     """E-02 — el aviso desaparece solo. Un aviso permanente se vuelve ruido."""
     ctx = _contexto(_proyecto(con_indice=True))
     t.no_contiene("E-02: ya no lo nombra", AGENTE, ctx)
+
+
+def test_e07_fichas_sin_indice_avisan_que_quedo_a_medias(t):
+    """E-07 — terminado un recorrido existe indice.md; con fichas y sin indice, el
+    recorrido quedo a medias.
+
+    Es la mitad observable del escenario: el hook no ve terminar un recorrido, pero si ve
+    el estado que deja uno cortado. Y no puede ir en PostToolUse: el agente escribe las
+    fichas primero y el indice ultimo, asi que ahi dispararia una vez por ficha, con un
+    presupuesto de ocho hallazgos por corrida."""
+    ctx = _contexto(_proyecto(con_ficha=True))
+    t.contiene("E-07: dice que quedo a medias", "a medias", ctx)
+    t.contiene("E-07: y sigue nombrando al agente", AGENTE, ctx)
+    t.no_contiene("E-07: no manda a arrancarlo de cero", "Sin indice del codigo todavia", ctx)
+
+
+def test_e07b_sin_fichas_y_sin_indice_sigue_siendo_el_primer_recorrido(t):
+    """E-07 — y el estado de siempre no cambio: sin nada escrito, se sugiere arrancar."""
+    ctx = _contexto(_proyecto())
+    t.contiene("E-07b: sugiere el primer recorrido", "Sin indice del codigo todavia", ctx)
+    t.no_contiene("E-07b: y no habla de nada a medias", "a medias", ctx)
 
 
 def test_e03_calla_sin_desarrollo_en_el_lockfile(t):
@@ -245,6 +270,29 @@ def test_e09b_ficha_coja_nombra_las_secciones_que_faltan(t):
     t.igual("E-09: un hallazgo", 1, len(hallazgos))
     t.contiene("E-09: nombra la que falta", "De qué depende", hallazgos[0])
     t.contiene("E-09: y la otra", "Dónde está", hallazgos[0])
+
+
+def test_e13_una_copia_al_lado_del_original_se_reporta(t):
+    """E-13 — un segundo recorrido no duplica fichas. El recorrido regenera el indice
+    entero y pisa lo que habia: `comun-hooks-1.md` con `comun-hooks.md` todavia al lado es
+    exactamente lo que el escenario niega."""
+    hallazgos = _hallazgos(FIXTURE / "docs/codebase-duplicada/comun-hooks-1.md",
+                           ruta_codebase="docs/codebase-duplicada")
+    t.igual("E-13: un hallazgo", 1, len(hallazgos))
+    t.contiene("E-13: nombra la copia", "comun-hooks-1.md", hallazgos[0])
+    t.contiene("E-13: y el original que sigue ahi", "comun-hooks.md", hallazgos[0])
+
+
+def test_e13b_el_sufijo_solo_no_alcanza(t):
+    """E-13 — y un modulo que termina en numero no es copia de nada. `docs-adr-0006` tiene
+    sufijo y no tiene original: sin `docs-adr.md` al lado no hay dos versiones del mismo
+    modulo, y un check que lo reportara igual haria ruido sobre nombres legitimos."""
+    t.igual("E-13: sufijo sin original, silencio", [],
+            _hallazgos(FIXTURE / "docs/codebase-duplicada/docs-adr-0006.md",
+                       ruta_codebase="docs/codebase-duplicada"))
+    t.igual("E-13: y el original no se reporta a si mismo", [],
+            _hallazgos(FIXTURE / "docs/codebase-duplicada/comun-hooks.md",
+                       ruta_codebase="docs/codebase-duplicada"))
 
 
 def test_no_mira_lo_que_cae_fuera_del_directorio(t):

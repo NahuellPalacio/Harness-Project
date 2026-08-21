@@ -178,7 +178,22 @@ después solo la ficha que hace falta.
 ### Lo que queda escrito
 
 - **E-07** — Terminado un recorrido, existe `docs/codebase/indice.md`.
-  · rojo visto: no consta
+  · rojo visto: si
+
+  📌 **Movido el 2026-08-21 del grupo de lectura al de la suite, y con una aclaración que
+  no se recorta.** Lo que la suite comprueba es que el harness **ve** el estado contrario:
+  fichas en el directorio y ningún `indice.md`, que es como queda un recorrido cortado a
+  la mitad. Ahí `SessionStart` deja de sugerir un primer recorrido —mandaría a rehacer lo
+  que ya está escrito— y dice que quedó a medias.
+
+  Que un recorrido **terminado** deje el índice sigue dependiendo de correr al agente, y
+  eso la suite no lo hace. La paridad es con E-08 y E-09: también son propiedades de lo
+  que el agente escribe, verificadas sobre el directorio real sin invocarlo. Quien
+  verifique decide si alcanza; **no lo decide quien lo construyó**.
+
+  El aviso **no puede ir en `PostToolUse`**: el agente escribe las fichas primero y el
+  índice último —paso 5 de su procedimiento—, así que ahí dispararía una vez por ficha,
+  con un presupuesto de ocho hallazgos por corrida. Va donde ya se miraba el índice.
 - **E-08** — Cada línea del índice apunta a un archivo que existe dentro de `docs/codebase/`, y
   cada ficha de `docs/codebase/` figura en una línea del índice. La correspondencia va en los dos
   sentidos.
@@ -225,13 +240,23 @@ después solo la ficha que hace falta.
   agente lista con `git ls-files`, así que lo ignorado nunca entra. Comprobarlo desde un check
   exigiría volver del nombre de la ficha a la ruta del módulo y correr `git check-ignore` en cada
   `PostToolUse` — un subproceso por escritura para verificar algo que no puede fallar sin que
-  falle antes el listado. Se lee en el recorrido real, con E-07 a E-17.
+  falle antes el listado. Se lee en el recorrido real, con los demás del grupo de lectura.
 
 ### Volver a recorrer
 
 - **E-13** — Un segundo recorrido sobre un repositorio sin cambios deja el mismo conjunto de
   nombres de archivo en `docs/codebase/`. No aparecen fichas duplicadas ni con sufijo.
-  · rojo visto: no consta
+  · rojo visto: si
+
+  📌 **Movido el 2026-08-21 al grupo de la suite, con el mismo recorte declarado que E-07.**
+  `dev-codebase-forma.py` reporta una ficha con sufijo de copia —`-1`, ` (2)`, `-copia`—
+  **cuando el original sigue al lado**. El sufijo solo no alcanza: un módulo puede llamarse
+  `docs-adr-0006` con todo derecho, y un check que lo reportara igual haría ruido sobre
+  nombres legítimos. Esa guarda tiene rojo propio: sacándola, `test_e13b` es el único que
+  cae.
+
+  Lo que queda afuera y se dice: esto no impide duplicar, hace que duplicar **no pase en
+  silencio**. Que el segundo recorrido pise en vez de duplicar es del agente.
 - **E-14** — Si una ficha corresponde a un módulo que ya no existe, el recorrido la deja donde está
   y la nombra en su informe. No la borra.
   · rojo visto: no consta
@@ -269,7 +294,7 @@ después solo la ficha que hace falta.
 - **E-20b** — El agente resuelve el mismo default: sin `rutaCodebase`, escribe en `docs/codebase`.
   · rojo visto: no consta
 
-  Va al grupo de lectura y no a la suite, y el motivo es el mismo que el de E-07 a E-17: **el
+  Va al grupo de lectura y no a la suite, y el motivo es el mismo que el del resto de ese grupo: **el
   default del agente es una línea de su contrato, no código.** Se leyó en el recorrido real del
   21-08-2026 —este repositorio no tiene `harness.config.json` y el índice quedó en
   `docs/codebase/`— y esa evidencia está en `recorrido-real.md`. No lo vuelve `sostenido`.
@@ -288,13 +313,24 @@ Por la suite, con un caso por escenario que nombre su id: E-01 a E-06 con payloa
 propósito para probar el `-Update`, con un `finally` que no sobrevive a que maten el proceso.
 Sumarle carga agranda esa superficie sin necesidad.
 
-Por lectura de una persona: E-07 a E-17. Todos dependen de que un agente con modelo recorra un
+Por lectura de una persona: E-11, E-12 y E-14 a E-17. Todos dependen de que un agente con modelo recorra un
 repositorio real, y la suite no invoca modelos —los 334 tests actuales son deterministas y sin
 red—. Se verifican corriendo el agente una vez sobre este mismo repositorio y contrastando la
 salida contra los escenarios.
 
 Lo que sí puede ir a la suite de esos once es la forma de lo escrito: E-08, E-09, E-10 y E-12 son
 comprobables sobre un `docs/codebase/` de fixture, sin invocar a nadie, y ahí conviene que estén.
+
+🔴 **El 2026-08-21 se sumaron E-07 y E-13, y el grupo de lectura pasó a ser E-11, E-12, E-14 a
+E-17 y E-20b.** Los dos son propiedades del directorio —que exista el índice, que no haya dos
+fichas del mismo módulo— y por eso se miran donde ya se miraba: E-07 en `SessionStart`, que
+resuelve la misma ruta desde E-01; E-13 en `dev-codebase-forma.py`, que ya corre sobre cada
+`.md` que cae adentro.
+
+**Los dos entran con su recorte escrito en el escenario.** Comprueban que el harness ve el
+estado malo, no que el agente no lo produzca; eso último sigue necesitando correrlo. Es la
+misma distancia que ya tenían E-08 y E-09, que están `sostenido`. Se declara acá para que
+quien verifique la pondere en vez de tener que descubrirla, que es lo que no pasó con E-20.
 
 🔴 **E-20 no figuraba en ninguno de los dos grupos, y era el único de los 21.** Lo detectó el
 veredicto del 21-08-2026, y no fue casual que sea también el que quedó `sin sustento` **teniendo**
@@ -321,7 +357,7 @@ que da ese número, y conviene anotarlo antes de instalarlo en otro lado.
 **Las cuatro secciones de una ficha pueden estar y no decir nada.** E-09 comprueba que estén, no
 que sirvan. Es el riesgo residual que ADR-0006 ya nombra —*"una spec escrita para pasar el
 check"*— trasladado al artefacto: un agente que completa las cuatro secciones con generalidades
-pasa el escenario y no aporta nada. La defensa es la lectura de E-07 a E-17, y no es mecánica.
+pasa el escenario y no aporta nada. La defensa es la lectura del grupo de lectura, y no es mecánica.
 
 **`dev-iniciador-code` se paga en cada turno.** El nombre y la descripción de un agente ocupan
 contexto siempre, se lo use o no, y este se usa **una vez por proyecto**. Medido el 2026-08-21:

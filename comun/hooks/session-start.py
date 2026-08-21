@@ -29,6 +29,20 @@ def _leer_utf8(ruta):
         return f.read()
 
 
+def _hay_fichas(directorio):
+    """Si hay algun .md que no sea el indice. Un directorio que no existe, o que no se
+    puede listar, es lo mismo que uno vacio: el aviso que sale igual es el de siempre.
+
+    os.listdir SI levanta -a diferencia de os.path.isfile, que devuelve False y sigue-,
+    y ademas de OSError puede tirar ValueError con un byte nulo en la ruta. Las dos se
+    atrapan: esto es una linea de contexto, no una razon para perder el bloque entero."""
+    try:
+        return any(n.lower().endswith(".md") and n.lower() != "indice.md"
+                   for n in os.listdir(directorio))
+    except (OSError, ValueError):
+        return False
+
+
 def _git(proyecto, *args):
     try:
         r = subprocess.run(["git", "-C", proyecto] + list(args),
@@ -140,8 +154,19 @@ def cuerpo(e):
         ruta_codebase = (config or {}).get("rutaCodebase")
         if not isinstance(ruta_codebase, str) or not ruta_codebase.strip():
             ruta_codebase = "docs/codebase"
-        if not os.path.isfile(os.path.join(proyecto, ruta_codebase, "indice.md")):
-            lineas.append("Sin indice del codigo todavia: dev-iniciador-code lo arma en una pasada.")
+        dir_codebase = os.path.join(proyecto, ruta_codebase)
+        if not os.path.isfile(os.path.join(dir_codebase, "indice.md")):
+            # E-07 — fichas sin indice.md es un recorrido que quedo a medias, y por
+            # fuera se ve igual que uno que no empezo nunca. Sugerir "arrancalo" ahi
+            # manda a rehacer lo que ya esta escrito; lo que falta es la ultima parte.
+            # El indice se escribe ULTIMO a proposito, asi que este estado es tambien
+            # el que deja un recorrido cortado a la mitad.
+            if _hay_fichas(dir_codebase):
+                lineas.append("Hay fichas del codigo sin indice.md: el recorrido de "
+                              "dev-iniciador-code quedo a medias y sin el indice no "
+                              "las abre nadie.")
+            else:
+                lineas.append("Sin indice del codigo todavia: dev-iniciador-code lo arma en una pasada.")
 
     if not lineas:
         return
