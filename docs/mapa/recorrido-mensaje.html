@@ -1,0 +1,293 @@
+<!-- Fuente del mapa vivo del harness. Publicado como Artifact en:
+     https://claude.ai/code/artifact/aa48c7fb-c796-4bc8-b485-ca8297276a2f
+
+     Para actualizarlo SIN perder esa URL: editar este archivo y republicarlo
+     pasando esa URL como parametro `url` de la herramienta Artifact.
+     Publicar sin `url` desde otra conversacion crea un artifact NUEVO. -->
+<title>El recorrido de un mensaje</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --papel:#F0F1EF;
+  --sup:#FFFFFF;
+  --sup-2:#E7EAE7;
+  --tinta:#141A19;
+  --tinta-2:#3C4845;
+  --apagado:#5F6D69;
+  --linea:#CBD2CF;
+  --linea-fuerte:#A9B4B0;
+  --acento:#0D6E62;
+  --acento-suave:#DCEBE8;
+  --deny:#A32B22;
+  --deny-suave:#F6E2E0;
+  --ask:#8A5E08;
+  --ask-suave:#F7EDD8;
+  --sombra:0 1px 2px rgba(20,26,25,.05),0 8px 24px -16px rgba(20,26,25,.25);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --papel:#0F1413;--sup:#161C1B;--sup-2:#1E2624;
+    --tinta:#E6EAE8;--tinta-2:#C2CCC9;--apagado:#93A19D;
+    --linea:#2B3533;--linea-fuerte:#41504C;
+    --acento:#45C2B0;--acento-suave:#14312E;
+    --deny:#EC8377;--deny-suave:#3A211E;
+    --ask:#DDAA45;--ask-suave:#332813;
+    --sombra:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --papel:#0F1413;--sup:#161C1B;--sup-2:#1E2624;
+  --tinta:#E6EAE8;--tinta-2:#C2CCC9;--apagado:#93A19D;
+  --linea:#2B3533;--linea-fuerte:#41504C;
+  --acento:#45C2B0;--acento-suave:#14312E;
+  --deny:#EC8377;--deny-suave:#3A211E;
+  --ask:#DDAA45;--ask-suave:#332813;
+  --sombra:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--papel);
+  color:var(--tinta);
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:15px;
+  line-height:1.55;
+  margin:0;
+  padding:0 24px 72px;
+  -webkit-font-smoothing:antialiased;
+}
+.envoltura{max-width:1180px;margin:0 auto}
+
+header{
+  padding:52px 0 24px;
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 28px;
+  border-bottom:2px solid var(--tinta);
+}
+h1{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+  font-size:clamp(1.9rem,4.4vw,2.9rem);
+  line-height:1.02;letter-spacing:-.028em;font-weight:700;
+  margin:0;text-wrap:balance;
+}
+.sub{font-size:.82rem;color:var(--apagado);margin:0;max-width:46ch;line-height:1.5}
+.chips{display:flex;flex-wrap:wrap;gap:7px;width:100%}
+.chip{
+  font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid var(--linea-fuerte);border-radius:2px;
+  padding:3px 8px;color:var(--apagado);background:var(--sup);
+}
+.chip.viva{border-color:var(--acento);color:var(--acento);background:var(--acento-suave)}
+
+.leyenda{
+  display:flex;flex-wrap:wrap;gap:10px 24px;
+  padding:18px 0 20px;
+  font-size:.73rem;color:var(--apagado);letter-spacing:.01em;
+}
+.li{display:flex;align-items:center;gap:8px}
+.sw{width:26px;height:14px;border-radius:2px;flex:none}
+.sw.viva{background:var(--acento-suave);border:1.4px solid var(--acento)}
+.sw.deny{background:var(--deny-suave);border:1.4px solid var(--deny)}
+.sw.ask{background:var(--ask-suave);border:1.4px solid var(--ask)}
+.sw.neutra{background:var(--sup-2);border:1px solid var(--linea-fuerte)}
+.sw.hueca{background:none;border:1px dashed var(--linea-fuerte)}
+
+.lienzo{
+  background:var(--sup);border:1px solid var(--linea);border-radius:4px;
+  padding:22px 18px;overflow-x:auto;box-shadow:var(--sombra);
+}
+.lienzo svg{display:block;width:100%;min-width:900px;height:auto;color:var(--tinta)}
+svg text{font-family:"IBM Plex Mono",monospace;fill:currentColor}
+svg .t-tit{font-family:Archivo,sans-serif;font-weight:600;font-size:13.5px}
+svg .t{font-size:11.5px}
+svg .t-min{font-size:10.2px;fill:var(--apagado)}
+svg .t-eti{font-size:10px;fill:var(--apagado)}
+svg .t-sec{font-size:9.5px;fill:var(--apagado);letter-spacing:.14em}
+svg .caja{fill:var(--sup-2);stroke:var(--linea-fuerte);stroke-width:1}
+svg .caja-viva{fill:var(--acento-suave);stroke:var(--acento);stroke-width:1.5}
+svg .caja-deny{fill:var(--deny-suave);stroke:var(--deny);stroke-width:1.5}
+svg .caja-ask{fill:var(--ask-suave);stroke:var(--ask);stroke-width:1.5}
+svg .caja-hueca{fill:none;stroke:var(--linea-fuerte);stroke-width:1;stroke-dasharray:3 3}
+svg .rombo{fill:var(--sup);stroke:var(--tinta);stroke-width:1.4}
+svg .l{stroke:var(--linea-fuerte);stroke-width:1.4;fill:none}
+svg .l-viva{stroke:var(--acento);stroke-width:1.7;fill:none}
+svg .l-deny{stroke:var(--deny);stroke-width:1.7;fill:none}
+svg .l-ask{stroke:var(--ask);stroke-width:1.5;fill:none}
+svg .l-punt{stroke:var(--linea-fuerte);stroke-width:1.1;fill:none;stroke-dasharray:4 4}
+svg .acento{fill:var(--acento)}
+svg .rojo{fill:var(--deny)}
+svg .ambar{fill:var(--ask)}
+
+footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
+@media (max-width:700px){body{padding:0 14px 56px}header{padding:36px 0 20px}}
+</style>
+
+<div class="envoltura">
+
+<header>
+  <div>
+    <h1>El recorrido de un mensaje</h1>
+  </div>
+  <p class="sub">Qué hace gcba-harness v0.13.0 desde que alguien escribe hasta que Claude contesta.</p>
+  <div class="chips">
+    <span class="chip viva">v0.13.0</span>
+    <span class="chip">4 hooks</span>
+    <span class="chip">1 sola puerta que bloquea</span>
+  </div>
+</header>
+
+<div class="leyenda">
+  <span class="li"><span class="sw viva"></span> el harness habla</span>
+  <span class="li"><span class="sw deny"></span> el harness corta</span>
+  <span class="li"><span class="sw ask"></span> decide la persona</span>
+  <span class="li"><span class="sw neutra"></span> paso del harness</span>
+  <span class="li"><span class="sw hueca"></span> ajeno al harness, o todavía sin escribir</span>
+</div>
+
+<div class="lienzo">
+<svg viewBox="0 0 980 1245" role="img" aria-label="Diagrama de flujo del recorrido de un mensaje del usuario a través de gcba-harness: UserPromptSubmit, la decisión de Claude, la puerta de secretos en PreToolUse, la ejecución de la herramienta, los checks de PostToolUse y el retorno del aviso a Claude">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <text class="t-sec" x="120" y="16">FUERA DEL TURNO</text>
+  <rect class="caja-hueca" x="120" y="24" width="320" height="46" rx="3"/>
+  <text class="t-tit" x="136" y="44">SessionStart</text>
+  <text class="t-min" x="136" y="60">una vez: harness que rige · git · caché · pendientes</text>
+
+  <line class="l" x1="280" y1="70" x2="280" y2="94" marker-end="url(#a)"/>
+
+  <text class="t-sec" x="120" y="88">EL TURNO</text>
+  <rect class="caja-viva" x="120" y="96" width="320" height="46" rx="3"/>
+  <text class="t-tit acento" x="136" y="124">El usuario manda un mensaje</text>
+
+  <line class="l" x1="280" y1="142" x2="280" y2="166" marker-end="url(#a)"/>
+
+  <rect class="caja" x="120" y="168" width="320" height="52" rx="3"/>
+  <text class="t-tit" x="136" y="190">hook UserPromptSubmit</text>
+  <text class="t-min" x="136" y="207">arranca un proceso Python en cada mensaje</text>
+
+  <line class="l" x1="280" y1="220" x2="280" y2="244" marker-end="url(#a)"/>
+
+  <polygon class="rombo" points="280,246 440,282 280,318 120,282"/>
+  <text class="t" x="280" y="279" text-anchor="middle">¿el prompt matchea</text>
+  <text class="t" x="280" y="293" text-anchor="middle">un disparador de skill?</text>
+
+  <line class="l" x1="440" y1="282" x2="526" y2="282" marker-end="url(#a)"/>
+  <text class="t-eti" x="470" y="274">sí</text>
+  <rect class="caja-hueca" x="530" y="258" width="400" height="48" rx="3"/>
+  <text class="t" x="546" y="278">una línea: «esto lo hace hu-escribir»</text>
+  <text class="t-min" x="546" y="295">reservado en el hook, todavía sin escribir</text>
+
+  <line class="l" x1="280" y1="318" x2="280" y2="350" marker-end="url(#a)"/>
+  <text class="t-eti" x="292" y="338">no · silencio, 0 líneas</text>
+
+  <rect class="caja" x="120" y="352" width="320" height="68" rx="3"/>
+  <text class="t-tit" x="136" y="376">Claude lee y decide</text>
+  <text class="t-min" x="136" y="393">CLAUDE.md entero (4 zonas con techo) + skills + prompt</text>
+  <text class="t-min" x="136" y="409">+ lo que le haya llegado del turno anterior</text>
+
+  <line class="l" x1="280" y1="420" x2="280" y2="442" marker-end="url(#a)"/>
+
+  <polygon class="rombo" points="280,444 440,480 280,516 120,480"/>
+  <text class="t" x="280" y="477" text-anchor="middle">¿llama una</text>
+  <text class="t" x="280" y="491" text-anchor="middle">herramienta?</text>
+
+  <path class="l" d="M120,480 L62,480 L62,1183 L114,1183" marker-end="url(#a)"/>
+  <text class="t-eti" x="70" y="470">no</text>
+  <text class="t-eti" x="70" y="1170">fin</text>
+
+  <line class="l" x1="280" y1="516" x2="280" y2="554" marker-end="url(#a)"/>
+  <text class="t-eti" x="292" y="540">sí</text>
+
+  <rect class="caja-deny" x="120" y="556" width="320" height="56" rx="3"/>
+  <text class="t-tit rojo" x="136" y="578">hook PreToolUse</text>
+  <text class="t-min" x="136" y="596">Write · Edit · MultiEdit · NotebookEdit · Bash</text>
+
+  <line class="l-punt" x1="440" y1="584" x2="524" y2="584"/>
+  <text class="t-min" x="530" y="572">Read, Grep, Glob, WebFetch y el resto no</text>
+  <text class="t-min" x="530" y="587">disparan ningún hook. A un Read lo puede</text>
+  <text class="t-min" x="530" y="602">cortar permissions.deny, sin arrancar nada.</text>
+
+  <line class="l" x1="280" y1="612" x2="280" y2="638" marker-end="url(#a)"/>
+
+  <polygon class="rombo" points="280,640 440,676 280,712 120,676"/>
+  <text class="t" x="280" y="673" text-anchor="middle">¿el texto tiene</text>
+  <text class="t" x="280" y="687" text-anchor="middle">forma de secreto?</text>
+
+  <path class="l" d="M440,676 L486,676"/>
+  <path class="l" d="M486,636 L486,720"/>
+  <line class="l" x1="486" y1="636" x2="696" y2="636" marker-end="url(#a)"/>
+  <line class="l" x1="486" y1="720" x2="526" y2="720" marker-end="url(#a)"/>
+
+  <rect class="caja-ask" x="700" y="612" width="230" height="48" rx="3"/>
+  <text class="t-tit ambar" x="714" y="632">ask</text>
+  <text class="t-min" x="748" y="632">confianza media</text>
+  <text class="t-min" x="714" y="649">lo decide la persona</text>
+
+  <rect class="caja-deny" x="530" y="696" width="230" height="48" rx="3"/>
+  <text class="t-tit rojo" x="544" y="716">deny</text>
+  <text class="t-min" x="586" y="716">confianza alta</text>
+  <text class="t-min" x="544" y="733">la llamada no se ejecuta</text>
+
+  <path class="l-ask" d="M815,660 L815,775 L446,775" marker-end="url(#a)"/>
+  <text class="t-eti" x="824" y="700">si acepta</text>
+  <path class="l-ask" d="M930,636 L946,636"/>
+  <text class="t-eti" x="836" y="628">si corta ↴</text>
+  <path class="l-deny" d="M760,720 L946,720"/>
+  <text class="t-eti rojo" x="770" y="712">el motivo dice qué hacer</text>
+
+  <line class="l" x1="280" y1="712" x2="280" y2="750" marker-end="url(#a)"/>
+  <text class="t-eti" x="292" y="736">no, o matchea un patrón de ignorar</text>
+
+  <rect class="caja-hueca" x="120" y="752" width="320" height="46" rx="3"/>
+  <text class="t-tit" x="136" y="780">la herramienta escribe o ejecuta</text>
+
+  <line class="l" x1="280" y1="798" x2="280" y2="822" marker-end="url(#a)"/>
+
+  <rect class="caja-viva" x="120" y="824" width="320" height="52" rx="3"/>
+  <text class="t-tit acento" x="136" y="846">hook PostToolUse</text>
+  <text class="t-min" x="136" y="863">corre los checks de comun y de cada harness</text>
+
+  <line class="l-punt" x1="440" y1="850" x2="524" y2="850"/>
+  <rect class="caja-hueca" x="530" y="818" width="400" height="66" rx="3"/>
+  <text class="t-min" x="544" y="838">os.walk(checks/) — cualquier .py del directorio</text>
+  <text class="t-min" x="544" y="854">orden alfabético · verificar(evento, proyecto, config)</text>
+  <text class="t-min" x="544" y="870">el que revienta se saltea en silencio · tope: 8</text>
+
+  <line class="l" x1="280" y1="876" x2="280" y2="902" marker-end="url(#a)"/>
+
+  <polygon class="rombo" points="280,904 440,940 280,976 120,940"/>
+  <text class="t" x="280" y="937" text-anchor="middle">¿algún check</text>
+  <text class="t" x="280" y="951" text-anchor="middle">devolvió algo?</text>
+
+  <line class="l" x1="440" y1="940" x2="526" y2="940" marker-end="url(#a)"/>
+  <text class="t-eti" x="470" y="932">no</text>
+  <rect class="caja" x="530" y="918" width="400" height="44" rx="3"/>
+  <text class="t" x="546" y="945">silencio, exit 0 — costo en contexto: cero</text>
+
+  <line class="l" x1="280" y1="976" x2="280" y2="1014" marker-end="url(#a)"/>
+  <text class="t-eti" x="292" y="1000">sí</text>
+
+  <rect class="caja-viva" x="120" y="1016" width="320" height="54" rx="3"/>
+  <text class="t-tit acento" x="136" y="1040">additionalContext</text>
+  <text class="t-min" x="136" y="1057">hasta 8 hallazgos, adentro del contexto de Claude</text>
+
+  <path class="l-viva" d="M440,1043 L946,1043 L946,385 L446,385" marker-end="url(#a)"/>
+  <text class="t-eti acento" x="930" y="376" text-anchor="end">vuelve a Claude — corrige en el turno siguiente</text>
+
+  <rect class="caja-viva" x="120" y="1160" width="440" height="46" rx="3"/>
+  <text class="t-tit acento" x="136" y="1180">Claude responde — fin del turno</text>
+  <text class="t-min" x="136" y="1196">el mensaje siguiente vuelve a empezar arriba</text>
+</svg>
+</div>
+
+<footer>
+  <p>La asimetría del medio es la decisión de diseño: <strong>bloquea en PreToolUse, habla en PostToolUse</strong>. Un aviso emitido antes de la herramienta se pierde en la transcripción y el modelo no lo ve.</p>
+</footer>
+
+</div>
