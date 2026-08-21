@@ -76,6 +76,23 @@ leaving a cap written down that nothing checks.
 The hook exists, it is registered and it does nothing. Its intended job was a single routing line
 when the prompt matches the triggers of an installed skill.
 
+### `tests/generar-testigo.ps1` imports four modules that no longer exist
+
+Found on 2026-08-21 by the first run of `dev-iniciador-code` over this repo — the first thing the
+index paid for. Lines 30-33 and 262 `Import-Module` `Hook.psm1`, `Secretos.psm1`, `Reglas.psm1`
+and `Zonas.psm1` from `comun/hooks/lib/`. All four stopped existing when the hooks were ported to
+Python in 0.13.0: `ls comun/hooks/lib/*.psm1` returns nothing. The script cannot run.
+
+It may well be deliberate — the file's own header says re-running it after the port makes no
+sense, since its whole job was to capture the PowerShell verdicts that the Python implementation
+is compared against, and those are already frozen in `tests/fixtures/paridad-*.json`. But nothing
+in the file says it is retired, and a script that fails on its first line reads as broken, not as
+finished.
+
+Fix. Either delete it — the witnesses it generated are committed and it has no second use — or
+leave a header saying it is a historical artifact of the 0.13.0 port and is not expected to run.
+What is not defensible is a script in `tests/` that looks runnable and is not.
+
 ### `aporta` in every manifest is decorative — nothing reads it
 
 Found on 2026-08-21 while building `iniciador-code`. A mutation removed `"agents": "agents"` from
