@@ -1,0 +1,749 @@
+<!-- Mapa largo: composicion, instalacion, runtime, secretos. Publicado en:
+     https://claude.ai/code/artifact/e11c6e31-14c7-4627-aae9-0c9fa03bfce1
+     Mismas reglas de republicacion que recorrido-mensaje.html
+     Favicon: 🗺️ — va igual en cada republicacion, la gente ubica la pestana por el icono. -->
+<title>Cómo actúa gcba-harness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root{
+  --papel:#F0F1EF;
+  --sup:#FFFFFF;
+  --sup-2:#E7EAE7;
+  --tinta:#141A19;
+  --tinta-2:#3C4845;
+  --apagado:#5F6D69;
+  --linea:#CBD2CF;
+  --linea-fuerte:#A9B4B0;
+  --acento:#0D6E62;
+  --acento-suave:#DCEBE8;
+  --deny:#A32B22;
+  --deny-suave:#F6E2E0;
+  --ask:#8A5E08;
+  --ask-suave:#F7EDD8;
+  --sombra:0 1px 2px rgba(20,26,25,.05),0 8px 24px -16px rgba(20,26,25,.25);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --papel:#0F1413;
+    --sup:#161C1B;
+    --sup-2:#1E2624;
+    --tinta:#E6EAE8;
+    --tinta-2:#C2CCC9;
+    --apagado:#93A19D;
+    --linea:#2B3533;
+    --linea-fuerte:#41504C;
+    --acento:#45C2B0;
+    --acento-suave:#14312E;
+    --deny:#EC8377;
+    --deny-suave:#3A211E;
+    --ask:#DDAA45;
+    --ask-suave:#332813;
+    --sombra:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --papel:#0F1413;
+  --sup:#161C1B;
+  --sup-2:#1E2624;
+  --tinta:#E6EAE8;
+  --tinta-2:#C2CCC9;
+  --apagado:#93A19D;
+  --linea:#2B3533;
+  --linea-fuerte:#41504C;
+  --acento:#45C2B0;
+  --acento-suave:#14312E;
+  --deny:#EC8377;
+  --deny-suave:#3A211E;
+  --ask:#DDAA45;
+  --ask-suave:#332813;
+  --sombra:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--papel);
+  color:var(--tinta);
+  font-family:"Source Serif 4",Georgia,serif;
+  font-size:17px;
+  line-height:1.62;
+  margin:0;
+  padding:0 24px 96px;
+  -webkit-font-smoothing:antialiased;
+}
+.envoltura{max-width:1120px;margin:0 auto}
+.prosa{max-width:70ch}
+
+h1,h2,h3,h4{font-family:Archivo,"Helvetica Neue",Arial,sans-serif}
+.mono,code,.tag,.chip,.eyebrow,.ref,th{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+
+header.masthead{
+  padding:64px 0 40px;
+  border-bottom:2px solid var(--tinta);
+  display:flex;flex-direction:column;gap:20px;
+}
+h1{
+  font-size:clamp(2.4rem,6vw,3.9rem);
+  line-height:1.02;
+  letter-spacing:-.028em;
+  font-weight:700;
+  margin:0;
+  text-wrap:balance;
+}
+.bajada{font-size:1.18rem;color:var(--tinta-2);max-width:64ch;margin:0}
+.fila-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{
+  font-size:.72rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid var(--linea-fuerte);border-radius:2px;
+  padding:4px 9px;color:var(--apagado);background:var(--sup);
+}
+.chip.viva{border-color:var(--acento);color:var(--acento);background:var(--acento-suave)}
+
+section{padding:56px 0 8px;border-bottom:1px solid var(--linea)}
+section:last-of-type{border-bottom:none}
+.eyebrow{
+  font-size:.7rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--acento);margin:0 0 10px;display:block;
+}
+h2{font-size:clamp(1.5rem,3vw,2.05rem);line-height:1.14;letter-spacing:-.02em;font-weight:600;margin:0 0 14px;text-wrap:balance}
+h3{font-size:1.06rem;letter-spacing:-.005em;font-weight:600;margin:34px 0 8px}
+p{margin:0 0 16px}
+strong{font-weight:600}
+code{
+  font-size:.845em;background:var(--sup-2);border:1px solid var(--linea);
+  border-radius:3px;padding:1px 5px;color:var(--tinta);white-space:nowrap;
+}
+a{color:var(--acento)}
+a:focus-visible{outline:2px solid var(--acento);outline-offset:3px;border-radius:2px}
+
+figure{margin:32px 0 8px;display:flex;flex-direction:column;gap:12px}
+.lienzo{
+  background:var(--sup);border:1px solid var(--linea);border-radius:4px;
+  padding:20px;overflow-x:auto;box-shadow:var(--sombra);
+}
+.lienzo svg{display:block;width:100%;min-width:660px;height:auto;color:var(--tinta)}
+figcaption{font-size:.85rem;color:var(--apagado);line-height:1.55;max-width:78ch}
+figcaption b{color:var(--tinta-2);font-weight:600}
+svg text{font-family:"IBM Plex Mono",monospace;fill:currentColor}
+svg .t-tit{font-family:Archivo,sans-serif;font-weight:600;font-size:13px}
+svg .t{font-size:11.5px}
+svg .t-min{font-size:10px;fill:var(--apagado)}
+svg .t-eti{font-size:10px;fill:var(--apagado)}
+svg .caja{fill:var(--sup-2);stroke:var(--linea-fuerte);stroke-width:1}
+svg .caja-viva{fill:var(--acento-suave);stroke:var(--acento);stroke-width:1.4}
+svg .caja-deny{fill:var(--deny-suave);stroke:var(--deny);stroke-width:1.4}
+svg .caja-ask{fill:var(--ask-suave);stroke:var(--ask);stroke-width:1.4}
+svg .caja-hueca{fill:none;stroke:var(--linea-fuerte);stroke-width:1;stroke-dasharray:3 3}
+svg .l{stroke:var(--linea-fuerte);stroke-width:1.3;fill:none}
+svg .l-viva{stroke:var(--acento);stroke-width:1.6;fill:none}
+svg .l-deny{stroke:var(--deny);stroke-width:1.6;fill:none}
+svg .l-punt{stroke:var(--linea-fuerte);stroke-width:1.2;fill:none;stroke-dasharray:4 4}
+svg .acento{fill:var(--acento)}
+svg .rojo{fill:var(--deny)}
+svg .ambar{fill:var(--ask)}
+
+.tabla-wrap{overflow-x:auto;margin:26px 0 8px;border:1px solid var(--linea);border-radius:4px;background:var(--sup)}
+table{border-collapse:collapse;width:100%;min-width:580px;font-size:.9rem}
+th{
+  font-size:.68rem;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--apagado);
+  text-align:left;padding:11px 14px;border-bottom:1px solid var(--linea-fuerte);
+  background:var(--sup-2);white-space:nowrap;
+}
+td{padding:11px 14px;border-bottom:1px solid var(--linea);vertical-align:top;color:var(--tinta-2)}
+tr:last-child td{border-bottom:none}
+td:first-child{color:var(--tinta)}
+
+.tag{
+  display:inline-block;font-size:.68rem;font-weight:500;letter-spacing:.05em;
+  text-transform:uppercase;padding:2px 7px;border-radius:2px;border:1px solid;white-space:nowrap;
+}
+.tag.avisa{color:var(--acento);border-color:var(--acento);background:var(--acento-suave)}
+.tag.bloquea{color:var(--deny);border-color:var(--deny);background:var(--deny-suave)}
+.tag.pregunta{color:var(--ask);border-color:var(--ask);background:var(--ask-suave)}
+.tag.silencio{color:var(--apagado);border-color:var(--linea-fuerte);background:var(--sup-2)}
+
+.pie-tabla{font-size:.85rem;color:var(--apagado);margin-top:12px;max-width:74ch}
+
+.nota{
+  border-left:3px solid var(--acento);background:var(--sup);
+  padding:16px 20px;margin:26px 0 8px;border-radius:0 4px 4px 0;
+  box-shadow:var(--sombra);max-width:78ch;
+}
+.nota p:last-child{margin-bottom:0}
+.nota .eyebrow{margin-bottom:6px}
+
+.grilla-gap{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:16px;margin:26px 0 8px}
+.gap{
+  background:var(--sup);border:1px solid var(--linea);border-radius:4px;
+  padding:16px 18px;display:flex;flex-direction:column;gap:7px;box-shadow:var(--sombra);
+}
+.gap h4{font-size:.95rem;font-weight:600;margin:0;letter-spacing:-.005em;line-height:1.3}
+.gap p{font-size:.88rem;color:var(--apagado);margin:0;line-height:1.5}
+.gap .ref{font-size:.72rem;color:var(--apagado);letter-spacing:.01em;margin-top:auto;padding-top:4px}
+
+footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-size:.85rem;color:var(--apagado)}
+@media (max-width:700px){
+  body{padding:0 18px 64px;font-size:16px}
+  header.masthead{padding:44px 0 32px}
+  section{padding:44px 0 8px}
+}
+</style>
+
+<div class="envoltura">
+
+<header class="masthead">
+  <div class="fila-chips">
+    <span class="chip viva">v0.13.0</span>
+    <span class="chip">comun + 2 harness</span>
+    <span class="chip">4 hooks · Python 3.9+</span>
+    <span class="chip">334 tests</span>
+  </div>
+  <h1>Cómo actúa gcba-harness</h1>
+  <p class="bajada">El recorrido completo, de los manifiestos del repo hasta el aviso que Claude lee en el turno siguiente. Seis mapas: qué se compone, cómo se instala, qué pasa en cada turno, qué corre adentro de <code>PostToolUse</code> y dónde está la única puerta que bloquea.</p>
+</header>
+
+<section>
+  <span class="eyebrow">La tesis</span>
+  <h2>Tres capas, y el <code>CLAUDE.md</code> es solo la primera</h2>
+  <div class="prosa">
+    <p>El harness reparte el trabajo entre lo que el agente tiene que <strong>saber</strong>, lo que lo <strong>obliga</strong> a hacerlo y lo que <strong>comprueba</strong> que lo hizo. Cada capa vive en un artefacto distinto y falla distinto: si se cae la de saber, el agente improvisa; si se cae la de comprobar, nadie se entera.</p>
+    <p>La política de fondo se ve en todos los mapas de abajo: <strong>avisa, casi nunca bloquea</strong>. La única excepción son los secretos.</p>
+    <p><strong>Lo que no está en ningún mapa tampoco es un olvido.</strong> No aparece ninguna herramienta que haya que instalar —ni un índice del código, ni un vault, ni un servidor MCP— porque el harness puede aprovechar lo externo y no puede depender de ello: no lo instala, no lo asume presente y sigue funcionando sin ello. Es lo que lo deja instalable en cualquier máquina del organismo sin instalar nada más. La regla y sus dos casos están en <code>docs/adr/0008-lo-externo-nunca-es-requisito.md</code>.</p>
+  </div>
+
+  <figure>
+    <div class="lienzo">
+      <svg viewBox="0 0 900 244" role="img" aria-label="Las tres capas del harness: saber, obligar y comprobar, con el artefacto que implementa cada una y cuándo actúa">
+        <defs>
+          <marker id="f1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <text class="t-min" x="20" y="20">CAPA</text>
+        <text class="t-min" x="196" y="20">LO IMPLEMENTA</text>
+        <text class="t-min" x="566" y="20">CUÁNDO ACTÚA</text>
+        <line class="l" x1="20" y1="28" x2="880" y2="28"/>
+
+        <rect class="caja" x="20" y="44" width="150" height="52" rx="3"/>
+        <text class="t-tit" x="34" y="68">SABER</text>
+        <text class="t-min" x="34" y="84">contexto cargado</text>
+        <rect class="caja" x="196" y="44" width="330" height="52" rx="3"/>
+        <text class="t" x="210" y="64">bloque marcado en CLAUDE.md + zonas</text>
+        <text class="t" x="210" y="82">.claude/skills/ · .claude/agents/</text>
+        <line class="l" x1="526" y1="70" x2="558" y2="70" marker-end="url(#f1a)"/>
+        <text class="t" x="566" y="74">al abrir la sesión, y al invocar una skill</text>
+
+        <rect class="caja-deny" x="20" y="110" width="150" height="52" rx="3"/>
+        <text class="t-tit rojo" x="34" y="134">OBLIGAR</text>
+        <text class="t-min" x="34" y="150">lo único que traba</text>
+        <rect class="caja" x="196" y="110" width="330" height="52" rx="3"/>
+        <text class="t" x="210" y="130">permissions.deny → impide LEER</text>
+        <text class="t" x="210" y="148">hook PreToolUse → impide ESCRIBIR</text>
+        <line class="l-deny" x1="526" y1="136" x2="558" y2="136" marker-end="url(#f1a)"/>
+        <text class="t" x="566" y="140">antes de cada Write, Edit o Bash</text>
+
+        <rect class="caja-viva" x="20" y="176" width="150" height="52" rx="3"/>
+        <text class="t-tit acento" x="34" y="200">COMPROBAR</text>
+        <text class="t-min" x="34" y="216">avisa, no traba</text>
+        <rect class="caja" x="196" y="176" width="330" height="52" rx="3"/>
+        <text class="t" x="210" y="196">checks de comun y de cada harness</text>
+        <text class="t" x="210" y="214">se entregan como additionalContext</text>
+        <line class="l-viva" x1="526" y1="202" x2="558" y2="202" marker-end="url(#f1a)"/>
+        <text class="t" x="566" y="206">después de cada escritura</text>
+      </svg>
+    </div>
+    <figcaption><b>Figura 1.</b> Las tres capas no comparten mecanismo: una ocupa ventana de contexto, otra corta la llamada a la herramienta, la tercera escribe en el contexto después del hecho. Solo la del medio puede decir que no.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <span class="eyebrow">Composición</span>
+  <h2>Qué aporta cada harness y dónde aterriza</h2>
+  <div class="prosa">
+    <p>El corte es por <strong>tipo de trabajo</strong>, no por proyecto. <code>comun/</code> se instala siempre; encima va uno o los dos harness. Cada manifiesto declara un <strong>prefijo de namespace obligatorio</strong> —<code>hu</code>, <code>dev</code>— y el instalador aborta si dos coinciden: por eso componer siempre es seguro, y por eso agregar un tercero no exige registrar un id en ningún lado.</p>
+  </div>
+
+  <figure>
+    <div class="lienzo">
+      <svg viewBox="0 0 900 434" role="img" aria-label="Los manifiestos de comun, analisis y desarrollo convergen en un único árbol dentro del proyecto, separado por namespace">
+        <defs>
+          <marker id="f2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <text class="t-min" x="20" y="18">EN EL REPO — harnesses/&lt;id&gt;/manifest.json</text>
+
+        <rect class="caja-viva" x="20" y="30" width="266" height="88" rx="3"/>
+        <text class="t-tit acento" x="34" y="52">comun</text>
+        <text class="t-min" x="102" y="52">prefijo: (ninguno)</text>
+        <text class="t" x="34" y="72">hooks · reglas · checks · bin</text>
+        <text class="t" x="34" y="90">skills · agents · bloque CLAUDE.md</text>
+        <text class="t-min" x="34" y="108">se instala siempre</text>
+
+        <rect class="caja" x="306" y="30" width="266" height="88" rx="3"/>
+        <text class="t-tit" x="320" y="52">analisis</text>
+        <text class="t-min" x="392" y="52">prefijo: hu</text>
+        <text class="t" x="320" y="72">skills · agents · checks</text>
+        <text class="t-min" x="320" y="90">HU, maquetas, normativa funcional</text>
+        <text class="t-min" x="320" y="108">1 skill · 2 agentes · 0 checks</text>
+
+        <rect class="caja" x="592" y="30" width="288" height="88" rx="3"/>
+        <text class="t-tit" x="606" y="52">desarrollo</text>
+        <text class="t-min" x="692" y="52">prefijo: dev</text>
+        <text class="t" x="606" y="72">skills · agents · checks</text>
+        <text class="t-min" x="606" y="90">ES0901, ES0903, Obelisco, WCAG 2.2 AA</text>
+        <text class="t-min" x="606" y="108">8 skills · 1 agente · 4 checks</text>
+
+        <path class="l" d="M153,118 L153,148 L438,148 L438,178" marker-end="url(#f2a)"/>
+        <path class="l" d="M439,118 L439,148"/>
+        <path class="l" d="M736,118 L736,148 L440,148"/>
+        <text class="t-eti" x="452" y="144">prefijos disjuntos: se verifica antes de copiar nada</text>
+
+        <text class="t-min" x="20" y="200">EN EL PROYECTO — regenerable y gitignoreado</text>
+        <rect class="caja-hueca" x="20" y="210" width="860" height="152" rx="3"/>
+
+        <text class="t" x="38" y="234">.claude/harness/hooks/</text>
+        <text class="t-min" x="266" y="234">4 hooks .py — solo los aporta comun</text>
+        <text class="t" x="38" y="256">.claude/harness/checks/</text>
+        <text class="t-min" x="266" y="256">claude-md-zonas.py</text>
+        <text class="t-min" x="430" y="256">← comun, en la raíz</text>
+        <text class="t" x="54" y="278">checks/analisis/</text>
+        <text class="t-min" x="266" y="278">(vacío)</text>
+        <text class="t" x="54" y="300">checks/desarrollo/</text>
+        <text class="t-min" x="266" y="300">dev-api-rutas · dev-dependencias · dev-accesibilidad-html · dev-infra-en-codigo</text>
+        <text class="t" x="38" y="322">.claude/skills/ y .claude/agents/</text>
+        <text class="t-min" x="266" y="322">todos juntos, sin subdirectorio: el prefijo es lo que los separa</text>
+        <text class="t" x="38" y="344">.claude/harness.lock.json</text>
+        <text class="t-min" x="266" y="344">qué versión, qué archivos, SHA256 de cada uno</text>
+
+        <line class="l" x1="450" y1="362" x2="450" y2="388" marker-end="url(#f2a)"/>
+        <rect class="caja" x="196" y="388" width="508" height="34" rx="3"/>
+        <text class="t" x="212" y="410">CLAUDE.md — bloque marcado: comun + un bloque por harness instalado</text>
+        <text class="t-min" x="716" y="410">se versiona; el resto no se toca</text>
+      </svg>
+    </div>
+    <figcaption><b>Figura 2.</b> Los checks de cada harness aterrizan en su propio subdirectorio, pero <code>reglas.py</code> recorre el árbol entero con <code>os.walk</code>: para el motor son una sola lista ordenada alfabéticamente. La invariante que ordena todo el diseño está en el corte entre las dos mitades — <b><code>.claude/</code> es 100% regenerable, <code>CLAUDE.md</code> no</b>.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <span class="eyebrow">Instalación</span>
+  <h2>Ocho pasos, dos puntos de vuelta atrás</h2>
+  <div class="prosa">
+    <p>Instalar es <strong>aditivo</strong>: si el proyecto ya tenía <code>analisis</code> y llega su primer código, agregar <code>desarrollo</code> conserva lo anterior y lo anuncia. El conjunto se ordena canónicamente —no por orden de instalación— para que llegar al mismo resultado por dos caminos produzca el mismo archivo y no un diff que no corresponde a ningún cambio real.</p>
+  </div>
+
+  <figure>
+    <div class="lienzo">
+      <svg viewBox="0 0 900 570" role="img" aria-label="Los ocho pasos del instalador, con el rollback byte a byte del CLAUDE.md y la reversión total si los hooks no responden">
+        <defs>
+          <marker id="f3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <line class="l" x1="46" y1="30" x2="46" y2="474"/>
+
+        <circle class="caja-viva" cx="46" cy="42" r="12"/>
+        <text class="t acento" x="42" y="46">1</text>
+        <text class="t-tit" x="78" y="38">Precondiciones</text>
+        <text class="t-min" x="78" y="55">Claude Code ≥ 2.1.0, Python ≥ 3.9, git. Se aborta, no se repara.</text>
+
+        <circle class="caja" cx="46" cy="98" r="12"/>
+        <text class="t" x="42" y="102">2</text>
+        <text class="t-tit" x="78" y="94">Resolver el conjunto</text>
+        <text class="t-min" x="78" y="111">hereda lo instalado del lockfile previo · ordena canónicamente · exige prefijos disjuntos</text>
+
+        <circle class="caja" cx="46" cy="154" r="12"/>
+        <text class="t" x="42" y="158">3</text>
+        <text class="t-tit" x="78" y="150">Copiar el árbol</text>
+        <text class="t-min" x="78" y="167">todo lo que se pisa va antes a .claude/.harness-backup/&lt;sello&gt;/</text>
+
+        <circle class="caja" cx="46" cy="210" r="12"/>
+        <text class="t" x="42" y="214">4</text>
+        <text class="t-tit" x="78" y="206">Lanzadores y settings.json</text>
+        <text class="t-min" x="78" y="223">run-hook.cmd fija el python.exe real de ESTA máquina; run-hook.sh llama a python3 y es genérico</text>
+
+        <circle class="caja" cx="46" cy="266" r="12"/>
+        <text class="t" x="42" y="270">5</text>
+        <text class="t-tit" x="78" y="262">harness.config.json</text>
+        <text class="t-min" x="78" y="279">solo si no existe. Una vez creado no se toca jamás, ni en -Update</text>
+
+        <circle class="caja" cx="46" cy="322" r="12"/>
+        <text class="t" x="42" y="326">6</text>
+        <text class="t-tit" x="78" y="318">Bloques en CLAUDE.md y .gitignore</text>
+        <text class="t-min" x="78" y="335">bloque marcado + zonas vacías si faltan. Solo se toca lo que está entre marcas</text>
+
+        <circle class="caja" cx="46" cy="378" r="12"/>
+        <text class="t" x="42" y="382">7</text>
+        <text class="t-tit" x="78" y="374">Lockfile</text>
+        <text class="t-min" x="78" y="391">inventario con SHA256: es lo que hace posible -Doctor y -Uninstall sin dejar rastro</text>
+
+        <circle class="caja-viva" cx="46" cy="434" r="12"/>
+        <text class="t acento" x="42" y="438">8</text>
+        <text class="t-tit" x="78" y="430">Verificar los cuatro hooks</text>
+        <text class="t-min" x="78" y="447">se les manda un payload real y se mira que respondan</text>
+
+        <path class="l-deny" d="M700,330 L800,330 L800,268" marker-end="url(#f3a)"/>
+        <text class="t rojo" x="640" y="318">si zonas.py falla acá</text>
+        <text class="t-min" x="640" y="352">se restauran los bytes exactos</text>
+        <text class="t-min" x="640" y="366">del CLAUDE.md previo</text>
+
+        <path class="l-deny" d="M46,474 L46,500 L432,500" marker-end="url(#f3a)"/>
+        <rect class="caja-deny" x="432" y="482" width="454" height="36" rx="3"/>
+        <text class="t rojo" x="448" y="505">si un hook no responde → -Uninstall silencioso y la instalación falla</text>
+
+        <rect class="caja-viva" x="78" y="532" width="330" height="30" rx="3"/>
+        <text class="t acento" x="94" y="552">todo verde → el harness rige en ese proyecto</text>
+        <text class="t-min" x="432" y="552">un hook roto es peor que ningún hook: falla en silencio</text>
+      </svg>
+    </div>
+    <figcaption><b>Figura 3.</b> Los dos puntos rojos son la misma idea aplicada dos veces: <b>no existe un estado a medias</b>. Un <code>CLAUDE.md</code> con el bloque puesto y sin sus zonas no está corrupto, pero tampoco intacto — y «casi intacto» no se distingue de «instalación terminada» con solo mirarlo.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <span class="eyebrow">Runtime</span>
+  <h2>El turno de una sesión</h2>
+  <div class="prosa">
+    <p>Este es el mapa central. Los cuatro hooks son infraestructura y no cambian; los checks son N y son reglas. Cada evento tiene un presupuesto de salida distinto porque cada uno se paga con una frecuencia distinta: <code>SessionStart</code> se paga una vez pero ocupa ventana todo el rato, <code>PreToolUse</code> arranca un proceso antes de cada llamada.</p>
+  </div>
+
+  <figure>
+    <div class="lienzo">
+      <svg viewBox="0 0 900 420" role="img" aria-label="Recorrido de un turno: SessionStart una vez, UserPromptSubmit en cada mensaje, PreToolUse y PostToolUse alrededor de cada escritura, y el aviso que vuelve al turno siguiente">
+        <defs>
+          <marker id="f4a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <rect class="caja-viva" x="20" y="40" width="152" height="60" rx="3"/>
+        <text class="t-tit acento" x="32" y="62">SessionStart</text>
+        <text class="t-min" x="32" y="79">matcher: startup |</text>
+        <text class="t-min" x="32" y="92">resume | clear</text>
+
+        <line class="l" x1="172" y1="70" x2="210" y2="70" marker-end="url(#f4a)"/>
+
+        <rect class="caja" x="210" y="40" width="158" height="60" rx="3"/>
+        <text class="t-tit" x="222" y="62">UserPromptSubmit</text>
+        <text class="t-min" x="222" y="79">sin matcher: corre en</text>
+        <text class="t-min" x="222" y="92">cada mensaje</text>
+
+        <line class="l" x1="368" y1="70" x2="406" y2="70" marker-end="url(#f4a)"/>
+
+        <rect class="caja-hueca" x="406" y="40" width="150" height="60" rx="3"/>
+        <text class="t-tit" x="418" y="66">Claude decide</text>
+        <text class="t-min" x="418" y="85">y llama una herramienta</text>
+
+        <path class="l" d="M556,70 L592,70 L592,142 L20,142 L20,176" marker-end="url(#f4a)"/>
+
+        <rect class="caja-deny" x="20" y="176" width="176" height="60" rx="3"/>
+        <text class="t-tit rojo" x="32" y="198">PreToolUse</text>
+        <text class="t-min" x="32" y="215">matcher: Write | Edit |</text>
+        <text class="t-min" x="32" y="228">MultiEdit | NotebookEdit | Bash</text>
+
+        <line class="l" x1="196" y1="206" x2="234" y2="206" marker-end="url(#f4a)"/>
+
+        <rect class="caja-hueca" x="234" y="176" width="140" height="60" rx="3"/>
+        <text class="t-tit" x="246" y="202">la herramienta</text>
+        <text class="t-min" x="246" y="221">escribe o corre</text>
+
+        <line class="l" x1="374" y1="206" x2="412" y2="206" marker-end="url(#f4a)"/>
+
+        <rect class="caja-viva" x="412" y="176" width="152" height="60" rx="3"/>
+        <text class="t-tit acento" x="424" y="198">PostToolUse</text>
+        <text class="t-min" x="424" y="215">mismo matcher que</text>
+        <text class="t-min" x="424" y="228">PreToolUse</text>
+
+        <path class="l-viva" d="M564,206 L616,206 L616,118 L482,118 L482,100" marker-end="url(#f4a)"/>
+        <text class="t-eti acento" x="624" y="162">el aviso vuelve al</text>
+        <text class="t-eti acento" x="624" y="176">turno siguiente</text>
+
+        <line class="l" x1="20" y1="262" x2="880" y2="262"/>
+        <text class="t-min" x="20" y="282">QUÉ SALE DE CADA UNO</text>
+
+        <text class="t acento" x="20" y="310">estado de la sesión</text>
+        <text class="t-min" x="20" y="328">usuario y harness que rige, rama y</text>
+        <text class="t-min" x="20" y="342">estado de git, últimos 3 commits,</text>
+        <text class="t-min" x="20" y="356">zona caché del CLAUDE.md,</text>
+        <text class="t-min" x="20" y="370">definiciones pendientes abiertas</text>
+        <text class="t-min" x="20" y="394">techo: 12 líneas</text>
+
+        <text class="t" x="252" y="310">nada</text>
+        <text class="t-min" x="252" y="328">el hook existe y corre, pero el</text>
+        <text class="t-min" x="252" y="342">ruteo por disparadores de skill</text>
+        <text class="t-min" x="252" y="356">todavía no está escrito</text>
+        <text class="t-min" x="252" y="394">techo: 0 o 1 línea</text>
+
+        <text class="t rojo" x="466" y="310">deny o ask</text>
+        <text class="t-min" x="466" y="328">solo secretos. Nada más entra acá:</text>
+        <text class="t-min" x="466" y="342">avisar desde PreToolUse no sirve —</text>
+        <text class="t-min" x="466" y="356">en éxito la salida va a la</text>
+        <text class="t-min" x="466" y="370">transcripción y el modelo no la ve</text>
+
+        <text class="t acento" x="686" y="310">additionalContext</text>
+        <text class="t-min" x="686" y="328">los hallazgos de todos los checks.</text>
+        <text class="t-min" x="686" y="342">Es el ÚNICO lugar donde el</text>
+        <text class="t-min" x="686" y="356">harness avisa de verdad</text>
+        <text class="t-min" x="686" y="394">techo: 8 hallazgos</text>
+      </svg>
+    </div>
+    <figcaption><b>Figura 4.</b> La asimetría es deliberada y es la decisión más importante del runtime: <b>el harness bloquea en un evento y habla en otro</b>. Un aviso emitido desde <code>PreToolUse</code> se pierde en la transcripción sin que nadie lo note, así que todos los avisos se entregan después del hecho y Claude corrige en el turno siguiente.</figcaption>
+  </figure>
+
+  <div class="tabla-wrap">
+    <table>
+      <thead>
+        <tr><th>Evento</th><th>Cuándo</th><th>Qué hace hoy</th><th>Salida</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>SessionStart</code></td>
+          <td>abrir, retomar o limpiar</td>
+          <td>reconstruye «en qué quedamos» leyendo solo lo que alguien decidió dejar escrito</td>
+          <td><span class="tag avisa">avisa</span></td>
+        </tr>
+        <tr>
+          <td><code>UserPromptSubmit</code></td>
+          <td>cada mensaje</td>
+          <td>ruteo a skills — reservado, todavía sin implementar</td>
+          <td><span class="tag silencio">silencio</span></td>
+        </tr>
+        <tr>
+          <td><code>PreToolUse</code></td>
+          <td>antes de Write, Edit, MultiEdit, NotebookEdit y Bash</td>
+          <td>detector de secretos, y nada más</td>
+          <td><span class="tag bloquea">bloquea</span> <span class="tag pregunta">pregunta</span></td>
+        </tr>
+        <tr>
+          <td><code>PostToolUse</code></td>
+          <td>después de las mismas cinco herramientas</td>
+          <td>corre todos los checks contra lo que se acaba de escribir</td>
+          <td><span class="tag avisa">avisa</span> <span class="tag silencio">silencio</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="pie-tabla">Los matchers son estrictos a propósito: un <code>*</code> en <code>PreToolUse</code> agregaría el arranque de un proceso Python a <em>cada</em> llamada a herramienta.</p>
+</section>
+
+<section>
+  <span class="eyebrow">El caballo de batalla</span>
+  <h2>Adentro de <code>PostToolUse</code></h2>
+  <div class="prosa">
+    <p>Los hooks son cuatro y son infraestructura; los checks son N y son reglas. La separación existe para que agregar una regla no pueda romper el manejo de stdin, el encoding ni el control de errores. El contrato de un check es una sola función y estar en el directorio.</p>
+  </div>
+
+  <figure>
+    <div class="lienzo">
+      <svg viewBox="0 0 900 330" role="img" aria-label="Recorrido interno de PostToolUse: descubrimiento de checks por directorio, ejecución ordenada, tope de ocho hallazgos, y silencio si no hay ninguno">
+        <defs>
+          <marker id="f5a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <rect class="caja" x="20" y="30" width="136" height="48" rx="3"/>
+        <text class="t" x="32" y="50">evento JSON</text>
+        <text class="t-min" x="32" y="67">por stdin, utf-8-sig</text>
+
+        <line class="l" x1="156" y1="54" x2="188" y2="54" marker-end="url(#f5a)"/>
+
+        <rect class="caja" x="188" y="30" width="156" height="48" rx="3"/>
+        <text class="t" x="200" y="50">config_proyecto()</text>
+        <text class="t-min" x="200" y="67">harness.config.json</text>
+
+        <line class="l" x1="344" y1="54" x2="376" y2="54" marker-end="url(#f5a)"/>
+
+        <rect class="caja" x="376" y="30" width="184" height="48" rx="3"/>
+        <text class="t" x="388" y="50">os.walk(checks/)</text>
+        <text class="t-min" x="388" y="67">todo .py que no empiece con __</text>
+
+        <line class="l" x1="560" y1="54" x2="592" y2="54" marker-end="url(#f5a)"/>
+
+        <rect class="caja" x="592" y="30" width="184" height="48" rx="3"/>
+        <text class="t" x="604" y="50">rutas.sort()</text>
+        <text class="t-min" x="604" y="67">alfabético, determinista</text>
+
+        <path class="l" d="M684,78 L684,102 L300,102 L300,126" marker-end="url(#f5a)"/>
+
+        <rect class="caja" x="150" y="126" width="304" height="62" rx="3"/>
+        <text class="t-tit" x="164" y="148">por cada check, cargado por RUTA</text>
+        <text class="t-min" x="164" y="165">spec_from_file_location — dev-api-rutas.py tiene</text>
+        <text class="t-min" x="164" y="179">un guion y no es importable por nombre de módulo</text>
+
+        <line class="l" x1="454" y1="157" x2="490" y2="157" marker-end="url(#f5a)"/>
+        <rect class="caja" x="490" y="126" width="252" height="62" rx="3"/>
+        <text class="t" x="504" y="150">verificar(evento, proyecto, config)</text>
+        <text class="t-min" x="504" y="170">devuelve cero o más strings</text>
+
+        <path class="l-punt" d="M616,188 L616,212 L764,212" marker-end="url(#f5a)"/>
+        <text class="t-min" x="626" y="206">si tira excepción</text>
+        <rect class="caja-hueca" x="764" y="196" width="120" height="32" rx="3"/>
+        <text class="t-min" x="778" y="216">se saltea, en silencio</text>
+
+        <path class="l" d="M300,188 L300,238" marker-end="url(#f5a)"/>
+        <rect class="caja" x="200" y="238" width="200" height="34" rx="3"/>
+        <text class="t" x="214" y="260">tope: 8 hallazgos, y corta</text>
+
+        <path class="l" d="M200,255 L120,255 L120,292" marker-end="url(#f5a)"/>
+        <rect class="caja" x="20" y="292" width="212" height="30" rx="3"/>
+        <text class="t" x="34" y="312">ninguno → silencio, exit 0</text>
+
+        <path class="l-viva" d="M400,255 L480,255 L480,292" marker-end="url(#f5a)"/>
+        <rect class="caja-viva" x="380" y="292" width="504" height="30" rx="3"/>
+        <text class="t acento" x="394" y="312">avisar() → additionalContext → Claude lo lee y corrige en el turno siguiente</text>
+      </svg>
+    </div>
+    <figcaption><b>Figura 5.</b> El descubrimiento es <em>estar en el directorio</em>: no hay registro que actualizar para sumar una regla. El precio está en la rama punteada — <b>un check que tira excepción se saltea sin decir nada</b>, porque reportarlo en cada escritura sería peor que el problema que quiso evitar. La contrapartida es que una regla puede dejar de correr y nadie se entera.</figcaption>
+  </figure>
+
+  <h3>Y si el hook entero se rompe</h3>
+  <p class="prosa"><code>invoke_hook</code> lee stdin, fuerza el encoding, atrapa cualquier excepción y garantiza salida con código 0. Un hook roto nunca rompe la sesión de nadie: se reporta una vez con un mensaje de sistema y se calla hasta el próximo reinicio, con una marca en <code>%TEMP%/gcba-harness/</code> por <code>session_id</code> y evento.</p>
+</section>
+
+<section>
+  <span class="eyebrow">La excepción</span>
+  <h2>La única puerta que dice que no</h2>
+  <div class="prosa">
+    <p>Dos mecanismos, y son complementarios porque cubren direcciones opuestas: uno impide <strong>leer</strong> material sensible, el otro impide <strong>escribirlo</strong>. El primero cuesta cero —no arranca ningún proceso— y sigue funcionando aunque los hooks estén rotos.</p>
+  </div>
+
+  <figure>
+    <div class="lienzo">
+      <svg viewBox="0 0 900 366" role="img" aria-label="Las dos líneas de defensa contra secretos y las tres salidas del detector: ignorar, preguntar y bloquear">
+        <defs>
+          <marker id="f6a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <text class="t-min" x="20" y="18">LÍNEA 1 — LECTURA</text>
+        <rect class="caja" x="20" y="28" width="392" height="80" rx="3"/>
+        <text class="t-tit" x="34" y="50">permissions.deny en settings.json</text>
+        <text class="t-min" x="34" y="69">secrets/ · .env · *.pem · *.key · *.p12 · id_rsa · credentials.json</text>
+        <text class="t-min" x="34" y="86">no arranca ningún proceso y sobrevive a un hook caído</text>
+        <text class="t-min" x="34" y="101">límite honesto: un path armado en una variable puede escapar</text>
+
+        <text class="t-min" x="440" y="18">LÍNEA 2 — ESCRITURA</text>
+        <rect class="caja-deny" x="440" y="28" width="446" height="80" rx="3"/>
+        <text class="t-tit rojo" x="454" y="50">hook PreToolUse</text>
+        <text class="t-min" x="454" y="69">texto_de_herramienta() junta lo que se está por escribir o ejecutar</text>
+        <text class="t-min" x="454" y="86">y lo pasa por el catálogo reglas/secretos.patrones.json</text>
+        <text class="t-min" x="454" y="101">la severidad de cada patrón se baja desde el JSON, sin tocar código</text>
+
+        <path class="l" d="M663,108 L663,138" marker-end="url(#f6a)"/>
+        <rect class="caja" x="536" y="138" width="254" height="34" rx="3"/>
+        <text class="t" x="550" y="160">¿matchea algún patrón de ignorar?</text>
+
+        <path class="l" d="M536,155 L456,155 L456,204" marker-end="url(#f6a)"/>
+        <text class="t-eti" x="464" y="186">sí</text>
+        <rect class="caja" x="330" y="204" width="230" height="48" rx="3"/>
+        <text class="t" x="344" y="225">pasa, sin decir nada</text>
+        <text class="t-min" x="344" y="242">changeme · example · $env: · xxx · TODO</text>
+
+        <path class="l" d="M663,172 L663,204" marker-end="url(#f6a)"/>
+        <text class="t-eti" x="672" y="194">no</text>
+
+        <rect class="caja-ask" x="576" y="204" width="150" height="62" rx="3"/>
+        <text class="t-tit ambar" x="590" y="226">confianza media</text>
+        <text class="t-min" x="590" y="244">permissionDecision:</text>
+        <text class="t-min" x="590" y="258">ask — decide la persona</text>
+
+        <rect class="caja-deny" x="736" y="204" width="150" height="62" rx="3"/>
+        <text class="t-tit rojo" x="750" y="226">confianza alta</text>
+        <text class="t-min" x="750" y="244">deny — la llamada</text>
+        <text class="t-min" x="750" y="258">no se ejecuta</text>
+
+        <path class="l" d="M651,266 L651,286 L811,286 L811,266"/>
+        <path class="l" d="M731,286 L731,308" marker-end="url(#f6a)"/>
+        <rect class="caja" x="470" y="308" width="416" height="34" rx="3"/>
+        <text class="t" x="484" y="330">el motivo dice QUÉ HACER: «usá una variable de entorno»</text>
+
+        <rect class="caja-hueca" x="20" y="272" width="424" height="70" rx="3"/>
+        <text class="t-tit" x="34" y="294">Por qué lo ambiguo pregunta en vez de bloquear</text>
+        <text class="t-min" x="34" y="312">el falso positivo es el riesgo existencial de este harness: uno que</text>
+        <text class="t-min" x="34" y="326">traba trabajo legítimo se desinstala esa semana, y ahí se pierde</text>
+        <text class="t-min" x="34" y="339">también la protección que sí servía</text>
+      </svg>
+    </div>
+    <figcaption><b>Figura 6.</b> La escala de tres salidas —ignorar, preguntar, bloquear— es lo que separa este detector de un grep. Un secreto que la <em>persona</em> tipeó en el prompt tampoco se bloquea: se avisa. Bloquear lo que alguien escribió a mano es la vía más rápida a que desinstalen el harness.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <span class="eyebrow">Estado</span>
+  <h2>Lo que en el mapa está dibujado pero todavía no conduce</h2>
+  <div class="prosa">
+    <p>Seis cosas que salen de leer el código de 0.13.0 contra lo que el contrato promete. Ninguna es un bug abierto: son huecos que hoy no tienen consecuencia visible, y por eso conviene tenerlos anotados en algún lado.</p>
+  </div>
+
+  <div class="grilla-gap">
+    <div class="gap">
+      <h4>El ruteo a skills nunca se cableó</h4>
+      <p>El hook dice «se agrega cuando existan las skills». Ya existen nueve instalables —<code>hu-escribir</code> y ocho <code>dev-*</code>— y el hook sigue callado. Hoy arranca un proceso Python en cada mensaje para no hacer nada.</p>
+      <span class="ref">comun/hooks/user-prompt-submit.py</span>
+    </div>
+    <div class="gap">
+      <h4><code>avisar()</code> no valida el evento</h4>
+      <p>Llamarla desde <code>PreToolUse</code> corre sin error y el texto se pierde en la transcripción. Hoy la convención se sostiene sola porque <code>pre-tool-use.py</code> importa solo <code>bloquear</code> y <code>preguntar</code>. Ya está anotado en el contrato como decisión abierta.</p>
+      <span class="ref">comun/hooks/lib/hook.py</span>
+    </div>
+    <div class="gap">
+      <h4><code>compact</code> no está en el matcher</h4>
+      <p><code>SessionStart</code> matchea <code>startup|resume|clear</code>. Después de una compactación el estado no se reinyecta, que es justo cuando más falta hace.</p>
+      <span class="ref">comun/settings/hooks.plantilla.json</span>
+    </div>
+    <div class="gap">
+      <h4>Un check roto no deja rastro</h4>
+      <p>La excepción se traga por diseño. No hay contador, ni marca, ni forma de enterarse de que una regla dejó de correr hace tres semanas.</p>
+      <span class="ref">comun/hooks/lib/reglas.py</span>
+    </div>
+    <div class="gap">
+      <h4><code>analisis</code> no aporta ni un check</h4>
+      <p>Declara <code>checks</code> en su manifiesto y el directorio está vacío. El harness de análisis es hoy solo capa de saber: skills, agentes y bloque de <code>CLAUDE.md</code>, sin nada que compruebe.</p>
+      <span class="ref">harnesses/analisis/checks/</span>
+    </div>
+    <div class="gap">
+      <h4>Los checks corren en un solo evento</h4>
+      <p><code>correr_checks</code> recibe el evento entero y serviría a cualquiera, pero solo <code>PostToolUse</code> lo llama. Una regla que quiera mirar el prompt o el arranque de sesión hoy no tiene dónde vivir.</p>
+      <span class="ref">comun/hooks/post-tool-use.py</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Presupuesto</span>
+  <h2>Los techos, que son la única defensa que no depende de la disciplina de nadie</h2>
+  <div class="prosa">
+    <p>El <code>CLAUDE.md</code> se carga entero al abrir la sesión y ocupa ventana mientras dure. Por eso está partido en zonas con política distinta, y por eso hay un check de <code>comun</code> que las mide después de cada escritura sobre el archivo.</p>
+  </div>
+  <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Zona</th><th>Qué va</th><th>Política</th><th>Techo</th></tr></thead>
+      <tbody>
+        <tr><td><code>ZONA FIJA</code></td><td>reglas que deben <em>ejecutarse</em> cada turno, no solo saberse</td><td>nunca se purga</td><td>60 líneas</td></tr>
+        <tr><td><code>ZONA MAPA</code></td><td>dónde está cada cosa</td><td>hechos verificables contra el disco</td><td>20 líneas</td></tr>
+        <tr><td><code>ZONA ÍNDICE</code></td><td>un puntero por nota del conocimiento del proyecto</td><td>lo mantiene <code>flush-memoria</code></td><td>25 líneas</td></tr>
+        <tr><td><code>ZONA CACHÉ</code></td><td>lo que se aprende durante el trabajo</td><td>purgable, con la invariante de no desalojar lo que no se escribió</td><td>80 líneas</td></tr>
+        <tr><td>fuera de zonas</td><td>lo que quedó suelto en el archivo</td><td>no cuenta contra ningún techo, y por eso también se mide</td><td>12 líneas</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="nota">
+    <span class="eyebrow">La regla que decide dónde va cada cosa</span>
+    <p>Lo que no se necesita en cada turno no va en el <code>CLAUDE.md</code>: va en una skill. Una skill cuesta unos 100 tokens de nombre y descripción, y se expande solo cuando alguien la invoca.</p>
+  </div>
+</section>
+
+<footer>
+  <p>Leído de <code>C:\Users\Asus\Harness-Project</code> en v0.13.0 — README, <code>docs/contrato-hooks.md</code>, los cuatro hooks, <code>lib/reglas.py</code>, <code>lib/secretos.py</code>, los tres manifiestos y <code>install.ps1</code>.</p>
+</footer>
+
+</div>

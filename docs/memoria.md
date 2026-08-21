@@ -68,6 +68,10 @@ El conocimiento va **adentro del repositorio** a propósito: viaja con el proyec
 cualquiera del equipo y queda diffeable. Si viviera en la carpeta personal de alguien, el día
 que esa persona no está el conocimiento del proyecto tampoco está.
 
+Que sea markdown plano tiene un rédito que conviene decir: **`docs/conocimiento/` es un vault**.
+Quien quiera enlaces `[[wiki]]` y vista de grafo abre esa carpeta con Obsidian y los tiene, sin
+que el harness dependa de nada — ver [ADR-0008](adr/0008-lo-externo-nunca-es-requisito.md).
+
 ## Qué te dice al abrir una sesión
 
 `SessionStart` contesta *"¿en qué quedamos?"* sin que tengas que preguntarlo:

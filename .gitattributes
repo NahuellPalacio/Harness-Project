@@ -20,6 +20,7 @@
 
 # Contenido: LF, que es lo que espera cualquier herramienta que los procese
 *.md        text eol=lf
+*.html      text eol=lf
 *.json      text eol=lf
 *.jsonc     text eol=lf
 *.yml       text eol=lf
