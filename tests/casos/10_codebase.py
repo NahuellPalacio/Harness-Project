@@ -165,3 +165,89 @@ def test_e20b_con_la_clave_respeta_la_ruta_declarada(t):
                          con_indice=True, ruta_codebase="docs/codebase")
     t.contiene("E-20b: y no se conforma con el default cuando hay clave",
                AGENTE, _contexto(proy_sin))
+
+
+# ── La forma de lo escrito: dev-codebase-forma ───────────────────────────────────
+#
+# El check se carga por ruta y se le pasa un evento de escritura sobre un archivo real
+# de fixture, igual que hace 07_checks.py: `dev.archivo_escrito` lee del disco y no del
+# evento, asi que un payload con `content` inventado no probaria nada.
+
+sys.path.insert(0, str(RAIZ / "comun" / "hooks"))
+from lib import reglas, secretos  # noqa: E402
+
+CHECK = RAIZ / "harnesses" / "desarrollo" / "checks" / "dev-codebase-forma.py"
+FIXTURE = RAIZ / "tests" / "fixtures" / "proyecto-codebase"
+
+
+def _hallazgos(archivo, ruta_codebase="docs/codebase"):
+    evento = {"hook_event_name": "PostToolUse", "tool_name": "Write",
+              "cwd": str(FIXTURE), "tool_input": {"file_path": str(archivo)}}
+    modulo = reglas._cargar(str(CHECK))
+    return list(modulo.verificar(evento, str(FIXTURE), {"rutaCodebase": ruta_codebase}) or [])
+
+
+def test_e08_indice_y_fichas_bien_no_dicen_nada(t):
+    """E-08 — silencio es silencio: el costo tiene que ser proporcional a los problemas."""
+    t.igual("E-08: indice sano, sin hallazgos", [],
+            _hallazgos(FIXTURE / "docs/codebase/indice.md"))
+
+
+def test_e08b_el_indice_roto_reporta_los_dos_sentidos(t):
+    """E-08 — la correspondencia va en los dos sentidos, y cada sentido duele distinto."""
+    hallazgos = _hallazgos(FIXTURE / "docs/codebase-indice-roto/indice.md",
+                           ruta_codebase="docs/codebase-indice-roto")
+    t.igual("E-08: dos hallazgos, uno por sentido", 2, len(hallazgos))
+    juntos = " ".join(hallazgos)
+    t.contiene("E-08: nombra la ficha que falta", "comun-hooks.md", juntos)
+    t.contiene("E-08: y la segunda que falta", "comun-reglas.md", juntos)
+    t.contiene("E-08: nombra la ficha huerfana", "comun-bin.md", juntos)
+
+
+def test_e09_ficha_completa_no_dice_nada(t):
+    """E-09 — las cuatro secciones estan."""
+    t.igual("E-09: ficha completa, sin hallazgos", [],
+            _hallazgos(FIXTURE / "docs/codebase/comun-hooks.md"))
+
+
+def test_e09b_ficha_coja_nombra_las_secciones_que_faltan(t):
+    """E-09 — y una ficha a la que le falta una no cumple."""
+    hallazgos = _hallazgos(FIXTURE / "docs/codebase-ficha-coja/comun-hooks.md",
+                           ruta_codebase="docs/codebase-ficha-coja")
+    t.igual("E-09: un hallazgo", 1, len(hallazgos))
+    t.contiene("E-09: nombra la que falta", "De qué depende", hallazgos[0])
+    t.contiene("E-09: y la otra", "Dónde está", hallazgos[0])
+
+
+def test_no_mira_lo_que_cae_fuera_del_directorio(t):
+    """El check solo actua sobre lo que se escribio adentro del indice. Un .md de
+    cualquier otro lado del proyecto no es asunto suyo.
+
+    Se usa a proposito la ficha COJA, que si estuviera adentro daria un hallazgo: con una
+    ficha sana el test pasaria igual sin recorte ninguno y no probaria nada. Se comprobo
+    el 2026-08-21 sacando `_adentro`, y con la ficha sana el test seguia verde."""
+    t.igual("fuera del directorio: silencio", [],
+            _hallazgos(FIXTURE / "docs/codebase-ficha-coja/comun-hooks.md",
+                       ruta_codebase="docs/codebase"))
+
+
+def test_e10_nada_de_lo_escrito_matchea_un_patron_de_confianza_alta(t):
+    """E-10 — ningun archivo del indice matchea un patron de bloqueo.
+
+    Se verifica en la suite y no con un check en tiempo de ejecucion: pre-tool-use.py ya
+    bloquea el secreto ANTES de que el archivo llegue al disco, y es la unica regla que
+    este harness bloquea. Un segundo detector en PostToolUse llegaria tarde.
+
+    El catalogo no tiene campo `severidad`: la que bloquea es `confianza: alta`."""
+    catalogo = secretos.importar_patrones(str(RAIZ / "comun" / "reglas" / "secretos.patrones.json"))
+    # Sin esto el test seria vacio: un catalogo que no cargo no encuentra nada y todo
+    # pasa. Que el detector funcione lo prueba 04_secretos.py, con 100 comprobaciones.
+    altas = [p for p in catalogo["patrones"] if p.get("confianza") == "alta"]
+    t.verdadero("E-10: el catalogo cargo y tiene patrones que bloquean", len(altas) > 0)
+
+    archivos = sorted((FIXTURE / "docs" / "codebase").glob("*.md"))
+    t.verdadero("E-10: hay fichas que mirar", len(archivos) >= 3)
+    for f in archivos:
+        hallazgo = secretos.buscar_secreto(f.read_text(encoding="utf-8"), catalogo)
+        bloquea = bool(hallazgo) and hallazgo.get("confianza") == "alta"
+        t.verdadero("E-10: %s sin secreto de confianza alta" % f.name, not bloquea)

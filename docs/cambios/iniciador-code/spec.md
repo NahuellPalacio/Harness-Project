@@ -113,6 +113,7 @@ después solo la ficha que hace falta.
 | `harnesses/desarrollo/agents/dev-iniciador-code.md` | El agente. Recorre el repositorio, escribe el índice y las fichas, y devuelve un informe corto |
 | `harnesses/desarrollo/manifest.json` | Suma `rutaCodebase: "docs/codebase"` a su `config` |
 | `comun/hooks/session-start.py` | Una línea más: si `desarrollo` está en el lockfile y el índice no existe, lo sugiere |
+| `harnesses/desarrollo/checks/dev-codebase-forma.py` | El check de la forma: biyección índice↔fichas y las cuatro secciones |
 | `tests/casos/` y `tests/payloads/` | Los tests de los escenarios de abajo, cada uno nombrando su `E-nn` |
 | `docs/mapa/recorrido-mensaje.html` | La caja punteada pasa a caja llena cuando esto exista |
 
@@ -162,17 +163,30 @@ después solo la ficha que hace falta.
 - **E-08** — Cada línea del índice apunta a un archivo que existe dentro de `docs/codebase/`, y
   cada ficha de `docs/codebase/` figura en una línea del índice. La correspondencia va en los dos
   sentidos.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-09** — Cada ficha tiene las cuatro secciones: qué es, qué expone, de qué depende y dónde
   está. Una ficha a la que le falte una no cumple.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-10** — Ningún archivo escrito por el recorrido matchea un patrón de
-  `comun/reglas/secretos.patrones.json` con severidad de bloqueo.
+  `comun/reglas/secretos.patrones.json` con `confianza: alta`, que es la que bloquea.
   · rojo visto: no consta
+
+  Precisado el 2026-08-21: el catálogo no tiene campo `severidad`; lo que decide es
+  `confianza`, `alta` bloquea y `media` pregunta. Y se verifica **en la suite, no con un check
+  en tiempo de ejecución**: `pre-tool-use.py` ya bloquea el secreto antes de que el archivo
+  llegue al disco, y es la única regla que este harness bloquea. Un segundo detector en
+  `PostToolUse` llegaría tarde y con menos autoridad. Queda en `no consta` a propósito: meter un
+  secreto de verdad en un fixture para verlo en rojo es exactamente lo que no se hace.
 - **E-11** — El recorrido no escribe ni modifica ningún archivo fuera de `docs/codebase/`.
   · rojo visto: no consta
 - **E-12** — Un archivo ignorado por `.gitignore` no produce ficha ni aparece en el índice.
   · rojo visto: no consta
+
+  Movido el 2026-08-21 del grupo de la suite al de lectura. Se resuelve **por construcción**: el
+  agente lista con `git ls-files`, así que lo ignorado nunca entra. Comprobarlo desde un check
+  exigiría volver del nombre de la ficha a la ruta del módulo y correr `git check-ignore` en cada
+  `PostToolUse` — un subproceso por escritura para verificar algo que no puede fallar sin que
+  falle antes el listado. Se lee en el recorrido real, con E-07 a E-17.
 
 ### Volver a recorrer
 

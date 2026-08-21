@@ -44,7 +44,7 @@ Salen de la spec. Los requisitos de cada tarea las incluyen implícitamente.
 | `harnesses/desarrollo/agents/dev-iniciador-code.md` | El agente: recorre, escribe, informa | — |
 | `harnesses/desarrollo/manifest.json` | Suma `rutaCodebase` a su `config` | `harness-backend-engineer` |
 | `comun/hooks/session-start.py` | La línea que sugiere el recorrido | `harness-hook-engineer` |
-| `comun/checks/codebase-forma.py` | La forma de lo escrito: índice, fichas, secretos | `harness-hook-engineer` |
+| `harnesses/desarrollo/checks/dev-codebase-forma.py` | La forma de lo escrito: índice y fichas | `harness-hook-engineer` |
 | `tests/casos/10_codebase.py` | E-01 a E-06, E-08 a E-12, E-20 | `harness-backend-engineer` |
 | `tests/casos/03-instalador.ps1` | E-18, E-19, E-21 | `harness-backend-engineer` |
 | `tests/fixtures/proyecto-codebase/` | Un `docs/codebase/` de mentira, bien y mal formado | `harness-backend-engineer` |
@@ -191,29 +191,41 @@ git commit -m "SessionStart sugiere el primer recorrido, y se calla en cuanto ex
 ## Task 3: La forma de lo escrito
 
 **Files:**
-- Create: `comun/checks/codebase-forma.py`
+- Create: `harnesses/desarrollo/checks/dev-codebase-forma.py`
 - Modify: `tests/casos/10_codebase.py`
 
 **Interfaces:**
-- Consume: el contrato de arriba, `comun/reglas/secretos.patrones.json`.
+- Consume: el contrato de arriba, y `lib/dev.py` para saber qué archivo se acaba de escribir.
 - Produce: cero o más hallazgos, como cualquier check.
+
+🔴 **Va en `desarrollo`, no en `comun`.** Es el mismo argumento del agente: el índice solo existe
+donde hay código, y en `comun/` el check correría también en un proyecto de solo análisis. Y lleva
+prefijo `dev-` porque en el árbol instalado el prefijo es lo único que dice de quién es cada cosa.
+
+🔴 **Los secretos no entran acá.** `pre-tool-use.py` los bloquea **antes** de que el archivo llegue
+al disco, y es la única regla que este harness bloquea. Un segundo detector en `PostToolUse`
+llegaría tarde y con menos autoridad. E-10 se verifica en la suite, sobre el catálogo.
+
+🔴 **E-12 sale de esta tarea.** Se resuelve por construcción —el agente lista con `git ls-files`—
+y comprobarlo desde un check exigiría volver del nombre de la ficha a la ruta del módulo y correr
+`git check-ignore` en cada escritura. Pasa al grupo de lectura, con E-07 a E-17.
 
 - [ ] **Step 1: El check**
 
 Contrato de siempre: `verificar(evento, proyecto, config)` devuelve strings. Comprueba la
-biyección índice↔fichas (E-08), las cuatro secciones de cada ficha (E-09) y que nada matchee un
-patrón de bloqueo del catálogo de secretos (E-10). Avisa, nunca bloquea.
+biyección índice↔fichas (E-08) y las cuatro secciones de cada ficha (E-09), y solo si lo que se
+acaba de escribir cayó adentro del directorio del índice. Avisa, nunca bloquea.
 
 - [ ] **Step 2: Los fixtures, uno bien y uno mal por escenario**
 
 Un `docs/codebase/` completo, uno con una ficha que no está en el índice, uno con una línea del
 índice que apunta a un archivo inexistente, uno con una ficha a la que le falta una sección.
 
-- [ ] **Step 3: Tests E-08, E-09, E-10, E-12, verlos en rojo, commit**
+- [ ] **Step 3: Tests E-08, E-09 y E-10, verlos en rojo, commit**
 
 ```bash
-git add comun/checks/codebase-forma.py tests/
-git commit -m "Un check para la forma del indice: biyeccion, cuatro secciones, ningun secreto"
+git add harnesses/desarrollo/checks/dev-codebase-forma.py tests/
+git commit -m "Un check para la forma del indice: biyeccion y cuatro secciones"
 ```
 
 ---
