@@ -139,22 +139,37 @@ después solo la ficha que hace falta.
   estaba pasado. El escenario pasa a afirmar lo que este cambio sí controla, que es su propio
   costo; el exceso preexistente queda anotado en `Pendientes/Fix-Harness/PENDIENTES-FH.md`,
   bajo *Missing measurement*, que es donde se arregla.
-- **E-05** — El aviso sale como `additionalContext`. `SessionStart` no devuelve `deny` ni `ask` en
-  ningún caso de este cambio.
-  · rojo visto: si
-- **E-06** — Si `docs/codebase/` no se puede leer —no existe el directorio, o falla el acceso—
-  `SessionStart` sale con código 0 y el resto de su bloque se emite igual.
-  · rojo visto: no consta
-- **E-06b** — Si `rutaCodebase` trae un valor que no es una ruta, `SessionStart` sale con código
-  0, cae al default y el resto de su bloque se emite igual.
+- **E-05** — El aviso sale como `additionalContext`, sin `permissionDecision` en ningún nivel y
+  sin decisión de frenar. `SessionStart` no se vuelve una compuerta.
   · rojo visto: si
 
-  Agregado el 2026-08-21. `harness.config.json` es el archivo de la persona y el harness no lo
-  valida ni lo pisa nunca, así que un valor de otro tipo llega hasta acá. Sin guarda de tipo,
-  `os.path.join` levanta `TypeError` y se pierde **el bloque entero**, no solo esta línea.
-  🔴 El `except (OSError, ValueError)` que rodea al `isfile` es defensivo y **la suite no lo
-  alcanza**: se rompió a propósito y los tests siguieron verdes. Queda porque el resto del hook
-  lee disco con la misma red, no porque esté verificado. Por eso E-06 sigue en `no consta`.
+  Reforzado el 2026-08-21. Antes miraba el **texto** de la salida buscando `deny` y `ask`, y
+  tenía dos defectos: pasaba igual con un `permissionDecision` bajo otro nombre, y habría fallado
+  en falso el día que un aviso mencionara la palabra. Ahora mira la **forma del JSON**, y su rojo
+  es propio: agregarle un `permissionDecision` a `avisar()` hace fallar este escenario y ningún
+  otro. Lo que protege es que el aviso del recorrido no se convierta en el modo estricto que
+  otras herramientas ofrecen y este harness no.
+- **E-06** — Si `rutaCodebase` trae un valor que no sirve como ruta, `SessionStart` sale con
+  código 0, cae al default y el resto de su bloque se emite igual.
+  · rojo visto: si
+
+  🔴 **Reescrito el 2026-08-21, y es el escenario que más caro salió.** Decía *"si
+  `docs/codebase/` no se puede leer —no existe el directorio, o falla el acceso—"*, y ninguna de
+  las dos mitades servía: que el directorio no exista ya lo cubre E-01, y **el acceso no falla
+  nunca**. `os.path.isfile` no levanta: devuelve `False` ante una ruta inválida o inaccesible, y
+  se traga también el `ValueError` de un byte nulo —comprobado en Python 3.13—.
+
+  Se intentaron tres defensas y **dos se probaron muertas rompiéndolas a propósito**: el
+  `try/except (OSError, ValueError)` alrededor del `isfile`, y una cláusula que filtraba el byte
+  nulo. Con cada una sacada, la suite siguió verde. Las dos salieron del hook.
+
+  Queda una sola, la guarda de tipo, y es la única con rojo propio: `harness.config.json` es el
+  archivo de la persona, el harness no lo valida ni lo pisa nunca, y un valor que no sea texto
+  hace levantar `TypeError` a `os.path.join` y se pierde **el bloque entero**, no solo esta
+  línea.
+
+  📌 **E-06b se absorbe acá y desaparece.** Existía para cubrir el caso que E-06 no cubría;
+  quitada la parte muerta de E-06, los dos escenarios eran el mismo.
 
 ### Lo que queda escrito
 

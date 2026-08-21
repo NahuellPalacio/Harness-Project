@@ -124,17 +124,23 @@ def cuerpo(e):
     # El orden importa: el chequeo de disco va ultimo y no corre en un proyecto sin
     # `desarrollo`.
     if "desarrollo" in harness_instalados:
+        # harness.config.json es el archivo de la persona: el harness no lo valida ni lo
+        # pisa nunca, asi que cualquier cosa puede llegar hasta aca. Y solo se crea si no
+        # existe, por lo que un proyecto instalado antes de este cambio no va a ver la
+        # clave jamas. Por las dos razones el default vive aca y no en el manifiesto.
+        #
+        # La guarda es de TIPO y nada mas, y eso es a proposito. os.path.isfile no
+        # levanta: devuelve False ante una ruta invalida o inaccesible, y se traga
+        # tambien el ValueError de un byte nulo -comprobado el 2026-08-21 en 3.13-. Asi
+        # que envolverlo en un try/except, o filtrar el nulo aca, son ramas que no
+        # ejecuta nadie: se probo sacando cada una y la suite siguio verde.
+        #
+        # Lo unico que si rompe de verdad es un valor que no sea texto: ahi el que
+        # levanta es os.path.join, con TypeError, y se pierde el bloque ENTERO.
         ruta_codebase = (config or {}).get("rutaCodebase")
-        # harness.config.json solo se crea si no existe y no se reescribe nunca: un
-        # proyecto instalado antes de este cambio no va a ver la clave jamas. El default
-        # vive aca a proposito, no en el manifiesto.
         if not isinstance(ruta_codebase, str) or not ruta_codebase.strip():
             ruta_codebase = "docs/codebase"
-        try:
-            hay_indice = os.path.isfile(os.path.join(proyecto, ruta_codebase, "indice.md"))
-        except (OSError, ValueError):
-            hay_indice = True   # ante la duda, callarse
-        if not hay_indice:
+        if not os.path.isfile(os.path.join(proyecto, ruta_codebase, "indice.md")):
             lineas.append("Sin indice del codigo todavia: dev-iniciador-code lo arma en una pasada.")
 
     if not lineas:

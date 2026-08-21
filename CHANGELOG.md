@@ -28,7 +28,7 @@ alguien escribía algo. Ahora un agente recorre el proyecto una vez y deja escri
   instalado no verá la clave —ese archivo no se reescribe nunca— y funciona igual: el default se
   resuelve también en el hook y en el agente
 - **ADR-0008** — el harness puede aprovechar una herramienta externa y no puede depender de ella
-- 375 tests en verde (126 PowerShell + 249 Python), 41 más que en 0.13.0
+- 374 tests en verde (126 PowerShell + 248 Python), 40 más que en 0.13.0
 
 ### Para quien actualiza
 

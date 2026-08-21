@@ -100,47 +100,49 @@ def test_e04_el_aviso_agrega_exactamente_una_linea(t):
     t.igual("E-04: el aviso agrega una linea", 1, delta)
 
 
-def test_e05_no_devuelve_deny_ni_ask(t):
-    """E-05 — SessionStart avisa. Los secretos siguen siendo lo unico que bloquea."""
+def test_e05_el_aviso_sale_como_contexto_y_nunca_como_compuerta(t):
+    """E-05 — SessionStart avisa. Los secretos siguen siendo lo unico que bloquea.
+
+    Se mira la FORMA del JSON y no el texto de la salida. Buscar la palabra "deny" en
+    stdout parece equivalente y no lo es: pasaria igual con un hook que emite un
+    permissionDecision con otro nombre, y fallaria en falso el dia que un aviso mencione
+    la palabra. Lo que este escenario protege es que el aviso del recorrido no se vuelva
+    una compuerta -el modo estricto que otras herramientas ofrecen y este harness no-."""
     salida = _correr_proceso({"session_id": "s", "cwd": str(_proyecto()),
                               "hook_event_name": "SessionStart"}).stdout.decode("utf-8")
-    t.no_contiene("E-05: sin deny", "deny", salida)
-    t.no_contiene("E-05: sin ask", "\"ask\"", salida)
-    t.contiene("E-05: sale como additionalContext", "additionalContext", salida)
+    doc = json.loads(salida)
+    hso = doc.get("hookSpecificOutput") or {}
+
+    t.igual("E-05: el evento se declara", "SessionStart", hso.get("hookEventName"))
+    t.contiene("E-05: y el aviso viaja como contexto", AGENTE, hso.get("additionalContext") or "")
+    t.verdadero("E-05: sin permissionDecision en ningun nivel",
+                "permissionDecision" not in doc and "permissionDecision" not in hso)
+    t.verdadero("E-05: sin decision de continuar o frenar",
+                doc.get("decision") is None and doc.get("continue") is not False)
 
 
-def test_e06_ruta_ilegible_sale_cero_y_no_pierde_el_resto(t):
-    """E-06 — si la ruta del indice no se puede recorrer, el hook no se cae ni se lleva
-    puesto el resto del bloque. Aca `docs/codebase` es un ARCHIVO, no un directorio."""
-    proy = _proyecto()
-    _escribir(proy / "docs" / "codebase", "esto no es un directorio")
+def test_e06_ruta_invalida_cae_al_default_y_no_se_lleva_el_bloque(t):
+    """E-06 — una `rutaCodebase` que no sirve como ruta cae al default, el hook sale con
+    codigo 0 y el resto de su bloque se emite igual.
 
+    El valor llega hasta aca porque `harness.config.json` es el archivo de la persona y
+    el harness no lo valida ni lo pisa nunca. Sin la guarda de tipo, `os.path.join`
+    levanta TypeError y se pierde el bloque ENTERO, no solo esta linea.
+
+    🔴 Este escenario reemplaza al original y se probo dos veces mas de lo que quedo. El
+    original usaba `docs/codebase` como ARCHIVO en vez de directorio, y no ejercitaba
+    nada: `os.path.isfile` devuelve False y ya. Despues se agrego un caso con un byte
+    nulo, y tampoco: `isfile` se traga el ValueError igual que el OSError -comprobado el
+    2026-08-21 en Python 3.13-. Las dos defensas que eso motivaba salieron del hook
+    porque ninguna tenia rojo: el `try/except` alrededor del `isfile` y la clausula que
+    filtraba el nulo. Queda la guarda de tipo, que es la unica que si lo tiene."""
+    proy = _proyecto(config_extra={"rutaCodebase": 12345})
     r = _correr_proceso({"session_id": "s", "cwd": str(proy),
                          "hook_event_name": "SessionStart"})
     t.igual("E-06: sale con codigo 0", 0, r.returncode)
     ctx = json.loads(r.stdout.decode("utf-8"))["hookSpecificOutput"]["additionalContext"]
     t.contiene("E-06: el resto del bloque se emite igual", "Nahue", ctx)
-
-
-def test_e06b_ruta_que_revienta_al_resolverse_no_se_lleva_el_bloque(t):
-    """E-06b — una `rutaCodebase` que no es una ruta no se lleva puesto el bloque.
-
-    `harness.config.json` es el archivo de la persona: el harness no lo valida ni lo pisa
-    nunca. Un valor de otro tipo llega igual hasta acá, y sin la guarda de tipo
-    `os.path.join` levanta TypeError y se pierde el bloque entero -no solo esta línea-.
-
-    🔴 El `except (OSError, ValueError)` que rodea al `isfile` es defensivo y **la suite
-    no lo alcanza**: se comprobó el 2026-08-21 rompiéndolo a propósito y los tests
-    siguieron verdes. Queda porque el resto del hook lee disco con la misma red, no
-    porque esté verificado."""
-    proy = _proyecto(config_extra={"rutaCodebase": 12345})
-
-    r = _correr_proceso({"session_id": "s", "cwd": str(proy),
-                         "hook_event_name": "SessionStart"})
-    t.igual("E-06b: sale con codigo 0", 0, r.returncode)
-    ctx = json.loads(r.stdout.decode("utf-8"))["hookSpecificOutput"]["additionalContext"]
-    t.contiene("E-06b: el resto del bloque se emite igual", "Nahue", ctx)
-    t.contiene("E-06b: y cae al default, donde no hay indice", AGENTE, ctx)
+    t.contiene("E-06: y cae al default, donde no hay indice", AGENTE, ctx)
 
 
 # ── La ruta, con la clave y sin ella ─────────────────────────────────────────────
