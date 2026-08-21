@@ -76,6 +76,27 @@ leaving a cap written down that nothing checks.
 The hook exists, it is registered and it does nothing. Its intended job was a single routing line
 when the prompt matches the triggers of an installed skill.
 
+### `aporta` in every manifest is decorative — nothing reads it
+
+Found on 2026-08-21 while building `iniciador-code`. A mutation removed `"agents": "agents"` from
+`harnesses/desarrollo/manifest.json` expecting the agent to stop being installed, and the whole
+suite stayed green. `grep -n "aporta" install.ps1` returns nothing: the installer never reads the
+key. What it actually does is copy `<harness>/skills` and `<harness>/agents` unconditionally
+(`install.ps1:1107-1108`), and the same for `checks`.
+
+The key reads as load-bearing and is not. Somebody adding a harness will fill it in, expect it to
+select what gets installed, and be wrong in a way no test catches — a directory they forgot to
+declare gets installed anyway, and one they declared without creating fails silently. It is also
+why `analisis` can declare `checks` with an empty directory and nobody notices, which is already
+written down as a gap in `docs/mapa/mapa-harness.html`.
+
+Fix. Two ways out and they are not the same. Either the installer reads `aporta` and copies only
+what it declares — which turns a comment into a contract and needs `docs/agregar-un-harness.md`
+updated to say so — or `aporta` comes out of the three manifests and the convention stays "the
+directory is the declaration", like checks discovery already works. The second is smaller and
+consistent with `os.walk(checks/)`; the first is what a reader of the manifest already believes is
+happening.
+
 ### The reviewer panel is planned and deferred
 
 Three reviewers with different lenses, correctness, security and data, plus an infrastructure

@@ -210,22 +210,26 @@ después solo la ficha que hace falta.
 ### Instalación
 
 - **E-18** — Instalado `desarrollo`, existe `.claude/agents/dev-iniciador-code.md`.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-19** — Instalado `desarrollo` de cero, `harness.config.json` tiene `rutaCodebase`.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-20** — Sobre un proyecto con `harness.config.json` preexistente y sin la clave, el recorrido
   y el aviso usan `docs/codebase` igual.
   · rojo visto: si
 - **E-21** — `-Uninstall` deja `docs/codebase/` intacto. Es conocimiento del proyecto, no material
   del harness.
-  · rojo visto: no consta
+  · rojo visto: si
 
 ## Cómo se verifica
 
 Por la suite, con un caso por escenario que nombre su id: E-01 a E-06 con payloads de
 `SessionStart` en `tests/payloads/`, contra un proyecto de fixture con y sin lockfile de
-`desarrollo`; E-18 a E-21 en `tests/casos/03-instalador.ps1`, que ya monta y desmonta instalaciones
-completas.
+`desarrollo`; E-18, E-19 y E-21 en `tests/casos/11-codebase-instalador.ps1`.
+
+🔴 **Van en un caso nuevo y no en `03-instalador.ps1`, como decía esta spec.** Ese archivo instala
+`analisis` —y estos tres escenarios son de `desarrollo`— y además rompe archivos versionados a
+propósito para probar el `-Update`, con un `finally` que no sobrevive a que maten el proceso.
+Sumarle carga agranda esa superficie sin necesidad.
 
 Por lectura de una persona: E-07 a E-17. Todos dependen de que un agente con modelo recorra un
 repositorio real, y la suite no invoca modelos —los 334 tests actuales son deterministas y sin

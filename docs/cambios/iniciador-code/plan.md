@@ -46,7 +46,7 @@ Salen de la spec. Los requisitos de cada tarea las incluyen implícitamente.
 | `comun/hooks/session-start.py` | La línea que sugiere el recorrido | `harness-hook-engineer` |
 | `harnesses/desarrollo/checks/dev-codebase-forma.py` | La forma de lo escrito: índice y fichas | `harness-hook-engineer` |
 | `tests/casos/10_codebase.py` | E-01 a E-06, E-08 a E-12, E-20 | `harness-backend-engineer` |
-| `tests/casos/03-instalador.ps1` | E-18, E-19, E-21 | `harness-backend-engineer` |
+| `tests/casos/11-codebase-instalador.ps1` | E-18, E-19, E-21 | `harness-backend-engineer` |
 | `tests/fixtures/proyecto-codebase/` | Un `docs/codebase/` de mentira, bien y mal formado | `harness-backend-engineer` |
 | `docs/mapa/recorrido-mensaje.html` | La caja punteada pasa a llena | — |
 
@@ -233,10 +233,15 @@ git commit -m "Un check para la forma del indice: biyeccion y cuatro secciones"
 ## Task 4: El instalador
 
 **Files:**
-- Modify: `tests/casos/03-instalador.ps1`
+- Create: `tests/casos/11-codebase-instalador.ps1`
 
-🔴 Este archivo rompe archivos versionados a propósito y los restaura en un `finally` que **no
-sobrevive a que maten el proceso**. Si la corrida se interrumpe, mirar el árbol antes que nada.
+🔴 **Caso nuevo, no dentro de `03-instalador.ps1`.** Ese archivo instala `analisis` —y estos tres
+escenarios son de `desarrollo`— y además rompe archivos versionados a propósito, con un `finally`
+que **no sobrevive a que maten el proceso**. Sumarle carga agranda esa superficie sin necesidad.
+El caso nuevo no toca un solo archivo del repo.
+
+🔴 **Sin acentos.** Un `.ps1` con caracteres no ASCII necesita BOM; el propio
+`00-encoding-fuentes.ps1` declara que no ponerlos es la otra mitad válida de esa regla.
 
 - [ ] **Step 1: E-18** — instalado `desarrollo`, existe `.claude/agents/dev-iniciador-code.md`.
 - [ ] **Step 2: E-19** — instalado de cero, `harness.config.json` trae `rutaCodebase`.
