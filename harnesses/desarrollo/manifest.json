@@ -10,6 +10,7 @@
     "checks": "checks"
   },
   "config": {
+    "rutaCodebase": "docs/codebase",
     "umbralCobertura": 80,
     "versionObelisco": "1.8.4",
     "nivelAccesibilidad": "WCAG 2.2 AA",

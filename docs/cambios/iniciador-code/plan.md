@@ -96,7 +96,9 @@ derivable en los dos sentidos.
 
 - [ ] **Step 1: El frontmatter, que es lo que decide si lo llaman**
 
-`name: dev-iniciador-code`, `tools: Read, Write, Grep, Glob`. La `description` tiene que nombrar
+`name: dev-iniciador-code`, `tools: Read, Write, Grep, Glob, PowerShell`. `PowerShell` va porque el
+listado sale de `git ls-files` y sin una consola no hay forma de pedirlo; se elige sobre `Bash`
+porque es lo que ya usa `leer-docs` y el parque es Windows. La `description` tiene que nombrar
 los disparadores reales —primer recorrido, indexar el código, `docs/codebase/`— porque es lo único
 que el modelo ve para decidir si invocarlo. Cortarla mal produce un agente que nadie llama y que
 cuesta lo mismo.
