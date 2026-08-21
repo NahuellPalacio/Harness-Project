@@ -3,7 +3,9 @@
 
      Para actualizarlo SIN perder esa URL: editar este archivo y republicarlo
      pasando esa URL como parametro `url` de la herramienta Artifact.
-     Publicar sin `url` desde otra conversacion crea un artifact NUEVO. -->
+     Publicar sin `url` desde otra conversacion crea un artifact NUEVO.
+
+     Favicon: 📨 — va igual en cada republicacion, la gente ubica la pestana por el icono. -->
 <title>El recorrido de un mensaje</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -130,11 +132,12 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <div>
     <h1>El recorrido de un mensaje</h1>
   </div>
-  <p class="sub">Qué hace gcba-harness v0.13.0 desde que alguien escribe hasta que Claude contesta.</p>
+  <p class="sub">Qué hace gcba-harness v0.13.0 desde que se instala en un proyecto hasta que Claude contesta.</p>
   <div class="chips">
     <span class="chip viva">v0.13.0</span>
     <span class="chip">4 hooks</span>
     <span class="chip">1 sola puerta que bloquea</span>
+    <span class="chip">2 pasos todavía sin escribir</span>
   </div>
 </header>
 
@@ -147,17 +150,40 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
 </div>
 
 <div class="lienzo">
-<svg viewBox="0 0 980 1245" role="img" aria-label="Diagrama de flujo del recorrido de un mensaje del usuario a través de gcba-harness: UserPromptSubmit, la decisión de Claude, la puerta de secretos en PreToolUse, la ejecución de la herramienta, los checks de PostToolUse y el retorno del aviso a Claude">
+<svg viewBox="0 0 980 1415" role="img" aria-label="Diagrama de flujo de gcba-harness: la adopción del harness y el primer recorrido del código, y después el recorrido de un mensaje — UserPromptSubmit, la decisión de Claude, la puerta de secretos en PreToolUse, la ejecución de la herramienta, los checks de PostToolUse y el retorno del aviso a Claude">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
     </marker>
   </defs>
 
+  <text class="t-sec" x="120" y="16">ANTES DEL PRIMER MENSAJE — una vez por proyecto</text>
+  <rect class="caja" x="120" y="24" width="320" height="46" rx="3"/>
+  <text class="t-tit" x="136" y="44">Se instala el harness</text>
+  <text class="t-min" x="136" y="60">install.ps1 -Project · copia comun + lo elegido</text>
+
+  <line class="l" x1="280" y1="70" x2="280" y2="94" marker-end="url(#a)"/>
+
+  <rect class="caja" x="120" y="96" width="320" height="46" rx="3"/>
+  <text class="t-tit" x="136" y="116">Se elige cuál rige en ese proyecto</text>
+  <text class="t-min" x="136" y="132">analisis · desarrollo · los dos, y componer es seguro</text>
+
+  <line class="l" x1="280" y1="142" x2="280" y2="188" marker-end="url(#a)"/>
+
+  <g transform="translate(0,170)">
+
   <text class="t-sec" x="120" y="16">FUERA DEL TURNO</text>
   <rect class="caja-hueca" x="120" y="24" width="320" height="46" rx="3"/>
   <text class="t-tit" x="136" y="44">SessionStart</text>
   <text class="t-min" x="136" y="60">una vez: harness que rige · git · caché · pendientes</text>
+
+  <line class="l" x1="440" y1="48" x2="526" y2="48" marker-end="url(#a)"/>
+  <text class="t-eti" x="452" y="40">la primera vez</text>
+  <rect class="caja-hueca" x="530" y="2" width="400" height="92" rx="3"/>
+  <text class="t-tit" x="546" y="24">sugiere el primer recorrido del código</text>
+  <text class="t-min" x="546" y="42">solo si docs/codebase/ todavía no tiene índice</text>
+  <text class="t-min" x="546" y="60">lo hace un SDD que recorre el repo — todavía sin escribir</text>
+  <text class="t-min" x="546" y="78">escribe docs/codebase/ · versionado, viaja con el proyecto</text>
 
   <line class="l" x1="280" y1="70" x2="280" y2="94" marker-end="url(#a)"/>
 
@@ -283,11 +309,14 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <rect class="caja-viva" x="120" y="1160" width="440" height="46" rx="3"/>
   <text class="t-tit acento" x="136" y="1180">Claude responde — fin del turno</text>
   <text class="t-min" x="136" y="1196">el mensaje siguiente vuelve a empezar arriba</text>
+
+  </g>
 </svg>
 </div>
 
 <footer>
   <p>La asimetría del medio es la decisión de diseño: <strong>bloquea en PreToolUse, habla en PostToolUse</strong>. Un aviso emitido antes de la herramienta se pierde en la transcripción y el modelo no lo ve.</p>
+  <p>Lo que el harness sabe de un proyecto vive adentro del repo y en markdown: <code>docs/conocimiento/</code> lo escrito a mano, <code>docs/codebase/</code> el índice del código. Quien quiera enlaces <code>[[wiki]]</code> y vista de grafo abre esa carpeta con Obsidian y los tiene — el harness no depende de eso, y no puede depender de nada que haya que instalar (ADR-0008).</p>
 </footer>
 
 </div>

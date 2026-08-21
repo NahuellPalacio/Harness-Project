@@ -121,3 +121,30 @@ and Microsoft Defender flags it as `Trojan:Script/Wacatac.B!ml`, which the proje
 known false positive with evidence. On a GCBA machine with centrally managed Defender that is not
 something a developer clears. Also pre-1.0, six months old, 467 open issues. Reconsider if it ships
 signed or the organisation homologates it; not before.
+
+### The first walk of the code, and the index it writes
+
+Stated by Nahue on 2026-08-21, and it is the first time the main axis of the harness has been said
+out loud as a sequence: *usuario instala harness → elige cuál quiere en su proyecto → el harness
+sugiere hacer un primer recorrido del código para registrar en codebase.* The index is ours — an
+SDD that walks the whole repo — not the external tool evaluated above.
+
+Problem it solves. Two at once. The agent starts every project blind and rebuilds its picture of
+the code by grepping, turn after turn, paying for it every time. And the harness has no first step:
+today it installs and then nothing happens until somebody types something, so the moment where it
+could be most useful — before anyone knows the codebase — passes unused. This is also the concrete
+half of the open item above it, *the workflow of each harness cannot be drawn*: it is the first
+band of that drawing.
+
+Cost. Unknown, and it is a capability rather than a fix: an SDD that walks the code, a place to
+write, and one line inside `SessionStart` that notices the index is missing. Three decisions were
+already taken on 2026-08-21 and are drawn in `docs/mapa/recorrido-mensaje.html`: `SessionStart`
+suggests the walk on the first session, not `install.ps1` — the installer runs in a console where
+there is no agent to walk anything; the index lives in a **new `docs/codebase/`**, versioned and
+inside the repo, kept apart from `docs/conocimiento/` because it is generated and regenerated whole
+while that one is written by hand and purged by `flush-memoria`; and Obsidian is a footnote, never
+a box, per ADR-0008.
+
+Status. Open, and it is the next thing. Written down because it was defined in conversation and
+the drawing alone does not carry the reasons — the choice of `docs/codebase/` over
+`docs/conocimiento/` is the one that would be re-litigated first.
