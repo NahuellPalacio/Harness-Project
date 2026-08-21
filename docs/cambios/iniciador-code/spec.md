@@ -260,6 +260,17 @@ check"*— trasladado al artefacto: un agente que completa las cuatro secciones 
 pasa el escenario y no aporta nada. La defensa es la lectura de E-07 a E-17, y no es mecánica.
 
 **`dev-iniciador-code` se paga en cada turno.** El nombre y la descripción de un agente ocupan
-contexto siempre, se lo use o no —hoy son 926 tokens entre 13 piezas—. Este es la pieza catorce, y
-la usa una vez por proyecto. `harness-budget-auditor` tiene que pesarlo antes de que se dé por
-cerrado.
+contexto siempre, se lo use o no, y este se usa **una vez por proyecto**. Medido el 2026-08-21:
+
+| Dónde | Antes | Después |
+|---|---|---|
+| Este repo, la fábrica | 678 tok/turno · 10 piezas | **sin cambio** — no se instala acá |
+| Un proyecto con `desarrollo` | 1310 tok/turno · 12 piezas | **1396 · 13 piezas** (+86, +6,6 %) |
+
+🔴 **Una cifra anterior de esta spec estaba mal y se corrige acá**: decía «926 tokens entre 13
+piezas», que sumaba las piezas de la fábrica con las que se instalan. Son dos presupuestos
+distintos y no se suman: nadie paga los dos.
+
+El 6,6 % es defendible por lo que compra —un recorrido que costó 140.840 tokens y queda escrito—,
+pero el problema de fondo sigue sin defensa: **nada mide ni acota este número**, y está anotado en
+`Pendientes/Fix-Harness/PENDIENTES-FH.md` desde el 2026-08-14.
