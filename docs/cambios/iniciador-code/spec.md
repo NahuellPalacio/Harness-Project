@@ -209,8 +209,13 @@ después solo la ficha que hace falta.
     existe justamente para eso. Sin ese control, un catálogo que no carga da el mismo verde que
     un índice limpio.
 
-  Su rojo es el del control: neutralizar `buscar_secreto` hace fallar este escenario y ninguno
-  más. Sigue sin plantarse un secreto en ningún lado, que es lo que no se hace.
+  Su rojo es el del control: neutralizar `buscar_secreto` hace fallar el control positivo. Sigue
+  sin plantarse un secreto en ningún lado, que es lo que no se hace.
+
+  🔴 **Acá decía «y ninguno más», y era falso.** Lo corrió el veredicto de la segunda pasada:
+  neutralizar `buscar_secreto` baja la suite Python a 185/193 —también rompe `04_secretos.py` y
+  `02_hook_contrato.py`—. El rojo existe y es real; **la exclusividad se afirmó sin medirla**. Es
+  el mismo error que este escenario venía a arreglar, cometido en la frase que lo arreglaba.
 - **E-11** — El recorrido no escribe ni modifica ningún archivo fuera de `docs/codebase/`.
   · rojo visto: no consta
 - **E-12** — Un archivo ignorado por `.gitignore` no produce ficha ni aparece en el índice.

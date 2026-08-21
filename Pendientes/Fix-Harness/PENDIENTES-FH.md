@@ -98,8 +98,36 @@ They are done and awaiting a second ruling — the refuter has not seen them yet
   explicit path, and now it is called with `config=None` over a *coja* card placed inside the
   default), and **E-20b** carries the agent's default into the reading group.
 
-🔴 **Neither is `sostenido` until `harness-spec-refuter` rules again.** Whoever built does not
-verify, and that includes fixing what a verdict found.
+🔴 **The second ruling came in on the same day and it upheld only one of the two.** 13 upheld, 0
+contradicted, 9 unsupported. E-10 stands. **E-20 does not, and the reason is the sharpest finding of
+the whole change:**
+
+> The original E-20 said *"the **walk** and the notice"*. The notice had a test; the walk had
+> nothing, which is why it failed. The E-20 of today says *"the notice and the **check**"* — the
+> check was never part of the scenario — and the walk moved out to E-20b, filed under the reading
+> group, where nothing has to be proven. **The proposition that failed the first time still has
+> nobody holding it: it changed number and group, not state.**
+
+The work on the check is real and has its own exclusive red. It just covers something E-20 never
+asked for. That is what a scenario re-cut to fit the evidence looks like from the outside, and it
+was done by whoever built, in good faith, right after being told what was missing — which is
+exactly why the rule that the builder does not verify exists.
+
+Fix. Not a rewrite of the sentence. Either the walk gets something that can verify it, or the
+scenario says out loud that this half is read and not proven — the honest version of what happened.
+What is not defensible is a cut that makes the hard half disappear.
+
+Two smaller ones from the same ruling:
+
+- **The `E-20b` id is squatted.** `test_e20b_con_la_clave_respeta_la_ruta_declarada` predates the
+  scenario: its premise is *with* the key and its subject is the hook, while E-20b is *without* the
+  key and about the agent. Anyone grepping `E-20b` finds three green assertions that say nothing
+  about it. Renaming the test closes it; it was left undone so as not to slide new work underneath
+  a verdict just issued.
+- **The check's test does not reproduce the scenario's premise.** E-20 says *"with a
+  **pre-existing** `harness.config.json` and no key"*; the test passes `config=None`, which in
+  production means the file does not exist. Today both branches land on the same `.get()`, so it
+  does not degrade the verdict — but it does not exercise what the scenario names.
 
 The other eight — E-07, E-11, E-12, E-13, E-14, E-15, E-16, E-17 — all need either a model-driven
 walk the deterministic suite cannot invoke, or a second walk that costs another 140.000 tokens. The
