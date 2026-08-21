@@ -5,9 +5,11 @@ Formato: cada versión lista lo que cambió a nivel funcional. Las versiones sig
 
 ## [0.14.0] — 2026-08-21
 
-> 🔴 **Sin cerrar.** `VERSION` sigue en `0.13.0`: falta el veredicto contra
-> `docs/cambios/iniciador-code/spec.md`. Se declara acá porque el trabajo está hecho y la nota de
-> versión ya existe; el bump lo hace `close-a-version`.
+> 🔴 **Sin cerrar.** `VERSION` sigue en `0.13.0`. El veredicto está emitido —11 escenarios
+> sostenidos, 0 contradichos, **10 sin sustento**— y un `verificacion.md` con `sin-sustento` no
+> cierra el cambio. Nada quedó contradicho: la suite está verde y ningún comportamiento difiere de
+> lo que la spec afirma. El bump lo hace `close-a-version` cuando esos diez tengan con qué
+> sostenerse.
 
 **El primer recorrido del código.** El harness se instalaba y después no pasaba nada hasta que
 alguien escribía algo. Ahora un agente recorre el proyecto una vez y deja escrito qué hay, en

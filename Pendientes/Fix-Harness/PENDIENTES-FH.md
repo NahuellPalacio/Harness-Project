@@ -76,6 +76,55 @@ leaving a cap written down that nothing checks.
 The hook exists, it is registered and it does nothing. Its intended job was a single routing line
 when the prompt matches the triggers of an installed skill.
 
+### `iniciador-code` closed with ten scenarios unsupported
+
+The verdict is in `docs/cambios/iniciador-code/verificacion.md`, ruled by `harness-spec-refuter` on
+2026-08-21 with the suite green: **11 upheld, 0 contradicted, 10 unsupported**. Nothing behaves
+differently from what the spec claims — the change is open because ten scenarios have no way to
+hold, not because anything is broken.
+
+Two of the ten are closable now and do not depend on anything else:
+
+- **E-10 has a test that by design cannot fail.** The scenario is about the files *the walk writes*;
+  the test scans three hand-written fixtures on a corpus where the spec itself declares no secret
+  will ever be planted. The subject of the test is not the subject of the scenario. Either the test
+  gets a subject that is actually walk output, or the scenario is rewritten to say what it really
+  checks.
+- **E-20 is half-covered.** It claims *"the walk **and** the notice use `docs/codebase` alike"*. The
+  notice half has a test and a real red; the walk half has nothing — the agent's default is a line
+  of prose. Cover the second half or split the scenario in two. It is also the only one of the 21
+  missing from the spec's *"Cómo se verifica"* section, which is how it got there.
+
+The other eight — E-07, E-11, E-12, E-13, E-14, E-15, E-16, E-17 — all need either a model-driven
+walk the deterministic suite cannot invoke, or a second walk that costs another 140.000 tokens. The
+root cause is one and it is written down under *Incomplete capabilities*: nothing enforces the
+agent's three invariants.
+
+Fix. Not one fix but a decision first: whether an agent's invariants are allowed to live only in
+its prompt. If they are, those scenarios never become mechanical and the spec should say so instead
+of listing them as verifiable. If they are not, it needs a mechanism, and that is a change of its
+own.
+
+### The agent's three invariants are enforced by nothing
+
+Raised by `harness-spec-refuter` on 2026-08-21 while ruling on `iniciador-code`, and it is the
+reason six of that change's ten unsupported scenarios cannot be verified.
+
+`dev-iniciador-code` declares three: it does not write outside `docs/codebase/`, it does not delete,
+and it never returns raw source. All three live in the prose of the prompt. The agent carries
+`PowerShell` among its tools and the harness has no hook that limits where an agent writes — the
+only thing `PreToolUse` blocks is secrets.
+
+It is a free decision and no scenario asks for the opposite. What it costs is written down: E-11
+(does not write outside), E-14 (does not delete) and E-16 (no source in the report) have no
+mechanical form. It also showed up in the tree — commit `dd9f5bb` carries `docs/codebase/` together
+with two files a person wrote, and from the repository there is no way to tell which is which.
+
+Fix. Unknown, and the two directions are not equivalent. A `PostToolUse` check could report writes
+outside the declared directory after the fact, which is cheap and late. A `PreToolUse` matcher
+scoped to an agent would be a second blocking rule, and the harness has exactly one on purpose.
+Neither should be picked while writing this down.
+
 ### `tests/generar-testigo.ps1` imports four modules that no longer exist
 
 Found on 2026-08-21 by the first run of `dev-iniciador-code` over this repo — the first thing the

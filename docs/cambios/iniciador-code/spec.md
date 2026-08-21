@@ -168,8 +168,12 @@ después solo la ficha que hace falta.
   hace levantar `TypeError` a `os.path.join` y se pierde **el bloque entero**, no solo esta
   línea.
 
-  📌 **E-06b se absorbe acá y desaparece.** Existía para cubrir el caso que E-06 no cubría;
-  quitada la parte muerta de E-06, los dos escenarios eran el mismo.
+  📌 **Corregido el relato el 21-08-2026, a pedido del veredicto.** Acá decía que «E-06b se
+  absorbe y desaparece», y la dirección real es la inversa: **el que sobrevivió es el nuevo.** El
+  E-06 que se especificó antes de construir no existe más, y lo que hoy lleva ese número es el
+  escenario que nació durante la construcción, en `fdfb726`. No hubo aflojamiento —el reemplazo es
+  más fuerte y el original era vacuo— pero un escenario sustituido no es un escenario corregido, y
+  contarlo al revés le tapa a quien lee que el criterio cambió de sujeto.
 
 ### Lo que queda escrito
 
@@ -253,6 +257,14 @@ salida contra los escenarios.
 
 Lo que sí puede ir a la suite de esos once es la forma de lo escrito: E-08, E-09, E-10 y E-12 son
 comprobables sobre un `docs/codebase/` de fixture, sin invocar a nadie, y ahí conviene que estén.
+
+🔴 **E-20 no figuraba en ninguno de los dos grupos, y es el único de los 21.** Lo detectó el
+veredicto del 21-08-2026, y no es casual que sea también el escenario que quedó `sin sustento`
+teniendo `rojo visto: si`: **está partido en dos mitades y solo una tiene test.** El aviso lo cubre
+`test_e20…`; que el **recorrido** resuelva el mismo default no lo cubre nadie, porque el default
+del agente es una línea de prosa. Un escenario sin vía de verificación asignada es el que más fácil
+se da por cubierto — queda anotado en `Pendientes/Fix-Harness/PENDIENTES-FH.md` para cubrir la
+mitad que falta o partirlo en dos.
 
 El que construye no verifica. `harness-spec-refuter` corre la suite y falla contra esta spec.
 
