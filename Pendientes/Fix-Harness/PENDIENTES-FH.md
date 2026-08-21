@@ -83,17 +83,23 @@ The verdict is in `docs/cambios/iniciador-code/verificacion.md`, ruled by `harne
 differently from what the spec claims — the change is open because ten scenarios have no way to
 hold, not because anything is broken.
 
-Two of the ten are closable now and do not depend on anything else:
+Two of the ten were closable without waiting for anything, and **both were reworked the same day**.
+They are done and awaiting a second ruling — the refuter has not seen them yet:
 
-- **E-10 has a test that by design cannot fail.** The scenario is about the files *the walk writes*;
-  the test scans three hand-written fixtures on a corpus where the spec itself declares no secret
-  will ever be planted. The subject of the test is not the subject of the scenario. Either the test
-  gets a subject that is actually walk output, or the scenario is rewritten to say what it really
-  checks.
-- **E-20 is half-covered.** It claims *"the walk **and** the notice use `docs/codebase` alike"*. The
-  notice half has a test and a real red; the walk half has nothing — the agent's default is a line
-  of prose. Cover the second half or split the scenario in two. It is also the only one of the 21
-  missing from the spec's *"Cómo se verifica"* section, which is how it got there.
+- **E-10 had a test that by design could not fail.** Fixed by changing the subject and adding a
+  positive control: the test now scans `docs/codebase/` of this repo — real walk output, versioned,
+  so a future walk that writes a secret turns it red — and first proves the detector *does* find on
+  `tests/fixtures/corpus-secretos.txt`. Its red: neutering `buscar_secreto` fails that control and
+  nothing else. No secret was planted anywhere, which is the thing that is not done.
+- **E-20 was half-covered**, and was also the only one of the 21 missing from the spec's *"Cómo se
+  verifica"*, which is how it got there. Three things resolve that path — the hook, the check and
+  the agent — and two are code while one is prose. Split accordingly: **E-20** keeps the two that
+  are code (the check's default was never exercised either; `_hallazgos()` always passed an
+  explicit path, and now it is called with `config=None` over a *coja* card placed inside the
+  default), and **E-20b** carries the agent's default into the reading group.
+
+🔴 **Neither is `sostenido` until `harness-spec-refuter` rules again.** Whoever built does not
+verify, and that includes fixing what a verdict found.
 
 The other eight — E-07, E-11, E-12, E-13, E-14, E-15, E-16, E-17 — all need either a model-driven
 walk the deterministic suite cannot invoke, or a second walk that costs another 140.000 tokens. The

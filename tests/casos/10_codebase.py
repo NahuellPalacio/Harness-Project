@@ -147,6 +147,32 @@ def test_e06_ruta_invalida_cae_al_default_y_no_se_lleva_el_bloque(t):
 
 # ── La ruta, con la clave y sin ella ─────────────────────────────────────────────
 
+def test_e20_el_check_tambien_resuelve_el_default_sin_la_clave(t):
+    """E-20 — la mitad del escenario que no cubria nadie.
+
+    🔴 El veredicto del 2026-08-21 dejo E-20 `sin sustento` teniendo `rojo visto: si`,
+    porque el escenario habla de dos cosas —el aviso y lo que mira el indice— y solo el
+    aviso tenia test: `_hallazgos()` siempre le pasa `rutaCodebase` explicito al check,
+    asi que su default nunca se ejercitaba.
+
+    Se arma un proyecto con una ficha COJA adentro del default y se llama al check con
+    `config=None`. Si resuelve bien, la ficha cae adentro del alcance y hay hallazgo. Si
+    el default estuviera mal, la ficha quedaria afuera y el check se callaria: por eso la
+    ficha es coja y no sana, que es la misma leccion de `test_no_mira_lo_que_cae_fuera`."""
+    proy = Path(tempfile.gettempdir()) / ("harness-cb-def-" + uuid.uuid4().hex[:8])
+    ficha = proy / "docs" / "codebase" / "comun-hooks.md"
+    _escribir(ficha, "# comun/hooks\n\n## Qué es\n\nLe faltan tres secciones a proposito.\n")
+
+    evento = {"hook_event_name": "PostToolUse", "tool_name": "Write",
+              "cwd": str(proy), "tool_input": {"file_path": str(ficha)}}
+    modulo = reglas._cargar(str(CHECK))
+    hallazgos = list(modulo.verificar(evento, str(proy), None) or [])
+
+    t.igual("E-20: sin config, el check resuelve docs/codebase y mira la ficha",
+            1, len(hallazgos))
+    t.contiene("E-20: y nombra lo que falta", "De qué depende", hallazgos[0] if hallazgos else "")
+
+
 def test_e20_sin_la_clave_usa_el_default(t):
     """E-20 — un proyecto instalado antes de este cambio no tiene `rutaCodebase` en su
     harness.config.json y no la va a tener nunca: ese archivo no se reescribe. El default
@@ -233,23 +259,54 @@ def test_no_mira_lo_que_cae_fuera_del_directorio(t):
                        ruta_codebase="docs/codebase"))
 
 
-def test_e10_nada_de_lo_escrito_matchea_un_patron_de_confianza_alta(t):
-    """E-10 — ningun archivo del indice matchea un patron de bloqueo.
+CODEBASE_REAL = RAIZ / "docs" / "codebase"
+
+
+def _catalogo():
+    return secretos.importar_patrones(str(RAIZ / "comun" / "reglas" / "secretos.patrones.json"))
+
+
+def _bloquea(texto, catalogo):
+    h = secretos.buscar_secreto(texto, catalogo)
+    return bool(h) and h.get("confianza") == "alta"
+
+
+def test_e10_control_positivo_el_detector_encuentra_lo_que_tiene_que_encontrar(t):
+    """E-10, la mitad que hace que la otra valga algo.
+
+    🔴 Este control existe porque el veredicto del 2026-08-21 fallo la version anterior
+    de E-10: escaneaba fichas de fixture escritas a mano, sobre un corpus donde la propia
+    spec declara que nunca se va a plantar un secreto. Un test que por diseno no puede
+    fallar no sostiene nada.
+
+    Se ataca al reves: primero se comprueba que la maquinaria SI encuentra, sobre el
+    corpus que existe justamente para eso, y recien despues se afirma que sobre lo que
+    escribio el recorrido no encuentra nada. Sin este control, un catalogo que no carga
+    o un detector roto darian el mismo verde que un indice limpio."""
+    catalogo = _catalogo()
+    altas = [p for p in catalogo["patrones"] if p.get("confianza") == "alta"]
+    t.verdadero("E-10: el catalogo trae patrones que bloquean", len(altas) > 0)
+
+    corpus = (RAIZ / "tests" / "fixtures" / "corpus-secretos.txt").read_text(encoding="utf-8")
+    t.verdadero("E-10: sobre el corpus de secretos, el detector encuentra",
+                _bloquea(corpus, catalogo))
+
+
+def test_e10_nada_de_lo_que_escribio_el_recorrido_matchea_un_patron_alto(t):
+    """E-10 — ningun archivo ESCRITO POR EL RECORRIDO matchea un patron de bloqueo.
+
+    El sujeto es docs/codebase/ de este repositorio, que es salida real de
+    dev-iniciador-code y esta versionada. No es un fixture: si un recorrido futuro
+    escribe un secreto y alguien lo commitea, este test se pone en rojo.
 
     Se verifica en la suite y no con un check en tiempo de ejecucion: pre-tool-use.py ya
     bloquea el secreto ANTES de que el archivo llegue al disco, y es la unica regla que
     este harness bloquea. Un segundo detector en PostToolUse llegaria tarde.
 
     El catalogo no tiene campo `severidad`: la que bloquea es `confianza: alta`."""
-    catalogo = secretos.importar_patrones(str(RAIZ / "comun" / "reglas" / "secretos.patrones.json"))
-    # Sin esto el test seria vacio: un catalogo que no cargo no encuentra nada y todo
-    # pasa. Que el detector funcione lo prueba 04_secretos.py, con 100 comprobaciones.
-    altas = [p for p in catalogo["patrones"] if p.get("confianza") == "alta"]
-    t.verdadero("E-10: el catalogo cargo y tiene patrones que bloquean", len(altas) > 0)
-
-    archivos = sorted((FIXTURE / "docs" / "codebase").glob("*.md"))
-    t.verdadero("E-10: hay fichas que mirar", len(archivos) >= 3)
+    catalogo = _catalogo()
+    archivos = sorted(CODEBASE_REAL.glob("*.md"))
+    t.verdadero("E-10: hay salida del recorrido que mirar", len(archivos) >= 10)
     for f in archivos:
-        hallazgo = secretos.buscar_secreto(f.read_text(encoding="utf-8"), catalogo)
-        bloquea = bool(hallazgo) and hallazgo.get("confianza") == "alta"
-        t.verdadero("E-10: %s sin secreto de confianza alta" % f.name, not bloquea)
+        t.verdadero("E-10: %s sin secreto de confianza alta" % f.name,
+                    not _bloquea(f.read_text(encoding="utf-8"), catalogo))

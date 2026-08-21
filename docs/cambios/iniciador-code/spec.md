@@ -188,14 +188,29 @@ después solo la ficha que hace falta.
   · rojo visto: si
 - **E-10** — Ningún archivo escrito por el recorrido matchea un patrón de
   `comun/reglas/secretos.patrones.json` con `confianza: alta`, que es la que bloquea.
-  · rojo visto: no consta
+  · rojo visto: si
 
   Precisado el 2026-08-21: el catálogo no tiene campo `severidad`; lo que decide es
   `confianza`, `alta` bloquea y `media` pregunta. Y se verifica **en la suite, no con un check
   en tiempo de ejecución**: `pre-tool-use.py` ya bloquea el secreto antes de que el archivo
   llegue al disco, y es la única regla que este harness bloquea. Un segundo detector en
-  `PostToolUse` llegaría tarde y con menos autoridad. Queda en `no consta` a propósito: meter un
-  secreto de verdad en un fixture para verlo en rojo es exactamente lo que no se hace.
+  `PostToolUse` llegaría tarde y con menos autoridad.
+
+  🔴 **Rehecho el 21-08-2026, después del veredicto que lo dejó `sin sustento`.** El test
+  anterior escaneaba **fichas de fixture escritas a mano**, sobre un corpus donde esta misma
+  spec declara que nunca se va a plantar un secreto: por diseño no podía fallar, y el sujeto del
+  test no era el del escenario. Dos cambios lo arreglan:
+
+  - **El sujeto pasa a ser salida real del recorrido**: `docs/codebase/` de este repositorio, que
+    lo escribió `dev-iniciador-code` y está versionado. Si un recorrido futuro escribe un secreto
+    y alguien lo commitea, el test se pone en rojo.
+  - **Se agrega un control positivo**: antes de afirmar que sobre esa salida no hay nada, se
+    comprueba que el detector **sí encuentra** sobre `tests/fixtures/corpus-secretos.txt`, que
+    existe justamente para eso. Sin ese control, un catálogo que no carga da el mismo verde que
+    un índice limpio.
+
+  Su rojo es el del control: neutralizar `buscar_secreto` hace fallar este escenario y ninguno
+  más. Sigue sin plantarse un secreto en ningún lado, que es lo que no se hace.
 - **E-11** — El recorrido no escribe ni modifica ningún archivo fuera de `docs/codebase/`.
   · rojo visto: no consta
 - **E-12** — Un archivo ignorado por `.gitignore` no produce ficha ni aparece en el índice.
@@ -232,9 +247,27 @@ después solo la ficha que hace falta.
   · rojo visto: si
 - **E-19** — Instalado `desarrollo` de cero, `harness.config.json` tiene `rutaCodebase`.
   · rojo visto: si
-- **E-20** — Sobre un proyecto con `harness.config.json` preexistente y sin la clave, el recorrido
-  y el aviso usan `docs/codebase` igual.
+- **E-20** — Sobre un proyecto con `harness.config.json` preexistente y sin la clave, **el aviso y
+  el check** resuelven `docs/codebase` igual.
   · rojo visto: si
+
+  🔴 **Partido el 21-08-2026, después del veredicto.** Decía «el recorrido y el aviso», y quedó
+  `sin sustento` **teniendo `rojo visto: si`**: hablaba de dos cosas y solo una tenía test. Es el
+  caso que mejor muestra que una marca puede ser cierta sobre el test que existe y no decir nada
+  sobre el escenario entero.
+
+  Tres cosas resuelven esa ruta —el hook, el check y el agente— y **dos son código y una es
+  prosa**. Este escenario se queda con las dos que son código; la tercera es E-20b. El default
+  del check tampoco se ejercitaba: `_hallazgos()` siempre le pasaba `rutaCodebase` explícito.
+  Ahora se lo llama con `config=None` sobre una ficha **coja** puesta adentro del default: si
+  resolviera mal, la ficha caería fuera de alcance y el check se callaría.
+- **E-20b** — El agente resuelve el mismo default: sin `rutaCodebase`, escribe en `docs/codebase`.
+  · rojo visto: no consta
+
+  Va al grupo de lectura y no a la suite, y el motivo es el mismo que el de E-07 a E-17: **el
+  default del agente es una línea de su contrato, no código.** Se leyó en el recorrido real del
+  21-08-2026 —este repositorio no tiene `harness.config.json` y el índice quedó en
+  `docs/codebase/`— y esa evidencia está en `recorrido-real.md`. No lo vuelve `sostenido`.
 - **E-21** — `-Uninstall` deja `docs/codebase/` intacto. Es conocimiento del proyecto, no material
   del harness.
   · rojo visto: si
@@ -258,13 +291,12 @@ salida contra los escenarios.
 Lo que sí puede ir a la suite de esos once es la forma de lo escrito: E-08, E-09, E-10 y E-12 son
 comprobables sobre un `docs/codebase/` de fixture, sin invocar a nadie, y ahí conviene que estén.
 
-🔴 **E-20 no figuraba en ninguno de los dos grupos, y es el único de los 21.** Lo detectó el
-veredicto del 21-08-2026, y no es casual que sea también el escenario que quedó `sin sustento`
-teniendo `rojo visto: si`: **está partido en dos mitades y solo una tiene test.** El aviso lo cubre
-`test_e20…`; que el **recorrido** resuelva el mismo default no lo cubre nadie, porque el default
-del agente es una línea de prosa. Un escenario sin vía de verificación asignada es el que más fácil
-se da por cubierto — queda anotado en `Pendientes/Fix-Harness/PENDIENTES-FH.md` para cubrir la
-mitad que falta o partirlo en dos.
+🔴 **E-20 no figuraba en ninguno de los dos grupos, y era el único de los 21.** Lo detectó el
+veredicto del 21-08-2026, y no fue casual que sea también el que quedó `sin sustento` **teniendo**
+`rojo visto: si`: un escenario sin vía de verificación asignada es el que más fácil se da por
+cubierto. Se partió en dos y cada mitad tiene la suya: **E-20 va a la suite** —el hook y el check,
+que son código— y **E-20b al grupo de lectura**, porque el default del agente es una línea de su
+contrato.
 
 El que construye no verifica. `harness-spec-refuter` corre la suite y falla contra esta spec.
 
