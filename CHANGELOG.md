@@ -3,6 +3,41 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.14.0] — 2026-08-21
+
+> 🔴 **Sin cerrar.** `VERSION` sigue en `0.13.0`: falta el veredicto contra
+> `docs/cambios/iniciador-code/spec.md`. Se declara acá porque el trabajo está hecho y la nota de
+> versión ya existe; el bump lo hace `close-a-version`.
+
+**El primer recorrido del código.** El harness se instalaba y después no pasaba nada hasta que
+alguien escribía algo. Ahora un agente recorre el proyecto una vez y deja escrito qué hay, en
+`docs/codebase/`, para que las sesiones que vengan lo lean en vez de re-derivarlo a fuerza de
+`grep`.
+
+### Agregado
+
+- **`dev-iniciador-code`** — el agente del primer recorrido, en el harness `desarrollo`. Lista
+  con `git ls-files`, agrupa en módulos y escribe una ficha por módulo con cuatro secciones fijas
+  más un `indice.md` que las nombra a todas. Lo lanza la persona: el harness sugiere y nunca
+  dispara solo
+- **`SessionStart` lo sugiere** en una línea, solo con `desarrollo` instalado y solo mientras el
+  índice no exista. Desaparece solo en cuanto está
+- **`dev-codebase-forma`** — quinto check de `desarrollo`: comprueba que el índice y las fichas se
+  correspondan en los dos sentidos y que cada ficha tenga sus cuatro secciones. Avisa, no bloquea
+- **`rutaCodebase`** en `harness.config.json`, con default `docs/codebase`. Un proyecto ya
+  instalado no verá la clave —ese archivo no se reescribe nunca— y funciona igual: el default se
+  resuelve también en el hook y en el agente
+- **ADR-0008** — el harness puede aprovechar una herramienta externa y no puede depender de ella
+- 375 tests en verde (126 PowerShell + 249 Python), 41 más que en 0.13.0
+
+### Para quien actualiza
+
+- **Nada que hacer.** No hay cambios de comportamiento en lo que ya estaba: ningún bloqueo nuevo,
+  ninguna regla nueva que falle, ningún requisito de instalación agregado
+- Si tenés `desarrollo` instalado, la primera sesión después de actualizar va a sugerirte el
+  recorrido. Es una línea y se apaga sola cuando lo corrés
+- `docs/codebase/` **es del proyecto, no del harness**: `-Uninstall` no lo toca
+
 ## [0.13.0] — 2026-08-17
 
 **Los hooks corren en Python.** El hook que corre en cada tool call tardaba 981 ms, 2,5× por
