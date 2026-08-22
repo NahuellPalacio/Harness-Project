@@ -117,17 +117,9 @@ Fix. Not a rewrite of the sentence. Either the walk gets something that can veri
 scenario says out loud that this half is read and not proven — the honest version of what happened.
 What is not defensible is a cut that makes the hard half disappear.
 
-Two smaller ones from the same ruling:
-
-- **The `E-20b` id is squatted.** `test_e20b_con_la_clave_respeta_la_ruta_declarada` predates the
-  scenario: its premise is *with* the key and its subject is the hook, while E-20b is *without* the
-  key and about the agent. Anyone grepping `E-20b` finds three green assertions that say nothing
-  about it. Renaming the test closes it; it was left undone so as not to slide new work underneath
-  a verdict just issued.
-- **The check's test does not reproduce the scenario's premise.** E-20 says *"with a
-  **pre-existing** `harness.config.json` and no key"*; the test passes `config=None`, which in
-  production means the file does not exist. Today both branches land on the same `.get()`, so it
-  does not degrade the verdict — but it does not exercise what the scenario names.
+Two smaller ones from the same ruling **were closed on 2026-08-21** and are in the 0.14.0 note:
+the squatted `E-20b` id, freed by renaming the test that carried it, and the check test that
+passed `config=None` where the scenario names a pre-existing file without the key.
 
 The other eight — E-07, E-11, E-12, E-13, E-14, E-15, E-16, E-17 — all need either a model-driven
 walk the deterministic suite cannot invoke, or a second walk that costs another 140.000 tokens. The

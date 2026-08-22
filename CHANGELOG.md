@@ -8,10 +8,12 @@ Formato: cada versión lista lo que cambió a nivel funcional. Las versiones sig
 > 🔴 **Sin cerrar.** `VERSION` sigue en `0.13.0`. Van dos veredictos y el segundo da —13 escenarios
 > sostenidos, 0 contradichos, **9 sin sustento**— y un `verificacion.md` con `sin-sustento` no
 > cierra el cambio. Nada quedó contradicho: la suite está verde y ningún comportamiento difiere de
-> lo que la spec afirma. El bump lo hace `close-a-version` cuando esos nueve tengan con qué
-> sostenerse. **Decidido el 21-08: primero pasa a mecanismo lo que ya está al alcance, y recién
-> lo que quede se declara de contrato.** E-07 y E-13 se movieron ese mismo día; los cuenta un
-> tercer veredicto, no este texto.
+> lo que la spec afirma. **Van tres veredictos y los tres dieron lo mismo donde importa: 0
+> contradichos.** El tercero, con E-07 y E-13 ya con mecanismo propio, los dejó `sin sustento`
+> igual —comprueban que el harness ve el estado malo, no que el agente no lo produzca—, y ahí
+> se agotó la vía del mecanismo. Los nueve pasaron a ADR-0009: se verifican por lectura, y
+> [`lectura.md`](../cambios/iniciador-code/lectura.md) está **sin firmar**. El bump lo hace
+> `close-a-version` cuando alguien que no construyó lo llene y un cuarto veredicto lo cuente.
 
 **El primer recorrido del código.** El harness se instalaba y después no pasaba nada hasta que
 alguien escribía algo. Ahora un agente recorre el proyecto una vez y deja escrito qué hay, en
@@ -36,7 +38,11 @@ alguien escribía algo. Ahora un agente recorre el proyecto una vez y deja escri
   instalado no verá la clave —ese archivo no se reescribe nunca— y funciona igual: el default se
   resuelve también en el hook y en el agente
 - **ADR-0008** — el harness puede aprovechar una herramienta externa y no puede depender de ella
-- 398 tests en verde (126 PowerShell + 272 Python), 64 más que en 0.13.0
+- **ADR-0009** — un escenario cuyo sujeto es una corrida de un modelo se verifica por lectura de
+  una persona que no sea quien construyó, con veredicto `leído`. Es un cuarto veredicto, cierra
+  un cambio y **vale menos que `sostenido`**: se cuentan aparte. Solo aplica a ese caso; lo que
+  un test determinista podría alcanzar no lleva la marca
+- 399 tests en verde (126 PowerShell + 273 Python), 65 más que en 0.13.0
 
 ### Para quien actualiza
 

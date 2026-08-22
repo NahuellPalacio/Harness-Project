@@ -1,6 +1,6 @@
 # El aviso del primer recorrido del codigo, en SessionStart.
 #
-# Escenarios E-01 a E-06 y E-20 de docs/cambios/iniciador-code/spec.md.
+# Escenarios E-01 a E-13 y E-20 de docs/cambios/iniciador-code/spec.md.
 #
 # Se invoca el hook como proceso hijo, igual que lo invoca Claude Code, porque lo que se
 # esta probando es su salida completa y no una funcion suelta.
@@ -180,10 +180,17 @@ def test_e20_el_check_tambien_resuelve_el_default_sin_la_clave(t):
     aviso tenia test: `_hallazgos()` siempre le pasa `rutaCodebase` explicito al check,
     asi que su default nunca se ejercitaba.
 
-    Se arma un proyecto con una ficha COJA adentro del default y se llama al check con
-    `config=None`. Si resuelve bien, la ficha cae adentro del alcance y hay hallazgo. Si
-    el default estuviera mal, la ficha quedaria afuera y el check se callaria: por eso la
-    ficha es coja y no sana, que es la misma leccion de `test_no_mira_lo_que_cae_fuera`."""
+    Se arma un proyecto con una ficha COJA adentro del default. Si el check resuelve bien,
+    la ficha cae adentro del alcance y hay hallazgo. Si el default estuviera mal, quedaria
+    afuera y el check se callaria: por eso la ficha es coja y no sana, que es la misma
+    leccion de `test_no_mira_lo_que_cae_fuera`.
+
+    🔴 Se llama con las DOS formas. El escenario dice `harness.config.json` PREEXISTENTE
+    y sin la clave, que es `{}`; `None` es el archivo que no existe. El veredicto del
+    2026-08-21 marco que el test ejercitaba la segunda y el escenario nombra la primera.
+    Hoy las dos caen en el mismo `(config or {}).get()` y por eso esta distincion NO tiene
+    rojo propio ni puede tenerlo: vale como guarda para el dia que alguien separe las dos
+    ramas, no como sustento nuevo."""
     proy = Path(tempfile.gettempdir()) / ("harness-cb-def-" + uuid.uuid4().hex[:8])
     ficha = proy / "docs" / "codebase" / "comun-hooks.md"
     _escribir(ficha, "# comun/hooks\n\n## Qué es\n\nLe faltan tres secciones a proposito.\n")
@@ -191,11 +198,15 @@ def test_e20_el_check_tambien_resuelve_el_default_sin_la_clave(t):
     evento = {"hook_event_name": "PostToolUse", "tool_name": "Write",
               "cwd": str(proy), "tool_input": {"file_path": str(ficha)}}
     modulo = reglas._cargar(str(CHECK))
-    hallazgos = list(modulo.verificar(evento, str(proy), None) or [])
 
-    t.igual("E-20: sin config, el check resuelve docs/codebase y mira la ficha",
-            1, len(hallazgos))
-    t.contiene("E-20: y nombra lo que falta", "De qué depende", hallazgos[0] if hallazgos else "")
+    con_archivo = list(modulo.verificar(evento, str(proy), {}) or [])
+    t.igual("E-20: config preexistente sin la clave, resuelve el default y ve la ficha",
+            1, len(con_archivo))
+    t.contiene("E-20: y nombra lo que falta", "De qué depende",
+               con_archivo[0] if con_archivo else "")
+
+    sin_archivo = list(modulo.verificar(evento, str(proy), None) or [])
+    t.igual("E-20: y sin harness.config.json resuelve igual", con_archivo, sin_archivo)
 
 
 def test_e20_sin_la_clave_usa_el_default(t):
@@ -208,15 +219,24 @@ def test_e20_sin_la_clave_usa_el_default(t):
     t.no_contiene("E-20: encontro el indice en el default", AGENTE, _contexto(proy))
 
 
-def test_e20b_con_la_clave_respeta_la_ruta_declarada(t):
-    """E-20b — y si el proyecto disiente del default, se le hace caso."""
+def test_con_la_clave_respeta_la_ruta_declarada(t):
+    """Si el proyecto disiente del default, al hook se le hace caso.
+
+    🔴 Este test se llamaba `test_e20b_...` y el id estaba pisado: existe desde
+    `fdfb726`, ANTES de que E-20b fuera un escenario. Su premisa es CON la clave y su
+    sujeto es el hook; el E-20b de la spec dice SIN la clave y su sujeto es el agente.
+    Quien greppeaba `E-20b` encontraba tres afirmaciones verdes que no hablan de eso.
+
+    La proposicion que prueba es real y no tiene escenario propio, y no se le inventa
+    uno: escribir la spec desde el codigo es el error que el refutador existe para
+    cazar. Se queda sin id, que es lo que corresponde a un test libre."""
     proy = _proyecto(config_extra={"rutaCodebase": "docs/mapa-del-codigo"},
                      con_indice=True, ruta_codebase="docs/mapa-del-codigo")
-    t.no_contiene("E-20b: lee la ruta declarada", AGENTE, _contexto(proy))
+    t.no_contiene("con la clave: lee la ruta declarada", AGENTE, _contexto(proy))
 
     proy_sin = _proyecto(config_extra={"rutaCodebase": "docs/mapa-del-codigo"},
                          con_indice=True, ruta_codebase="docs/codebase")
-    t.contiene("E-20b: y no se conforma con el default cuando hay clave",
+    t.contiene("con la clave: y no se conforma con el default",
                AGENTE, _contexto(proy_sin))
 
 

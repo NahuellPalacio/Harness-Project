@@ -179,6 +179,7 @@ después solo la ficha que hace falta.
 
 - **E-07** — Terminado un recorrido, existe `docs/codebase/indice.md`.
   · rojo visto: si
+  · verificación: lectura — el sujeto es un recorrido terminado, y la suite no corre al agente
 
   📌 **Movido el 2026-08-21 del grupo de lectura al de la suite, y con una aclaración que
   no se recorta.** Lo que la suite comprueba es que el harness **ve** el estado contrario:
@@ -233,8 +234,10 @@ después solo la ficha que hace falta.
   el mismo error que este escenario venía a arreglar, cometido en la frase que lo arreglaba.
 - **E-11** — El recorrido no escribe ni modifica ningún archivo fuera de `docs/codebase/`.
   · rojo visto: no consta
+  · verificación: lectura — el sujeto es dónde escribe el agente, y ningún evento del contrato dice quién escribe
 - **E-12** — Un archivo ignorado por `.gitignore` no produce ficha ni aparece en el índice.
   · rojo visto: no consta
+  · verificación: lectura — el sujeto es qué lista el agente, resuelto por su `git ls-files`, que es contrato
 
   Movido el 2026-08-21 del grupo de la suite al de lectura. Se resuelve **por construcción**: el
   agente lista con `git ls-files`, así que lo ignorado nunca entra. Comprobarlo desde un check
@@ -247,6 +250,7 @@ después solo la ficha que hace falta.
 - **E-13** — Un segundo recorrido sobre un repositorio sin cambios deja el mismo conjunto de
   nombres de archivo en `docs/codebase/`. No aparecen fichas duplicadas ni con sufijo.
   · rojo visto: si
+  · verificación: lectura — el sujeto es un segundo recorrido, y la suite no corre ninguno
 
   📌 **Movido el 2026-08-21 al grupo de la suite, con el mismo recorte declarado que E-07.**
   `dev-codebase-forma.py` reporta una ficha con sufijo de copia —`-1`, ` (2)`, `-copia`—
@@ -260,16 +264,20 @@ después solo la ficha que hace falta.
 - **E-14** — Si una ficha corresponde a un módulo que ya no existe, el recorrido la deja donde está
   y la nombra en su informe. No la borra.
   · rojo visto: no consta
+  · verificación: lectura — el sujeto es lo que el agente decide no borrar
 
 ### El informe que devuelve
 
 - **E-15** — El informe dice cuántas fichas escribió, cuántas dejó igual y qué no recorrió.
   · rojo visto: no consta
+  · verificación: lectura — el sujeto es el informe, que es la respuesta del subagente y ningún hook la ve
 - **E-16** — El informe no contiene código fuente del proyecto: ni un bloque de código, ni una
   línea citada de un archivo recorrido.
   · rojo visto: no consta
+  · verificación: lectura — el sujeto es el informe, ídem E-15
 - **E-17** — Sobre un repositorio sin código, el recorrido no escribe nada y lo dice.
   · rojo visto: no consta
+  · verificación: lectura — el sujeto es un recorrido sobre un repo sin código
 
 ### Instalación
 
@@ -293,11 +301,18 @@ después solo la ficha que hace falta.
   resolviera mal, la ficha caería fuera de alcance y el check se callaría.
 - **E-20b** — El agente resuelve el mismo default: sin `rutaCodebase`, escribe en `docs/codebase`.
   · rojo visto: no consta
+  · verificación: lectura — el sujeto es el default del agente, que es una línea de su contrato
 
   Va al grupo de lectura y no a la suite, y el motivo es el mismo que el del resto de ese grupo: **el
   default del agente es una línea de su contrato, no código.** Se leyó en el recorrido real del
   21-08-2026 —este repositorio no tiene `harness.config.json` y el índice quedó en
   `docs/codebase/`— y esa evidencia está en `recorrido-real.md`. No lo vuelve `sostenido`.
+
+  🔴 **El id estaba pisado y se liberó el 21-08-2026.** `test_e20b_con_la_clave_respeta_la_ruta_declarada`
+  existía desde `fdfb726`, antes que este escenario, y probaba la premisa contraria: **con** la
+  clave, y sobre el hook. Pasó a llamarse `test_con_la_clave_respeta_la_ruta_declarada`. La
+  proposición que prueba es real y **no recibe escenario propio**: inventarle uno sería escribir
+  la spec desde el código. **E-20b vuelve a tener cero tests, que es lo que le corresponde.**
 - **E-21** — `-Uninstall` deja `docs/codebase/` intacto. Es conocimiento del proyecto, no material
   del harness.
   · rojo visto: si
@@ -313,24 +328,37 @@ Por la suite, con un caso por escenario que nombre su id: E-01 a E-06 con payloa
 propósito para probar el `-Update`, con un `finally` que no sobrevive a que maten el proceso.
 Sumarle carga agranda esa superficie sin necesidad.
 
-Por lectura de una persona: E-11, E-12 y E-14 a E-17. Todos dependen de que un agente con modelo recorra un
-repositorio real, y la suite no invoca modelos —los 334 tests actuales son deterministas y sin
-red—. Se verifican corriendo el agente una vez sobre este mismo repositorio y contrastando la
-salida contra los escenarios.
+Por lectura de una persona, con veredicto `leído` según
+[ADR-0009](../../adr/0009-un-escenario-sobre-un-modelo-se-verifica-por-lectura.md): **E-07, E-11,
+E-12, E-13, E-14, E-15, E-16, E-17 y E-20b**, los nueve marcados `· verificación: lectura`.
+Todos tienen el mismo sujeto —una corrida de un agente con modelo— y la suite no invoca modelos:
+son 399 tests deterministas y sin red. Se verifican corriendo el agente una vez sobre un
+repositorio real y contrastando la salida contra cada escenario.
 
-Lo que sí puede ir a la suite de esos once es la forma de lo escrito: E-08, E-09, E-10 y E-12 son
-comprobables sobre un `docs/codebase/` de fixture, sin invocar a nadie, y ahí conviene que estén.
+La lectura va en [`lectura.md`](lectura.md), fechada y firmada por quien leyó, que **no puede ser
+quien construyó**. La evidencia de [`recorrido-real.md`](recorrido-real.md) no sirve para esto:
+la leyó quien construyó, y está dicho en su propio encabezado.
 
-🔴 **El 2026-08-21 se sumaron E-07 y E-13, y el grupo de lectura pasó a ser E-11, E-12, E-14 a
-E-17 y E-20b.** Los dos son propiedades del directorio —que exista el índice, que no haya dos
-fichas del mismo módulo— y por eso se miran donde ya se miraba: E-07 en `SessionStart`, que
-resuelve la misma ruta desde E-01; E-13 en `dev-codebase-forma.py`, que ya corre sobre cada
-`.md` que cae adentro.
+🔴 **Los nueve se marcaron el 2026-08-21, después del tercer veredicto, y se anota como lo que
+es: una corrección posterior.** ADR-0009 pide que la marca se ponga al escribir el escenario y
+no después de que quede `sin sustento`, porque eso es el corte de E-20 con otro nombre. La
+diferencia con aquel corte es la que hay que mirar, y es toda: **ningún escenario cambió de
+texto, de número ni de grupo, y ninguna proposición desapareció.** Los nueve dicen hoy
+exactamente lo que decían cuando el refutador los rindió; lo único que se agregó es por dónde
+se verifican. El veredicto siguiente tiene que nombrar esta corrección.
 
-**Los dos entran con su recorte escrito en el escenario.** Comprueban que el harness ve el
-estado malo, no que el agente no lo produzca; eso último sigue necesitando correrlo. Es la
-misma distancia que ya tenían E-08 y E-09, que están `sostenido`. Se declara acá para que
-quien verifique la pondere en vez de tener que descubrirla, que es lo que no pasó con E-20.
+Lo que sí puede ir a la suite es la forma de lo escrito: E-08, E-09 y E-10 son comprobables sobre
+un `docs/codebase/` de fixture, sin invocar a nadie, y ahí están.
+
+📌 **E-07 y E-13 tienen además mecanismo propio, y no es lo que los verifica.** El 2026-08-21
+se les construyó código con rojo exclusivo medido: `SessionStart` distingue un recorrido a
+medias de uno que no empezó, y `dev-codebase-forma.py` reporta una ficha duplicada con el
+original al lado. El tercer veredicto los dejó `sin sustento` igual, y tenía razón:
+**comprueban que el harness ve el estado malo, no que el agente no lo produzca.**
+
+Ese código se queda —hace visible en producción algo que antes pasaba en silencio— y **no
+cuenta como verificación de estos escenarios**. La proposición que prueba es vecina, no la
+del escenario, y confundirlas es exactamente lo que este bloque existe para impedir.
 
 🔴 **E-20 no figuraba en ninguno de los dos grupos, y era el único de los 21.** Lo detectó el
 veredicto del 21-08-2026, y no fue casual que sea también el que quedó `sin sustento` **teniendo**
