@@ -3,6 +3,15 @@
 > 🔴 **SIN FIRMAR.** Ningún escenario de este archivo está leído todavía. Mientras esté así, el
 > refutador los rinde `sin sustento` y el cambio no cierra. **Un papel vacío no es una lectura.**
 
+> 📌 **Está sin firmar a propósito, no por olvido.** Decisión de Nahue el 22-08-2026: *«esta firma
+> se va a hacer cuando lo corro en el proyecto»*. La lectura vale más sobre una corrida propia en un
+> proyecto que importa que sobre el clon descartable que recorrió quien construyó. Queda anotado en
+> `Pendientes/Fix-Harness/PENDIENTES-FH.md`, bajo *Verification that was not done*.
+>
+> Si esa corrida es otra que la de abajo, **la sección `## La corrida` se reescribe** para nombrar
+> la que se leyó de verdad. [`recorrido-real.md`](recorrido-real.md) queda como registro del primer
+> recorrido: es evidencia, nunca la lectura.
+
 **Quién puede firmar:** cualquiera **menos quien construyó**. Es la misma regla del refutador y por
 el mismo motivo: para quien construyó, cada decisión tuvo una razón en su momento.
 [`recorrido-real.md`](recorrido-real.md) **no sirve** para esto, y lo dice en su propio encabezado:

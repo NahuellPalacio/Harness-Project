@@ -271,6 +271,30 @@ disk.
 
 ## Verification that was not done
 
+### `mapa-de-nodos` has four scenarios waiting for a reading, deferred on purpose
+
+The refuter ruled the change on 2026-08-22: **23 upheld, 0 contradicted, 4 unsupported**. The four
+are E-01, E-18, E-19 and E-20, all marked `· verificación: lectura`, and the refuter confirmed the
+mark is deserved — the subject of the four is a run of `dev-iniciador-code`.
+
+The evidence exists. The walk was run for real on a clone of a Next.js project and the whole output
+is versioned in `docs/cambios/mapa-de-nodos/recorrido-real.md`: nine cards, the index, the edge
+matrix, the write timestamps and the agent's verbatim report. `lectura.md` is written and
+**unsigned**, with the four scenarios and what to look at in each.
+
+Status. Deferred by Nahue's own call on 2026-08-22: *«esta firma se va a hacer cuando lo corro en el
+proyecto»*. The reading is worth more over a run he did on a project he cares about than over a
+throwaway clone somebody else walked. Nothing is missing except that run and the signature.
+
+🔴 **Until it is signed the change does not close**, `close-a-version` cannot run, and the branch
+`mapa-de-nodos` stays unmerged. Two things ride on that: the `399 tests` chip of
+`docs/mapa/mapa-harness.html`, which step 7 of `close-a-version` updates, and the release itself —
+nothing reaches an installed project until a version is cut.
+
+📌 **If the signed reading is over a different run**, the `## La corrida` section of `lectura.md`
+describes the wrong one and has to be rewritten to name the run actually read. `recorrido-real.md`
+stays as the record of the first walk; it is evidence, never the reading.
+
 ### The `desarrollo` skills were never used on a real project
 
 They are verified against the norm, not against the work. That is the test that matters: the
