@@ -134,11 +134,17 @@ quitarle al que lee justo lo que tiene que juzgar.
 > inventarlo. No hay tests ni dependencias de testing, así que el `umbralCobertura: 80` de la config
 > no tiene hoy contra qué medirse.
 
-📌 **Lo que el informe no dice.** El contrato del agente le pide tres cosas —cuántas escribió,
-cuántas dejó igual y qué no recorrió— y las tres están. Lo que no declara con esas palabras es
-«cuántas dejé igual»: dice que el directorio no existía, de lo que se deduce que ninguna. Es
-correcto y es una deducción del lector, no una afirmación del informe. Quien lea que decida si eso
+📌 **El contrato del informe, punto por punto.** Es una correspondencia, no un juicio: está acá
+para que quien lea no tenga que ir a buscar el contrato del agente, y decida por su cuenta si
 alcanza.
+
+| Lo que el contrato pide | Dónde lo dice el informe |
+|---|---|
+| Cuántas escribió | *«9 fichas nuevas más `indice.md`»* |
+| Cuántas dejó igual | *«no dejé ninguna ficha sin tocar»* |
+| Qué fichas ya no corresponden a un módulo, nombradas y no borradas | *«Fichas sin módulo: ninguna»* |
+| Qué no recorrió, y por qué | Los cuatro ítems de *«Qué no recorrí»*, cada uno con su motivo |
+| Secretos y datos personales, por archivo y nunca por valor | *«Secretos: ninguno»*, y los datos personales del portfolio nombrados por archivo |
 
 ## El material, para que la lectura sobreviva al temporal
 
