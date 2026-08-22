@@ -26,6 +26,11 @@ dos formas de invocarlo. Lo que cambia es la sintaxis de la línea de comandos, 
 No hace falta instalar PowerShell 7. No hace falta ser administrador. Python se usa con el que
 ya esté en el `PATH` de la máquina — no se empaqueta ningún intérprete.
 
+**Y no hace falta nada más.** Ni Obsidian, ni un índice de código, ni un servidor MCP: el harness
+no depende de ninguna herramienta externa —[ADR-0008](adr/0008-lo-externo-nunca-es-requisito.md)—
+y el README explica en [Lo que no hace falta instalar](../README.md#lo-que-no-hace-falta-instalar)
+qué se evaluó y por qué quedó afuera.
+
 ## 1. Traer el harness
 
 ```bash

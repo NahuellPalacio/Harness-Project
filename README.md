@@ -42,6 +42,20 @@ un conjunto exacto, el camino es `-Uninstall` y volver a instalar.
 | Python | ≥ 3.9 (el de la máquina; no se empaqueta ningún intérprete) |
 | Git | cualquiera |
 
+Esa tabla es **todo lo que hay que instalar**. El harness no depende de ninguna herramienta
+externa: es la regla de [ADR-0008](docs/adr/0008-lo-externo-nunca-es-requisito.md) — *puede
+aprovechar una, nunca depender de ella*. Sin la herramienta, el trabajo sigue por el camino
+que ya existía.
+
+## Lo que no hace falta instalar
+
+Dos preguntas que aparecen siempre, contestadas acá para no volver a discutirlas:
+
+| | |
+|---|---|
+| **Obsidian** | Opcional y personal. `docs/conocimiento/` del proyecto es markdown plano y por lo tanto **es un vault**: quien quiera enlaces `[[wiki]]` y vista de grafo abre esa carpeta con Obsidian y los tiene. Sin plugin REST, sin MCP, sin ruta configurada — el harness no se entera. Ver [ADR-0003](docs/adr/0003-obsidian-fuera-del-harness.md) |
+| **Un índice de código** — `codebase-memory-mcp`, `graphify` | Ninguno se instala, y no es olvido: los dos se evaluaron y los dos chocan con la máquina ajena, no con el diseño. `uv` fuera de la tabla homologada de ES0901 en uno; un binario sin firma Authenticode que Defender marca como falso positivo en el otro. La fuente del mapa del proyecto sigue siendo la `ZONA MAPA` del `CLAUDE.md`. El detalle de cada evaluación está en `Pendientes/Ideas-Harness/PENDIENTES-I.md` |
+
 ## Instalación
 
 El paso a paso completo, por PowerShell y por bash, con los problemas frecuentes y su salida,

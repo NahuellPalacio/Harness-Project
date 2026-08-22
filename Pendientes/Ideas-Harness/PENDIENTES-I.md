@@ -82,7 +82,9 @@ what was read is separable from what was deduced.
 Cost. `uv tool install graphifyy` plus `graphify install`. Requires Python 3.10+ and `uv` or
 `pipx`; none of the two package managers was present on the machine where this was evaluated.
 
-Status. Rejected, for two reasons that are about this harness and not about the tool. First,
+Status. **Discarded by decision on 2026-08-21** — and the `uv` argument below no longer holds, so the decision does not rest on it. Checked against PyPI that same day: `graphifyy` 0.9.48 is a pure-Python package, `requires-python >=3.10`, every dependency a wheel — `pip install graphifyy` needs neither `uv` nor `pipx`, and pip is the package manager ES0901 names (`normativa/extractos/ES0901.md:678`). The first reason still stands and is the one worth remembering. What follows is the record of the evaluation, not an open question.
+
+Original rejection, 2026-08-20, for two reasons that are about this harness and not about the tool. First,
 `graphify claude install` registers a `PreToolUse` hook in the project `.claude/settings.json`, and
 `New-SettingsProyecto` (`install.ps1:627`) regenerates that file whole on every `-Update` — the
 hook would delete itself on the next harness update, silently. Second, `uv` is not in the ES0901
@@ -110,6 +112,8 @@ no API key, no model. Their own measurement: five structural queries at ~3,400 t
 Cost. A 37 MB binary and, if configured, a per-account coordination daemon with a file watcher and
 an HTTP UI on `localhost:9749` (`auto_watch` defaults to true). `--skip-config` installs the binary
 alone, which is the only variant worth considering here. Uninstall is documented and real.
+
+🔴 **pip does not get around this, and it is the first thing anybody proposes.** The project publishes `codebase-memory-mcp` 0.10.8 on PyPI (`requires-python >=3.8`) and on npm, so `pip install codebase-memory-mcp` looks like a homologated route. It is not: the wheel is **0.01 MB**. Its own description says it *"downloads the selected runtime set from GitHub Releases on first run and verifies it"* — pip delivers the downloader, and the same unsigned native executable lands on disk anyway. Checked 2026-08-21. The blocker was never the package manager; it is the Authenticode signature.
 
 Status. Open, blocked — and it is the deferred trigger named in ADR-0008. It clears every bar
 graphify failed: MIT, no runtime, 100 % local, no telemetry and no background network calls of its
