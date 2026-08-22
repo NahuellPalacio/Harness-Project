@@ -43,13 +43,14 @@ La única regla que bloquea en todo el harness es la de secretos, y vive acá.
 
 ## De qué depende
 
-- Python 3.9+ del sistema, invocado por los lanzadores que escribe el instalador.
+- Python 3.9+ del sistema, invocado por los lanzadores que escribe
+  [el instalador](install.md).
 - El catálogo `comun/reglas/secretos.patrones.json`: doce patrones (diez de confianza alta,
   dos media) y quince patrones de excepción para lo que parece un secreto y no lo es —
   variables de entorno, placeholders, ejemplos. El falso positivo es el riesgo existencial de
   todo esto: un bloqueo que traba trabajo legítimo se desinstala esa misma semana.
 - `harness.config.json` del proyecto, cuando existe. Nunca es obligatorio.
-- Los checks, que son N y son reglas. La separación entre hooks y checks existe para que
+- [Los checks](checks.md), que son N y son reglas. La separación entre hooks y checks existe para que
   agregar una regla no pueda romper el manejo de stdin, el encoding ni el control de errores.
 - `git`, opcional: si no está, el bloque de estado no sale y nada se rompe.
 

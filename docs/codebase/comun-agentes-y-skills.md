@@ -27,14 +27,26 @@ de cada sesión, y solo se expande cuando alguien la usa.
   un término) y `render` (páginas a PNG). Todo sale como JSON. En PDF siempre renderiza la
   página y nunca extrae los rasters: los diagramas de los estándares del GCBA son vectoriales
   y una extracción de rasters devuelve nada.
+- **`mapa-codigo.py`** — dibuja el grafo de las fichas del índice del código. Lee los enlaces
+  que las fichas tienen entre sí, los convierte en aristas y escribe un `mapa.html`
+  autocontenido al lado del índice; el resumen —nodos, aristas, fichas que nadie enlaza— sale
+  como JSON. No infiere nada: dibuja lo que las fichas afirman. Solo biblioteca estándar, y el
+  layout es determinista para que dos corridas sobre las mismas fichas den el mismo archivo.
+  La página se recorre —rueda para acercar, arrastrar para mover— y un clic en un nodo abre esa
+  ficha en un panel al costado, con su texto embebido: sobre `file://` un `fetch` lo bloquea CORS,
+  así que embeber es la única forma de que el panel tenga algo que mostrar. El acomodo que hagas
+  a mano es efímero: un archivo local no escribe en disco.
 
 ## De qué depende
 
-- El instalador, que los copia a `.claude/agents/` y `.claude/skills/` del proyecto según el
+- [El instalador](install.md), que los copia a `.claude/agents/` y `.claude/skills/` del proyecto según el
   bloque `aporta` de `comun/manifest.json`.
 - `flush-memoria` depende de las zonas del `CLAUDE.md` y de la clave `rutaMemoria` de la
   configuración del proyecto (por defecto, `docs/conocimiento`). Es el que hace posible el
   techo de la zona caché que mide el check.
+- `mapa-codigo.py` depende de que las fichas se enlacen entre sí. Lo escrito por
+  [`dev-iniciador-code`](harnesses-desarrollo.md) es su única entrada, y lo que verifica que
+  esos enlaces lleguen a algún lado es [`dev-codebase-forma`](checks.md).
 - `docimg.py` corre con el Python del entorno de markitdown, que ya trae `pypdfium2`,
   `pdfplumber` y `pillow`. No instala nada, y la ruta de ese intérprete es de cada máquina.
 - `leer-docs` depende de `docimg.py` y de la herramienta de lectura de imágenes del agente.

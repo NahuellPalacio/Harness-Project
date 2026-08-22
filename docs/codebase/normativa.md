@@ -35,7 +35,8 @@ se extractó.
 
 - Los PDF originales, que **no** están en el repo. Sin ellos no se puede volver a extractar ni
   verificar lo no citable, pero todo lo que ya está extractado se lee igual.
-- El agente `leer-docs` y `docimg.py`, que son con lo que se produjeron y con lo que se
+- [El agente `leer-docs` y `docimg.py`](comun-agentes-y-skills.md), que son con lo que se
+  produjeron y con lo que se
   vuelven a abrir los originales si aparecen.
 - Nada del harness instalado depende de este directorio en tiempo de ejecución: lo que viaja a
   un proyecto son las skills, no los extractos.

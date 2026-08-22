@@ -20,7 +20,8 @@ las capturas del testigo contra el que se comparó el porteo de PowerShell a Pyt
 - **Casos de Python** — la librería de hooks, el contrato de `pre-tool-use` punta a punta como
   proceso hijo, el detector de secretos, la memoria de `SessionStart`, la carga de checks, los
   checks contra el testigo, los casos de borde de los checks de desarrollo, las zonas del
-  `CLAUDE.md` y el aviso del índice del código.
+  `CLAUDE.md`, el aviso del índice del código, y los enlaces entre fichas con el generador del
+  mapa de nodos.
 - **Casos de PowerShell** — el encoding de los fuentes, el ciclo completo del instalador
   (`-WhatIf` → instalar → `-Doctor` → editar a mano → `-Update` → `-Uninstall`), la composición
   de dos harness en el mismo proyecto, la bitácora por versión y los escenarios del índice del
@@ -39,7 +40,8 @@ las capturas del testigo contra el que se comparó el porteo de PowerShell a Pyt
 ## De qué depende
 
 - PowerShell 5.1 y Python 3.9+ en la máquina.
-- El código que prueba: `comun/hooks/`, los checks, `install.ps1` y los manifiestos.
+- El código que prueba: [`comun/hooks`](comun-hooks.md), [los checks](checks.md),
+  [`install.ps1`](install.md) y los manifiestos.
 - Los casos del instalador escriben sobre un proyecto descartable, pero **dos de ellos rompen
   archivos versionados a propósito** y los restauran en un `finally` que no sobrevive a que
   maten el proceso. Si la suite se corta a la mitad, hay que revisar el árbol antes que nada:

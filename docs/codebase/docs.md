@@ -37,13 +37,14 @@ URL cuando el flujo cambia.
 
 ## De qué depende
 
-- El código que describe. Una guía que se desactualiza es peor que no tenerla, y varias afirman
+- El código que describe —[el instalador](install.md), [los hooks](comun-hooks.md),
+  [los checks](checks.md)—. Una guía que se desactualiza es peor que no tenerla, y varias afirman
   qué test las verifica punta a punta.
 - Los mapas dependen de que alguien los republique en la misma URL cuando cambia el flujo; nada
   automático lo comprueba.
 - El `README.md` promete comportamientos concretos —que `-WhatIf` no escriba un byte, que
   `-Update` no pise lo editado a mano, que instalar sea aditivo— y esas promesas están
-  verificadas en los casos de instalador de la suite.
+  verificadas en los casos de instalador de [la suite](tests.md).
 
 ## Dónde está
 

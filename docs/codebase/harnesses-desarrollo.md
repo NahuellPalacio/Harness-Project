@@ -40,13 +40,14 @@ Sus cinco checks están descriptos en la ficha `checks`, junto con el de `comun/
 
 ## De qué depende
 
-- `comun/`, que se instala siempre.
-- El instalador y su `manifest.json`, que es lo único que hace falta para que el harness exista.
-- Los extractos de `normativa/`, que son la fuente de casi todo lo que afirman las skills. Los
+- `comun/`, que se instala siempre: [los hooks](comun-hooks.md) y
+  [sus agentes y skills](comun-agentes-y-skills.md).
+- [El instalador](install.md) y su `manifest.json`, que es lo único que hace falta para que el harness exista.
+- Los extractos de [`normativa`](normativa.md), que son la fuente de casi todo lo que afirman las skills. Los
   extractos declaran además qué **no** se puede citar desde ellos y hay que ir al PDF original.
 - El agente `dev-iniciador-code` depende de la clave `rutaCodebase` de la configuración del
   proyecto, del `git ls-files` del repositorio que recorre, y lo que escribe lo verifica el
-  check `dev-codebase-forma`. El hook de `SessionStart` avisa que ese índice falta hasta que
+  check [`dev-codebase-forma`](checks.md). El hook de [`SessionStart`](comun-hooks.md) avisa que ese índice falta hasta que
   existe.
 
 ## Dónde está

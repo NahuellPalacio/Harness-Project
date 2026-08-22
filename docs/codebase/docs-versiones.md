@@ -27,10 +27,10 @@ Va de 0.1.0 a 0.13.0, una nota por versión, sin huecos.
 
 ## De qué depende
 
-- La skill de la fábrica que dicta el ritual de cerrar una versión: el `VERSION`, la nota con
+- La skill de [la fábrica](fabrica.md) que dicta el ritual de cerrar una versión: el `VERSION`, la nota con
   sus cinco secciones, la fila en el índice, la entrada del CHANGELOG, el `UPGRADE`, el
   pendiente que sale de su archivo y el mapa del flujo cuando el flujo se movió.
-- El caso de la suite que verifica la bitácora. Sin él, escribir la nota al cerrar una versión
+- El caso de [la suite](tests.md) que verifica la bitácora. Sin él, escribir la nota al cerrar una versión
   sería una intención que dura hasta la primera semana ocupada: lo que nadie mide, no se hace.
 - El archivo `VERSION` de la raíz, que tiene que coincidir con la última nota.
 

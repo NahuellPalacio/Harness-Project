@@ -42,7 +42,7 @@ deterministic test could reach does not get the mark.
 .\tests\Invoke-Tests.ps1
 ```
 
-Green before anything is called done. 399 tests, two engines, one exit code. `install.ps1` uses the
+Green before anything is called done. 455 tests, two engines, one exit code. `install.ps1` uses the
 same suite as its own gate.
 
 🔴 If the suite is killed mid-run, check the tree before anything else. `tests/casos/03-instalador.ps1`

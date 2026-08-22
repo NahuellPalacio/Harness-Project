@@ -36,17 +36,18 @@ denegadas, los dos lanzadores y los bloques de `CLAUDE.md` que se inyectan en el
 
 - **PowerShell 5.1** y Windows para correr. Claude Code ≥ 2.1.0 y Python ≥ 3.9 en la máquina
   de destino, verificados antes de escribir nada; si faltan, aborta en vez de reparar.
-- Los **manifiestos** de `comun/` y de cada harness: de ahí saca qué copiar, el prefijo de
+- Los **manifiestos** de `comun/` y de cada harness —[`analisis`](harnesses-analisis.md) y
+  [`desarrollo`](harnesses-desarrollo.md)—: de ahí saca qué copiar, el prefijo de
   namespace y los defaults de configuración. Los harness se descubren recorriendo el
   directorio, no hay ningún id registrado en el script.
-- El módulo `lib/zonas.py` de `comun/hooks`, invocado como proceso: la definición de las zonas
+- El módulo `lib/zonas.py` de [`comun/hooks`](comun-hooks.md), invocado como proceso: la definición de las zonas
   del `CLAUDE.md` vive en un solo lado y el instalador la lee en vez de reimplementarla. La
   llamada está adentro de las rutas de instalar y actualizar, no arriba, porque `-Doctor`
   tiene que poder diagnosticar una máquina que todavía no tiene Python.
-- Los **payloads** de `tests/payloads/`: al terminar dispara los cuatro hooks instalados con
+- Los **payloads** de [`tests/payloads`](tests.md): al terminar dispara los cuatro hooks instalados con
   eventos reales y, si alguno no responde bien, la instalación falla y revierte.
-- La suite de `tests/` como compuerta propia.
-- El `.gitattributes` del repo, que fija LF en la plantilla del shim `.sh`: un `.sh` con CRLF
+- La suite de [`tests`](tests.md) como compuerta propia.
+- El [`.gitattributes`](fabrica.md) del repo, que fija LF en la plantilla del shim `.sh`: un `.sh` con CRLF
   falla con un error que no menciona los saltos de línea.
 
 ## Dónde está

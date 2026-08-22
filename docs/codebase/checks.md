@@ -19,8 +19,12 @@ comparten contrato, presupuesto y la misma regla de diseño: salir temprano.
   harness no la mide), cuando hay demasiado contenido fuera de toda zona, y cuando la caché va
   llena, que no es un problema sino conocimiento sin bajar.
 - **`dev-codebase-forma.py`** — la forma del índice del código: que el índice y las fichas se
-  correspondan en los dos sentidos, y que cada ficha tenga sus cuatro secciones con el título
-  exacto. Solo mira lo que cayó adentro del directorio del índice.
+  correspondan en los dos sentidos, que cada ficha tenga sus cuatro secciones con el título
+  exacto, que no haya dos fichas del mismo módulo, y que los enlaces de una ficha a otra
+  lleguen a una ficha que existe —el enlace es la arista del mapa, y uno roto dibuja una arista
+  falsa—. Reporta también los `[[wikilink]]`, que GitHub no renderiza. Solo mira lo que cayó
+  adentro del directorio del índice, y solo los enlaces sin ruta: uno a un ADR apunta afuera y
+  no es asunto suyo.
 - **`dev-api-rutas.py`** — nomenclatura de rutas de API según ES0903: la ruta lleva versión y
   el recurso es un sustantivo, no un verbo. La regla de plural solo se reporta cuando es
   inequívoca.
@@ -39,18 +43,19 @@ comparten contrato, presupuesto y la misma regla de diseño: salir temprano.
 
 ## De qué depende
 
-- `comun/hooks/post-tool-use.py`, que es quien los descubre, los carga por ruta y entrega los
+- [`comun/hooks`](comun-hooks.md) — `post-tool-use.py` es quien los descubre, los carga por ruta y entrega los
   hallazgos. Un check roto se saltea en silencio: reportarlo en cada escritura sería peor que
   el problema que quiso evitar.
-- El presupuesto de ocho hallazgos por corrida, definido en `lib/reglas.py`. Los que gasta un
+- El presupuesto de ocho hallazgos por corrida, definido en `lib/reglas.py` de
+  [`comun/hooks`](comun-hooks.md). Los que gasta un
   check con ruido no los tiene el que encontró algo de verdad.
 - `harness.config.json` del proyecto para los techos de zona, el umbral de cobertura y la ruta
   del índice del código. Los defaults viven en el código porque ese archivo se crea una sola
   vez y un proyecto viejo no tiene las claves nuevas.
-- `comun/checks/claude-md-zonas.py` importa `lib.zonas` de los hooks; los de desarrollo, no:
+- `comun/checks/claude-md-zonas.py` importa `lib.zonas` de [los hooks](comun-hooks.md); los de desarrollo, no:
   se mantienen sin depender de `comun/` porque se cargan por ruta y resolver esa ruta relativa
   sería frágil.
-- Los estándares extractados en `normativa/`, que son la fuente de las reglas de desarrollo.
+- Los estándares extractados en [`normativa`](normativa.md), que son la fuente de las reglas de desarrollo.
 
 ## Dónde está
 

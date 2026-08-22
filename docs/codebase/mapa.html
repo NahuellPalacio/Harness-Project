@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa del código — codebase</title>
+<style>
+:root{
+  --papel:#F0F1EF; --sup:#FFFFFF; --tinta:#141A19; --apagado:#5F6D69;
+  --linea:#A9B4B0; --acento:#0D6E62; --acento-suave:#DCEBE8; --alerta:#9A5B1F;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --papel:#121716; --sup:#1B2321; --tinta:#E8EDEB; --apagado:#9AA8A4;
+    --linea:#4A5754; --acento:#5FC2B2; --acento-suave:#1E3A36; --alerta:#D89B5A;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--papel);color:var(--tinta);
+     font-family:"Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.5}
+header{max-width:1100px;margin:0 auto 12px}
+h1{font-size:20px;margin:0 0 4px}
+p.resumen{margin:0;color:var(--apagado);font-size:14px}
+p.nota{margin:8px 0 0;color:var(--apagado);font-size:13px}
+.barra{max-width:1100px;margin:0 auto 8px;display:flex;gap:10px;align-items:center;
+       flex-wrap:wrap;font-size:13px;color:var(--apagado)}
+button{font:inherit;font-size:13px;padding:5px 12px;border-radius:7px;cursor:pointer;
+       border:1px solid var(--linea);background:var(--sup);color:var(--tinta)}
+button:hover{border-color:var(--acento)}
+.lienzo{max-width:1100px;margin:0 auto;background:var(--sup);border:1px solid var(--linea);
+        border-radius:12px;overflow:hidden}
+svg{display:block;width:100%;height:auto;touch-action:pan-y}
+svg.agarrando{cursor:grabbing}
+.arista{stroke:var(--linea);stroke-width:1.6}
+.nodo rect{fill:var(--acento-suave);stroke:var(--acento);stroke-width:1.6}
+.nodo text{fill:var(--tinta);font-size:13px;font-weight:600;text-anchor:middle;
+           font-family:"Consolas","IBM Plex Mono",ui-monospace,monospace}
+.huerfano rect{fill:none;stroke:var(--alerta);stroke-dasharray:5 4}
+a.ir{cursor:pointer}
+a.ir:hover rect{stroke-width:2.6}
+.nodo.activo rect{stroke-width:2.6;fill:var(--acento)}
+.nodo.activo text{fill:var(--sup)}
+.leyenda{max-width:1100px;margin:12px auto 0;display:flex;gap:20px;flex-wrap:wrap;
+         font-size:13px;color:var(--apagado)}
+.leyenda span{display:flex;align-items:center;gap:7px}
+.muestra{width:22px;height:13px;border-radius:3px;border:1.6px solid var(--acento);
+         background:var(--acento-suave)}
+.muestra.h{background:none;border-color:var(--alerta);border-style:dashed}
+
+#panel{position:fixed;top:0;right:0;width:min(460px,92vw);height:100%;overflow-y:auto;
+       background:var(--sup);border-left:1px solid var(--linea);padding:20px 24px 40px;
+       transform:translateX(100%);transition:transform .18s ease}
+#panel.abierto{transform:none;box-shadow:-12px 0 30px rgba(0,0,0,.13)}
+#panel h2{font-size:17px;margin:0 0 12px;
+          font-family:"Consolas","IBM Plex Mono",ui-monospace,monospace}
+#panel h3{font-size:13px;margin:18px 0 6px;text-transform:uppercase;
+          letter-spacing:.06em;color:var(--apagado)}
+#panel p,#panel li{font-size:14px}
+#panel ul{padding-left:20px;margin:6px 0}
+#panel li{margin-bottom:6px}
+#panel code{font-size:12.5px;background:var(--acento-suave);padding:1px 5px;
+            border-radius:4px}
+#panel pre{background:var(--papel);border:1px solid var(--linea);border-radius:8px;
+           padding:10px;overflow-x:auto;font-size:12.5px}
+#panel a{color:var(--acento)}
+#panel .huerfana{color:var(--alerta);font-weight:600;font-size:13px;margin:0 0 4px}
+#panel .archivo{margin-top:22px;padding-top:12px;border-top:1px solid var(--linea);
+                font-size:13px}
+#cerrar{position:absolute;top:14px;right:16px}
+</style>
+
+<header>
+  <h1>Mapa del código — codebase</h1>
+  <p class="resumen">13 fichas · 38 dependencias enlazadas · 1 que nadie enlaza</p>
+  <p class="nota">Cada caja es una ficha del índice; cada flecha, un enlace de una ficha
+  a otra. El mapa dibuja lo que las fichas dicen: una dependencia que la ficha no enlaza
+  no aparece acá. Lo regenera <code>mapa-codigo.py</code> en cada recorrido.</p>
+</header>
+
+<div class="barra">
+  <button id="acercar" type="button" aria-label="Acercar">+</button>
+  <button id="alejar" type="button" aria-label="Alejar">&minus;</button>
+  <button id="reencuadrar" type="button">Reencuadrar</button>
+  <span>Ctrl + rueda para acercar · arrastrar el fondo para mover · clic en una ficha para leerla</span>
+</div>
+
+<div class="lienzo">
+<svg id="grafo" viewBox="0 0 1158 1120" data-vista="0 0 1158 1120"
+     role="img" aria-label="Grafo de dependencias entre las fichas del código">
+  <defs>
+    <marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--linea)"/>
+    </marker>
+  </defs>
+  <line class="arista" data-de="checks.md" data-a="comun-hooks.md" x1="539.8" y1="680.0" x2="707.2" y2="600.0" marker-end="url(#punta)"><title>checks → comun/hooks</title></line>
+  <line class="arista" data-de="checks.md" data-a="normativa.md" x1="493.8" y1="718.0" x2="394.2" y2="1022.0" marker-end="url(#punta)"><title>checks → normativa</title></line>
+  <line class="arista" data-de="comun-agentes-y-skills.md" data-a="install.md" x1="591.7" y1="942.0" x2="621.3" y2="613.0" marker-end="url(#punta)"><title>comun/agentes-y-skills → install</title></line>
+  <line class="arista" data-de="comun-agentes-y-skills.md" data-a="harnesses-desarrollo.md" x1="612.7" y1="942.0" x2="677.3" y2="888.0" marker-end="url(#punta)"><title>comun/agentes-y-skills → harnesses/desarrollo</title></line>
+  <line class="arista" data-de="comun-agentes-y-skills.md" data-a="checks.md" x1="583.5" y1="942.0" x2="506.5" y2="718.0" marker-end="url(#punta)"><title>comun/agentes-y-skills → checks</title></line>
+  <line class="arista" data-de="comun-hooks.md" data-a="install.md" x1="692.0" y1="586.8" x2="671.0" y2="589.0" marker-end="url(#punta)"><title>comun/hooks → install</title></line>
+  <line class="arista" data-de="comun-hooks.md" data-a="checks.md" x1="707.2" y1="600.0" x2="539.8" y2="680.0" marker-end="url(#punta)"><title>comun/hooks → checks</title></line>
+  <line class="arista" data-de="docs-cambios.md" data-a="fabrica.md" x1="527.1" y1="98.0" x2="414.9" y2="159.0" marker-end="url(#punta)"><title>docs/cambios → fabrica</title></line>
+  <line class="arista" data-de="docs-cambios.md" data-a="tests.md" x1="555.0" y1="98.0" x2="461.0" y2="352.0" marker-end="url(#punta)"><title>docs/cambios → tests</title></line>
+  <line class="arista" data-de="docs-cambios.md" data-a="docs.md" x1="570.4" y1="98.0" x2="670.6" y2="325.0" marker-end="url(#punta)"><title>docs/cambios → docs</title></line>
+  <line class="arista" data-de="docs-versiones.md" data-a="fabrica.md" x1="192.0" y1="128.4" x2="332.0" y2="165.3" marker-end="url(#punta)"><title>docs/versiones → fabrica</title></line>
+  <line class="arista" data-de="docs-versiones.md" data-a="tests.md" x1="150.0" y1="130.0" x2="430.0" y2="352.0" marker-end="url(#punta)"><title>docs/versiones → tests</title></line>
+  <line class="arista" data-de="docs.md" data-a="install.md" x1="674.7" y1="363.0" x2="627.3" y2="575.0" marker-end="url(#punta)"><title>docs → install</title></line>
+  <line class="arista" data-de="docs.md" data-a="comun-hooks.md" x1="684.5" y1="363.0" x2="741.5" y2="562.0" marker-end="url(#punta)"><title>docs → comun/hooks</title></line>
+  <line class="arista" data-de="docs.md" data-a="checks.md" x1="669.4" y1="363.0" x2="509.6" y2="680.0" marker-end="url(#punta)"><title>docs → checks</title></line>
+  <line class="arista" data-de="docs.md" data-a="tests.md" x1="631.0" y1="349.8" x2="502.0" y2="365.2" marker-end="url(#punta)"><title>docs → tests</title></line>
+  <line class="arista" data-de="fabrica.md" data-a="tests.md" x1="387.3" y1="197.0" x2="446.7" y2="352.0" marker-end="url(#punta)"><title>fabrica → tests</title></line>
+  <line class="arista" data-de="fabrica.md" data-a="docs-cambios.md" x1="414.9" y1="159.0" x2="527.1" y2="98.0" marker-end="url(#punta)"><title>fabrica → docs/cambios</title></line>
+  <line class="arista" data-de="harnesses-analisis.md" data-a="comun-hooks.md" x1="882.5" y1="787.0" x2="759.5" y2="600.0" marker-end="url(#punta)"><title>harnesses/analisis → comun/hooks</title></line>
+  <line class="arista" data-de="harnesses-analisis.md" data-a="comun-agentes-y-skills.md" x1="857.6" y1="825.0" x2="627.4" y2="942.0" marker-end="url(#punta)"><title>harnesses/analisis → comun/agentes-y-skills</title></line>
+  <line class="arista" data-de="harnesses-analisis.md" data-a="install.md" x1="870.6" y1="787.0" x2="647.4" y2="613.0" marker-end="url(#punta)"><title>harnesses/analisis → install</title></line>
+  <line class="arista" data-de="harnesses-analisis.md" data-a="terceros.md" x1="909.5" y1="825.0" x2="1035.5" y2="990.0" marker-end="url(#punta)"><title>harnesses/analisis → terceros</title></line>
+  <line class="arista" data-de="harnesses-desarrollo.md" data-a="comun-hooks.md" x1="703.1" y1="850.0" x2="743.9" y2="600.0" marker-end="url(#punta)"><title>harnesses/desarrollo → comun/hooks</title></line>
+  <line class="arista" data-de="harnesses-desarrollo.md" data-a="comun-agentes-y-skills.md" x1="677.3" y1="888.0" x2="612.7" y2="942.0" marker-end="url(#punta)"><title>harnesses/desarrollo → comun/agentes-y-skills</title></line>
+  <line class="arista" data-de="harnesses-desarrollo.md" data-a="install.md" x1="694.7" y1="850.0" x2="628.3" y2="613.0" marker-end="url(#punta)"><title>harnesses/desarrollo → install</title></line>
+  <line class="arista" data-de="harnesses-desarrollo.md" data-a="normativa.md" x1="665.5" y1="888.0" x2="422.5" y2="1022.0" marker-end="url(#punta)"><title>harnesses/desarrollo → normativa</title></line>
+  <line class="arista" data-de="harnesses-desarrollo.md" data-a="checks.md" x1="677.6" y1="850.0" x2="522.4" y2="718.0" marker-end="url(#punta)"><title>harnesses/desarrollo → checks</title></line>
+  <line class="arista" data-de="install.md" data-a="harnesses-analisis.md" x1="647.4" y1="613.0" x2="870.6" y2="787.0" marker-end="url(#punta)"><title>install → harnesses/analisis</title></line>
+  <line class="arista" data-de="install.md" data-a="harnesses-desarrollo.md" x1="628.3" y1="613.0" x2="694.7" y2="850.0" marker-end="url(#punta)"><title>install → harnesses/desarrollo</title></line>
+  <line class="arista" data-de="install.md" data-a="comun-hooks.md" x1="671.0" y1="589.0" x2="692.0" y2="586.8" marker-end="url(#punta)"><title>install → comun/hooks</title></line>
+  <line class="arista" data-de="install.md" data-a="tests.md" x1="608.6" y1="575.0" x2="468.4" y2="390.0" marker-end="url(#punta)"><title>install → tests</title></line>
+  <line class="arista" data-de="install.md" data-a="fabrica.md" x1="611.9" y1="575.0" x2="391.1" y2="197.0" marker-end="url(#punta)"><title>install → fabrica</title></line>
+  <line class="arista" data-de="normativa.md" data-a="comun-agentes-y-skills.md" x1="436.0" y1="1022.0" x2="542.0" y2="980.0" marker-end="url(#punta)"><title>normativa → comun/agentes-y-skills</title></line>
+  <line class="arista" data-de="terceros.md" data-a="harnesses-analisis.md" x1="1035.5" y1="990.0" x2="909.5" y2="825.0" marker-end="url(#punta)"><title>terceros → harnesses/analisis</title></line>
+  <line class="arista" data-de="terceros.md" data-a="harnesses-desarrollo.md" x1="1002.5" y1="990.0" x2="747.5" y2="888.0" marker-end="url(#punta)"><title>terceros → harnesses/desarrollo</title></line>
+  <line class="arista" data-de="tests.md" data-a="comun-hooks.md" x1="480.5" y1="390.0" x2="720.5" y2="562.0" marker-end="url(#punta)"><title>tests → comun/hooks</title></line>
+  <line class="arista" data-de="tests.md" data-a="checks.md" x1="456.7" y1="390.0" x2="497.3" y2="680.0" marker-end="url(#punta)"><title>tests → checks</title></line>
+  <line class="arista" data-de="tests.md" data-a="install.md" x1="468.4" y1="390.0" x2="608.6" y2="575.0" marker-end="url(#punta)"><title>tests → install</title></line>
+  <a href="checks.md" class="ir">
+    <g class="nodo" data-id="checks.md" data-cx="500" data-cy="699" data-w="96" data-h="38" transform="translate(500,699)">
+      <title>checks — 5 que la enlazan, 2 que enlaza</title>
+      <rect x="-48" y="-19" width="96" height="38" rx="8"/>
+      <text x="0" y="5">checks</text>
+    </g>
+  </a>
+  <a href="comun-agentes-y-skills.md" class="ir">
+    <g class="nodo" data-id="comun-agentes-y-skills.md" data-cx="590" data-cy="961" data-w="193" data-h="38" transform="translate(590,961)">
+      <title>comun/agentes-y-skills — 3 que la enlazan, 3 que enlaza</title>
+      <rect x="-96" y="-19" width="193" height="38" rx="8"/>
+      <text x="0" y="5">comun/agentes-y-skills</text>
+    </g>
+  </a>
+  <a href="comun-hooks.md" class="ir">
+    <g class="nodo" data-id="comun-hooks.md" data-cx="747" data-cy="581" data-w="110" data-h="38" transform="translate(747,581)">
+      <title>comun/hooks — 6 que la enlazan, 2 que enlaza</title>
+      <rect x="-55" y="-19" width="110" height="38" rx="8"/>
+      <text x="0" y="5">comun/hooks</text>
+    </g>
+  </a>
+  <a href="docs-cambios.md" class="ir">
+    <g class="nodo" data-id="docs-cambios.md" data-cx="562" data-cy="79" data-w="117" data-h="38" transform="translate(562,79)">
+      <title>docs/cambios — 1 que la enlazan, 3 que enlaza</title>
+      <rect x="-58" y="-19" width="117" height="38" rx="8"/>
+      <text x="0" y="5">docs/cambios</text>
+    </g>
+  </a>
+  <a href="docs-versiones.md" class="ir">
+    <g class="nodo huerfano" data-id="docs-versiones.md" data-cx="126" data-cy="111" data-w="132" data-h="38" transform="translate(126,111)">
+      <title>docs/versiones — 0 que la enlazan, 2 que enlaza</title>
+      <rect x="-66" y="-19" width="132" height="38" rx="8"/>
+      <text x="0" y="5">docs/versiones</text>
+    </g>
+  </a>
+  <a href="docs.md" class="ir">
+    <g class="nodo" data-id="docs.md" data-cx="679" data-cy="344" data-w="96" data-h="38" transform="translate(679,344)">
+      <title>docs — 1 que la enlazan, 4 que enlaza</title>
+      <rect x="-48" y="-19" width="96" height="38" rx="8"/>
+      <text x="0" y="5">docs</text>
+    </g>
+  </a>
+  <a href="fabrica.md" class="ir">
+    <g class="nodo" data-id="fabrica.md" data-cx="380" data-cy="178" data-w="96" data-h="38" transform="translate(380,178)">
+      <title>fabrica — 3 que la enlazan, 2 que enlaza</title>
+      <rect x="-48" y="-19" width="96" height="38" rx="8"/>
+      <text x="0" y="5">fabrica</text>
+    </g>
+  </a>
+  <a href="harnesses-analisis.md" class="ir">
+    <g class="nodo" data-id="harnesses-analisis.md" data-cx="895" data-cy="806" data-w="163" data-h="38" transform="translate(895,806)">
+      <title>harnesses/analisis — 2 que la enlazan, 4 que enlaza</title>
+      <rect x="-81" y="-19" width="163" height="38" rx="8"/>
+      <text x="0" y="5">harnesses/analisis</text>
+    </g>
+  </a>
+  <a href="harnesses-desarrollo.md" class="ir">
+    <g class="nodo" data-id="harnesses-desarrollo.md" data-cx="700" data-cy="869" data-w="178" data-h="38" transform="translate(700,869)">
+      <title>harnesses/desarrollo — 3 que la enlazan, 5 que enlaza</title>
+      <rect x="-89" y="-19" width="178" height="38" rx="8"/>
+      <text x="0" y="5">harnesses/desarrollo</text>
+    </g>
+  </a>
+  <a href="install.md" class="ir">
+    <g class="nodo" data-id="install.md" data-cx="623" data-cy="594" data-w="96" data-h="38" transform="translate(623,594)">
+      <title>install — 6 que la enlazan, 5 que enlaza</title>
+      <rect x="-48" y="-19" width="96" height="38" rx="8"/>
+      <text x="0" y="5">install</text>
+    </g>
+  </a>
+  <a href="normativa.md" class="ir">
+    <g class="nodo" data-id="normativa.md" data-cx="388" data-cy="1041" data-w="96" data-h="38" transform="translate(388,1041)">
+      <title>normativa — 2 que la enlazan, 1 que enlaza</title>
+      <rect x="-48" y="-19" width="96" height="38" rx="8"/>
+      <text x="0" y="5">normativa</text>
+    </g>
+  </a>
+  <a href="terceros.md" class="ir">
+    <g class="nodo" data-id="terceros.md" data-cx="1050" data-cy="1009" data-w="96" data-h="38" transform="translate(1050,1009)">
+      <title>terceros — 1 que la enlazan, 2 que enlaza</title>
+      <rect x="-48" y="-19" width="96" height="38" rx="8"/>
+      <text x="0" y="5">terceros</text>
+    </g>
+  </a>
+  <a href="tests.md" class="ir">
+    <g class="nodo" data-id="tests.md" data-cx="454" data-cy="371" data-w="96" data-h="38" transform="translate(454,371)">
+      <title>tests — 5 que la enlazan, 3 que enlaza</title>
+      <rect x="-48" y="-19" width="96" height="38" rx="8"/>
+      <text x="0" y="5">tests</text>
+    </g>
+  </a>
+</svg>
+</div>
+
+<div class="leyenda">
+  <span><i class="muestra"></i> ficha que alguien enlaza</span>
+  <span><i class="muestra h"></i> nadie la enlaza todavía</span>
+</div>
+
+<aside id="panel" aria-live="polite">
+  <button id="cerrar" type="button">Cerrar</button>
+<article class="ficha" data-ficha="checks.md" hidden>
+  <h2>checks</h2>
+  
+<h3>Qué es</h3>
+<p>Las reglas que corren después de cada escritura y avisan cuando algo no cumple una norma. Son cinco, todas con el mismo contrato: un <code>.py</code> que expone `verificar(evento, proyecto, config)` y devuelve cero o más strings, uno por hallazgo. Silencio cuando está todo bien.</p>
+<p><strong>Ninguno bloquea.</strong> Lo único que este harness bloquea son los secretos, y eso pasa antes, en el hook de <code>PreToolUse</code>. Un check acá llegaría tarde y con menos autoridad.</p>
+<p>Uno lo aporta <code>comun/</code> y cuatro los aporta el harness <code>desarrollo</code>; se agrupan juntos porque comparten contrato, presupuesto y la misma regla de diseño: salir temprano.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>claude-md-zonas.py</code></strong> (comun) — mide las zonas del <code>CLAUDE.md</code> del proyecto contra sus techos, avisa cuando falta una, cuando una está escrita con otro nombre (y entonces el harness no la mide), cuando hay demasiado contenido fuera de toda zona, y cuando la caché va llena, que no es un problema sino conocimiento sin bajar.</li><li><strong><code>dev-codebase-forma.py</code></strong> — la forma del índice del código: que el índice y las fichas se correspondan en los dos sentidos, que cada ficha tenga sus cuatro secciones con el título exacto, que no haya dos fichas del mismo módulo, y que los enlaces de una ficha a otra lleguen a una ficha que existe —el enlace es la arista del mapa, y uno roto dibuja una arista falsa—. Reporta también los <code>[[wikilink]]</code>, que GitHub no renderiza. Solo mira lo que cayó adentro del directorio del índice, y solo los enlaces sin ruta: uno a un ADR apunta afuera y no es asunto suyo.</li><li><strong><code>dev-api-rutas.py</code></strong> — nomenclatura de rutas de API según ES0903: la ruta lleva versión y el recurso es un sustantivo, no un verbo. La regla de plural solo se reporta cuando es inequívoca.</li><li><strong><code>dev-dependencias.py</code></strong> — las dependencias se fijan en una versión exacta (ES0901). Un rango delega la elección al gestor de paquetes, que resuelve distinto en cada máquina.</li><li><strong><code>dev-infra-en-codigo.py</code></strong> — servidores por nombre DNS y nunca por IP, y configuración afuera del código. Una IP solo se reporta en posición de host; las de loopback y las de documentación no se tocan nunca.</li><li><strong><code>dev-accesibilidad-html.py</code></strong> — lo comprobable del marcado por ley 26.653 / WCAG: <code>lang</code> en <code>&lt;html&gt;</code>, <code>alt</code> presente en las imágenes (<code>alt=&quot;&quot;</code> es correcto y no se reporta), controles de formulario que puedan tener etiqueta, y un único <code>&lt;h1&gt;</code>. No juzga contraste ni orden de lectura: para eso hace falta renderizar.</li><li><strong><code>lib/dev.py</code></strong> — lo que todos los checks de desarrollo hacen igual: leer del disco el archivo que se acaba de escribir (no del evento, porque una edición manda solo el fragmento), descartar rutas generadas, ubicar el número de línea y formatear una lista de ejemplos.</li></ul>
+<h3>De qué depende</h3>
+<ul><li><a href="comun-hooks.md" class="a-ficha" data-ficha="comun-hooks.md"><code>comun/hooks</code></a> — <code>post-tool-use.py</code> es quien los descubre, los carga por ruta y entrega los hallazgos. Un check roto se saltea en silencio: reportarlo en cada escritura sería peor que el problema que quiso evitar.</li><li>El presupuesto de ocho hallazgos por corrida, definido en <code>lib/reglas.py</code> de <a href="comun-hooks.md" class="a-ficha" data-ficha="comun-hooks.md"><code>comun/hooks</code></a>. Los que gasta un check con ruido no los tiene el que encontró algo de verdad.</li><li><code>harness.config.json</code> del proyecto para los techos de zona, el umbral de cobertura y la ruta del índice del código. Los defaults viven en el código porque ese archivo se crea una sola vez y un proyecto viejo no tiene las claves nuevas.</li><li><code>comun/checks/claude-md-zonas.py</code> importa <code>lib.zonas</code> de <a href="comun-hooks.md" class="a-ficha" data-ficha="comun-hooks.md">los hooks</a>; los de desarrollo, no: se mantienen sin depender de <code>comun/</code> porque se cargan por ruta y resolver esa ruta relativa sería frágil.</li><li>Los estándares extractados en <a href="normativa.md" class="a-ficha" data-ficha="normativa.md"><code>normativa</code></a>, que son la fuente de las reglas de desarrollo.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>comun/checks/claude-md-zonas.py</code></li><li><code>harnesses/desarrollo/checks/dev-codebase-forma.py</code>, <code>dev-api-rutas.py</code>, <code>dev-dependencias.py</code>, <code>dev-infra-en-codigo.py</code>, <code>dev-accesibilidad-html.py</code></li><li><code>harnesses/desarrollo/checks/lib/dev.py</code></li><li>Los casos de borde de los cuatro checks de desarrollo, en <code>tests/casos/08_checks_borde.py</code>.</li></ul>
+  <p class="archivo"><a href="checks.md">Abrir checks.md</a></p>
+</article>
+<article class="ficha" data-ficha="comun-agentes-y-skills.md" hidden>
+  <h2>comun/agentes-y-skills</h2>
+  
+<h3>Qué es</h3>
+<p>Los agentes, las skills y la herramienta de línea de comandos que se instalan <strong>siempre</strong>, con cualquier harness. Es la parte del esqueleto que no es infraestructura: no corre sola, la invoca alguien cuando hace falta.</p>
+<p>Son pocas a propósito. Cada skill cuesta unos 100 tokens de nombre y descripción en cada turno de cada sesión, y solo se expande cuando alguien la usa.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>flush-memoria</code></strong> (agente) — mantiene chico el <code>CLAUDE.md</code> bajando su zona caché al directorio de conocimiento del proyecto. Sube lo que falte, verifica que quedó completo y recién entonces borra dejando un puntero. Su invariante: nunca se desaloja lo que no se escribió; ante la duda, no borra.</li><li><strong><code>leer-docs</code></strong> (agente) — abre lo que el resto no puede abrir: PDF, DOCX, XLSX, PPTX, MSG, incluidos los diagramas y capturas embebidos, que convierte a imagen y mira. Devuelve solo el extracto pedido, no el documento.</li><li><strong><code>instalar-desde-github</code></strong> (skill) — qué revisar antes de instalar o adoptar una herramienta, plugin o servidor MCP que vive en un repositorio ajeno, y antes de copiar material de terceros al repo.</li><li><strong><code>docimg.py</code></strong> — la herramienta que usa <code>leer-docs</code> para recuperar la capa que markitdown descarta. Cuatro verbos: <code>inventario</code> (qué hay adentro, sin extraer nada), <code>extraer</code> (imágenes embebidas de un OOXML, que es un ZIP), <code>buscar</code> (en qué páginas de un PDF aparece un término) y <code>render</code> (páginas a PNG). Todo sale como JSON. En PDF siempre renderiza la página y nunca extrae los rasters: los diagramas de los estándares del GCBA son vectoriales y una extracción de rasters devuelve nada.</li><li><strong><code>mapa-codigo.py</code></strong> — dibuja el grafo de las fichas del índice del código. Lee los enlaces que las fichas tienen entre sí, los convierte en aristas y escribe un <code>mapa.html</code> autocontenido al lado del índice; el resumen —nodos, aristas, fichas que nadie enlaza— sale como JSON. No infiere nada: dibuja lo que las fichas afirman. Solo biblioteca estándar, y el layout es determinista para que dos corridas sobre las mismas fichas den el mismo archivo. La página se recorre —rueda para acercar, arrastrar para mover— y un clic en un nodo abre esa ficha en un panel al costado, con su texto embebido: sobre <code>file://</code> un <code>fetch</code> lo bloquea CORS, así que embeber es la única forma de que el panel tenga algo que mostrar. El acomodo que hagas a mano es efímero: un archivo local no escribe en disco.</li></ul>
+<h3>De qué depende</h3>
+<ul><li><a href="install.md" class="a-ficha" data-ficha="install.md">El instalador</a>, que los copia a <code>.claude/agents/</code> y <code>.claude/skills/</code> del proyecto según el bloque <code>aporta</code> de <code>comun/manifest.json</code>.</li><li><code>flush-memoria</code> depende de las zonas del <code>CLAUDE.md</code> y de la clave <code>rutaMemoria</code> de la configuración del proyecto (por defecto, <code>docs/conocimiento</code>). Es el que hace posible el techo de la zona caché que mide el check.</li><li><code>mapa-codigo.py</code> depende de que las fichas se enlacen entre sí. Lo escrito por <a href="harnesses-desarrollo.md" class="a-ficha" data-ficha="harnesses-desarrollo.md"><code>dev-iniciador-code</code></a> es su única entrada, y lo que verifica que esos enlaces lleguen a algún lado es <a href="checks.md" class="a-ficha" data-ficha="checks.md"><code>dev-codebase-forma</code></a>.</li><li><code>docimg.py</code> corre con el Python del entorno de markitdown, que ya trae <code>pypdfium2</code>, <code>pdfplumber</code> y <code>pillow</code>. No instala nada, y la ruta de ese intérprete es de cada máquina.</li><li><code>leer-docs</code> depende de <code>docimg.py</code> y de la herramienta de lectura de imágenes del agente.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>comun/agents/flush-memoria.md</code></li><li><code>comun/agents/leer-docs.md</code></li><li><code>comun/skills/instalar-desde-github/SKILL.md</code></li><li><code>comun/bin/docimg.py</code></li><li>La política de memoria que sostiene a <code>flush-memoria</code> está escrita en <code>docs/memoria.md</code>.</li></ul>
+  <p class="archivo"><a href="comun-agentes-y-skills.md">Abrir comun-agentes-y-skills.md</a></p>
+</article>
+<article class="ficha" data-ficha="comun-hooks.md" hidden>
+  <h2>comun/hooks</h2>
+  
+<h3>Qué es</h3>
+<p>Los cuatro hooks que corren dentro de la sesión de otra persona, y la librería que comparten. Son infraestructura: leen el evento que manda Claude Code por stdin y contestan una de tres cosas — avisar, bloquear o preguntar — o se callan.</p>
+<p>Desde 0.13.0 corren en Python 3.9+. El contrato de fondo no cambió: **un hook jamás rompe la sesión y siempre sale con código 0**, pase lo que pase.</p>
+<p>La única regla que bloquea en todo el harness es la de secretos, y vive acá.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>session-start.py</code></strong> — contesta &quot;en qué quedamos&quot;: quién sos, qué harness rige, el estado de git, los últimos commits, lo que alguien dejó anotado en la zona caché del <code>CLAUDE.md</code> y cuántas definiciones quedaron abiertas. Presupuesto: 12 líneas. Todo sale de fuentes que ya pasaron por el filtro humano de &quot;esto vale la pena escribirlo&quot;; no captura nada por su cuenta. También avisa, una sola vez y solo con <code>desarrollo</code> instalado, que todavía no hay índice del código.</li><li><strong><code>pre-tool-use.py</code></strong> — exclusivamente el bloqueo de secretos. Nada más entra ahí: es la puerta, dispara antes de cada llamada a herramienta y cada regla de más se paga siempre.</li><li><strong><code>post-tool-use.py</code></strong> — el caballo de batalla: corre los checks contra lo que se acaba de escribir y devuelve los hallazgos como contexto adicional. Es el único evento portátil donde el aviso llega de verdad al modelo. Sin hallazgos, silencio.</li><li><strong><code>user-prompt-submit.py</code></strong> — un solo trabajo, rutear a una skill. Hoy calla siempre: el ruteo por disparadores está declarado pero no implementado.</li><li><strong><code>lib/hook.py</code></strong> — lo que es idéntico en los cuatro y que, hecho mal, falla en silencio: lectura del evento tolerando BOM, un único JSON de salida por corrida, escritura en bytes UTF-8 (en Windows <code>stdout</code> sale en cp1252 y un aviso con tilde llegaría corrupto), las tres salidas válidas, un mensaje de sistema que se emite una sola vez por sesión y evento, y el envoltorio que garantiza salida 0.</li><li><strong><code>lib/secretos.py</code></strong> — el detector. Dos niveles de confianza y la distinción es lo importante: <strong>alta bloquea</strong>, <strong>media pregunta</strong>. Describe el hallazgo sin repetir el valor. Decide qué hacer el hook, no el detector.</li><li><strong><code>lib/reglas.py</code></strong> — carga y corre los checks por ruta (se llaman con guiones y un guion no es un nombre importable), lee la config del proyecto y corta a ocho hallazgos.</li><li><strong><code>lib/zonas.py</code></strong> — mide las zonas del <code>CLAUDE.md</code>: cuáles existen, cuántas líneas de contenido tiene cada una, qué marcadores parecen una zona escrita con otro nombre y cuánto quedó fuera de toda zona. Tiene además una interfaz de línea de comandos que usa el instalador, para que la definición de las zonas viva en un solo lado.</li></ul>
+<h3>De qué depende</h3>
+<ul><li>Python 3.9+ del sistema, invocado por los lanzadores que escribe <a href="install.md" class="a-ficha" data-ficha="install.md">el instalador</a>.</li><li>El catálogo <code>comun/reglas/secretos.patrones.json</code>: doce patrones (diez de confianza alta, dos media) y quince patrones de excepción para lo que parece un secreto y no lo es — variables de entorno, placeholders, ejemplos. El falso positivo es el riesgo existencial de todo esto: un bloqueo que traba trabajo legítimo se desinstala esa misma semana.</li><li><code>harness.config.json</code> del proyecto, cuando existe. Nunca es obligatorio.</li><li><a href="checks.md" class="a-ficha" data-ficha="checks.md">Los checks</a>, que son N y son reglas. La separación entre hooks y checks existe para que agregar una regla no pueda romper el manejo de stdin, el encoding ni el control de errores.</li><li><code>git</code>, opcional: si no está, el bloque de estado no sale y nada se rompe.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>comun/hooks/session-start.py</code>, <code>pre-tool-use.py</code>, <code>post-tool-use.py</code>, <code>user-prompt-submit.py</code> — los cuatro eventos.</li><li><code>comun/hooks/lib/hook.py</code>, <code>secretos.py</code>, <code>reglas.py</code>, <code>zonas.py</code> — la librería compartida.</li><li><code>comun/reglas/secretos.patrones.json</code> — el catálogo de patrones de secreto y de excepciones.</li><li>El contrato completo, con las trampas de cada salida, está escrito en <code>docs/contrato-hooks.md</code>.</li></ul>
+  <p class="archivo"><a href="comun-hooks.md">Abrir comun-hooks.md</a></p>
+</article>
+<article class="ficha" data-ficha="docs-cambios.md" hidden>
+  <h2>docs/cambios</h2>
+  
+<h3>Qué es</h3>
+<p>Los artefactos del método con el que se trabaja en este repo: una carpeta por cambio, con la especificación de lo que se construye y la verificación de que cumple.</p>
+<p>El método es especificar, construir, testear y verificar. Los tests salen de la spec con el código ya armado, y quien construye no verifica.</p>
+<p>Es la parte del repo que registra el trabajo <strong>antes</strong> de hacerlo. La bitácora por versión registra lo que pasó después.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>spec.md</code></strong> por cambio — qué se construye y cómo se prueba que cumple. Los escenarios se numeran <code>E-nn</code> y cada uno lleva la marca de que se lo vio fallar antes de arreglarlo. Un test que cubre un escenario nombra su id en el título o en un comentario, y así se puede ir del escenario al test y al revés.</li><li><strong><code>verificacion.md</code></strong> por cambio, cuando ya se verificó — un veredicto por escenario. Un veredicto <code>contradicho</code> o <code>sin-sustento</code> no cierra el cambio, y el archivo existiendo no cierra nada por sí solo.</li><li><strong><code>plan.md</code></strong> en algunos cambios — el detalle de ejecución. Son los archivos más largos del directorio, con el razonamiento paso a paso.</li><li>Cinco cambios registrados hasta ahora: el porteo de los hooks a Python (el único con verificación escrita), el agente iniciador del índice de código, la capacidad de trabajar con SDD, el estado del mapa declarado en la nota de versión, y el mapa de nodos del código.</li></ul>
+<h3>De qué depende</h3>
+<ul><li>Las skills de <a href="fabrica.md" class="a-ficha" data-ficha="fabrica.md">la fábrica</a> que fijan el formato: una para escribir la spec y otra para registrar el veredicto.</li><li>El agente refutador de <a href="fabrica.md" class="a-ficha" data-ficha="fabrica.md">la fábrica</a>, que dicta los veredictos contra la spec, corre los tests y no escribe nada.</li><li><a href="tests.md" class="a-ficha" data-ficha="tests.md">La suite</a>: los escenarios se verifican corriéndola, no leyéndola.</li><li>El fundamento del método está en <code>0006-sdd-como-metodo-de-los-proyectos.md</code>, uno de los ADR de <a href="docs.md" class="a-ficha" data-ficha="docs.md"><code>docs</code></a>.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>docs/cambios/hooks-en-python/</code> — <code>spec.md</code>, <code>plan.md</code>, <code>verificacion.md</code></li><li><code>docs/cambios/iniciador-code/</code> — <code>spec.md</code>, <code>plan.md</code></li><li><code>docs/cambios/sdd-capacidad/</code> — <code>spec.md</code></li></ul>
+  <p class="archivo"><a href="docs-cambios.md">Abrir docs-cambios.md</a></p>
+</article>
+<article class="ficha" data-ficha="docs-versiones.md" hidden>
+  <h2>docs/versiones</h2>
+  <p class="huerfana">Ninguna otra ficha la enlaza.</p>
+<h3>Qué es</h3>
+<p>El registro de lo que pasó, en dos formatos que contestan preguntas distintas y por eso hacen falta los dos.</p>
+<p>El <code>CHANGELOG.md</code> mira hacia afuera: lo lee quien instala o actualiza, y se escribe para no romperle nada a nadie. La bitácora mira hacia adentro: la lee quien sigue el trabajo, y guarda el razonamiento, los caminos que se probaron y se descartaron y las puntas sueltas.</p>
+<p>Va de 0.1.0 a 0.13.0, una nota por versión, sin huecos.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>CHANGELOG.md</code></strong> — qué cambió a nivel funcional en cada versión, en <code>MAJOR.MINOR.PATCH</code> como exige ES0901.</li><li><strong><code>UPGRADE.md</code></strong> — qué hacer al pasar de una versión a la siguiente, y si el <code>-Update</code> alcanza o hay algo manual. Aclara que no hay un <code>git pull</code> en el medio porque todavía no hay remoto.</li><li><strong>Una nota por versión</strong>, con cinco secciones obligatorias. La que justifica todo esto es <strong>&quot;Dónde seguir&quot;</strong>: una conversación de trabajo se compacta y se pierde el hilo de qué se estaba por hacer y qué faltaba.</li><li><strong><code>_plantilla.md</code></strong> — la forma que toma cada nota.</li><li><strong><code>README.md</code></strong> del directorio — por qué existe la bitácora si ya hay un CHANGELOG, y qué va en cada uno.</li></ul>
+<h3>De qué depende</h3>
+<ul><li>La skill de <a href="fabrica.md" class="a-ficha" data-ficha="fabrica.md">la fábrica</a> que dicta el ritual de cerrar una versión: el <code>VERSION</code>, la nota con sus cinco secciones, la fila en el índice, la entrada del CHANGELOG, el <code>UPGRADE</code>, el pendiente que sale de su archivo y el mapa del flujo cuando el flujo se movió.</li><li>El caso de <a href="tests.md" class="a-ficha" data-ficha="tests.md">la suite</a> que verifica la bitácora. Sin él, escribir la nota al cerrar una versión sería una intención que dura hasta la primera semana ocupada: lo que nadie mide, no se hace.</li><li>El archivo <code>VERSION</code> de la raíz, que tiene que coincidir con la última nota.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>CHANGELOG.md</code> y <code>UPGRADE.md</code> — en la raíz.</li><li><code>docs/versiones/README.md</code> — por qué existe.</li><li><code>docs/versiones/_plantilla.md</code> — la forma de una nota.</li><li><code>docs/versiones/0.1.0.md</code> a <code>0.13.0.md</code> — trece notas.</li></ul>
+  <p class="archivo"><a href="docs-versiones.md">Abrir docs-versiones.md</a></p>
+</article>
+<article class="ficha" data-ficha="docs.md" hidden>
+  <h2>docs</h2>
+  
+<h3>Qué es</h3>
+<p>La documentación del harness: la puerta de entrada, las guías de uso y las decisiones tomadas con su fundamento.</p>
+<p>Se lee en tres capas. El <code>README.md</code> contesta qué es esto y cómo se instala; las guías contestan cómo funciona cada mecanismo; los ADR contestan <strong>por qué está así</strong> y no de la otra forma que parecía más obvia.</p>
+<p>Hay además dos mapas en HTML que se publican como artefactos web y se actualizan en la misma URL cuando el flujo cambia.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>README.md</code></strong> — qué es un harness, los dos que hay, requisitos, la versión corta de la instalación, qué se escribe en el proyecto, cómo se comporta (avisa, casi nunca bloquea) y qué recuerda. Declara también el límite honesto de <code>permissions.deny</code>: cubre lo que se resuelve como una ruta, y una lectura indirecta puede escapar.</li><li><strong><code>instalacion.md</code></strong> — el paso a paso completo por PowerShell y por bash, con los problemas frecuentes y su salida exacta.</li><li><strong><code>contrato-hooks.md</code></strong> — todo lo que hay que saber para escribir un hook: entrada, las tres salidas, el silencio, y las trampas nuevas que trajo Python.</li><li><strong><code>memoria.md</code></strong> — el principio de la memoria del harness: se lee lo que alguien decidió dejar anotado, no se captura nada. Las zonas del <code>CLAUDE.md</code> y sus techos.</li><li><strong><code>secretos.md</code></strong> — la única regla que bloquea, y por qué son dos mecanismos complementarios: uno protege lo que no se debe leer y el otro lo que no se debe escribir.</li><li><strong><code>agregar-un-harness.md</code></strong> — cómo agregar el tercero: crear su <code>manifest.json</code>, y nada más.</li><li><strong><code>adr/</code></strong> — siete decisiones aceptadas: el nombre de la rama de desarrollo, copiar en vez de enlazar, Obsidian afuera del harness, no usar la estructura <code>source/</code> de ES0901, lo de terceros separado de lo propio, SDD como método de los proyectos instalados, y que lo externo se aprovecha pero nunca es requisito. <strong>No hay ADR-0007</strong>: la numeración salta.</li><li><strong><code>mapa/</code></strong> — dos páginas HTML autocontenidas: una recorre lo que le pasa a un mensaje desde que alguien lo escribe, y la otra muestra composición, instalación, runtime y secretos. Llevan arriba la URL donde están publicadas, para republicar sin perderla.</li></ul>
+<h3>De qué depende</h3>
+<ul><li>El código que describe —<a href="install.md" class="a-ficha" data-ficha="install.md">el instalador</a>, <a href="comun-hooks.md" class="a-ficha" data-ficha="comun-hooks.md">los hooks</a>, <a href="checks.md" class="a-ficha" data-ficha="checks.md">los checks</a>—. Una guía que se desactualiza es peor que no tenerla, y varias afirman qué test las verifica punta a punta.</li><li>Los mapas dependen de que alguien los republique en la misma URL cuando cambia el flujo; nada automático lo comprueba.</li><li>El <code>README.md</code> promete comportamientos concretos —que <code>-WhatIf</code> no escriba un byte, que <code>-Update</code> no pise lo editado a mano, que instalar sea aditivo— y esas promesas están verificadas en los casos de instalador de <a href="tests.md" class="a-ficha" data-ficha="tests.md">la suite</a>.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>README.md</code> — en la raíz.</li><li><code>docs/instalacion.md</code>, <code>docs/contrato-hooks.md</code>, <code>docs/memoria.md</code>, <code>docs/secretos.md</code>, <code>docs/agregar-un-harness.md</code></li><li><code>docs/adr/0001</code> a <code>0006</code> y <code>0008</code> — siete archivos, sin el 0007.</li><li><code>docs/mapa/recorrido-mensaje.html</code>, <code>docs/mapa/mapa-harness.html</code></li></ul>
+  <p class="archivo"><a href="docs.md">Abrir docs.md</a></p>
+</article>
+<article class="ficha" data-ficha="fabrica.md" hidden>
+  <h2>fabrica</h2>
+  
+<h3>Qué es</h3>
+<p>Cómo se trabaja <strong>en este repo</strong>, que no es lo mismo que lo que el repo produce. Este proyecto es la fábrica del harness: acá se construye lo que después se instala en otros proyectos, y esta capa gobierna a quien lo construye.</p>
+<p>Son los agentes y skills que rigen las sesiones de este repositorio, el <code>CLAUDE.md</code> que se carga en cada una, la configuración del repo y el trabajo que queda abierto.</p>
+<p>Nada de acá se instala en ningún proyecto: el instalador solo copia desde <code>comun/</code> y <code>harnesses/&lt;id&gt;/</code>.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>CLAUDE.md</code></strong> — el contrato de cada sesión: el método, la compuerta de la suite, quién es dueño de qué, las skills de la fábrica y la regla de idioma (español rioplatense para todo lo que se distribuye; inglés adentro de <code>.claude/</code>, los pendientes, los nombres de archivo y el código). Trae además el aviso de qué hacer si la suite se corta a la mitad.</li><li><strong>Cinco agentes con dueño declarado</strong> — el ingeniero de hooks (dueño de los hooks y los checks), el de backend (el instalador, la suite, los manifiestos y el lockfile), el staff engineer (rendimiento, tamaño y simplicidad, con el comportamiento congelado), el refutador de specs (dicta veredictos, corre los tests y no escribe nada) y el auditor de presupuesto (mide lo que el harness cuesta en cada turno y no bloquea nunca).</li><li><strong>Cinco skills</strong> — escribir una spec, registrar un veredicto, cerrar una versión, anotar un pendiente, y la de respuestas concisas, que rige cada respuesta de cada sesión.</li><li><strong><code>Pendientes/</code></strong> — dos archivos, escritos en inglés, que son la fuente de trabajo de esos agentes. Uno lleva los defectos y arreglos, ordenados por riesgo por costo y no por tema; el otro las ideas, que son propuestas que pueden no construirse nunca. Un ítem que cierra sale de ahí y aterriza en la nota de su versión.</li><li><strong><code>.gitattributes</code></strong> — los saltos de línea fijados a propósito: CRLF para los scripts de Windows, LF obligatorio para los <code>.sh</code> incluso escritos desde Windows, LF para el contenido. Sin esto manda la configuración de cada máquina y un <code>.sh</code> con CRLF falla con un error que no nombra su causa.</li><li><strong><code>.gitignore</code></strong> — el bloque de secretos, el directorio de fuentes de normativa (el repo es público) y las salidas de prueba.</li></ul>
+<h3>De qué depende</h3>
+<ul><li><a href="tests.md" class="a-ficha" data-ficha="tests.md">La suite</a> en verde como condición de cerrar cualquier cosa.</li><li>Los artefactos de <a href="docs-cambios.md" class="a-ficha" data-ficha="docs-cambios.md"><code>docs/cambios</code></a>, que son lo que producen las skills de spec y veredicto.</li><li>La separación de dueños: quien construye no verifica, y el refutador dicta contra la spec pero no escribe su propio veredicto.</li><li>El costo de contexto: los agentes y skills de acá se cargan en cada turno de cada sesión de este repo, y el auditor de presupuesto existe justamente porque nada más lo limita.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>CLAUDE.md</code> — en la raíz.</li><li><code>.claude/agents/harness-hook-engineer.md</code>, <code>harness-backend-engineer.md</code>, <code>harness-staff-engineer.md</code>, <code>harness-spec-refuter.md</code>, <code>harness-budget-auditor.md</code></li><li><code>.claude/skills/write-a-spec/</code>, <code>write-a-verdict/</code>, <code>close-a-version/</code>, <code>note-a-pending/</code>, <code>concise-replies/</code> — un <code>SKILL.md</code> en cada uno.</li><li><code>Pendientes/Fix-Harness/PENDIENTES-FH.md</code>, <code>Pendientes/Ideas-Harness/PENDIENTES-I.md</code></li><li><code>.gitattributes</code>, <code>.gitignore</code></li></ul>
+  <p class="archivo"><a href="fabrica.md">Abrir fabrica.md</a></p>
+</article>
+<article class="ficha" data-ficha="harnesses-analisis.md" hidden>
+  <h2>harnesses/analisis</h2>
+  
+<h3>Qué es</h3>
+<p>El harness para el trabajo funcional: relevar, escribir historias de usuario, leer maquetas y normativa. Se instala en los proyectos donde todavía no hay código, o donde hay gente que escribe historias y no las implementa.</p>
+<p>El corte entre harness es por <strong>tipo de trabajo</strong>, no por proyecto: un analista funcional no necesita cargar las reglas de diseño de APIs. Un proyecto puede tener los dos a la vez.</p>
+<p>Su prefijo de namespace es <code>hu</code>, y eso hace estructuralmente imposible que dos harness aporten dos cosas con el mismo nombre.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>manifest.json</code></strong> — su identidad: id, prefijo, qué aporta y los defaults que van al <code>harness.config.json</code> del proyecto (ruta de las historias, de las maquetas, de las definiciones pendientes, y el gestor de tickets, que arranca en solo lectura).</li><li><strong><code>claude-md/bloque.md</code></strong> — las reglas que se ejecutan en cada turno: la maqueta manda; las maquetas se versionan sin avisar y hay que confirmar que se está mirando la más nueva; las maquetas se copian entre módulos y arrastran el texto del original; la pantalla pública es un contrato de salida, no un espejo del backoffice; el gestor de tickets nunca se escribe; y las historias se referencian por nombre, nunca por número.</li><li><strong><code>hu-redactor</code></strong> (agente) — redacta, revisa y corrige historias de backoffice a partir de maquetas y documentación. No inventa: lo que la maqueta no sostiene va a definiciones pendientes.</li><li><strong><code>hu-refutador</code></strong> (agente) — verifica una historia contra su maqueta y devuelve un veredicto por afirmación. No escribe, no corrige y no agrega hallazgos propios. Ante evidencia faltante el default es <code>sin-sustento</code>, y eso no es un descarte: es una definición pendiente que alguien iba a inventar.</li><li><strong><code>hu-escribir</code></strong> (skill) — el formato de las historias, pensado para que las tome una IA que después escribe el código.</li><li>No aporta ningún check. El directorio existe y está vacío.</li></ul>
+<h3>De qué depende</h3>
+<ul><li><code>comun/</code>, que se instala siempre: <a href="comun-hooks.md" class="a-ficha" data-ficha="comun-hooks.md">los hooks</a> con la regla de secretos, y <a href="comun-agentes-y-skills.md" class="a-ficha" data-ficha="comun-agentes-y-skills.md">sus agentes y skills</a> con el formato de memoria.</li><li><a href="install.md" class="a-ficha" data-ficha="install.md">El instalador</a>, que descubre este harness por la sola presencia de su <code>manifest.json</code>.</li><li>Las maquetas y la documentación funcional del proyecto donde se instala; sin eso, los dos agentes no tienen fuente contra la cual trabajar.</li><li><code>hu-refutador</code> y <code>hu-redactor</code> están adaptados de material de terceros: la forma del refutador desacoplado y el reporte de resolución de skill vienen de <a href="terceros.md" class="a-ficha" data-ficha="terceros.md"><code>terceros/gentle-ai</code></a>, con la nota de procedencia arriba de cada archivo.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>harnesses/analisis/manifest.json</code></li><li><code>harnesses/analisis/claude-md/bloque.md</code></li><li><code>harnesses/analisis/agents/hu-redactor.md</code>, <code>hu-refutador.md</code></li><li><code>harnesses/analisis/skills/hu-escribir/SKILL.md</code></li><li><code>harnesses/analisis/checks/</code> — vacío, solo el <code>.gitkeep</code>.</li></ul>
+  <p class="archivo"><a href="harnesses-analisis.md">Abrir harnesses-analisis.md</a></p>
+</article>
+<article class="ficha" data-ficha="harnesses-desarrollo.md" hidden>
+  <h2>harnesses/desarrollo</h2>
+  
+<h3>Qué es</h3>
+<p>El harness para el trabajo técnico: código, APIs y deploy. Hace cumplir los estándares del GCBA — ES0901, ES0902, ES0903, PC0901, la guía de la DGISIS y Obelisco v2 — sin que nadie tenga que acordarse de ellos.</p>
+<p>Su prefijo de namespace es <code>dev</code>. Aporta la mayor parte de las skills del repo, y lo hace en skills y no en el <code>CLAUDE.md</code> a propósito: lo que no se necesita en cada turno no se carga en cada turno.</p>
+<p>Sus cinco checks están descriptos en la ficha <code>checks</code>, junto con el de <code>comun/</code>.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>manifest.json</code></strong> — id, prefijo <code>dev</code> y los defaults del proyecto: la ruta del índice del código, el umbral de cobertura, la versión de Obelisco, el nivel de accesibilidad exigido, el prefijo de las rutas de API y si se verifican las versiones homologadas.</li><li><strong><code>claude-md/bloque.md</code></strong> — las reglas de cada turno: las versiones de las dependencias las fija la ASI y no se eligen; la configuración va afuera del código; los servidores se referencian por nombre DNS; ante un error inesperado no se expone nada de la infraestructura y el estado es 500; Obelisco es obligatorio por resolución; la accesibilidad es exigible por ley.</li><li><strong><code>dev-iniciador-code</code></strong> (agente) — recorre el código entero una vez y deja escrito qué hay, bajo el directorio del índice: una ficha por módulo más un <code>indice.md</code>. Existe para pagar una sola vez el trabajo que si no se paga en cada sesión.</li><li><strong><code>dev-refutador</code></strong> (agente) — verifica código, contratos de API o documentos técnicos contra los estándares y devuelve un veredicto por afirmación. No escribe y no corrige. Hermano del refutador de <code>analisis</code>, del que hereda la forma.</li><li><strong>Ocho skills</strong>, una por dominio: <code>dev-api</code> (ES0903: rutas, versionado, forma de la respuesta, errores, contratos OpenAPI/RAML), <code>dev-identidad</code> (OpenID Connect contra Keycloak, BA ID / miBA, Active Directory, sesión, roles y permisos), <code>dev-seguridad</code> (ES0902: datos, validación, subida de archivos, logs, assessment, WAF, qué traba un pase), <code>dev-pantalla</code> (Obelisco v2 y accesibilidad), <code>dev-ambientes</code> (pases DESA → QA → HML → PRD, control de cambios PC0901, el FUR y sus entregables), <code>dev-tramites-asi</code> (cómo se pide cada cosa por ticket y qué lleva cada modelo), <code>dev-repositorio</code> (estructura, ramas, versionado semántico, entrega) y <code>dev-versiones</code> (versiones homologadas y dependencias; a propósito no trae ni un número, porque los números caducan).</li></ul>
+<h3>De qué depende</h3>
+<ul><li><code>comun/</code>, que se instala siempre: <a href="comun-hooks.md" class="a-ficha" data-ficha="comun-hooks.md">los hooks</a> y <a href="comun-agentes-y-skills.md" class="a-ficha" data-ficha="comun-agentes-y-skills.md">sus agentes y skills</a>.</li><li><a href="install.md" class="a-ficha" data-ficha="install.md">El instalador</a> y su <code>manifest.json</code>, que es lo único que hace falta para que el harness exista.</li><li>Los extractos de <a href="normativa.md" class="a-ficha" data-ficha="normativa.md"><code>normativa</code></a>, que son la fuente de casi todo lo que afirman las skills. Los extractos declaran además qué <strong>no</strong> se puede citar desde ellos y hay que ir al PDF original.</li><li>El agente <code>dev-iniciador-code</code> depende de la clave <code>rutaCodebase</code> de la configuración del proyecto, del <code>git ls-files</code> del repositorio que recorre, y lo que escribe lo verifica el check <a href="checks.md" class="a-ficha" data-ficha="checks.md"><code>dev-codebase-forma</code></a>. El hook de <a href="comun-hooks.md" class="a-ficha" data-ficha="comun-hooks.md"><code>SessionStart</code></a> avisa que ese índice falta hasta que existe.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>harnesses/desarrollo/manifest.json</code></li><li><code>harnesses/desarrollo/claude-md/bloque.md</code></li><li><code>harnesses/desarrollo/agents/dev-iniciador-code.md</code>, <code>dev-refutador.md</code></li><li><code>harnesses/desarrollo/skills/dev-api/</code>, <code>dev-identidad/</code>, <code>dev-seguridad/</code>, <code>dev-pantalla/</code>, <code>dev-ambientes/</code>, <code>dev-tramites-asi/</code>, <code>dev-repositorio/</code>, <code>dev-versiones/</code> — un <code>SKILL.md</code> en cada uno.</li><li><code>harnesses/desarrollo/checks/</code> — descripto en la ficha <code>checks</code>.</li></ul>
+  <p class="archivo"><a href="harnesses-desarrollo.md">Abrir harnesses-desarrollo.md</a></p>
+</article>
+<article class="ficha" data-ficha="install.md" hidden>
+  <h2>install</h2>
+  
+<h3>Qué es</h3>
+<p>El instalador: el único punto de entrada del repo. Copia el harness dentro de otro proyecto, lo actualiza, lo saca y diagnostica la máquina. Es un solo script de PowerShell, largo y con comentarios que explican cada decisión.</p>
+<p>La invariante que ordena todo lo que escribe: <code>.claude/</code> es 100% regenerable y va gitignoreado; el <code>CLAUDE.md</code> del proyecto no lo es y se versiona. De ahí se deduce el resto — nada de lo que escribe en <code>.claude/</code> tiene que sobrevivir a un clone, solo a un <code>-Update</code>.</p>
+<p>Acá también viven las plantillas de lo que instala: el registro de hooks, la lista de rutas denegadas, los dos lanzadores y los bloques de <code>CLAUDE.md</code> que se inyectan en el proyecto.</p>
+<h3>Qué expone</h3>
+<ul><li>Cinco verbos por parámetro: <code>-Doctor</code> (no escribe nada), <code>-Project</code> + <code>-Harness</code> para instalar, <code>-Update</code>, <code>-Uninstall</code>, y <code>-WhatIf</code> heredado de <code>SupportsShouldProcess</code>.</li><li>Instalar es <strong>aditivo</strong>: lo que el proyecto ya tenía se conserva y se anuncia. Los ids se ordenan de forma canónica para que llegar al mismo conjunto por dos caminos produzca el mismo archivo.</li><li><code>harness.lock.json</code> en el proyecto: qué versión, qué archivos y el SHA256 de cada uno. Es el inventario que después usan <code>-Doctor</code> y <code>-Uninstall</code>.</li><li><code>harness.config.json</code>: se crea <strong>solo si no existe</strong> y no se pisa jamás, ni en <code>-Update</code>. Sus valores por defecto salen del bloque <code>config</code> de cada manifiesto.</li><li>Dos lanzadores de hooks: <code>run-hook.cmd</code>, el único artefacto instalado que contiene una ruta absoluta de la máquina (el <code>python.exe</code> que se resolvió), y <code>run-hook.sh</code>, genérico, para el caso POSIX.</li><li>Bloques marcados dentro de archivos que también edita una persona: uno en <code>CLAUDE.md</code> y otro en <code>.gitignore</code>. Todo lo que está entre las marcas es del harness; el resto es intocable.</li><li>Se puede cargar con dot-source sin ejecutar ningún verbo: es la costura que usa la suite para probar funciones internas sin levantar un proceso por caso.</li></ul>
+<h3>De qué depende</h3>
+<ul><li><strong>PowerShell 5.1</strong> y Windows para correr. Claude Code ≥ 2.1.0 y Python ≥ 3.9 en la máquina de destino, verificados antes de escribir nada; si faltan, aborta en vez de reparar.</li><li>Los <strong>manifiestos</strong> de <code>comun/</code> y de cada harness —<a href="harnesses-analisis.md" class="a-ficha" data-ficha="harnesses-analisis.md"><code>analisis</code></a> y <a href="harnesses-desarrollo.md" class="a-ficha" data-ficha="harnesses-desarrollo.md"><code>desarrollo</code></a>—: de ahí saca qué copiar, el prefijo de namespace y los defaults de configuración. Los harness se descubren recorriendo el directorio, no hay ningún id registrado en el script.</li><li>El módulo <code>lib/zonas.py</code> de <a href="comun-hooks.md" class="a-ficha" data-ficha="comun-hooks.md"><code>comun/hooks</code></a>, invocado como proceso: la definición de las zonas del <code>CLAUDE.md</code> vive en un solo lado y el instalador la lee en vez de reimplementarla. La llamada está adentro de las rutas de instalar y actualizar, no arriba, porque <code>-Doctor</code> tiene que poder diagnosticar una máquina que todavía no tiene Python.</li><li>Los <strong>payloads</strong> de <a href="tests.md" class="a-ficha" data-ficha="tests.md"><code>tests/payloads</code></a>: al terminar dispara los cuatro hooks instalados con eventos reales y, si alguno no responde bien, la instalación falla y revierte.</li><li>La suite de <a href="tests.md" class="a-ficha" data-ficha="tests.md"><code>tests</code></a> como compuerta propia.</li><li>El <a href="fabrica.md" class="a-ficha" data-ficha="fabrica.md"><code>.gitattributes</code></a> del repo, que fija LF en la plantilla del shim <code>.sh</code>: un <code>.sh</code> con CRLF falla con un error que no menciona los saltos de línea.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>install.ps1</code> — todo el instalador.</li><li><code>VERSION</code> — la versión que sella el lockfile y los archivos generados.</li><li><code>comun/manifest.json</code> — el manifiesto del esqueleto que se instala siempre.</li><li><code>comun/settings/hooks.plantilla.json</code> — el registro de los cuatro hooks, con matchers estrictos a propósito.</li><li><code>comun/settings/permissions.deny.json</code> — las rutas sensibles que no se pueden leer.</li><li><code>comun/settings/run-hook.sh.plantilla</code> — el lanzador POSIX, versionado con LF fijo.</li><li><code>comun/claude-md/bloque-comun.md</code> — el bloque que se inyecta en el <code>CLAUDE.md</code> del proyecto.</li><li><code>comun/claude-md/plantilla-proyecto.md</code> — las cuatro zonas con sus marcadores y techos.</li></ul>
+  <p class="archivo"><a href="install.md">Abrir install.md</a></p>
+</article>
+<article class="ficha" data-ficha="normativa.md" hidden>
+  <h2>normativa</h2>
+  
+<h3>Qué es</h3>
+<p>Los estándares del GCBA destilados a markdown. Es **insumo de autoría, nunca se copia a un proyecto**: de acá salen las afirmaciones de las skills de <code>desarrollo</code>, los checks que implementan una regla y los veredictos del refutador.</p>
+<p>Los PDF originales son documentación interna del organismo y este repo es público, así que no se publican: van en un directorio gitignoreado y cada quien pone los suyos. El harness funciona sin ellos.</p>
+<p>Cada extracto declara arriba su fuente, su versión, su cantidad de páginas y la fecha en que se extractó.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>ES0901</code></strong> — Estándar de Desarrollo de la ASI, v6.3, 42 páginas. El más largo: versiones homologadas, estructura de repositorio, versionado semántico, entrega, canal de consulta.</li><li><strong><code>ES0902</code></strong> — Estándar de Seguridad, v6.2. El circuito de assessment de seguridad y sus anexos.</li><li><strong><code>ES0903</code></strong> — Estándar de Desarrollo API, v2.2. Nomenclatura de rutas, versionado, forma de la respuesta y de los errores.</li><li><strong><code>PC0901</code></strong> — Proceso de control de cambios en software de aplicación, v1.0. Quién aprueba qué y con qué evidencia.</li><li><strong><code>GuiaDGISIS</code></strong> — Guía de Procesos de la DGISIS, v1.0. Los trámites: cómo se pide un ambiente, una base, un repositorio, credenciales.</li><li><strong><code>Obelisco</code></strong> — Guía de adopción de Obelisco v2, el sistema de diseño obligatorio.</li><li><strong>La sección &quot;Lo que NO se puede citar desde acá&quot;</strong>, que abre cada extracto. Es lo más valioso del formato: dice explícitamente qué quedó afuera —un diagrama que solo existe como imagen, una tabla que caducó, un dato personal omitido a propósito— para que nadie complete el hueco por analogía y haya que ir al PDF.</li></ul>
+<h3>De qué depende</h3>
+<ul><li>Los PDF originales, que <strong>no</strong> están en el repo. Sin ellos no se puede volver a extractar ni verificar lo no citable, pero todo lo que ya está extractado se lee igual.</li><li><a href="comun-agentes-y-skills.md" class="a-ficha" data-ficha="comun-agentes-y-skills.md">El agente <code>leer-docs</code> y <code>docimg.py</code></a>, que son con lo que se produjeron y con lo que se vuelven a abrir los originales si aparecen.</li><li>Nada del harness instalado depende de este directorio en tiempo de ejecución: lo que viaja a un proyecto son las skills, no los extractos.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>normativa/extractos/ES0901.md</code>, <code>ES0902.md</code>, <code>ES0903.md</code>, <code>PC0901.md</code>, <code>GuiaDGISIS.md</code>, <code>Obelisco.md</code></li><li><code>normativa/fuentes/LEEME.md</code> — qué va ahí y por qué el directorio está gitignoreado.</li><li>El fundamento de que lo externo nunca sea requisito está en <code>docs/adr/0008</code>.</li></ul>
+  <p class="archivo"><a href="normativa.md">Abrir normativa.md</a></p>
+</article>
+<article class="ficha" data-ficha="terceros.md" hidden>
+  <h2>terceros</h2>
+  
+<h3>Qué es</h3>
+<p>Material bajado de repositorios públicos, guardado aparte de lo propio. **Nada de acá se instala**: el instalador solo copia desde <code>comun/</code> y <code>harnesses/&lt;id&gt;/</code>.</p>
+<p>Existe para que &quot;de dónde salió esto&quot; tenga siempre respuesta. Un origen sin registrar es peor que no llevar registro: da falsa sensación de control.</p>
+<p>Hoy hay un solo origen incorporado.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>terceros.lock.json</code></strong> — la procedencia de todo, mantenida a mano. Por cada origen: repo, el commit exacto y completo (nunca una rama, porque las ramas se mueven), licencia, fecha, quién lo revisó, si se leyó entero, qué riesgos se detectaron, qué se tomó, **qué se dejó y por qué**, y en qué archivo propio se adaptó cada cosa.</li><li><strong><code>LEEME.md</code></strong> — las tres reglas operativas: esto no se instala, esto no se edita, y para usar algo se copia a lo propio con una nota de procedencia arriba que nombre el repo, el commit y la licencia.</li><li><strong><code>gentle-ai/</code></strong> — los cuatro archivos que se leyeron de ese proyecto, tal como estaban, más su licencia MIT y una lectura completa en <code>ORIGEN.md</code> que explica qué es el proyecto y por qué no se instaló su binario: es un configurador de agentes igual que este harness y los dos escribirían en el mismo <code>settings.json</code>.</li></ul>
+<h3>De qué depende</h3>
+<ul><li>Nada en tiempo de ejecución. Es material inerte: se lee, se decide y se copia a mano.</li><li>Lo que sí depende de acá son dos agentes de <a href="harnesses-analisis.md" class="a-ficha" data-ficha="harnesses-analisis.md"><code>analisis</code></a> y, por herencia, el refutador de <a href="harnesses-desarrollo.md" class="a-ficha" data-ficha="harnesses-desarrollo.md"><code>desarrollo</code></a>: llevan arriba la nota de procedencia que apunta a este directorio.</li><li>La disciplina de mantener el lockfile a mano. No hay nada que lo verifique automáticamente.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>terceros/terceros.lock.json</code></li><li><code>terceros/LEEME.md</code></li><li><code>terceros/gentle-ai/ORIGEN.md</code>, <code>LICENSE</code>, <code>review-refuter.md</code>, <code>review-risk.md</code>, <code>skill-resolver.md</code>, <code>_shared-SKILL.md</code></li><li>El fundamento está en <code>docs/adr/0005-terceros-separados-de-lo-propio.md</code>.</li></ul>
+  <p class="archivo"><a href="terceros.md">Abrir terceros.md</a></p>
+</article>
+<article class="ficha" data-ficha="tests.md" hidden>
+  <h2>tests</h2>
+  
+<h3>Qué es</h3>
+<p>La suite del repo: dos motores, un solo código de salida. Es la compuerta de todo — nada se da por terminado sin la suite en verde, y el propio instalador la usa como compuerta suya.</p>
+<p>No tiene dependencias: no hace falta Pester ni pytest ni nada instalado. Cada motor carga los archivos de casos de su lenguaje y acumula resultados.</p>
+<p>Acá vive también la evidencia: payloads reales de cada evento de hook, proyectos de fixture y las capturas del testigo contra el que se comparó el porteo de PowerShell a Python.</p>
+<h3>Qué expone</h3>
+<ul><li><strong><code>Invoke-Tests.ps1</code></strong> — el corredor de PowerShell, con sus aserciones propias y la opción <code>-Detallado</code>. Sale 0 si pasa todo, 1 si falla algo.</li><li><strong><code>correr.py</code></strong> — el corredor de Python, mismo formato de resultados, con filtro por nombre de caso.</li><li><strong>Casos de Python</strong> — la librería de hooks, el contrato de <code>pre-tool-use</code> punta a punta como proceso hijo, el detector de secretos, la memoria de <code>SessionStart</code>, la carga de checks, los checks contra el testigo, los casos de borde de los checks de desarrollo, las zonas del <code>CLAUDE.md</code>, el aviso del índice del código, y los enlaces entre fichas con el generador del mapa de nodos.</li><li><strong>Casos de PowerShell</strong> — el encoding de los fuentes, el ciclo completo del instalador (<code>-WhatIf</code> → instalar → <code>-Doctor</code> → editar a mano → <code>-Update</code> → <code>-Uninstall</code>), la composición de dos harness en el mismo proyecto, la bitácora por versión y los escenarios del índice del código del lado del instalador.</li><li><strong><code>payloads/</code></strong> — un JSON por evento, con la forma real que manda Claude Code. Los usa la suite y también el instalador para verificar los hooks recién instalados.</li><li><strong><code>fixtures/</code></strong> — el corpus de secretos, un <code>CLAUDE.md</code> de prueba, hooks de mentira que responden cada una de las salidas posibles (eco, deny, preguntar, explotar, silencio, salir con código), un proyecto con archivos que disparan cada check, y un proyecto con índices de código sanos y rotos.</li><li><strong><code>Repair-EncodingFuentes.ps1</code></strong> — el arreglo del problema que detecta el caso de encoding. A un <code>.ps1</code> con caracteres no ASCII le agrega el BOM, porque PowerShell 5.1 sin BOM lee en la codepage ANSI; a un <code>.py</code> con BOM se lo saca, porque Python siempre lee UTF-8 y ahí el BOM sobra.</li></ul>
+<h3>De qué depende</h3>
+<ul><li>PowerShell 5.1 y Python 3.9+ en la máquina.</li><li>El código que prueba: <a href="comun-hooks.md" class="a-ficha" data-ficha="comun-hooks.md"><code>comun/hooks</code></a>, <a href="checks.md" class="a-ficha" data-ficha="checks.md">los checks</a>, <a href="install.md" class="a-ficha" data-ficha="install.md"><code>install.ps1</code></a> y los manifiestos.</li><li>Los casos del instalador escriben sobre un proyecto descartable, pero **dos de ellos rompen archivos versionados a propósito** y los restauran en un <code>finally</code> que no sobrevive a que maten el proceso. Si la suite se corta a la mitad, hay que revisar el árbol antes que nada: ya dejó el hook de bloqueo de secretos roto en el árbol durante una versión.</li><li><strong><code>generar-testigo.ps1</code></strong> importa cuatro módulos de PowerShell que ya no existen en el repo: la implementación que capturaba se portó a Python. Es un script de una sola corrida y su propia cabecera dice que volver a correrlo después de portar no tiene sentido. Se queda como registro de cómo se produjeron los tres archivos de paridad, pero hoy no se puede ejecutar.</li></ul>
+<h3>Dónde está</h3>
+<ul><li><code>tests/Invoke-Tests.ps1</code>, <code>tests/correr.py</code> — los dos corredores.</li><li><code>tests/casos/</code> — quince archivos de casos, nueve en Python y seis en PowerShell.</li><li><code>tests/payloads/</code> — seis eventos reales.</li><li><code>tests/fixtures/</code> — corpus, hooks de mentira, proyectos de prueba y las tres capturas de paridad (<code>paridad-secretos.json</code>, <code>paridad-checks.json</code>, <code>paridad-zonas.json</code>).</li><li><code>tests/generar-testigo.ps1</code> — el generador del testigo, hoy inejecutable.</li><li><code>scripts/Repair-EncodingFuentes.ps1</code> — el arreglo de encoding, fuera de <code>tests/</code> pero emparejado con el caso que lo detecta.</li></ul>
+  <p class="archivo"><a href="tests.md">Abrir tests.md</a></p>
+</article>
+</aside>
+
+<script>
+(function () {
+  "use strict";
+  var svg = document.getElementById("grafo");
+  var panel = document.getElementById("panel");
+  if (!svg || !panel) { return; }
+
+  // ── El estado, que es poco: la vista y las posiciones de los nodos ──
+  var vistaInicial = svg.getAttribute("data-vista").split(" ").map(Number);
+  var vista = vistaInicial.slice();
+  var nodos = {};
+  var inicial = {};
+
+  Array.prototype.forEach.call(svg.querySelectorAll("g.nodo"), function (g) {
+    var id = g.getAttribute("data-id");
+    nodos[id] = {
+      g: g,
+      x: Number(g.getAttribute("data-cx")),
+      y: Number(g.getAttribute("data-cy")),
+      w: Number(g.getAttribute("data-w")),
+      h: Number(g.getAttribute("data-h"))
+    };
+    inicial[id] = { x: nodos[id].x, y: nodos[id].y };
+  });
+
+  var aristas = Array.prototype.slice.call(svg.querySelectorAll("line.arista"));
+
+  function aplicarVista() {
+    svg.setAttribute("viewBox", vista.join(" "));
+  }
+
+  // El mismo recorte que hace el generador en Python: la flecha termina tocando la
+  // caja, no en su centro. Si las dos formulas se separan, la punta queda flotando.
+  function borde(a, hx, hy) {
+    var dx = hx - a.x, dy = hy - a.y;
+    if (dx === 0 && dy === 0) { return [a.x, a.y]; }
+    var mx = dx ? (a.w / 2) / Math.abs(dx) : Infinity;
+    var my = dy ? (a.h / 2) / Math.abs(dy) : Infinity;
+    var e = Math.min(mx, my);
+    return [a.x + dx * e, a.y + dy * e];
+  }
+
+  function redibujarAristas(id) {
+    aristas.forEach(function (l) {
+      var de = l.getAttribute("data-de"), a = l.getAttribute("data-a");
+      if (id && de !== id && a !== id) { return; }
+      var n1 = nodos[de], n2 = nodos[a];
+      if (!n1 || !n2) { return; }
+      var p1 = borde(n1, n2.x, n2.y);
+      var p2 = borde(n2, n1.x, n1.y);
+      l.setAttribute("x1", p1[0]); l.setAttribute("y1", p1[1]);
+      l.setAttribute("x2", p2[0]); l.setAttribute("y2", p2[1]);
+    });
+  }
+
+  function moverNodo(id, x, y) {
+    var n = nodos[id];
+    n.x = x; n.y = y;
+    n.g.setAttribute("transform", "translate(" + x + "," + y + ")");
+    redibujarAristas(id);
+  }
+
+  // ── Coordenadas: de la pantalla al lienzo ──
+  function aLienzo(ev) {
+    var caja = svg.getBoundingClientRect();
+    return {
+      x: vista[0] + (ev.clientX - caja.left) / caja.width * vista[2],
+      y: vista[1] + (ev.clientY - caja.top) / caja.height * vista[3]
+    };
+  }
+
+  function nodoDe(ev) {
+    return ev.target && ev.target.closest ? ev.target.closest("g.nodo") : null;
+  }
+
+  // ── Acercar ──
+  //
+  // La rueda SOLA no hace zoom: desplaza la pagina, como en cualquier otro lado. Atrapar
+  // la rueda deja al lector encerrado en el mapa -pasa por encima y ya no puede seguir
+  // bajando- y es lo primero que se siente al abrirlo. El zoom pide Ctrl, que es ademas
+  // lo que manda el navegador cuando alguien pellizca en un trackpad, y hay dos botones
+  // en la barra para el que no quiera atajos.
+  function zoom(f, px, py) {
+    var ancho = vista[2] * f;
+    var limite = vistaInicial[2];
+    if (ancho < limite / 8 || ancho > limite * 4) { return; }
+    vista[0] = px - (px - vista[0]) * f;
+    vista[1] = py - (py - vista[1]) * f;
+    vista[2] = ancho;
+    vista[3] = vista[3] * f;
+    aplicarVista();
+  }
+
+  svg.addEventListener("wheel", function (ev) {
+    if (!ev.ctrlKey && !ev.metaKey) { return; }
+    ev.preventDefault();
+    var p = aLienzo(ev);
+    zoom(ev.deltaY < 0 ? 0.85 : 1.18, p.x, p.y);
+  }, { passive: false });
+
+  function zoomAlCentro(f) {
+    zoom(f, vista[0] + vista[2] / 2, vista[1] + vista[3] / 2);
+  }
+
+  // ── Arrastrar: el fondo desplaza la vista, un nodo mueve el nodo ──
+  //
+  // Sin setPointerCapture, a proposito. Capturar el puntero en el <svg> hace que el
+  // `click` posterior se despache al <svg> y no al nodo: `closest("g.nodo")` devuelve
+  // null y el clic sobre una ficha no abre nada. Paso, y leyendo el codigo no se ve.
+  // El seguimiento va en la ventana, que ademas es lo que permite arrastrar mas alla
+  // del borde del dibujo sin perder el nodo.
+  var arrastre = null;
+  var ultimoMovio = false;
+
+  svg.addEventListener("pointerdown", function (ev) {
+    if (ev.button !== 0) { return; }
+    var g = nodoDe(ev);
+    var p = aLienzo(ev);
+    var id = g ? g.getAttribute("data-id") : null;
+    arrastre = {
+      id: id,
+      desdeX: p.x, desdeY: p.y,
+      vista0: vista[0], vista1: vista[1],
+      nodoX: id ? nodos[id].x : 0,
+      nodoY: id ? nodos[id].y : 0,
+      movio: false
+    };
+    if (!g) { svg.classList.add("agarrando"); }
+  });
+
+  window.addEventListener("pointermove", function (ev) {
+    if (!arrastre) { return; }
+    // Red de seguridad: si el boton ya no esta apretado, el arrastre termino aunque el
+    // pointerup se haya perdido -fuera de la ventana, en otra pestana, en un menu-. Sin
+    // esto el mapa se sigue moviendo con solo pasar el mouse y no hay forma de salir.
+    if (ev.buttons === 0) { terminar(); return; }
+    var p = aLienzo(ev);
+    var dx = p.x - arrastre.desdeX, dy = p.y - arrastre.desdeY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) { arrastre.movio = true; }
+    if (arrastre.id) {
+      moverNodo(arrastre.id, Math.round(arrastre.nodoX + dx),
+                Math.round(arrastre.nodoY + dy));
+    } else {
+      vista[0] = arrastre.vista0 - dx;
+      vista[1] = arrastre.vista1 - dy;
+      aplicarVista();
+    }
+  });
+
+  function terminar() {
+    ultimoMovio = !!(arrastre && arrastre.movio);
+    arrastre = null;
+    svg.classList.remove("agarrando");
+  }
+  window.addEventListener("pointerup", terminar);
+  window.addEventListener("pointercancel", terminar);
+  window.addEventListener("blur", terminar);
+
+  // ── El panel ──
+  function abrir(id) {
+    var visto = false;
+    Array.prototype.forEach.call(panel.querySelectorAll("article.ficha"), function (a) {
+      var suya = a.getAttribute("data-ficha") === id;
+      a.hidden = !suya;
+      if (suya) { visto = true; }
+    });
+    if (!visto) { return; }
+    Array.prototype.forEach.call(svg.querySelectorAll("g.nodo"), function (g) {
+      if (g.getAttribute("data-id") === id) {
+        g.classList.add("activo");
+      } else {
+        g.classList.remove("activo");
+      }
+    });
+    panel.classList.add("abierto");
+    panel.scrollTop = 0;
+  }
+
+  function cerrar() {
+    panel.classList.remove("abierto");
+    Array.prototype.forEach.call(svg.querySelectorAll("g.nodo"), function (g) {
+      g.classList.remove("activo");
+    });
+  }
+
+  // El <a> del nodo se intercepta: sin script llevaria al .md, que el navegador baja
+  // o muestra crudo. Con script abre el panel, que es la version que se quiere.
+  svg.addEventListener("click", function (ev) {
+    var g = nodoDe(ev);
+    if (!g) { return; }
+    ev.preventDefault();
+    if (ultimoMovio) { ultimoMovio = false; return; }
+    abrir(g.getAttribute("data-id"));
+  });
+
+  // Un enlace a otra ficha adentro del panel no navega: cambia de ficha.
+  panel.addEventListener("click", function (ev) {
+    var a = ev.target && ev.target.closest ? ev.target.closest("a.a-ficha") : null;
+    if (!a) { return; }
+    ev.preventDefault();
+    abrir(a.getAttribute("data-ficha"));
+  });
+
+  document.getElementById("cerrar").addEventListener("click", cerrar);
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") { cerrar(); }
+  });
+
+  document.getElementById("acercar").addEventListener("click", function () {
+    zoomAlCentro(0.8);
+  });
+  document.getElementById("alejar").addEventListener("click", function () {
+    zoomAlCentro(1.25);
+  });
+
+  document.getElementById("reencuadrar").addEventListener("click", function () {
+    vista = vistaInicial.slice();
+    aplicarVista();
+    Object.keys(inicial).forEach(function (id) {
+      moverNodo(id, inicial[id].x, inicial[id].y);
+    });
+  });
+})();
+</script>
+</html>

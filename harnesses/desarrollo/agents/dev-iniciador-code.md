@@ -73,6 +73,16 @@ The file name comes from the module path with `/` replaced by `-`. That is what 
 with the same name in different directories from colliding, and what makes the name derivable in
 both directions.
 
+🔴 **Every module you name is a link.** In `Qué expone` and `De qué depende`, a module of this
+project that has its own card is written as a relative link to it — `[checks](checks.md)` — not
+mentioned in passing. That link is the edge of the map: `mapa-codigo.py` builds the graph out of
+exactly these and nothing else, so a dependency you describe without linking does not exist in the
+drawing. What has no card of its own —Python, `git`, an external library— is named without a link,
+and that is correct.
+
+Markdown links, never `[[wikilinks]]`. GitHub does not render those: it shows the brackets. The
+relative link works in GitHub, in the editor, and in Obsidian's graph view too.
+
 🔴 **The index and the cards must match in both directions.** Every line of the index points at a
 file that exists; every card appears in a line of the index. A card nobody indexed is invisible,
 and an index line pointing nowhere is worse than a missing one.
@@ -95,10 +105,25 @@ and an index line pointing nowhere is worse than a missing one.
    use. `De qué depende` is what it needs to work, inside and outside the project. `Dónde está`
    is the paths.
 
-5. **Write `indice.md` last**, when you already know which cards exist. Writing it first produces
+5. **Write `indice.md`**, when you already know which cards exist. Writing it first produces
    lines pointing at files you then decided not to write.
 
-6. **Report.**
+6. **Regenerate the map, last of all.** After the index, never before it:
+
+   ```
+   python .claude/harness/bin/mapa-codigo.py <the directory of the cards>
+   ```
+
+   It reads the cards, turns the links between them into edges and writes `mapa.html` beside the
+   index. It prints a JSON summary — nodes, edges, orphans — and that is where the numbers of your
+   report come from. You do not draw anything by hand: the layout is deterministic so that two runs
+   over the same cards give the same file, and a picture you wrote yourself would change on every
+   walk and bury the real diff.
+
+   If the script is not there, say so in your report and stop. Do not write an `mapa.html` of your
+   own instead.
+
+7. **Report.**
 
 ## Writing rules
 
@@ -117,6 +142,9 @@ and an index line pointing nowhere is worse than a missing one.
 Short, in Spanish, and it says:
 
 - how many cards you wrote and how many you left untouched;
+- how many nodes and how many edges the map ended with, and which cards came out **orphan** —
+  nobody links them. An orphan is a finding, not a detail: either another card is missing the link,
+  or it is a module nothing uses. Both are worth saying out loud;
 - which cards no longer match any module — named, not deleted;
 - what you did not walk, and why: files you could not read, a language you could not tell apart, a
   directory too large to be worth one card;

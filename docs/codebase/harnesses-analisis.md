@@ -35,12 +35,15 @@ dos cosas con el mismo nombre.
 
 ## De qué depende
 
-- `comun/`, que se instala siempre: los hooks, la regla de secretos y el formato de memoria.
-- El instalador, que descubre este harness por la sola presencia de su `manifest.json`.
+- `comun/`, que se instala siempre: [los hooks](comun-hooks.md) con la regla de secretos, y
+  [sus agentes y skills](comun-agentes-y-skills.md) con el formato de memoria.
+- [El instalador](install.md), que descubre este harness por la sola presencia de su
+  `manifest.json`.
 - Las maquetas y la documentación funcional del proyecto donde se instala; sin eso, los dos
   agentes no tienen fuente contra la cual trabajar.
 - `hu-refutador` y `hu-redactor` están adaptados de material de terceros: la forma del
-  refutador desacoplado y el reporte de resolución de skill vienen de `terceros/gentle-ai/`,
+  refutador desacoplado y el reporte de resolución de skill vienen de
+  [`terceros/gentle-ai`](terceros.md),
   con la nota de procedencia arriba de cada archivo.
 
 ## Dónde está

@@ -27,8 +27,8 @@ Hoy hay un solo origen incorporado.
 ## De qué depende
 
 - Nada en tiempo de ejecución. Es material inerte: se lee, se decide y se copia a mano.
-- Lo que sí depende de acá son dos agentes de `analisis` y, por herencia, el refutador de
-  `desarrollo`: llevan arriba la nota de procedencia que apunta a este directorio.
+- Lo que sí depende de acá son dos agentes de [`analisis`](harnesses-analisis.md) y, por
+  herencia, el refutador de [`desarrollo`](harnesses-desarrollo.md): llevan arriba la nota de procedencia que apunta a este directorio.
 - La disciplina de mantener el lockfile a mano. No hay nada que lo verifique automáticamente.
 
 ## Dónde está

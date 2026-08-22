@@ -38,8 +38,8 @@ Nada de acá se instala en ningún proyecto: el instalador solo copia desde `com
 
 ## De qué depende
 
-- La suite en verde como condición de cerrar cualquier cosa.
-- Los artefactos de `docs/cambios/`, que son lo que producen las skills de spec y veredicto.
+- [La suite](tests.md) en verde como condición de cerrar cualquier cosa.
+- Los artefactos de [`docs/cambios`](docs-cambios.md), que son lo que producen las skills de spec y veredicto.
 - La separación de dueños: quien construye no verifica, y el refutador dicta contra la spec
   pero no escribe su propio veredicto.
 - El costo de contexto: los agentes y skills de acá se cargan en cada turno de cada sesión de

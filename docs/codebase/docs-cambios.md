@@ -22,18 +22,19 @@ registra lo que pasó después.
   cierra nada por sí solo.
 - **`plan.md`** en algunos cambios — el detalle de ejecución. Son los archivos más largos del
   directorio, con el razonamiento paso a paso.
-- Tres cambios registrados hasta ahora: el porteo de los hooks a Python (el único con
-  verificación escrita), el agente iniciador del índice de código, y la capacidad de trabajar
-  con SDD.
+- Cinco cambios registrados hasta ahora: el porteo de los hooks a Python (el único con
+  verificación escrita), el agente iniciador del índice de código, la capacidad de trabajar con
+  SDD, el estado del mapa declarado en la nota de versión, y el mapa de nodos del código.
 
 ## De qué depende
 
-- Las skills de la fábrica que fijan el formato: una para escribir la spec y otra para
+- Las skills de [la fábrica](fabrica.md) que fijan el formato: una para escribir la spec y otra para
   registrar el veredicto.
-- El agente refutador de la fábrica, que dicta los veredictos contra la spec, corre los tests
+- El agente refutador de [la fábrica](fabrica.md), que dicta los veredictos contra la spec, corre los tests
   y no escribe nada.
-- La suite: los escenarios se verifican corriéndola, no leyéndola.
-- El fundamento del método está en `docs/adr/0006-sdd-como-metodo-de-los-proyectos.md`.
+- [La suite](tests.md): los escenarios se verifican corriéndola, no leyéndola.
+- El fundamento del método está en `0006-sdd-como-metodo-de-los-proyectos.md`, uno de los ADR
+  de [`docs`](docs.md).
 
 ## Dónde está
 
