@@ -152,3 +152,103 @@ a box, per ADR-0008.
 Status. Open, and it is the next thing. Written down because it was defined in conversation and
 the drawing alone does not carry the reasons — the choice of `docs/codebase/` over
 `docs/conocimiento/` is the one that would be re-litigated first.
+
+### Which PROJECT_CONTEXT fields serve `dev-refutador`, and the two axes the contract does not model
+
+Mapped on 2026-08-24 at Nahue's request, before deciding whether to build steps 3 to 5 of
+`QA_Agent_Project_Context_Contract_v1_1.pdf`. Steps 1 and 2 are built — see
+`docs/cambios/contexto-de-proyecto/spec.md` — and `project-context.json` today has **no reader**.
+The question was whether `dev-refutador` should be the first one.
+
+🔴 **First, the distinction Nahue drew, because it changes the answer.** `dev-refutador` is *not* a
+small `dev-qa` and *not* a step toward it. They are siblings on different axes:
+
+| | `dev-refutador` | `dev-qa` (the PDF's) |
+|---|---|---|
+| Compares | implemented **vs the standard** — ES0901, ES0903, Obelisco | expected **vs implemented** — HU, acceptance criteria |
+| Source of truth | the `dev-*` skills | PROJECT_CONTEXT + CHANGE_CONTEXT |
+| Executes | nothing. It only reads | yes: boots the system, drives Playwright and the API |
+| Verdicts | `cumple` / `incumple` / `sin-verificar` | PASS / FAIL / BLOCKED / INCONCLUSIVE |
+
+Chapter 06 of the PDF says *"separate intended behavior from implemented behavior; the QA Agent
+exists precisely to compare both"*. The refuter lives on a third axis the PDF never models:
+**regulatory compliance**, which is neither what the product meant to do nor what the code does,
+but what the resolution requires.
+
+The mapping, field by field:
+
+| Field | What the refuter would do with it | Where it is |
+|---|---|---|
+| `meta.repo_revision`, `meta.context_hash` | Anchor every verdict to a snapshot. Today a verdict row says nothing about *when* it ruled, so nobody can tell a stale `cumple` from a current one | emitted |
+| `architecture.components[]`, `important_paths[]` | Resolve a batch of files to modules, so the scope of a review is stated instead of implied. It already refuses to widen scope; this is what lets it say what the scope *was* | emitted |
+| `sources[].type` | Decide which `dev-*` skill applies: `openapi` pulls `dev-api`, `config` pulls `dev-versiones`, `tests` is not production code | emitted |
+| `technology.languages`, `frameworks`, `package_managers` | Decide whether a rule applies **at all**. Obelisco (`dev-pantalla`) is moot on a project with no frontend, and `dev-versiones` needs to know the package manager before it can judge a pin | emitted |
+| `gaps_and_conflicts` | The strongest match of the whole contract. Its `missing` / `stale` / `conflicted` are the same asymmetry that makes the refuter default to `sin-verificar`: uncertainty travels instead of being resolved silently | emitted |
+| `interfaces[]` | `dev-api`: route naming and versioning, status codes, the error body, the OpenAPI contract | step 4 |
+| `identity_and_access` | `dev-identidad`: OpenID against Keycloak, where the session lives, which endpoints stay public | step 4 |
+| `environments[]` | `dev-ambientes`: how far a build is from production, which approvals a gate needs | step 4 |
+| `business_rules[]`, `functional_model` | **Nothing.** That is intended behaviour and belongs to `dev-qa`. The refuter reports non-compliance only where a standard says something; a free decision of the project is not a finding | step 3 |
+| `quality_landscape` | **Nothing.** Existing suites, Playwright and fixtures are assets for whoever *runs* tests, and the refuter runs none | step 5 |
+| `project_profile.purpose`, `lifecycle_stage` | Nothing load-bearing. Useful to a person reading the verdict, not to the ruling | emitted |
+
+🔴 **The finding, and it is the reason this entry exists.** The contract has **no place for the
+regulatory axis**. `sources[].type` offers `code | functional_doc | prd | mvp | adr | openapi |
+config | tests` and none of them is a standard; there is no block saying *which standards govern
+this project and at which version*. For a GCBA project that is not a detail: ES0901 tolerates one
+previous version of the standard and two or more back stops a deployment, and the homologated
+versions of its Annex II are the canonical `sin-verificar` case because the table converted
+misaligned and is not citable. Today that lives only inside the `dev-*` skills, which are the same
+for every project — so a project pinned to an older standard has nowhere to say so.
+
+Two shapes are worth weighing, and neither is decided: a `compliance` block alongside
+`quality_landscape` (`standards[]` with id, version, scope and `source_refs`), or a `standard`
+value added to `sources[].type`. The first models the axis; the second smuggles it into a list that
+means "where the knowledge came from". The first looks right and costs a schema version.
+
+🔴 **The second axis, found on 2026-08-26 checking the three skills the mapping left out.** Of the
+eight `dev-*` skills, `dev-repositorio` is the one the refuter is explicitly told to use —
+*"repositorio y entregables"* — and it is the one the contract feeds worst. What it rules on is
+branch names (`develop` / `master`), semantic tags with `-BETA`, `-RC` and `-HOTFIX`, the RC that
+increments instead of being replaced, the three root files `README.md` / `CHANGELOG.md` /
+`UPGRADE.md`, and the `source/` and `scripts/` layout. The contract emits **one** git fact:
+`meta.repo_revision`, a bare commit sha. No branch, no tag, no release state — and `sources[].type`
+has no value for a delivery artifact, so `CHANGELOG.md` and `UPGRADE.md` land as `functional_doc` or
+`config`, and neither is what they are.
+
+So the contract models what the code **is** and not how the repository is **governed and released**,
+which is the same shape as the compliance gap above: two axes missing, and steps 3 to 5 do not add
+either one. The other two skills are not gaps of the contract and it is worth saying why.
+`dev-seguridad` is almost entirely `identity_and_access` and `environments`, which are step 4 — not
+missing, just not built; what may have no home even there is the **dated state of the assessment**,
+which expires after 20 days of development and is a gate, not a structural fact. `dev-tramites-asi`
+is neither: it is a procedure for a person opening tickets at ASI, and the refuter has nothing in a
+repository to rule it against.
+
+📌 A third finding came out of the same review and it is a defect, not a proposal, so it went to
+`PENDIENTES-FH.md`: the refuter's own sentence names five topics for eight skills, and its rule
+about uncovered topics turns the three unnamed ones into `sin-verificar`.
+
+Problem it solves. `project-context.json` is written and nobody reads it, so nothing yet proves
+chapter 17's claim that PROJECT_CONTEXT is *"a contract of the harness, not a private detail of the
+QA Agent"*. A second consumer on a different axis is exactly the proof — and it is cheap, because
+five of the fields it needs are already emitted.
+
+Cost. Small for what is already there: `dev-refutador` gains a step that reads the contract before
+grepping, and a column in its output row naming the `repo_revision` it ruled against. Unknown for
+the compliance block, which is a schema version and a decision that has not been taken.
+
+Status. Built on 2026-08-29, in `docs/cambios/dev-refutador-lee-el-contrato/`: `dev-refutador` now
+reads `docs/codebase/project-context.json` before grepping, uses it as evidence — never as norma —
+to scope, decide applicability and pick which skill applies, and its output row names the
+`repo_revision` it ruled against. Absent/broken/insufficient contract → the affected conclusions
+are `sin-verificar`, never inferred. 7 of its 9 scenarios `sostenido`; the other 2
+(`docs/cambios/dev-refutador-lee-el-contrato/lectura.md`) need a real run against a project with a
+contract and one without, read by someone who did not build this. Deliberately not given: an
+execution tool — no script validates the contract for it, it reads the JSON with `Read` like
+everything else, so what it notices about a corrupt contract depends on the model, not a mechanism.
+
+Still open: the compliance axis and the repo-governance axis this entry names — neither gained a
+field. Step 3 (`business_rules`) stays outside `dev-refutador`'s reach by design (it's `dev-qa`
+territory). What was Recommended is now done; what is left is the reading that proves it works
+against a real project, and then deciding whether the compliance axis is worth its own schema
+version.
