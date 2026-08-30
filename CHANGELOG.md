@@ -3,22 +3,15 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
-## [0.14.0] — 2026-08-21
+## [0.14.0] — 2026-08-30
 
-> 🔴 **Sin cerrar.** `VERSION` sigue en `0.13.0`. Van dos veredictos y el segundo da —13 escenarios
-> sostenidos, 0 contradichos, **9 sin sustento**— y un `verificacion.md` con `sin-sustento` no
-> cierra el cambio. Nada quedó contradicho: la suite está verde y ningún comportamiento difiere de
-> lo que la spec afirma. **Van tres veredictos y los tres dieron lo mismo donde importa: 0
-> contradichos.** El tercero, con E-07 y E-13 ya con mecanismo propio, los dejó `sin sustento`
-> igual —comprueban que el harness ve el estado malo, no que el agente no lo produzca—, y ahí
-> se agotó la vía del mecanismo. Los nueve pasaron a ADR-0009: se verifican por lectura, y
-> [`lectura.md`](../cambios/iniciador-code/lectura.md) está **sin firmar**. El bump lo hace
-> `close-a-version` cuando alguien que no construyó lo llene y un cuarto veredicto lo cuente.
-
-**El primer recorrido del código.** El harness se instalaba y después no pasaba nada hasta que
-alguien escribía algo. Ahora un agente recorre el proyecto una vez y deja escrito qué hay, en
-`docs/codebase/`, para que las sesiones que vengan lo lean en vez de re-derivarlo a fuerza de
-`grep`.
+**El primer recorrido del código, el mapa de nodos y el contrato del proyecto.** El harness se
+instalaba y después no pasaba nada hasta que alguien escribía algo. Ahora un agente recorre el
+proyecto una vez y deja escrito qué hay, en `docs/codebase/`; un generador dibuja ese mapa como
+grafo navegable en el navegador; y un tercer artefacto, `project-context.json`, convierte lo
+recorrido en un contrato que otro agente —`dev-refutador`— puede leer como evidencia, sin que eso
+le agregue una norma nueva. Cinco cambios, los cinco cerrados, dieciséis de sus escenarios
+verificados por lectura de una persona que no construyó.
 
 ### Agregado
 
@@ -37,12 +30,36 @@ alguien escribía algo. Ahora un agente recorre el proyecto una vez y deja escri
 - **`rutaCodebase`** en `harness.config.json`, con default `docs/codebase`. Un proyecto ya
   instalado no verá la clave —ese archivo no se reescribe nunca— y funciona igual: el default se
   resuelve también en el hook y en el agente
+- **`comun/bin/mapa-codigo.py`** — el mapa de nodos del código. Un nodo por ficha y una arista por
+  enlace relativo entre ellas, huérfanas marcadas, layout determinista sin librerías externas, y
+  un panel de detalle en el navegador con la rueda desplazando la página y `Ctrl` para el zoom.
+  `dev-codebase-forma` se extiende para reportar un enlace roto o un `[[wikilink]]` fuera de un
+  span de código
+- **`project-context.json`** — el contrato del proyecto como dato, generado por
+  `comun/bin/contexto-armar.py` a partir de lo que `dev-iniciador-code` deja escrito. Valida
+  contra `comun/schemas/project-context.schema.json` con un validador propio. Trae, entre otros,
+  los bloques `interfaces`, `identity_and_access` y `environments`
+- **`dev-refutador` lee el contrato** como evidencia antes de invocar una skill o grepear —nunca
+  como norma, que sigue saliendo solo de las skills `dev-*`— y declara el hueco cuando el
+  contrato falta o está roto en vez de inferir. Sigue sin herramienta de ejecución
 - **ADR-0008** — el harness puede aprovechar una herramienta externa y no puede depender de ella
 - **ADR-0009** — un escenario cuyo sujeto es una corrida de un modelo se verifica por lectura de
   una persona que no sea quien construyó, con veredicto `leído`. Es un cuarto veredicto, cierra
   un cambio y **vale menos que `sostenido`**: se cuentan aparte. Solo aplica a ese caso; lo que
   un test determinista podría alcanzar no lleva la marca
-- 399 tests en verde (126 PowerShell + 273 Python), 65 más que en 0.13.0
+- **ADR-0010** y la skill **`write-a-lectura`** — con cinco escenarios de lectura pendientes o más
+  en el mismo archivo, quien construyó puede firmar, rotulado `Firmó (delegado):` y contado
+  siempre aparte de una lectura independiente
+- 772 tests en verde (137 PowerShell + 635 Python), 438 más que en 0.13.0
+
+### Corregido
+
+- **Un escenario de `iniciador-code` estaba marcado `· verificación: lectura` sin corresponderle.**
+  E-12 —que un archivo ignorado por `.gitignore` no produce ficha— tiene forma de test
+  determinista, la misma técnica que ya usaba E-10: correr sobre la salida real de un recorrido
+  con `git check-ignore`, no un grep de patrones. Lo encontró un refutador verificando otra firma,
+  no el propio cambio, que es exactamente el caso que la condición 4 de ADR-0009 existe para
+  atrapar
 
 ### Para quien actualiza
 
@@ -50,7 +67,8 @@ alguien escribía algo. Ahora un agente recorre el proyecto una vez y deja escri
   ninguna regla nueva que falle, ningún requisito de instalación agregado
 - Si tenés `desarrollo` instalado, la primera sesión después de actualizar va a sugerirte el
   recorrido. Es una línea y se apaga sola cuando lo corrés
-- `docs/codebase/` **es del proyecto, no del harness**: `-Uninstall` no lo toca
+- `docs/codebase/` **es del proyecto, no del harness**: `-Uninstall` no lo toca. Incluye
+  `mapa.html` y `project-context.json`, generados junto con las fichas
 
 ## [0.13.0] — 2026-08-17
 

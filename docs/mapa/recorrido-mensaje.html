@@ -132,9 +132,9 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <div>
     <h1>El recorrido de un mensaje</h1>
   </div>
-  <p class="sub">Qué hace gcba-harness v0.13.0 desde que se instala en un proyecto hasta que Claude contesta.</p>
+  <p class="sub">Qué hace gcba-harness v0.14.0 desde que se instala en un proyecto hasta que Claude contesta.</p>
   <div class="chips">
-    <span class="chip viva">v0.13.0</span>
+    <span class="chip viva">v0.14.0</span>
     <span class="chip">4 hooks</span>
     <span class="chip">1 sola puerta que bloquea</span>
     <span class="chip">1 paso todavía sin escribir</span>
@@ -181,9 +181,9 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <text class="t-eti" x="452" y="40">la primera vez</text>
   <rect class="caja" x="530" y="2" width="400" height="92" rx="3"/>
   <text class="t-tit" x="546" y="24">sugiere el primer recorrido del código</text>
-  <text class="t-min" x="546" y="42">solo si falta el índice; con fichas y sin él, quedó a medias</text>
+  <text class="t-min" x="546" y="42">solo si falta el índice o el contrato; un aviso, nunca dos</text>
   <text class="t-min" x="546" y="60">lo recorre dev-iniciador-code, una vez, y lo lanza la persona</text>
-  <text class="t-min" x="546" y="78">escribe docs/codebase/ · versionado, viaja con el proyecto</text>
+  <text class="t-min" x="546" y="78">deja docs/codebase/ · fichas, mapa y project-context.json</text>
 
   <line class="l" x1="280" y1="70" x2="280" y2="94" marker-end="url(#a)"/>
 
@@ -316,7 +316,7 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
 
 <footer>
   <p>La asimetría del medio es la decisión de diseño: <strong>bloquea en PreToolUse, habla en PostToolUse</strong>. Un aviso emitido antes de la herramienta se pierde en la transcripción y el modelo no lo ve.</p>
-  <p>Lo que el harness sabe de un proyecto vive adentro del repo y en markdown: <code>docs/conocimiento/</code> lo escrito a mano, <code>docs/codebase/</code> el índice del código. Quien quiera enlaces <code>[[wiki]]</code> y vista de grafo abre esa carpeta con Obsidian y los tiene — el harness no depende de eso, y no puede depender de nada que haya que instalar (ADR-0008).</p>
+  <p>Lo que el harness sabe de un proyecto vive adentro del repo y en markdown: <code>docs/conocimiento/</code> lo escrito a mano, <code>docs/codebase/</code> el índice del código — y al lado del índice, <code>project-context.json</code>, el mismo conocimiento serializado con el commit del que salió, el hash de lo que dice y los huecos que el recorrido no pudo llenar. Eso es lo que deja que un agente diga <em>con qué snapshot del proyecto decidió</em>, que la prosa no contesta. Quien quiera enlaces <code>[[wiki]]</code> y vista de grafo abre esa carpeta con Obsidian y los tiene — el harness no depende de eso, y no puede depender de nada que haya que instalar (ADR-0008).</p>
 </footer>
 
 </div>

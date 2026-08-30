@@ -70,6 +70,22 @@ five sections loses lines first, which is a product decision, not a defect — o
 raised to whatever it actually costs and the comment stops lying. What is not defensible is
 leaving a cap written down that nothing checks.
 
+### `CLAUDE.md`'s own budget check abstains, because the file has no zones to measure
+
+Found on 2026-08-30 by `harness-budget-auditor`, auditing a 3-line addition (the ADR-0010 pointer).
+`CLAUDE.md` carries no `<!-- ZONA ... -->` markers at all, so every line falls under
+`techoFueraDeZonas` — 12 lines — and the file was already at **65** lines outside any zone before
+that addition, 5.4 times the cap. `comun/checks/claude-md-zonas.py:104-106` skips the measurement
+entirely when a file has no recognised zone, on purpose ("no es un error del turno: no se avisa
+nada") — so nobody has ever been warned about this, and adding three more lines (68 now) changes
+nothing about that silence.
+
+The 3-line addition itself is not the defect — it is what surfaced it. The defect is that the one
+check meant to catch a runaway `CLAUDE.md` cannot see a `CLAUDE.md` that was never carved into
+zones in the first place. Fix unknown: either the zones get defined retroactively (a real content
+decision — which of the file's sections is "fija" vs "cache" vs unzoned prose is not obvious), or
+`techoFueraDeZonas` needs a meaning that holds even for a file with zero zones marked.
+
 ## Incomplete capabilities
 
 ### Skill routing in `UserPromptSubmit` is mute
@@ -77,86 +93,142 @@ leaving a cap written down that nothing checks.
 The hook exists, it is registered and it does nothing. Its intended job was a single routing line
 when the prompt matches the triggers of an installed skill.
 
-### `iniciador-code` closed with ten scenarios unsupported
+### `dev-refutador` names five topics and the harness has eight `dev-*` skills
 
-The verdict is in `docs/cambios/iniciador-code/verificacion.md`, ruled by `harness-spec-refuter` on
-2026-08-21 with the suite green: **11 upheld, 0 contradicted, 10 unsupported**. Nothing behaves
-differently from what the spec claims — the change is open because ten scenarios have no way to
-hold, not because anything is broken.
+Found on 2026-08-26 while mapping which `PROJECT_CONTEXT` fields serve the refuter. The agent takes
+the norm from the skills, and the sentence that sends it there enumerates:
 
-Two of the ten were closable without waiting for anything, and **both were reworked the same day**.
-They are done and awaiting a second ruling — the refuter has not seen them yet:
+> Invocá la que corresponda al tema que estás verificando —contrato de API, repositorio y
+> entregables, identidad, pantalla, ambientes— y trabajá con lo que traiga.
 
-- **E-10 had a test that by design could not fail.** Fixed by changing the subject and adding a
-  positive control: the test now scans `docs/codebase/` of this repo — real walk output, versioned,
-  so a future walk that writes a secret turns it red — and first proves the detector *does* find on
-  `tests/fixtures/corpus-secretos.txt`. Its red: neutering `buscar_secreto` fails that control and
-  nothing else. No secret was planted anywhere, which is the thing that is not done.
-- **E-20 was half-covered**, and was also the only one of the 21 missing from the spec's *"Cómo se
-  verifica"*, which is how it got there. Three things resolve that path — the hook, the check and
-  the agent — and two are code while one is prose. Split accordingly: **E-20** keeps the two that
-  are code (the check's default was never exercised either; `_hallazgos()` always passed an
-  explicit path, and now it is called with `config=None` over a *coja* card placed inside the
-  default), and **E-20b** carries the agent's default into the reading group.
+Five topics. `harnesses/desarrollo/skills/` holds eight directories and three are not named:
+`dev-seguridad`, `dev-versiones` and `dev-tramites-asi`. The list was never in sync: the agent and
+the eight skills entered the repository in the same commit, `7db0d5c`.
 
-🔴 **The second ruling came in on the same day and it upheld only one of the two.** 13 upheld, 0
-contradicted, 9 unsupported. E-10 stands. **E-20 does not, and the reason is the sharpest finding of
-the whole change:**
+A stale enumeration on its own would be cosmetic. What makes it a defect is the rule two paragraphs
+below it:
 
-> The original E-20 said *"the **walk** and the notice"*. The notice had a test; the walk had
-> nothing, which is why it failed. The E-20 of today says *"the notice and the **check**"* — the
-> check was never part of the scenario — and the walk moved out to E-20b, filed under the reading
-> group, where nothing has to be proven. **The proposition that failed the first time still has
-> nobody holding it: it changed number and group, not state.**
+> 🔴 **Si ninguna skill cubre el tema, no lo verifiques.** Decilo y seguí.
 
-The work on the check is real and has its own exclusive red. It just covers something E-20 never
-asked for. That is what a scenario re-cut to fit the evidence looks like from the outside, and it
-was done by whoever built, in good faith, right after being told what was missing — which is
-exactly why the rule that the builder does not verify exists.
+Read together, the dashes read as the catalogue and the rule turns everything outside them into
+`sin-verificar`. The omission lands on **the whole ES0902** — `dev-seguridad` is the only skill that
+carries it — which is at once the largest normative surface of the harness and the one where a false
+`cumple` costs the most: the assessment is the gate before HML and PRD, it is redone after 20 days
+of development, and G2 is the only numeric threshold the standard fixes. That is the exact failure
+the agent's own asymmetry argument exists to prevent, committed by the agent. `dev-versiones` is the
+second loss, and it has a mechanical check behind it (`dev-dependencias`). `dev-tramites-asi` is not
+a loss: it describes how a person opens a NOC or Jira ticket, and there is nothing in a repository
+to rule against it.
 
-Fix. Not a rewrite of the sentence. Either the walk gets something that can verify it, or the
-scenario says out loud that this half is read and not proven — the honest version of what happened.
-What is not defensible is a cut that makes the hard half disappear.
+📌 The agent carries the `Skill` tool, so the real catalogue is reachable at runtime. Whether a
+session reads the dash list as exhaustive or as an example has never been observed — `desarrollo`
+was never run on a real project, which is its own entry below.
 
-Two smaller ones from the same ruling **were closed on 2026-08-21** and are in the 0.14.0 note:
-the squatted `E-20b` id, freed by renaming the test that carried it, and the check test that
-passed `config=None` where the scenario names a pre-existing file without the key.
+Done on 2026-08-26. The enumeration is out of `harnesses/desarrollo/agents/dev-refutador.md`:
+the paragraph now says the catalogue is every installed `dev-*` skill, that it is deliberately not
+listed there, and why — a list written into a prompt ages, and the rule below would turn the aged
+list into `sin-verificar` over norm that was covered. No list is kept, because keeping one makes
+adding a skill two edits and the second is the one that gets forgotten.
 
-The other eight — E-07, E-11, E-12, E-13, E-14, E-15, E-16, E-17 — all need either a model-driven
-walk the deterministic suite cannot invoke, or a second walk that costs another 140.000 tokens. The
-root cause is one and it is written down under *Incomplete capabilities*: nothing enforces the
-agent's three invariants.
+🔴 **Nothing verifies it, and it is not going to.** The subject is a run of a model, so it is
+ADR-0009 territory: the suite has no way to observe whether a session reads a paragraph as
+exhaustive. The agent file has no literal `dev-*` skill name in it — before or after — so a parity
+test between the prompt and `harnesses/desarrollo/skills/` passes vacuously either way and would
+have given a false green on the defect itself. The change is a prompt edit that leaves this entry
+when the version closes; whoever writes that note says it carries no verdict.
 
-**Decided on 2026-08-21, and not by whoever built it: move to a mechanism whatever is already
-within reach, and only then declare the rest as contract.** Two of the eight moved the same day.
+📌 It also does not fix what is under it: **the eight skills were never used on a real project**,
+so the refuter has never had to reach `dev-seguridad` for anything. That entry is below and this
+change does not touch it.
 
-- **E-07** — `SessionStart` already resolved the index path for E-01. It now tells the two
-  states apart: nothing written yet (suggest the first walk) versus cards with no `indice.md`,
-  which is a walk cut in half and where suggesting a first walk sends someone to redo what is
-  already written. Exclusive red, measured: 270/272.
-- **E-13** — `dev-codebase-forma.py` reports a card with a copy suffix when the original is
-  still beside it. Exclusive red, measured: 269/271; and removing the guard that requires the
-  original to exist reddens only `test_e13b`.
+### The contract calls a source `current` when its file is gone from `git ls-files`
 
-Both entered with their limit written into the scenario: they prove the harness **sees** the bad
-state, not that the agent does not produce it. Same distance E-08 and E-09 already carry as
-`sostenido`. The refuter rules; the builder does not get to call them supported.
+Found on 2026-08-28 by the walker itself, during run 3 of the reading bank, and verified against
+the file it wrote. `C:\Users\Asus\lecturas-0.14.0\reservas` at `084cdfa`, where the commit had just
+deleted `src/legado/importador.ts`:
 
-**E-14 was left alone on purpose.** Dropping `PowerShell` from the agent's tools would turn *does
-not delete* into a capability boundary, but `PowerShell` is also how it runs `git ls-files`, which
-is what holds E-12 by construction. Trading a supported E-14 for an unsupported E-12 is a swap,
-not a gain. Listing with `Grep` — ripgrep honours `.gitignore` and the agent already has it —
-keeps both and was weighed; the call on 2026-08-21 was to leave the working mechanism in place
-rather than touch a walk nobody can re-run cheaply.
+```
+source_id : code:src-legado
+location  : src/legado/importador.ts
+status    : current               <- and the file does not exist
+gaps_and_conflicts.stale_sources : []
+git ls-files src/legado/         : 0 files
+```
 
-Still owed: E-11, E-12, E-14, E-15, E-16, E-17 and E-20b. Under the decision above they are the
-**contract** group, and the spec has to say so — with a named reader who is not the builder —
-instead of listing them as verifiable.
+`componentes_y_fuentes()` (`comun/bin/contexto-armar.py:383`) stamps every card's source with
+`"status": "current"` unconditionally and never crosses the card's paths against the versioned
+listing — which the same script already reads, for `fuentes_de_contrato()`.
+
+🔴 **It is structural, not incidental.** It falls straight out of invariant 3 of
+`dev-iniciador-code`, the one that says a card whose module is gone gets named and left in place.
+So the contract will carry a dead source on **every** project that ever deletes a module, and
+`status` plus `stale_sources` — the two fields whose whole job is to say how fresh a source is —
+both say the opposite of the truth. A consumer reads that path as live.
+
+The walker did its part: it named the orphan in its report and in `indice.md`, marked. The script
+is what does not notice.
+
+Fix. Cross `location` against the versioned listing already in hand, and emit `status: "stale"`
+plus an entry in `gaps_and_conflicts.stale_sources` when the file is not there. Not in the priority
+table: the contract still has no reader, so nothing consumes the wrong value today.
+
+### A `Qué falta saber` bullet that wraps to a second line enters the contract cut in half
+
+Same run, same day, also found by the walker. On `reservas` a wrapped bullet reached the contract as
+`"Express se importa en tres archivos de la API y no figura en las dependencias de"` — the sentence
+stops at the line break.
+
+`bullets_sueltos()` (`comun/bin/contexto-armar.py:215`) iterates `cuerpo.splitlines()`. The first
+line matches `BULLET` and is captured; the continuation line is indented with no `- `, so it matches
+nothing and is dropped without a word.
+
+Same family as E-11b and E-11c of `docs/cambios/contexto-de-proyecto/spec.md` — prose read with a
+rule meant for something else — and it survived both because **this repository writes its
+`proyecto.md` bullets on one line each**. It took a walk over a foreign project to show it. That is
+the argument for the reading bank, made by the bank.
+
+Fix. Join continuation lines onto the open bullet before matching, the way any markdown list is
+read. The rule ends a bullet at the next `- ` or at a blank line, not at the next `\n`.
+
+### `architecture.important_paths[]` carries backtick spans that are not paths
+
+Found on 2026-08-26 over the versioned `docs/codebase/project-context.json` of this repository, at
+revision `5e7b443`. **52 of its 118 entries do not resolve** from the root of the repo:
+
+```bash
+python -c "import json,os; p=json.load(open('docs/codebase/project-context.json'))['architecture']['important_paths']; print(len(p), sum(1 for x in p if not os.path.exists(x.rstrip('/'))))"
+118 52
+```
+
+Two shapes produce them. A range written in prose, `docs/codebase/docs.md:54`:
+
+    - `docs/adr/0001` a `0006` y `0008` — siete archivos, sin el 0007.
+
+Three spans and one path: `0006` and `0008` are the ends of a range. And an enumeration of siblings,
+where every item after the first drops its directory — `dev-dependencias.py`, `pre-tool-use.py`,
+`zonas.py`, `verificacion.md`, `SKILL.md`, `checks`.
+
+The cause is one line, `comun/bin/contexto-armar.py:391`: the field is every backtick span of the
+`## Dónde está` section of every ficha, deduped and nothing else. That section is prose written for
+a person, and its spans were never promised to be paths.
+
+Same family as E-11b of `docs/cambios/contexto-de-proyecto/spec.md` — prose read as if it were a
+list of paths — caught there on `sources[].type` and not here.
+
+What it costs: `important_paths[]` is one of the five already emitted fields that `PENDIENTES-I.md`
+maps to `dev-refutador`, for stating the scope of a review instead of implying it. A scope that
+names `0006` is not a scope.
+
+Fix. Keep only the spans that resolve against the versioned listing the walk already reads for
+`fuentes_de_contrato()`, and drop the rest. Deliberately not in the priority table: the contract has
+no reader yet, so nothing consumes the bad values today.
 
 ### The agent's three invariants are enforced by nothing
 
-Raised by `harness-spec-refuter` on 2026-08-21 while ruling on `iniciador-code`, and it is the
-reason six of that change's ten unsupported scenarios cannot be verified.
+Raised by `harness-spec-refuter` on 2026-08-21 while ruling on `iniciador-code`. Six of that
+change's scenarios closed anyway — five by delegated reading under ADR-0010, one (E-12) by a
+mechanical test — but the underlying gap they all sit on is not resolved by either path: nothing
+in the harness enforces these invariants, only the prompt's prose does.
 
 `dev-iniciador-code` declares three: it does not write outside `docs/codebase/`, it does not delete,
 and it never returns raw source. All three live in the prose of the prompt. The agent carries
@@ -270,30 +342,6 @@ entries. The reason nobody caught this is that no test looks at what an install 
 disk.
 
 ## Verification that was not done
-
-### `mapa-de-nodos` has four scenarios waiting for a reading, deferred on purpose
-
-The refuter ruled the change on 2026-08-22: **23 upheld, 0 contradicted, 4 unsupported**. The four
-are E-01, E-18, E-19 and E-20, all marked `· verificación: lectura`, and the refuter confirmed the
-mark is deserved — the subject of the four is a run of `dev-iniciador-code`.
-
-The evidence exists. The walk was run for real on a clone of a Next.js project and the whole output
-is versioned in `docs/cambios/mapa-de-nodos/recorrido-real.md`: nine cards, the index, the edge
-matrix, the write timestamps and the agent's verbatim report. `lectura.md` is written and
-**unsigned**, with the four scenarios and what to look at in each.
-
-Status. Deferred by Nahue's own call on 2026-08-22: *«esta firma se va a hacer cuando lo corro en el
-proyecto»*. The reading is worth more over a run he did on a project he cares about than over a
-throwaway clone somebody else walked. Nothing is missing except that run and the signature.
-
-🔴 **Until it is signed the change does not close**, `close-a-version` cannot run, and the branch
-`mapa-de-nodos` stays unmerged. Two things ride on that: the `399 tests` chip of
-`docs/mapa/mapa-harness.html`, which step 7 of `close-a-version` updates, and the release itself —
-nothing reaches an installed project until a version is cut.
-
-📌 **If the signed reading is over a different run**, the `## La corrida` section of `lectura.md`
-describes the wrong one and has to be rewritten to name the run actually read. `recorrido-real.md`
-stays as the record of the first walk; it is evidence, never the reading.
 
 ### The `desarrollo` skills were never used on a real project
 

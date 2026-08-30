@@ -20,6 +20,24 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.13.0 → 0.14.0
+
+`-Update` alcanza. No hay paso manual.
+
+Lo que suma, todo aditivo: el harness `desarrollo` gana un agente (`dev-iniciador-code`), un
+quinto check (`dev-codebase-forma.py`) y una línea condicionada en `SessionStart` que sólo
+aparece mientras `docs/codebase/indice.md` no exista en el proyecto. Un proyecto que ya tenía
+`harness.config.json` no ve la clave nueva `rutaCodebase` sola —el instalador no pisa un archivo
+existente—, pero el agente y el hook resuelven el mismo default sin ella, así que no hace falta
+tocar nada a mano.
+
+El primer recorrido en un proyecto instalado se dispara solo, avisado por `SessionStart`: corre
+`dev-iniciador-code` una vez y deja `docs/codebase/` con las fichas, el índice, el mapa de nodos
+(`mapa.html`) y el contrato (`project-context.json`). No consume nada de la ventana de la sesión
+que lo pidió, más allá del aviso de una línea.
+
+---
+
 ## 0.12.0 → 0.13.0
 
 **Rompe.** Agrega un requisito y cambia el contrato de los checks. `-Update` alcanza para
