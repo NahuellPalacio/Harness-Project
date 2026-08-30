@@ -8,6 +8,7 @@
   "aporta": {
     "hooks": "hooks",
     "reglas": "reglas",
+    "schemas": "schemas",
     "checks": "checks",
     "bin": "bin",
     "skills": "skills",

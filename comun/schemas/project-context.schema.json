@@ -1,0 +1,343 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-context/1.1",
+  "title": "PROJECT_CONTEXT",
+  "description": "El contexto estable de un proyecto: qué es, de qué está hecho, cómo se divide y qué no se pudo averiguar. Lo emite dev-iniciador-code a través de comun/bin/contexto-armar.py, se versiona adentro del repositorio del proyecto y lo consume cualquier agente que necesite entender el proyecto sin volver a recorrerlo. Versión 1.1: modela meta, perfil, fuentes, tecnología, arquitectura, interfaces, identidad y acceso, ambientes y huecos. NO modela todavía business_rules ni quality_landscape — eso está declarado en gaps_and_conflicts para que su ausencia no se lea como que el proyecto no los tiene. El validador de este archivo (contexto-armar.py) interpreta un subconjunto de JSON Schema: type, properties, required, items, enum y pattern. Cualquier otra construcción lo hace fallar en vez de dar el documento por válido, así que este archivo no puede crecer sin que crezca el intérprete.",
+  "type": "object",
+  "required": [
+    "meta",
+    "project_profile",
+    "sources",
+    "technology",
+    "architecture",
+    "interfaces",
+    "identity_and_access",
+    "environments",
+    "gaps_and_conflicts"
+  ],
+  "properties": {
+    "meta": {
+      "description": "Trazabilidad. Sin esto el contrato no se puede consumir: es lo que permite decir después con qué snapshot del proyecto se tomó una decisión.",
+      "type": "object",
+      "required": [
+        "schema_version",
+        "context_id",
+        "context_hash",
+        "generated_at",
+        "initiator_version",
+        "repo_revision",
+        "docs_revision"
+      ],
+      "properties": {
+        "schema_version": {
+          "description": "Qué versión de este contrato se está consumiendo.",
+          "type": "string",
+          "enum": ["project-context/1.1"]
+        },
+        "context_id": {
+          "description": "Identificador estable del contexto: ctx_<proyecto>_<primeros 4 de repo_revision>.",
+          "type": "string",
+          "pattern": "^ctx_[a-z0-9][a-z0-9-]*_[0-9a-f]{4}$"
+        },
+        "context_hash": {
+          "description": "sha256 del documento canónico SIN context_hash y SIN generated_at. El reloj queda afuera a propósito: si entrara, dos corridas sobre el mismo código darían hashes distintos y el campo dejaría de servir para lo único que sirve, que es decir si dos consumidores están mirando lo mismo.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "generated_at": {
+          "description": "Cuándo se generó, en ISO 8601 con huso.",
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+        },
+        "initiator_version": {
+          "description": "Qué versión del harness lo escribió.",
+          "type": "string"
+        },
+        "repo_revision": {
+          "description": "El commit del proyecto en el momento del recorrido. Un contexto sin esto no se consume: es imposible explicar después por qué un agente decidió con información vieja.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "docs_revision": {
+          "description": "sha256 sobre el conjunto ordenado de fichas del índice. Cambia cuando cambia lo escrito, aunque el código no se haya movido.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+
+    "project_profile": {
+      "description": "Qué producto es y para qué existe. project_id y project_name los deriva el script del nombre del repositorio; purpose, project_type y lifecycle_stage los escribe el agente en proyecto.md, y por eso este bloque lleva su propio knowledge_status.",
+      "type": "object",
+      "required": [
+        "project_id",
+        "project_name",
+        "project_type",
+        "purpose",
+        "lifecycle_stage",
+        "knowledge_status"
+      ],
+      "properties": {
+        "project_id": { "type": "string" },
+        "project_name": { "type": "string" },
+        "project_type": {
+          "type": "string",
+          "enum": ["web_app", "api", "worker", "monorepo", "library", "cli", "unknown"]
+        },
+        "purpose": {
+          "description": "Para qué existe el sistema, en una o dos líneas. Vacío si nadie lo escribió: un hueco se declara, no se completa con una inferencia invisible.",
+          "type": "string"
+        },
+        "lifecycle_stage": {
+          "type": "string",
+          "enum": ["mvp", "production", "legacy", "unknown"]
+        },
+        "knowledge_status": {
+          "description": "confirmed: respaldado por fuente vigente. inferred: derivado razonablemente. conflicted: dos fuentes vigentes discrepan. missing: no se encontró. stale: la fuente puede estar desactualizada.",
+          "type": "string",
+          "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+        }
+      }
+    },
+
+    "sources": {
+      "description": "De dónde salió el conocimiento. No alcanza con que el dato sea correcto: hay que poder decir qué archivo lo respalda y de qué revisión.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_id", "type", "location", "revision", "discovered_at", "status"],
+        "properties": {
+          "source_id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["code", "functional_doc", "prd", "mvp", "adr", "openapi", "config", "tests"]
+          },
+          "location": {
+            "description": "Ruta relativa a la raíz del repositorio.",
+            "type": "string"
+          },
+          "revision": { "type": "string" },
+          "discovered_at": {
+            "description": "La fecha del commit de revision, no la hora de la corrida. El documento se versiona: si cada fuente llevara el reloj, dos pasadas sobre el mismo commit darían documentos distintos y context_hash dejaría de contestar si dos consumidores están mirando lo mismo. Lo que el contrato puede garantizar es «a esta revisión». El único campo con reloj es meta.generated_at, y por eso es el único que queda fuera del hash.",
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+          },
+          "authority_scope": {
+            "description": "Para qué preguntas manda esta fuente. No hay ranking global: una ADR pesa para arquitectura, el código para implementación observada.",
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["current", "stale", "unknown"]
+          }
+        }
+      }
+    },
+
+    "technology": {
+      "description": "Con qué está construido y qué comandos lo levantan, lo compilan y lo testean. Lo escribe el agente: un script puede ver el lockfile, no puede saber cuál de los tres scripts es el que se corre de verdad.",
+      "type": "object",
+      "required": [
+        "languages",
+        "frameworks",
+        "runtimes",
+        "package_managers",
+        "build_commands",
+        "test_commands",
+        "knowledge_status"
+      ],
+      "properties": {
+        "languages": { "type": "array", "items": { "type": "string" } },
+        "frameworks": { "type": "array", "items": { "type": "string" } },
+        "runtimes": { "type": "array", "items": { "type": "string" } },
+        "package_managers": { "type": "array", "items": { "type": "string" } },
+        "build_commands": { "type": "array", "items": { "type": "string" } },
+        "test_commands": { "type": "array", "items": { "type": "string" } },
+        "knowledge_status": {
+          "type": "string",
+          "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+        }
+      }
+    },
+
+    "architecture": {
+      "description": "Cómo se divide el sistema y cómo se conectan sus partes. components y dependency_edges salen del grafo de las fichas: un componente por ficha, una arista por enlace. No se infiere nada — una dependencia que ninguna ficha enlaza no existe acá, y se arregla en la ficha.",
+      "type": "object",
+      "required": [
+        "components",
+        "entrypoints",
+        "dependency_edges",
+        "external_integrations",
+        "important_paths"
+      ],
+      "properties": {
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["component_id", "name", "responsibility", "source_refs"],
+            "properties": {
+              "component_id": { "type": "string" },
+              "name": { "type": "string" },
+              "responsibility": {
+                "description": "Qué hace, en una línea. Sale de la sección «Qué es» de su ficha.",
+                "type": "string"
+              },
+              "source_refs": {
+                "description": "Los source_id que respaldan este componente.",
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "entrypoints": { "type": "array", "items": { "type": "string" } },
+        "dependency_edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" }
+            }
+          }
+        },
+        "external_integrations": { "type": "array", "items": { "type": "string" } },
+        "important_paths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "interfaces": {
+      "description": "Las interfaces que expone el sistema: HTTP, GraphQL, eventos, webhooks o CLI. Lo escribe el agente leyendo el repositorio -no hay parser por framework-, y por eso sale `inferred` salvo que haya un archivo OpenAPI commiteado, en cuyo caso sale `confirmed` y request_contract_ref/response_contract_ref apuntan al source_id que fuentes_de_contrato() ya detectó.",
+      "type": "object",
+      "required": ["items", "knowledge_status"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "interface_id",
+              "type",
+              "path",
+              "auth_requirements",
+              "request_contract_ref",
+              "response_contract_ref",
+              "owning_component"
+            ],
+            "properties": {
+              "interface_id": { "type": "string" },
+              "type": {
+                "type": "string",
+                "enum": ["http", "graphql", "event", "webhook", "cli"]
+              },
+              "path": {
+                "description": "Method y path, o el topic. Texto libre.",
+                "type": "string"
+              },
+              "auth_requirements": { "type": "string" },
+              "request_contract_ref": {
+                "description": "El source_id de la fuente openapi que documenta esta interfaz, o vacío si ninguna la nombra.",
+                "type": "string"
+              },
+              "response_contract_ref": {
+                "description": "El mismo criterio que request_contract_ref.",
+                "type": "string"
+              },
+              "owning_component": {
+                "description": "El component_id de la ficha dueña, o vacío si la fila no nombra ninguna o nombra una que no existe.",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "knowledge_status": {
+          "type": "string",
+          "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+        }
+      }
+    },
+
+    "identity_and_access": {
+      "description": "Cómo se autentica y qué roles hay. Ningún campo de este bloque, en ninguna rama, tiene dónde escribirse una credencial: los usuarios de prueba se referencian por test_principals[].ref, nunca por password ni token.",
+      "type": "object",
+      "required": ["auth_model", "roles", "test_principals", "access_by_environment", "knowledge_status"],
+      "properties": {
+        "auth_model": { "type": "string" },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "test_principals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ref"],
+            "properties": {
+              "ref": {
+                "description": "Una referencia al usuario de prueba, nunca la credencial misma.",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "access_by_environment": { "type": "array", "items": { "type": "string" } },
+        "knowledge_status": {
+          "type": "string",
+          "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+        }
+      }
+    },
+
+    "environments": {
+      "description": "Los ambientes del proyecto y su distancia a producción. base_urls sólo lleva URLs que el agente pudo señalar en un archivo versionado; un ambiente kind prd sale siempre con allowed_mutations read-only, aunque proyecto.md declare otra cosa -la discrepancia queda en gaps_and_conflicts.conflicts[]-.",
+      "type": "object",
+      "required": ["items", "knowledge_status"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["environment_id", "kind", "base_urls", "allowed_mutations", "data_policy"],
+            "properties": {
+              "environment_id": {
+                "description": "El nombre tal como lo usa el equipo. Texto libre, nunca normalizado.",
+                "type": "string"
+              },
+              "kind": {
+                "description": "environment_id normalizado por coincidencia de substring. Ver contexto-armar.py para el mapeo exacto.",
+                "type": "string",
+                "enum": ["local", "dev", "qa", "hml", "prd", "other"]
+              },
+              "base_urls": { "type": "array", "items": { "type": "string" } },
+              "allowed_mutations": { "type": "string" },
+              "data_policy": { "type": "string" }
+            }
+          }
+        },
+        "knowledge_status": {
+          "type": "string",
+          "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+        }
+      }
+    },
+
+    "gaps_and_conflicts": {
+      "description": "La incertidumbre viaja adentro del contrato. Un agente mejora cuando puede decir «no sé con suficiente certeza» en vez de completar el hueco con una inferencia que nadie ve.",
+      "type": "object",
+      "required": ["missing", "conflicts", "stale_sources", "unresolved_questions"],
+      "properties": {
+        "missing": {
+          "description": "Datos necesarios que no se encontraron, y los bloques que este schema todavía no modela.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "conflicts": {
+          "description": "Fuentes vigentes que discrepan. Se marca el conflicto; no se elige una realidad en silencio.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "stale_sources": { "type": "array", "items": { "type": "string" } },
+        "unresolved_questions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

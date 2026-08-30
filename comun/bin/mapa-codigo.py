@@ -48,6 +48,15 @@ import sys
 
 INDICE = "indice.md"
 
+# Los .md del directorio que NO son fichas de modulo, y por eso no son nodos.
+#
+# `proyecto.md` lo escribe el agente con otros encabezados -que es el proyecto, stack,
+# como se levanta, como se testea, que falta saber- y lo lee contexto-armar.py para el
+# perfil del contrato. Si entrara al grafo seria un nodo que nadie enlaza nunca, o sea
+# una huerfana permanente en el informe de cada recorrido, y ademas se le exigirian las
+# cuatro secciones que a proposito no tiene.
+RESERVADAS = frozenset((INDICE, "proyecto.md"))
+
 # El mismo enlace que mira el check: se lee el destino del parentesis, que es lo que
 # alguien va a seguir de verdad.
 ENLACE = re.compile(r"\]\(\s*([^)\s]+\.md)\s*\)")
@@ -67,7 +76,7 @@ def leer_fichas(directorio):
     ficha, y bajar a buscarla convertiria cualquier cosa en un nodo."""
     try:
         nombres = sorted(n for n in os.listdir(directorio)
-                         if n.lower().endswith(".md") and n.lower() != INDICE)
+                         if n.lower().endswith(".md") and n.lower() not in RESERVADAS)
     except OSError:
         return []
 

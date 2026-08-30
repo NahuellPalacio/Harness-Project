@@ -34,6 +34,18 @@ import dev  # noqa: E402
 
 RUTA_POR_DEFECTO = "docs/codebase"
 INDICE = "indice.md"
+PROYECTO = "proyecto.md"
+
+# Los .md que NO son fichas de modulo. `proyecto.md` la escribe el agente con otros
+# encabezados y la lee contexto-armar.py para el perfil del contrato: no tiene las
+# cuatro secciones a proposito, y el indice no la nombra.
+#
+# 🔴 La misma lista vive en comun/bin/mapa-codigo.py, y esta duplicada a proposito: el
+# instalador deja este check en .claude/harness/checks/desarrollo/ y aquel script en
+# .claude/harness/bin/, asi que no hay import posible entre los dos sin un sys.path que
+# sube dos directorios y se rompe el dia que el instalador mueva algo. Si se agrega un
+# tercer nombre, va en los dos lados.
+RESERVADAS = frozenset((INDICE, PROYECTO))
 
 # Los titulos van exactos, con tilde. El agente los escribe asi y el que lee una ficha
 # espera encontrarlos siempre iguales: cuatro preguntas, en el mismo orden, en todas.
@@ -84,7 +96,7 @@ def _fichas_en_disco(directorio):
     except OSError:
         return None
     return sorted(n for n in nombres
-                  if n.lower().endswith(".md") and n.lower() != INDICE)
+                  if n.lower().endswith(".md") and n.lower() not in RESERVADAS)
 
 
 def verificar(evento, proyecto, config):
@@ -99,6 +111,13 @@ def verificar(evento, proyecto, config):
 
     if archivo["nombre"].lower() == INDICE:
         return _revisar_indice(archivo, directorio)
+
+    if archivo["nombre"].lower() == PROYECTO:
+        # No es una ficha de modulo: no se le piden las cuatro secciones ni linea en el
+        # indice. Lo que si le aplica es la regla de enlaces -un [[wiki]] no lo renderiza
+        # GitHub venga del archivo que venga- y por eso esa sola pasada corre igual.
+        return _revisar_enlaces(archivo, directorio)
+
     return (_revisar_ficha(archivo)
             + _revisar_enlaces(archivo, directorio)
             + _revisar_duplicada(archivo, directorio))
@@ -179,7 +198,7 @@ def _revisar_enlaces(archivo, directorio):
         return hallazgos
 
     conocidas = {n.lower() for n in en_disco}
-    conocidas.add(INDICE)
+    conocidas.update(RESERVADAS)
     conocidas.add(archivo["nombre"].lower())
 
     rotos = sorted({d for d in destinos if d.lower() not in conocidas})

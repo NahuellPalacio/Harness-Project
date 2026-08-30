@@ -155,6 +155,10 @@ def cuerpo(e):
         if not isinstance(ruta_codebase, str) or not ruta_codebase.strip():
             ruta_codebase = "docs/codebase"
         dir_codebase = os.path.join(proyecto, ruta_codebase)
+        # 🔴 Los tres estados de abajo son EXCLUYENTES: este bloque agrega a lo sumo UNA
+        # linea, con cualquier combinacion de indice, fichas y contrato. El presupuesto
+        # de SessionStart no da para dos avisos sobre el mismo recorrido, y dos lineas
+        # que dicen cosas parecidas se leen como ruido y se dejan de leer las dos.
         if not os.path.isfile(os.path.join(dir_codebase, "indice.md")):
             # E-07 — fichas sin indice.md es un recorrido que quedo a medias, y por
             # fuera se ve igual que uno que no empezo nunca. Sugerir "arrancalo" ahi
@@ -167,6 +171,13 @@ def cuerpo(e):
                               "las abre nadie.")
             else:
                 lineas.append("Sin indice del codigo todavia: dev-iniciador-code lo arma en una pasada.")
+        elif not os.path.isfile(os.path.join(dir_codebase, "project-context.json")):
+            # El indice esta, pero es de un recorrido anterior al contrato. Se avisa por
+            # AUSENCIA y no por antiguedad: cualquier commit cambia HEAD, asi que un
+            # aviso de "quedo viejo" saldria en todas las sesiones para siempre. Este
+            # desaparece solo en cuanto el contrato existe, igual que el de arriba.
+            lineas.append("El indice del codigo no tiene su project-context.json: "
+                          "dev-iniciador-code lo escribe en el mismo recorrido.")
 
     if not lineas:
         return

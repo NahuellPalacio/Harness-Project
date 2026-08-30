@@ -1,0 +1,676 @@
+{
+  "meta": {
+    "schema_version": "project-context/1.1",
+    "context_id": "ctx_harness-project_5e7b",
+    "context_hash": "sha256:a7ba9840b5402cd4dd0a619a076bcf88d6dff9e3c9acc08c31c71562c4d50d53",
+    "generated_at": "2026-08-28T22:28:07-03:00",
+    "initiator_version": "harness/0.13.0",
+    "repo_revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+    "docs_revision": "sha256:9780095ded6347631eeed3f8ff21677f60519df998bc232460d1e4915feff19f"
+  },
+  "project_profile": {
+    "project_id": "harness-project",
+    "project_name": "harness-project",
+    "project_type": "cli",
+    "purpose": "La fábrica del harness del GCBA. Produce, versiona y reparte el harness de Claude Code que después se instala sobre los proyectos: los cuatro hooks, los checks, las skills y los agentes de cada harness. Cada versión que sale de acá hay que volver a instalarla donde el harness ya está en uso.",
+    "lifecycle_stage": "production",
+    "knowledge_status": "confirmed"
+  },
+  "sources": [
+    {
+      "source_id": "code:checks",
+      "type": "code",
+      "location": "comun/checks/claude-md-zonas.py",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:comun-agentes-y-skills",
+      "type": "functional_doc",
+      "location": "comun/agents/flush-memoria.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:comun-hooks",
+      "type": "code",
+      "location": "comun/hooks/session-start.py",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:docs-cambios",
+      "type": "functional_doc",
+      "location": "docs/cambios/hooks-en-python/",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:docs-versiones",
+      "type": "functional_doc",
+      "location": "CHANGELOG.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:docs",
+      "type": "functional_doc",
+      "location": "README.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:fabrica",
+      "type": "functional_doc",
+      "location": "CLAUDE.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:harnesses-analisis",
+      "type": "config",
+      "location": "harnesses/analisis/manifest.json",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:harnesses-desarrollo",
+      "type": "config",
+      "location": "harnesses/desarrollo/manifest.json",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:install",
+      "type": "code",
+      "location": "install.ps1",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:normativa",
+      "type": "functional_doc",
+      "location": "normativa/extractos/ES0901.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:terceros",
+      "type": "config",
+      "location": "terceros/terceros.lock.json",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "code:tests",
+      "type": "tests",
+      "location": "tests/Invoke-Tests.ps1",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "implementación observada del módulo",
+      "status": "current"
+    },
+    {
+      "source_id": "config:tests/fixtures/proyecto-checks/package.json",
+      "type": "config",
+      "location": "tests/fixtures/proyecto-checks/package.json",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "contrato declarado",
+      "status": "current"
+    },
+    {
+      "source_id": "adr:docs/adr/0001-rama-de-desarrollo-se-llama-develop.md",
+      "type": "adr",
+      "location": "docs/adr/0001-rama-de-desarrollo-se-llama-develop.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "decisión vigente de arquitectura",
+      "status": "current"
+    },
+    {
+      "source_id": "adr:docs/adr/0002-copia-en-vez-de-symlink.md",
+      "type": "adr",
+      "location": "docs/adr/0002-copia-en-vez-de-symlink.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "decisión vigente de arquitectura",
+      "status": "current"
+    },
+    {
+      "source_id": "adr:docs/adr/0003-obsidian-fuera-del-harness.md",
+      "type": "adr",
+      "location": "docs/adr/0003-obsidian-fuera-del-harness.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "decisión vigente de arquitectura",
+      "status": "current"
+    },
+    {
+      "source_id": "adr:docs/adr/0004-el-harness-no-usa-source.md",
+      "type": "adr",
+      "location": "docs/adr/0004-el-harness-no-usa-source.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "decisión vigente de arquitectura",
+      "status": "current"
+    },
+    {
+      "source_id": "adr:docs/adr/0005-terceros-separados-de-lo-propio.md",
+      "type": "adr",
+      "location": "docs/adr/0005-terceros-separados-de-lo-propio.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "decisión vigente de arquitectura",
+      "status": "current"
+    },
+    {
+      "source_id": "adr:docs/adr/0006-sdd-como-metodo-de-los-proyectos.md",
+      "type": "adr",
+      "location": "docs/adr/0006-sdd-como-metodo-de-los-proyectos.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "decisión vigente de arquitectura",
+      "status": "current"
+    },
+    {
+      "source_id": "adr:docs/adr/0008-lo-externo-nunca-es-requisito.md",
+      "type": "adr",
+      "location": "docs/adr/0008-lo-externo-nunca-es-requisito.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "decisión vigente de arquitectura",
+      "status": "current"
+    },
+    {
+      "source_id": "adr:docs/adr/0009-un-escenario-sobre-un-modelo-se-verifica-por-lectura.md",
+      "type": "adr",
+      "location": "docs/adr/0009-un-escenario-sobre-un-modelo-se-verifica-por-lectura.md",
+      "revision": "5e7b4437e0851b2ee64269d7a510bf689118b991",
+      "discovered_at": "2026-08-22T11:59:22-03:00",
+      "authority_scope": "decisión vigente de arquitectura",
+      "status": "current"
+    }
+  ],
+  "technology": {
+    "languages": [
+      "Python",
+      "PowerShell"
+    ],
+    "frameworks": [],
+    "runtimes": [
+      "Python 3.9 o mayor",
+      "Windows PowerShell 5.1"
+    ],
+    "package_managers": [],
+    "build_commands": [
+      ".\\install.ps1 -Project <ruta> -Harness desarrollo",
+      ".\\install.ps1 -Project <ruta> -Update",
+      ".\\install.ps1 -Project <ruta> -Doctor"
+    ],
+    "test_commands": [
+      ".\\tests\\Invoke-Tests.ps1",
+      "python tests/correr.py"
+    ],
+    "knowledge_status": "confirmed"
+  },
+  "architecture": {
+    "components": [
+      {
+        "component_id": "checks",
+        "name": "checks",
+        "responsibility": "Las reglas que corren después de cada escritura y avisan cuando algo no cumple una norma. Son cinco, todas con el mismo contrato: un `.py` que expone `verificar(evento, proyecto, config)` y devuelve cero o más strings, uno por hallazgo. Silencio cuando está todo bien. **Ninguno bloquea.** Lo único que este harness bloquea son los secretos, y eso pasa antes, en el hook de `PreToolUse`. Un check acá llegaría tarde y con menos autoridad. Uno lo aporta `comun/` y cuatro los aporta el harness `desarrollo`; se agrupan juntos porque comparten contrato, presupuesto y la misma regla de diseño: salir temprano.",
+        "source_refs": [
+          "code:checks"
+        ]
+      },
+      {
+        "component_id": "comun-agentes-y-skills",
+        "name": "comun/agentes-y-skills",
+        "responsibility": "Los agentes, las skills y la herramienta de línea de comandos que se instalan **siempre**, con cualquier harness. Es la parte del esqueleto que no es infraestructura: no corre sola, la invoca alguien cuando hace falta. Son pocas a propósito. Cada skill cuesta unos 100 tokens de nombre y descripción en cada turno de cada sesión, y solo se expande cuando alguien la usa.",
+        "source_refs": [
+          "code:comun-agentes-y-skills"
+        ]
+      },
+      {
+        "component_id": "comun-hooks",
+        "name": "comun/hooks",
+        "responsibility": "Los cuatro hooks que corren dentro de la sesión de otra persona, y la librería que comparten. Son infraestructura: leen el evento que manda Claude Code por stdin y contestan una de tres cosas — avisar, bloquear o preguntar — o se callan. Desde 0.13.0 corren en Python 3.9+. El contrato de fondo no cambió: **un hook jamás rompe la sesión y siempre sale con código 0**, pase lo que pase. La única regla que bloquea en todo el harness es la de secretos, y vive acá.",
+        "source_refs": [
+          "code:comun-hooks"
+        ]
+      },
+      {
+        "component_id": "docs-cambios",
+        "name": "docs/cambios",
+        "responsibility": "Los artefactos del método con el que se trabaja en este repo: una carpeta por cambio, con la especificación de lo que se construye y la verificación de que cumple. El método es especificar, construir, testear y verificar. Los tests salen de la spec con el código ya armado, y quien construye no verifica. Es la parte del repo que registra el trabajo **antes** de hacerlo. La bitácora por versión registra lo que pasó después.",
+        "source_refs": [
+          "code:docs-cambios"
+        ]
+      },
+      {
+        "component_id": "docs-versiones",
+        "name": "docs/versiones",
+        "responsibility": "El registro de lo que pasó, en dos formatos que contestan preguntas distintas y por eso hacen falta los dos. El `CHANGELOG.md` mira hacia afuera: lo lee quien instala o actualiza, y se escribe para no romperle nada a nadie. La bitácora mira hacia adentro: la lee quien sigue el trabajo, y guarda el razonamiento, los caminos que se probaron y se descartaron y las puntas sueltas. Va de 0.1.0 a 0.13.0, una nota por versión, sin huecos.",
+        "source_refs": [
+          "code:docs-versiones"
+        ]
+      },
+      {
+        "component_id": "docs",
+        "name": "docs",
+        "responsibility": "La documentación del harness: la puerta de entrada, las guías de uso y las decisiones tomadas con su fundamento. Se lee en tres capas. El `README.md` contesta qué es esto y cómo se instala; las guías contestan cómo funciona cada mecanismo; los ADR contestan **por qué está así** y no de la otra forma que parecía más obvia. Hay además dos mapas en HTML que se publican como artefactos web y se actualizan en la misma URL cuando el flujo cambia.",
+        "source_refs": [
+          "code:docs"
+        ]
+      },
+      {
+        "component_id": "fabrica",
+        "name": "fabrica",
+        "responsibility": "Cómo se trabaja **en este repo**, que no es lo mismo que lo que el repo produce. Este proyecto es la fábrica del harness: acá se construye lo que después se instala en otros proyectos, y esta capa gobierna a quien lo construye. Son los agentes y skills que rigen las sesiones de este repositorio, el `CLAUDE.md` que se carga en cada una, la configuración del repo y el trabajo que queda abierto. Nada de acá se instala en ningún proyecto: el instalador solo copia desde `comun/` y `harnesses/<id>/`.",
+        "source_refs": [
+          "code:fabrica"
+        ]
+      },
+      {
+        "component_id": "harnesses-analisis",
+        "name": "harnesses/analisis",
+        "responsibility": "El harness para el trabajo funcional: relevar, escribir historias de usuario, leer maquetas y normativa. Se instala en los proyectos donde todavía no hay código, o donde hay gente que escribe historias y no las implementa. El corte entre harness es por **tipo de trabajo**, no por proyecto: un analista funcional no necesita cargar las reglas de diseño de APIs. Un proyecto puede tener los dos a la vez. Su prefijo de namespace es `hu`, y eso hace estructuralmente imposible que dos harness aporten dos cosas con el mismo nombre.",
+        "source_refs": [
+          "code:harnesses-analisis"
+        ]
+      },
+      {
+        "component_id": "harnesses-desarrollo",
+        "name": "harnesses/desarrollo",
+        "responsibility": "El harness para el trabajo técnico: código, APIs y deploy. Hace cumplir los estándares del GCBA — ES0901, ES0902, ES0903, PC0901, la guía de la DGISIS y Obelisco v2 — sin que nadie tenga que acordarse de ellos. Su prefijo de namespace es `dev`. Aporta la mayor parte de las skills del repo, y lo hace en skills y no en el `CLAUDE.md` a propósito: lo que no se necesita en cada turno no se carga en cada turno. Sus cinco checks están descriptos en la ficha `checks`, junto con el de `comun/`.",
+        "source_refs": [
+          "code:harnesses-desarrollo"
+        ]
+      },
+      {
+        "component_id": "install",
+        "name": "install",
+        "responsibility": "El instalador: el único punto de entrada del repo. Copia el harness dentro de otro proyecto, lo actualiza, lo saca y diagnostica la máquina. Es un solo script de PowerShell, largo y con comentarios que explican cada decisión. La invariante que ordena todo lo que escribe: `.claude/` es 100% regenerable y va gitignoreado; el `CLAUDE.md` del proyecto no lo es y se versiona. De ahí se deduce el resto — nada de lo que escribe en `.claude/` tiene que sobrevivir a un clone, solo a un `-Update`. Acá también viven las plantillas de lo que instala: el registro de hooks, la lista de rutas denegadas, los dos lanzadores y los bloques de `CLAUDE.md` que se inyectan en el proyecto.",
+        "source_refs": [
+          "code:install"
+        ]
+      },
+      {
+        "component_id": "normativa",
+        "name": "normativa",
+        "responsibility": "Los estándares del GCBA destilados a markdown. Es **insumo de autoría, nunca se copia a un proyecto**: de acá salen las afirmaciones de las skills de `desarrollo`, los checks que implementan una regla y los veredictos del refutador. Los PDF originales son documentación interna del organismo y este repo es público, así que no se publican: van en un directorio gitignoreado y cada quien pone los suyos. El harness funciona sin ellos. Cada extracto declara arriba su fuente, su versión, su cantidad de páginas y la fecha en que se extractó.",
+        "source_refs": [
+          "code:normativa"
+        ]
+      },
+      {
+        "component_id": "terceros",
+        "name": "terceros",
+        "responsibility": "Material bajado de repositorios públicos, guardado aparte de lo propio. **Nada de acá se instala**: el instalador solo copia desde `comun/` y `harnesses/<id>/`. Existe para que \"de dónde salió esto\" tenga siempre respuesta. Un origen sin registrar es peor que no llevar registro: da falsa sensación de control. Hoy hay un solo origen incorporado.",
+        "source_refs": [
+          "code:terceros"
+        ]
+      },
+      {
+        "component_id": "tests",
+        "name": "tests",
+        "responsibility": "La suite del repo: dos motores, un solo código de salida. Es la compuerta de todo — nada se da por terminado sin la suite en verde, y el propio instalador la usa como compuerta suya. No tiene dependencias: no hace falta Pester ni pytest ni nada instalado. Cada motor carga los archivos de casos de su lenguaje y acumula resultados. Acá vive también la evidencia: payloads reales de cada evento de hook, proyectos de fixture y las capturas del testigo contra el que se comparó el porteo de PowerShell a Python.",
+        "source_refs": [
+          "code:tests"
+        ]
+      }
+    ],
+    "entrypoints": [
+      "install.ps1",
+      "comun/hooks/session-start.py",
+      "comun/hooks/pre-tool-use.py",
+      "comun/hooks/post-tool-use.py",
+      "comun/hooks/user-prompt-submit.py"
+    ],
+    "dependency_edges": [
+      {
+        "from": "checks",
+        "to": "comun-hooks"
+      },
+      {
+        "from": "checks",
+        "to": "normativa"
+      },
+      {
+        "from": "comun-agentes-y-skills",
+        "to": "install"
+      },
+      {
+        "from": "comun-agentes-y-skills",
+        "to": "harnesses-desarrollo"
+      },
+      {
+        "from": "comun-agentes-y-skills",
+        "to": "checks"
+      },
+      {
+        "from": "comun-hooks",
+        "to": "install"
+      },
+      {
+        "from": "comun-hooks",
+        "to": "checks"
+      },
+      {
+        "from": "docs-cambios",
+        "to": "fabrica"
+      },
+      {
+        "from": "docs-cambios",
+        "to": "tests"
+      },
+      {
+        "from": "docs-cambios",
+        "to": "docs"
+      },
+      {
+        "from": "docs-versiones",
+        "to": "fabrica"
+      },
+      {
+        "from": "docs-versiones",
+        "to": "tests"
+      },
+      {
+        "from": "docs",
+        "to": "install"
+      },
+      {
+        "from": "docs",
+        "to": "comun-hooks"
+      },
+      {
+        "from": "docs",
+        "to": "checks"
+      },
+      {
+        "from": "docs",
+        "to": "tests"
+      },
+      {
+        "from": "fabrica",
+        "to": "tests"
+      },
+      {
+        "from": "fabrica",
+        "to": "docs-cambios"
+      },
+      {
+        "from": "harnesses-analisis",
+        "to": "comun-hooks"
+      },
+      {
+        "from": "harnesses-analisis",
+        "to": "comun-agentes-y-skills"
+      },
+      {
+        "from": "harnesses-analisis",
+        "to": "install"
+      },
+      {
+        "from": "harnesses-analisis",
+        "to": "terceros"
+      },
+      {
+        "from": "harnesses-desarrollo",
+        "to": "comun-hooks"
+      },
+      {
+        "from": "harnesses-desarrollo",
+        "to": "comun-agentes-y-skills"
+      },
+      {
+        "from": "harnesses-desarrollo",
+        "to": "install"
+      },
+      {
+        "from": "harnesses-desarrollo",
+        "to": "normativa"
+      },
+      {
+        "from": "harnesses-desarrollo",
+        "to": "checks"
+      },
+      {
+        "from": "install",
+        "to": "harnesses-analisis"
+      },
+      {
+        "from": "install",
+        "to": "harnesses-desarrollo"
+      },
+      {
+        "from": "install",
+        "to": "comun-hooks"
+      },
+      {
+        "from": "install",
+        "to": "tests"
+      },
+      {
+        "from": "install",
+        "to": "fabrica"
+      },
+      {
+        "from": "normativa",
+        "to": "comun-agentes-y-skills"
+      },
+      {
+        "from": "terceros",
+        "to": "harnesses-analisis"
+      },
+      {
+        "from": "terceros",
+        "to": "harnesses-desarrollo"
+      },
+      {
+        "from": "tests",
+        "to": "comun-hooks"
+      },
+      {
+        "from": "tests",
+        "to": "checks"
+      },
+      {
+        "from": "tests",
+        "to": "install"
+      }
+    ],
+    "external_integrations": [],
+    "important_paths": [
+      "comun/checks/claude-md-zonas.py",
+      "harnesses/desarrollo/checks/dev-codebase-forma.py",
+      "dev-api-rutas.py",
+      "dev-dependencias.py",
+      "dev-infra-en-codigo.py",
+      "dev-accesibilidad-html.py",
+      "harnesses/desarrollo/checks/lib/dev.py",
+      "tests/casos/08_checks_borde.py",
+      "comun/agents/flush-memoria.md",
+      "comun/agents/leer-docs.md",
+      "comun/skills/instalar-desde-github/SKILL.md",
+      "comun/bin/docimg.py",
+      "flush-memoria",
+      "docs/memoria.md",
+      "comun/hooks/session-start.py",
+      "pre-tool-use.py",
+      "post-tool-use.py",
+      "user-prompt-submit.py",
+      "comun/hooks/lib/hook.py",
+      "secretos.py",
+      "reglas.py",
+      "zonas.py",
+      "comun/reglas/secretos.patrones.json",
+      "docs/contrato-hooks.md",
+      "docs/cambios/hooks-en-python/",
+      "spec.md",
+      "plan.md",
+      "verificacion.md",
+      "docs/cambios/iniciador-code/",
+      "docs/cambios/sdd-capacidad/",
+      "CHANGELOG.md",
+      "UPGRADE.md",
+      "docs/versiones/README.md",
+      "docs/versiones/_plantilla.md",
+      "docs/versiones/0.1.0.md",
+      "0.13.0.md",
+      "README.md",
+      "docs/instalacion.md",
+      "docs/secretos.md",
+      "docs/agregar-un-harness.md",
+      "docs/adr/0001",
+      "0006",
+      "0008",
+      "docs/mapa/recorrido-mensaje.html",
+      "docs/mapa/mapa-harness.html",
+      "CLAUDE.md",
+      ".claude/agents/harness-hook-engineer.md",
+      "harness-backend-engineer.md",
+      "harness-staff-engineer.md",
+      "harness-spec-refuter.md",
+      "harness-budget-auditor.md",
+      ".claude/skills/write-a-spec/",
+      "write-a-verdict/",
+      "close-a-version/",
+      "note-a-pending/",
+      "concise-replies/",
+      "SKILL.md",
+      "Pendientes/Fix-Harness/PENDIENTES-FH.md",
+      "Pendientes/Ideas-Harness/PENDIENTES-I.md",
+      ".gitattributes",
+      ".gitignore",
+      "harnesses/analisis/manifest.json",
+      "harnesses/analisis/claude-md/bloque.md",
+      "harnesses/analisis/agents/hu-redactor.md",
+      "hu-refutador.md",
+      "harnesses/analisis/skills/hu-escribir/SKILL.md",
+      "harnesses/analisis/checks/",
+      ".gitkeep",
+      "harnesses/desarrollo/manifest.json",
+      "harnesses/desarrollo/claude-md/bloque.md",
+      "harnesses/desarrollo/agents/dev-iniciador-code.md",
+      "dev-refutador.md",
+      "harnesses/desarrollo/skills/dev-api/",
+      "dev-identidad/",
+      "dev-seguridad/",
+      "dev-pantalla/",
+      "dev-ambientes/",
+      "dev-tramites-asi/",
+      "dev-repositorio/",
+      "dev-versiones/",
+      "harnesses/desarrollo/checks/",
+      "checks",
+      "install.ps1",
+      "VERSION",
+      "comun/manifest.json",
+      "comun/settings/hooks.plantilla.json",
+      "comun/settings/permissions.deny.json",
+      "comun/settings/run-hook.sh.plantilla",
+      "comun/claude-md/bloque-comun.md",
+      "comun/claude-md/plantilla-proyecto.md",
+      "normativa/extractos/ES0901.md",
+      "ES0902.md",
+      "ES0903.md",
+      "PC0901.md",
+      "GuiaDGISIS.md",
+      "Obelisco.md",
+      "normativa/fuentes/LEEME.md",
+      "docs/adr/0008",
+      "terceros/terceros.lock.json",
+      "terceros/LEEME.md",
+      "terceros/gentle-ai/ORIGEN.md",
+      "LICENSE",
+      "review-refuter.md",
+      "review-risk.md",
+      "skill-resolver.md",
+      "_shared-SKILL.md",
+      "docs/adr/0005-terceros-separados-de-lo-propio.md",
+      "tests/Invoke-Tests.ps1",
+      "tests/correr.py",
+      "tests/casos/",
+      "tests/payloads/",
+      "tests/fixtures/",
+      "paridad-secretos.json",
+      "paridad-checks.json",
+      "paridad-zonas.json",
+      "tests/generar-testigo.ps1",
+      "scripts/Repair-EncodingFuentes.ps1",
+      "tests/"
+    ]
+  },
+  "interfaces": {
+    "items": [],
+    "knowledge_status": "missing"
+  },
+  "identity_and_access": {
+    "auth_model": "",
+    "roles": [],
+    "test_principals": [],
+    "access_by_environment": [],
+    "knowledge_status": "missing"
+  },
+  "environments": {
+    "items": [
+      {
+        "environment_id": "fabrica",
+        "kind": "local",
+        "base_urls": [],
+        "allowed_mutations": "read-write",
+        "data_policy": "código, tests y documentación de este repositorio: donde se construye y se versiona el harness"
+      },
+      {
+        "environment_id": "proyecto-instalado",
+        "kind": "other",
+        "base_urls": [],
+        "allowed_mutations": "read-write",
+        "data_policy": "el repositorio ajeno que recibe `-Project`; fuera de este repositorio, no observable desde acá"
+      }
+    ],
+    "knowledge_status": "confirmed"
+  },
+  "gaps_and_conflicts": {
+    "missing": [
+      "interfaces: proyecto.md no declara ninguna interfaz bajo `## Interfaces`.",
+      "identity_and_access: proyecto.md no declara nada bajo `## Identidad y acceso`.",
+      "architecture: la ficha `docs-versiones.md` no la enlaza ninguna otra. O falta el enlace en la ficha que la usa, o es un modulo que no usa nadie.",
+      "business_rules: el schema project-context/1.1 todavia no modela este bloque. Su ausencia no significa que el proyecto no lo tenga.",
+      "quality_landscape: el schema project-context/1.1 todavia no modela este bloque. Su ausencia no significa que el proyecto no lo tenga."
+    ],
+    "conflicts": [],
+    "stale_sources": [],
+    "unresolved_questions": [
+      "Si docs/codebase/ sigue cubriendo todos los módulos: el índice se regenera entero y este archivo no lo verifica.",
+      "El costo en milisegundos de los checks sobre un repositorio grande no está medido."
+    ]
+  }
+}

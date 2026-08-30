@@ -1095,6 +1095,11 @@ function Invoke-Instalar {
     $origenComun = Join-Path $script:Repo 'comun'
     foreach ($x in (Copy-Arbol (Join-Path $origenComun 'hooks')  (Join-Path $dirHarness 'hooks')))  { [void]$instalados.Add($x) }
     foreach ($x in (Copy-Arbol (Join-Path $origenComun 'reglas') (Join-Path $dirHarness 'reglas'))) { [void]$instalados.Add($x) }
+    # Los contratos que el harness le entrega a sus agentes -hoy project-context, mañana
+    # change-context y qa-run-request-. Van visibles y aparte: es lo que permite que
+    # varios agentes compartan una misma representación del proyecto en vez de que cada
+    # uno se arme la suya.
+    foreach ($x in (Copy-Arbol (Join-Path $origenComun 'schemas') (Join-Path $dirHarness 'schemas'))) { [void]$instalados.Add($x) }
     foreach ($x in (Copy-Arbol (Join-Path $origenComun 'checks') (Join-Path $dirHarness 'checks'))) { [void]$instalados.Add($x) }
     foreach ($x in (Copy-Arbol (Join-Path $origenComun 'bin')    (Join-Path $dirHarness 'bin')))    { [void]$instalados.Add($x) }
     foreach ($x in (Copy-Arbol (Join-Path $origenComun 'skills') (Join-Path $dirClaude 'skills')))  { [void]$instalados.Add($x) }

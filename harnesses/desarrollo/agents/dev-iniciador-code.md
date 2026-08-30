@@ -73,6 +73,83 @@ The file name comes from the module path with `/` replaced by `-`. That is what 
 with the same name in different directories from colliding, and what makes the name derivable in
 both directions.
 
+And one card that is **not** a module: `proyecto.md`. It is the only place where you write what a
+person would answer about the project as a whole, and `contexto-armar.py` reads it to fill
+`project_profile` and `technology` of the contract. Its headings are these eight, exactly:
+
+```markdown
+# Proyecto
+
+## Qué es el proyecto
+
+Para qué existe el sistema, en dos o tres líneas. (Free prose — it becomes `purpose`.)
+
+- Tipo: web_app | api | worker | monorepo | library | cli
+- Etapa: mvp | production | legacy
+
+## Stack
+
+- Lenguajes: TypeScript, SQL
+- Frameworks: Next.js, NestJS
+- Runtimes: Node 20
+- Gestores de paquetes: npm
+
+## Cómo se levanta
+
+- `npm run dev`
+- Entrypoints: `src/api/main.ts`
+- Integraciones: proveedor de pagos sandbox
+
+## Cómo se testea
+
+- `npm test`
+
+## Interfaces
+
+| id | tipo | ruta | auth | contrato | componente |
+|---|---|---|---|---|---|
+| reservas | http | `POST /api/v2/reservas` | bearer JWT | `openapi.yaml` | `src/api` |
+| pagos-webhook | webhook | `POST /webhooks/stripe` | firma de Stripe (HMAC) | - | `src/api` |
+
+## Identidad y acceso
+
+- Modelo de autenticación: OpenID Connect contra Keycloak
+- Rol: admin
+- Rol: cliente
+- Usuario de prueba: qa-cliente -- rol cliente, ambiente qa
+- Acceso: prd -- solo lectura para roles no-admin
+
+## Ambientes
+
+| id | tipo | urls | mutaciones | datos |
+|---|---|---|---|---|
+| qa-main | qa | `https://qa.reservas.example` | read-write | datos de prueba, se resetean cada noche |
+| prd | prd | `https://reservas.example` | read-write | - |
+
+## Qué falta saber
+
+- Lo que buscaste y no encontraste, una línea por hueco.
+```
+
+🔴 **A labelled bullet you cannot fill gets a `—`, not a guess.** The script reads that as empty and
+the gap travels inside the contract, where a consumer can see it. A plausible invention does not: it
+reads exactly like a fact, and the next agent builds on it.
+
+🔴 **`Interfaces`, `Identidad y acceso` and `Ambientes` follow a fixed micro-format, not free
+prose.** `Interfaces` and `Ambientes` are markdown tables with exactly the columns shown above, one
+row per interface or environment; `Identidad y acceso` reuses the labelled-bullet pattern of
+`Stack`, with `Rol`, `Usuario de prueba` and `Acceso` repeatable. Three of their rules are worth
+saying twice: a `Usuario de prueba` line becomes `{"ref": "<the text you wrote>"}` and nothing
+else — never write a password, a token or a cookie next to it, the object has no field to hold one.
+An environment whose `tipo` resolves to `prd` always ends up `read-only` in the contract no matter
+what `mutaciones` says in the table — write what is actually true of the environment, and
+`contexto-armar.py` forces the override and records the conflict itself. And a URL under `urls` that
+does not appear, verbatim, in some file already committed to the repository does not make it into
+`base_urls` — do not write a URL you have not seen used.
+
+`proyecto.md` is a reserved name. It is not a node of the graph, it does not go in `indice.md`, and
+it does not carry the four headings of a module card.
+
 🔴 **Every module you name is a link.** In `Qué expone` and `De qué depende`, a module of this
 project that has its own card is written as a relative link to it — `[checks](checks.md)` — not
 mentioned in passing. That link is the edge of the map: `mapa-codigo.py` builds the graph out of
@@ -106,7 +183,10 @@ and an index line pointing nowhere is worse than a missing one.
    is the paths.
 
 5. **Write `indice.md`**, when you already know which cards exist. Writing it first produces
-   lines pointing at files you then decided not to write.
+   lines pointing at files you then decided not to write. `proyecto.md` does not go in it.
+
+5b. **Write `proyecto.md`.** You walked the whole repository: right now you know the stack, the
+   commands and what the thing is for. Nobody after you will know it as cheaply.
 
 6. **Regenerate the map, last of all.** After the index, never before it:
 
@@ -123,7 +203,25 @@ and an index line pointing nowhere is worse than a missing one.
    If the script is not there, say so in your report and stop. Do not write an `mapa.html` of your
    own instead.
 
-7. **Report.**
+7. **Write the contract, last of all.** After the map:
+
+   ```
+   python .claude/harness/bin/contexto-armar.py <the directory of the cards>
+   ```
+
+   It reads the cards, `proyecto.md` and `git`, and writes `project-context.json` beside the index:
+   the same knowledge the cards carry, but serialized, versioned and traceable — with the commit it
+   came from, the hash of what it says, and where each thing was read. That is what lets a later
+   agent say **which snapshot of the project it decided with**, which prose cannot answer.
+
+   It validates against `.claude/harness/schemas/project-context.schema.json` **before** writing. If
+   it does not validate, it writes nothing and prints what is missing — that is the answer, do not
+   work around it by hand. It prints a JSON summary: sources, components, edges and declared gaps.
+
+   🔴 **It never touches `mapa.html` or any card.** If you see either of them change, something is
+   wrong and it goes in your report.
+
+8. **Report.**
 
 ## Writing rules
 
@@ -145,6 +243,9 @@ Short, in Spanish, and it says:
 - how many nodes and how many edges the map ended with, and which cards came out **orphan** —
   nobody links them. An orphan is a finding, not a detail: either another card is missing the link,
   or it is a module nothing uses. Both are worth saying out loud;
+- the contract: its `context_id`, the `repo_revision` it was written against, and **how many gaps it
+  declares**. The gaps are not a failure of the walk — they are the walk saying out loud what it
+  could not establish, which is the whole reason they are in the file;
 - which cards no longer match any module — named, not deleted;
 - what you did not walk, and why: files you could not read, a language you could not tell apart, a
   directory too large to be worth one card;
