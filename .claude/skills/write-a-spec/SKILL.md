@@ -85,6 +85,26 @@ know whether somebody broke the code. What it buys is that the absence is visibl
 reports the mark beside every verdict, and a `sostenido` with `no consta` is still `sostenido` —
 but whoever reads it knows what it is worth.
 
+## The `· verificación: lectura` mark
+
+A scenario whose subject is a run of a model — never anything a deterministic test could reach —
+carries this mark instead of a test.
+[ADR-0009](../../../docs/adr/0009-un-escenario-sobre-un-modelo-se-verifica-por-lectura.md) governs
+it in full; here it only matters that **the mark is written when the scenario is, not after a bad
+verdict.** A scenario that migrates to `lectura` once it is already `sin sustento` is the cut
+ADR-0009 was written to stop.
+
+```
+- **E-18** — El contrato de un recorrido real no inventa interfaces, roles ni ambientes.
+  · rojo visto: no consta
+  · verificación: lectura — el sujeto es una corrida de un modelo, y la suite no invoca al agente
+```
+
+A one-line reason after the mark, same rule as `rojo visto`: it says **why** no test can hold it,
+not that none was written yet. If a change ends up with more `lectura` marks than the rest of its
+scenarios combined, name it in `## Riesgos conocidos` — ADR-0009 revisits the whole category the
+day that happens. Signing what the mark promises is `write-a-lectura`, not this skill.
+
 ## Before you call it written
 
 - Every scenario has a unique id, and the ids are correlative.

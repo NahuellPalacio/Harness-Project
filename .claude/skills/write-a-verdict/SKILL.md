@@ -70,12 +70,14 @@ The four verdicts, and what each one costs:
 | `leído` | The scenario is marked `· verificación: lectura` and a dated reading by a named non-builder says what was observed | It stands on a reading, not on a test |
 | `sin-sustento` | It could not be established | Open, with what has to be looked at |
 
-🔴 **Count `leído` apart from `sostenido`, in the header line and everywhere else.** "13
-sostenidos, 9 leídos" and "22 sostenidos" do not say the same thing, and
-[ADR-0009](../../../docs/adr/0009-un-escenario-sobre-un-modelo-se-verifica-por-lectura.md)
-exists so that difference is legible in the count instead of hidden inside it. Name where
-the reading lives —`lectura.md`— and who signed it, the same way the other verdicts name
-their test.
+🔴 **Count `leído` apart from `sostenido`, in the header line and everywhere else — and, since
+[ADR-0010](../../../docs/adr/0010-firma-delegada-de-una-lectura-cuando-son-muchas.md), split
+`leído` itself into `independiente` and `delegado`.** "13 sostenidos, 6 leídos independientes, 3
+leídos delegados" and "13 sostenidos, 9 leídos" do not say the same thing, for the same reason
+[ADR-0009](../../../docs/adr/0009-un-escenario-sobre-un-modelo-se-verifica-por-lectura.md) already
+gives for `leído` against `sostenido`. Name where the reading lives —`lectura.md`— and who signed
+it: `Leyó: <nombre>` for an independent reading, `Firmó (delegado): Claude` for a delegated one,
+never the other way around.
 
 🔴 **A scenario with no test that names it is `sin-sustento`, never `sostenido`.** The asymmetry
 that governs this, from `hu-refutador`: marking `sin-sustento` something that was there costs
@@ -86,6 +88,16 @@ Under the table, the note that keeps the mark honest:
 
 > 📌 **`rojo visto: no consta` no invalida un veredicto, lo pondera.** Es la marca que pide
 > ADR-0006: un test que nunca se vio fallar no probó que puede fallar.
+
+## La firma delegada de ADR-0010
+
+Un `lectura.md` con cinco escenarios pendientes o más puede llegar firmado
+`Firmó (delegado): Claude`. Es válida sólo si el archivo declara el conteo que la licenció y ese
+conteo es recontable contra los `## E-nn` del archivo — es lo que `harness-spec-refuter` ya
+comprueba antes de rendir el veredicto. La tabla lleva el veredicto igual — `leído` — nunca una
+quinta palabra, con la calificación `delegado` a su lado. El procedimiento completo —cómo se
+escribe y firma un `lectura.md`, los dos caminos según cuántos escenarios quedan pendientes— está
+en `write-a-lectura`; acá sólo importa que el conteo llegue separado a este archivo.
 
 ## What a `contradicho` requires
 

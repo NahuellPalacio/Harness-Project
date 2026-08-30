@@ -36,6 +36,10 @@ in the spec, with a dated reading by a named person who is not the builder. It c
 and it is weaker than `sostenido` — count the two separately, never folded together. Anything a
 deterministic test could reach does not get the mark.
 
+[ADR-0010](docs/adr/0010-firma-delegada-de-una-lectura-cuando-son-muchas.md) is a visible exception
+to "not the builder": only when a `lectura.md` has five scenarios pending or more, whoever built it
+may sign, labelled `Firmó (delegado):` and never `Leyó:`. Fewer than five follows ADR-0009 exactly.
+
 ## The gate
 
 ```powershell

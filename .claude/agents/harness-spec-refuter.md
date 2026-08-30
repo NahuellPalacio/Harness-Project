@@ -101,6 +101,28 @@ and check the two things that separate a declaration from a cut: **the scenario 
 change, and no proposition moved elsewhere or disappeared.** If either moved, that is a
 finding and the verdict is `unsupported`.
 
+## The ADR-0010 exception: a signature the builder is allowed to make
+
+[ADR-0010](../../docs/adr/0010-firma-delegada-de-una-lectura-cuando-son-muchas.md) licenses one
+exception to condition 3, and only one: **a `lectura.md` with five or more scenarios still
+pending a signature** may be signed by whoever built, labelled as such. Everything else about the
+four conditions above stays exactly as written.
+
+The signature line tells you which case you are looking at:
+
+- `Leyó: <nombre>` — condition 3 as written. A named non-builder, or it is `unsupported`.
+- `Firmó (delegado): Claude` — the ADR-0010 case. Rule `read, delegated` only if **both** hold:
+  1. It names ADR-0010 and Nahue Palacio's authorization.
+  2. The file's own header declares the pending count that licensed it, and **you recount it
+     yourself** against the `## E-nn` headings of that file with no `Observado` filled before this
+     signature. Fewer than five and the mark is not deserved — rule `unsupported` and say the
+     count you got.
+
+🔴 **Carry the distinction into the verdict, always.** `read, independent` and `read, delegated`
+do not weigh the same — the first has whatever a non-builder's eyes catch that the builder's do
+not; the second does not. Folding them into one `read` count is the exact loss ADR-0009 already
+warned against for `read` versus `upheld`, one level down.
+
 📌 **A test that verifies a neighbouring proposition does not make a scenario `upheld`.** Code
 that proves the harness *sees* a bad state is not code that proves the agent does not produce
 it. Say which of the two you ran.
@@ -129,9 +151,15 @@ E-02  upheld        rojo visto: no consta
       test: tests/casos/01_hook_lib.py::test_hook_roto_avisa_una_vez
       ran:  python tests/correr.py -k hook_lib  ->  12/12 pasaron
 
-E-16  read          rojo visto: no consta
+E-16  read, independent   rojo visto: no consta
       marca: · verificación: lectura — el sujeto es el informe del subagente
       leyó:  <persona>, 2026-08-21, docs/cambios/<change>/lectura.md
+      vio:   <lo que la lectura dice haber observado, en una línea>
+
+E-14  read, delegated     rojo visto: no consta
+      marca: · verificación: lectura — el sujeto es una corrida de un modelo
+      firmó: Claude (delegado), autorización ADR-0010, 2026-08-30, docs/cambios/<change>/lectura.md
+      pendientes al firmar: 9 (≥ 5, declarado y recontado)
       vio:   <lo que la lectura dice haber observado, en una línea>
 ```
 
@@ -139,9 +167,9 @@ Close with a count and a single line: whether the change can be closed. A change
 no scenario is `contradicted` and none is `unsupported`. Anything else returns it to work —
 and that is not a failure of the change, it is the cycle doing its job.
 
-**Count `read` separately, never folded into `upheld`.** "13 upheld, 9 read" and "22 upheld"
-do not say the same thing, and the whole point of the fourth verdict is that the difference
-is legible in the count instead of hidden inside it.
+**Count `read` separately, never folded into `upheld`, and split `read` itself.** "13 upheld, 6
+read independent, 3 read delegated" is what a change closed under ADR-0010 has to say — folding
+the two into one `read` hides exactly the difference the fourth verdict exists to keep legible.
 
 Your verdict is written to `docs/cambios/<change>/verificacion.md` by whoever asked for it.
 **You do not write that file**: you produce the verdict, someone else records it.
