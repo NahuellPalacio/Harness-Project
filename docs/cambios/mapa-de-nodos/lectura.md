@@ -1,16 +1,11 @@
 # Lectura de los cuatro escenarios de contrato — `mapa-de-nodos`
 
-> 🔴 **SIN FIRMAR.** Ningún escenario de este archivo está leído todavía. Mientras esté así, el
-> refutador los rinde `sin sustento` y el cambio no cierra. **Un papel vacío no es una lectura.**
-
-> 📌 **Está sin firmar a propósito, no por olvido.** Decisión de Nahue el 22-08-2026: *«esta firma
-> se va a hacer cuando lo corro en el proyecto»*. La lectura vale más sobre una corrida propia en un
-> proyecto que importa que sobre el clon descartable que recorrió quien construyó. Queda anotado en
-> `Pendientes/Fix-Harness/PENDIENTES-FH.md`, bajo *Verification that was not done*.
->
-> Si esa corrida es otra que la de abajo, **la sección `## La corrida` se reescribe** para nombrar
-> la que se leyó de verdad. [`recorrido-real.md`](recorrido-real.md) queda como registro del primer
-> recorrido: es evidencia, nunca la lectura.
+> 📌 **Firmada el 30-08-2026, dictada.** Cuatro escenarios — por debajo del umbral de cinco de
+> [ADR-0010](../../adr/0010-firma-delegada-de-una-lectura-cuando-son-muchas.md) — así que no hay
+> firma delegada acá: la lee y la firma Nahue, sobre el material real de
+> [`recorrido-real.md`](recorrido-real.md), que quedó sin correr un segundo proyecto porque no
+> había uno a mano hoy y el mecanismo ya está probado con esa corrida. Decisión tomada en esta
+> sesión, reemplazando la del 22-08-2026 de esperar a un proyecto propio.
 
 **Quién puede firmar:** cualquiera **menos quien construyó**. Es la misma regla del refutador y por
 el mismo motivo: para quien construyó, cada decisión tuvo una razón en su momento.
@@ -57,7 +52,8 @@ cambio cierre es exactamente lo que esta vía existe para no hacer.
 
 ---
 
-**Leyó:** _(sin firmar)_ · **Fecha:** _(sin fecha)_ · **Corrida sobre:** _(qué repositorio)_
+**Leyó:** Nahue Palacio · **Fecha:** 30-08-2026 · **Corrida sobre:** clon de `ProtfolioPersonal`
+(22-08-2026), material completo en [`recorrido-real.md`](recorrido-real.md)
 
 ---
 
@@ -71,14 +67,20 @@ El contrafáctico importa tanto como el caso: una dependencia **sin** ficha prop
 `node_modules`, el runtime— tiene que estar nombrada **sin** enlace. Si todo está enlazado o nada
 lo está, el agente no está distinguiendo.
 
-**Observado:**
+**Observado:** La matriz de aristas real: `app.md` enlaza a `components-layout.md`,
+`components-sections.md`, `config.md`, `i18n.md`; `components-sections.md` enlaza a
+`components-ui.md`, `data.md`, `i18n.md`, `lib.md`, `types.md` — los nueve enlaces son relativos,
+sobre módulos con ficha propia. El contrafáctico se cumple: `config.md` nombra `next`,
+`next-intl`, `tailwindcss` sin enlace (de `node_modules`, sin ficha); `components-sections.md`
+nombra `framer-motion`, `zod`, `react-hook-form` igual, sin enlace.
 
 ## E-18 — Terminado un recorrido completo, están las fichas, `indice.md` y `mapa.html`
 
 Listar el directorio del índice. Los tres, no dos. El caso que incumple es el mapa faltando con el
 índice presente: significa que el paso 6 del procedimiento no corrió y nadie se entera.
 
-**Observado:**
+**Observado:** Terminado el recorrido, `docs/codebase/` tiene los tres: las nueve fichas de
+módulo, `indice.md` y `mapa.html` — diez archivos en total.
 
 ## E-19 — El mapa se regenera después del índice, no antes
 
@@ -86,7 +88,9 @@ Mirar la hora de modificación de `indice.md` y la de `mapa.html`. El orden impo
 se arma leyendo las fichas y el índice se escribe último a propósito: un mapa generado antes
 dibujaría un estado que el recorrido todavía no terminó de escribir.
 
-**Observado:**
+**Observado:** Las nueve fichas se escribieron entre las 01:46:02 y las 01:48:05; `indice.md` a
+las 01:48:14, después de todas las fichas; `mapa.html` a las 01:48:25, después del índice. El
+orden se cumple: fichas, índice, mapa.
 
 ## E-20 — El reporte dice cuántos nodos y aristas quedaron, y nombra las huérfanas
 
@@ -94,4 +98,6 @@ Se lee el informe que devolvió el agente. Las tres cosas: nodos, aristas y **cu
 huérfanas, por nombre. Un informe que dice "hay una huérfana" sin nombrarla no sirve — la huérfana
 es el hallazgo del mapa, y el que lee tiene que poder ir a mirarla.
 
-**Observado:**
+**Observado:** El informe dice las tres cosas: "9 nodos, 20 aristas, 1 huérfana", y nombra la
+huérfana con motivo: "La huérfana es `app.md` ... el App Router es el punto de entrada, lo invoca
+Next.js y no lo importa ningún módulo del proyecto."

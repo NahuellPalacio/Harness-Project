@@ -5,6 +5,7 @@
 # Se invoca el hook como proceso hijo, igual que lo invoca Claude Code, porque lo que se
 # esta probando es su salida completa y no una funcion suelta.
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -30,12 +31,22 @@ def _correr_proceso(payload):
 
 
 def _proyecto(harness=("comun", "desarrollo"), config_extra=None, con_indice=False,
-              ruta_codebase=None, con_ficha=False):
+              ruta_codebase=None, con_ficha=False, con_contrato=True):
     """Un proyecto descartable como los deja install.ps1.
 
     `ruta_codebase` es donde se crea el indice cuando `con_indice`; por defecto, el mismo
     default que resuelve el hook. `con_ficha` deja una ficha SIN indice: el estado en que
-    queda un recorrido cortado a la mitad, que es lo que mira E-07."""
+    queda un recorrido cortado a la mitad, que es lo que mira E-07.
+
+    🔴 `con_indice` significa **recorrido terminado**, y desde 0.14.0 un recorrido
+    terminado deja tambien `project-context.json` -E-16 de contexto-de-proyecto-. Por eso
+    los dos van juntos por defecto: sin el contrato, estos proyectos representarian un
+    recorrido a medias y el hook avisaria con razon, que es justo lo contrario de lo que
+    E-02, E-04 y E-20 afirman.
+
+    `con_contrato=False` deja el indice sin su contrato a proposito. Existe para que el
+    estado intermedio se pueda armar desde aca el dia que haga falta; hoy lo cubre
+    tests/casos/13_contexto.py, que es de quien es el escenario."""
     proy = Path(tempfile.gettempdir()) / ("harness-cb-" + uuid.uuid4().hex[:8])
     proy.mkdir(parents=True, exist_ok=True)
 
@@ -46,7 +57,10 @@ def _proyecto(harness=("comun", "desarrollo"), config_extra=None, con_indice=Fal
               json.dumps({"harness": list(harness), "version": "0.13.0"}, ensure_ascii=False))
 
     if con_indice:
-        _escribir(proy / (ruta_codebase or "docs/codebase") / "indice.md", "# Indice del codigo\n")
+        dir_indice = proy / (ruta_codebase or "docs/codebase")
+        _escribir(dir_indice / "indice.md", "# Indice del codigo\n")
+        if con_contrato:
+            _escribir(dir_indice / "project-context.json", "{}\n")
 
     if con_ficha:
         _escribir(proy / (ruta_codebase or "docs/codebase") / "comun-hooks.md", "# comun/hooks\n")
@@ -378,3 +392,59 @@ def test_e10_nada_de_lo_que_escribio_el_recorrido_matchea_un_patron_alto(t):
     for f in archivos:
         t.verdadero("E-10: %s sin secreto de confianza alta" % f.name,
                     not _bloquea(f.read_text(encoding="utf-8"), catalogo))
+
+
+# ── E-12: nada de lo que escribio el recorrido nombra un archivo gitignoreado ─────
+#
+# El sujeto es la salida real y versionada de docs/codebase/, igual que E-10 -- no una
+# fixture. Se usa `git check-ignore` y no un grep de patrones porque `.gitignore` tiene
+# excepciones: `normativa/fuentes/*` esta gitignoreado salvo `normativa/fuentes/LEEME.md`,
+# y esa ruta esta citada de verdad en docs/codebase/normativa.md. Un grep de patrones la
+# marcaria ignorada y estaria mal; `git check-ignore` resuelve la excepcion.
+
+SPAN_RUTA = re.compile(r"`([A-Za-z0-9_.\-]+(?:/[A-Za-z0-9_.\-]+)+)`")
+
+
+def _rutas_citadas(texto):
+    return SPAN_RUTA.findall(texto)
+
+
+def _ignorado(ruta):
+    r = subprocess.run(["git", "check-ignore", "-q", ruta],
+                        cwd=str(RAIZ), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return r.returncode == 0
+
+
+def test_e12_control_positivo_git_check_ignore_resuelve_la_excepcion(t):
+    """E-12, la mitad que hace que la otra valga algo.
+
+    Sin este control, un `git check-ignore` que por algun motivo no corriera (binario
+    ausente, cwd equivocado) daria el mismo verde que un indice limpio: silencio.
+
+    Se prueba con el caso real del propio repositorio, no uno inventado: `normativa/fuentes/*`
+    esta gitignoreado (.gitignore) salvo `normativa/fuentes/LEEME.md`, que la excepcion
+    `!normativa/fuentes/LEEME.md` deja afuera de esa regla -- y esa ruta esta citada de
+    verdad en docs/codebase/normativa.md."""
+    t.verdadero("E-12: un archivo del directorio SI esta ignorado",
+                _ignorado("normativa/fuentes/ES0901.pdf"))
+    t.verdadero("E-12: la excepcion del mismo directorio NO esta ignorada",
+                not _ignorado("normativa/fuentes/LEEME.md"))
+
+
+def test_e12_ninguna_ruta_citada_por_el_recorrido_esta_gitignoreada(t):
+    """E-12 -- ninguna ruta citada por lo ESCRITO POR EL RECORRIDO esta gitignoreada.
+
+    El sujeto es docs/codebase/ de este repositorio, salida real de dev-iniciador-code y
+    versionada, igual que E-10. Se resuelve por construccion (el agente lista con
+    `git ls-files`, y lo ignorado nunca entra a lo que ve) pero eso no lo vuelve
+    inverificable: si algun dia una ficha nombra una ruta ignorada, es exactamente lo que
+    este test tiene que atrapar."""
+    archivos = sorted(CODEBASE_REAL.glob("*.md"))
+    t.verdadero("E-12: hay salida del recorrido que mirar", len(archivos) >= 10)
+    vistas = 0
+    for f in archivos:
+        for ruta in _rutas_citadas(f.read_text(encoding="utf-8")):
+            vistas += 1
+            t.verdadero("E-12: %s -> %s no esta gitignoreada" % (f.name, ruta),
+                        not _ignorado(ruta))
+    t.verdadero("E-12: se citaron rutas para chequear", vistas >= 10)

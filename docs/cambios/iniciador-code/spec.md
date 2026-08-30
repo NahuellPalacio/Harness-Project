@@ -236,14 +236,22 @@ después solo la ficha que hace falta.
   · rojo visto: no consta
   · verificación: lectura — el sujeto es dónde escribe el agente, y ningún evento del contrato dice quién escribe
 - **E-12** — Un archivo ignorado por `.gitignore` no produce ficha ni aparece en el índice.
-  · rojo visto: no consta
-  · verificación: lectura — el sujeto es qué lista el agente, resuelto por su `git ls-files`, que es contrato
+  · rojo visto: si
 
-  Movido el 2026-08-21 del grupo de la suite al de lectura. Se resuelve **por construcción**: el
-  agente lista con `git ls-files`, así que lo ignorado nunca entra. Comprobarlo desde un check
-  exigiría volver del nombre de la ficha a la ruta del módulo y correr `git check-ignore` en cada
-  `PostToolUse` — un subproceso por escritura para verificar algo que no puede fallar sin que
-  falle antes el listado. Se lee en el recorrido real, con los demás del grupo de lectura.
+  🔴 **Movido de vuelta a la suite el 30-08-2026.** Estuvo marcado `· verificación: lectura` desde
+  el 2026-08-21 con un razonamiento que mezclaba dos cosas distintas: que un check en
+  `PostToolUse` sería caro —cierto, un subproceso de `git check-ignore` por cada escritura es
+  gasto real— con que **ningún** mecanismo era posible —falso—. `harness-spec-refuter` lo encontró
+  el 30-08-2026 verificando una firma delegada de [ADR-0010](../../adr/0010-firma-delegada-de-una-lectura-cuando-son-muchas.md):
+  la condición 4 de ADR-0009 pregunta si el sujeto tiene forma de test determinista, y la tiene —
+  la misma que ya usa E-10 sobre este mismo archivo: correr sobre la salida **real y versionada**
+  de un recorrido, después de escrita, no en cada `PostToolUse`. `docs/codebase/*.md` de este
+  repositorio es exactamente esa salida.
+
+  El check usa `git check-ignore`, no un grep sobre los patrones del `.gitignore`: un patrón como
+  `normativa/fuentes/*` tiene una excepción `!normativa/fuentes/LEEME.md`, y ese archivo **está**
+  citado desde `docs/codebase/normativa.md` — un grep de patrones lo marcaría ignorado y estaría
+  mal; `git check-ignore` resuelve la excepción y dice que no lo está, que es lo cierto.
 
 ### Volver a recorrer
 
@@ -330,7 +338,8 @@ Sumarle carga agranda esa superficie sin necesidad.
 
 Por lectura de una persona, con veredicto `leído` según
 [ADR-0009](../../adr/0009-un-escenario-sobre-un-modelo-se-verifica-por-lectura.md): **E-07, E-11,
-E-12, E-13, E-14, E-15, E-16, E-17 y E-20b**, los nueve marcados `· verificación: lectura`.
+E-13, E-14, E-15, E-16, E-17 y E-20b**, los ocho marcados `· verificación: lectura`. E-12 estuvo
+en este grupo y salió el 30-08-2026 — ver la nota en su propio bloque, arriba.
 Todos tienen el mismo sujeto —una corrida de un agente con modelo— y la suite no invoca modelos:
 son 399 tests deterministas y sin red. Se verifican corriendo el agente una vez sobre un
 repositorio real y contrastando la salida contra cada escenario.
@@ -348,7 +357,10 @@ exactamente lo que decían cuando el refutador los rindió; lo único que se agr
 se verifican. El veredicto siguiente tiene que nombrar esta corrección.
 
 Lo que sí puede ir a la suite es la forma de lo escrito: E-08, E-09 y E-10 son comprobables sobre
-un `docs/codebase/` de fixture, sin invocar a nadie, y ahí están.
+un `docs/codebase/` de fixture, sin invocar a nadie, y ahí están. E-12 se les suma el 30-08-2026,
+comprobable de la misma forma pero sobre la salida real y versionada de un recorrido —no una
+fixture— y usando `git check-ignore` en vez de un fixture de `.gitignore`, porque lo que hay que
+resolver son sus excepciones (`!patrón`), no sólo sus patrones.
 
 📌 **E-07 y E-13 tienen además mecanismo propio, y no es lo que los verifica.** El 2026-08-21
 se les construyó código con rojo exclusivo medido: `SessionStart` distingue un recorrido a
