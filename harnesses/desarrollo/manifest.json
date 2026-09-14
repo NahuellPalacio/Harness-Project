@@ -7,14 +7,25 @@
   "aporta": {
     "skills": "skills",
     "agents": "agents",
-    "checks": "checks"
+    "checks": "checks",
+    "bin": "bin"
   },
+  "capacidadesSoportadas": [
+    "jira.issue.read",
+    "jira.issue.search",
+    "jira.attachment.read",
+    "gitlab.project.read",
+    "gitlab.repository.read",
+    "gitlab.branch.read",
+    "gitlab.merge_request.read"
+  ],
   "config": {
     "rutaCodebase": "docs/codebase",
     "umbralCobertura": 80,
     "versionObelisco": "1.8.4",
     "nivelAccesibilidad": "WCAG 2.2 AA",
     "prefijoApi": "api",
-    "verificarVersionesHomologadas": true
+    "verificarVersionesHomologadas": true,
+    "timeoutIntegraciones": 5
   }
 }

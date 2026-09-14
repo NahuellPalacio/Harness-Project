@@ -158,7 +158,33 @@ con extensión `.nuevo`, y te avisa al final. `harness.config.json` no se toca j
 
 Para migrar entre versiones con cambios que rompen, mirá [UPGRADE.md](../UPGRADE.md).
 
-## 7. Sumar el segundo harness
+## 7. Conectar Jira y GitLab
+
+Solo si instalaste el harness `desarrollo`, y solo una vez:
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py setup
+```
+
+Pregunta la base URL y el usuario de cada uno, y el token sin mostrarlo por pantalla. La URL y el
+usuario van a `.claude\harness.integraciones.json`; el token, al `.env` de la raíz, que el
+`.gitignore` excluye y que Claude no puede leer.
+
+Después valida las dos y te dice qué quedó disponible. Que una no ande no rompe nada: el harness
+arranca igual y deshabilita solo las capacidades de esa.
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py estado              # revalida
+python .claude\harness\bin\desarrollo\dev-harness.py reconfigurar jira   # cambiar una
+```
+
+> 🔴 **El token no se pasa por parámetro.** `--token` existe para rechazarlo: un argumento queda en
+> el historial del shell, en la lista de procesos y en la transcripción de la sesión.
+
+Los estados, las capacidades y cómo agregar una integración nueva están en
+[integraciones.md](integraciones.md).
+
+## 8. Sumar el segundo harness
 
 Instalar es **aditivo**: lo que el proyecto ya tenía se conserva, y el instalador lo anuncia.
 

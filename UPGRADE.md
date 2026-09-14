@@ -20,6 +20,44 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.15.0 → 0.16.0
+
+🔴 **Hay un paso manual, y es el único: mover tus base URL del `.env` al archivo de configuración.**
+
+`-Update` pisa `.env.example` con la plantilla nueva —que ahora trae solo los tres `*_TOKEN`— y no
+toca tu `.env`, así que las líneas `JIRA_BASE_URL=…`, `GITLAB_BASE_URL=…` y `OPENSHIFT_SERVER_URL=…`
+que hayas completado siguen ahí y dejan de leerse. El harness no las lee del `.env` ni siquiera como
+caída: leerlas sería mantener vivo el formato que este cambio viene a separar.
+
+La forma corta, después del `-Update`:
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py setup
+```
+
+Te va a preguntar la base URL y el usuario —los tokens, si ya estaban cargados, los reconoce y no te
+los vuelve a pedir— y los escribe en `.claude\harness.integraciones.json`. Después borrá a mano de
+tu `.env` las tres líneas `*_BASE_URL`, que ya no las usa nadie.
+
+La forma larga, si preferís no correr el asistente: creá
+`.claude\harness.integraciones.json` con la forma que tiene
+`harnesses\desarrollo\integraciones.plantilla.json` y completá `baseUrl` y `usuario` vos.
+
+Para ver cómo quedó todo:
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py estado
+```
+
+Dos cosas más que trae el `-Update`, sin nada que hacer de tu lado:
+
+- Los módulos nuevos aparecen en `.claude\harness\bin\desarrollo\`. Si no tenés instalado el
+  harness `desarrollo`, no llega nada de esto
+- El harness dejó de copiar bytecode al proyecto. Un `-Doctor` justo después del `-Update` puede
+  reportar menos archivos que antes: es eso, y es lo correcto
+
+---
+
 ## 0.14.0 → 0.15.0
 
 `-Update` alcanza. No hay paso manual, pero sí dos archivos nuevos en la **raíz** del proyecto —no

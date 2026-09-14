@@ -97,8 +97,15 @@ forma fija (`glpat-…`, `sha256~…`); Jira no la tiene, y se deja afuera con s
 ### El archivo del desarrollador
 
 - **E-04** — Con `desarrollo` instalado y sin `.env` previo, una instalación nueva lo crea con las
-  mismas seis variables que `.env.example`, todas vacías o con placeholder, nunca con un valor de
+  mismas variables que `.env.example`, todas vacías o con placeholder, nunca con un valor de
   ejemplo que parezca un token real. · rojo visto: no consta
+
+  📌 **Decía "las mismas seis variables" y ahora son tres.** El cambio
+  `integraciones-bootstrap` sacó las tres `*_BASE_URL` del `.env` y las mudó a
+  `.claude/harness.integraciones.json`: configuración y secreto dejaron de compartir archivo. El
+  escenario no cambió de sentido —el `.env` sigue naciendo con las variables de su plantilla, sin
+  valores— y el test que lo cubre siempre comparó contra la plantilla real, así que no hubo que
+  tocarlo. Se anota acá para que el número no lea como un escenario que se debilitó.
 - **E-05** — Un `.env` preexistente con contenido cualquiera —incluida una línea que un
   desarrollador ya completó a mano— queda byte a byte idéntico después de `-Update`.
   · rojo visto: si

@@ -3,6 +3,65 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.16.0] — 2026-09-14
+
+**El harness ya sabe con qué puede hablar.** La versión anterior dejó el lugar donde viven las
+credenciales y nada que las usara. Esta trae el asistente que las configura, los dos adapters que
+las validan contra Jira Cloud y GitLab, y un registro central que declara qué capacidades quedaron
+habilitadas. Ningún agente las consume todavía: el registro es el contrato que el bloque siguiente
+va a leer. 38 escenarios, 38 sostenidos.
+
+### Agregado
+
+- **`dev-harness.py`, el asistente de configuración** — `setup` pregunta solo lo que falta,
+  `estado` revalida sin preguntar nada, `reconfigurar <jira|gitlab>` vuelve sobre una sola. Se corre
+  con `python .claude\harness\bin\desarrollo\dev-harness.py`, y el instalador lo recuerda al
+  terminar
+- **Dos integraciones: Jira Cloud y GitLab.** Solo lectura, y solo lo necesario para saber si están
+  disponibles: siete capacidades (`jira.issue.read`, `jira.issue.search`, `jira.attachment.read`,
+  `gitlab.project.read`, `gitlab.repository.read`, `gitlab.branch.read`, `gitlab.merge_request.read`)
+- **Cinco estados de diagnóstico, no un booleano** — `NOT_CONFIGURED`, `AUTHENTICATION_FAILED`,
+  `CONNECTION_FAILED`, `PERMISSION_DENIED`, `AVAILABLE`, cada uno con un mensaje que dice qué hacer.
+  El mensaje sale de un catálogo fijo y **nunca** del cuerpo de la respuesta del servidor
+- **`.claude/harness.capacidades.json`** — el registro, reescrito en cada corrida. Distingue lo
+  soportado (el manifiesto) de lo disponible (esta corrida): una capacidad cuya integración está
+  caída figura `DISABLED`, nunca ausente
+- **Un almacén de secretos con interfaz propia** — `get`, `set`, `exists`, `remove`. El backend es el
+  `.env`; el resto del harness no sabe dónde viven los secretos, que es lo que permite cambiarlo
+  después sin tocar a nadie más
+- **`docs/integraciones.md`** — los estados, la configuración, y cómo agregar la próxima integración
+
+### Cambiado
+
+- 🔴 **Las base URL se mudan del `.env` al archivo de configuración.** `JIRA_BASE_URL`,
+  `GITLAB_BASE_URL` y `OPENSHIFT_SERVER_URL` dejan de existir en el `.env`, que queda solo con los
+  tres `*_TOKEN`; la URL, el usuario y `enabled` viven en `.claude/harness.integraciones.json`. Un
+  proyecto que ya las completó tiene que moverlas a mano — ver [UPGRADE.md](UPGRADE.md). El motivo:
+  `permissions.deny` le impide a Claude leer `.env*`, así que con la URL adentro el agente no podía
+  saber ni con qué instancia de Jira habla el proyecto, que no es un secreto
+
+### Corregido
+
+- **El instalador dejó de copiar bytecode.** `Copy-Arbol` excluye `__pycache__` y `.pyc`: hasta acá
+  se instalaban compilados en la máquina de quien instalaba y entraban al lockfile, así que dos
+  instalaciones de la misma versión daban inventarios distintos según si alguien había corrido la
+  suite
+- **`-Uninstall` barre el `__pycache__` que genera el propio harness al correr.** Sin eso, y una vez
+  que el bytecode dejó de estar en el lockfile, la desinstalación dejaba `.claude\harness` en pie
+  con la caché adentro
+
+### El criterio que quedó fijado
+
+- **El token no se pasa por la línea de comandos.** `--token` existe para rechazarlo con su motivo:
+  un argumento queda en el historial del shell, en la lista de procesos y en la transcripción de la
+  sesión. Se pide por `getpass`
+- **Una integración caída no voltea el harness.** `estado` sale con código 0 y deshabilita las
+  capacidades de la que no anda. El código 2 queda para una falla del harness mismo
+- **Una capacidad no se habilita si su integración no se validó.** Es la única regla que el registro
+  existe para hacer cumplir
+- **Todo lo de esta versión es de lectura.** Ninguna capacidad escribe en un sistema externo, por
+  decisión y no por falta de tiempo
+
 ## [0.15.0] — 2026-09-14
 
 **El proyecto ya tiene dónde guardar las credenciales de Jira, GitLab y OpenShift.** No había

@@ -93,6 +93,16 @@ Después:
 `-Update` **nunca pisa un archivo que hayas editado a mano**: escribe la versión nueva al
 lado, con extensión `.nuevo`, y te avisa al final. `harness.config.json` no se toca jamás.
 
+Con el harness `desarrollo` instalado, queda un paso más — conectar Jira y GitLab. Se corre una
+sola vez, en tu consola, y pide los tokens sin mostrarlos:
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py setup
+python .claude\harness\bin\desarrollo\dev-harness.py estado   # qué quedó disponible
+```
+
+El detalle está en [docs/integraciones.md](docs/integraciones.md).
+
 > ⚠️ **Cloná, no descargues el ZIP.** Windows le pone *Mark-of-the-Web* a todo archivo bajado
 > de internet, y la política de ejecución por defecto (`RemoteSigned`) bloquea los `.ps1`
 > marcados. El síntoma es un error de permisos que no menciona en ningún momento la causa
@@ -109,6 +119,8 @@ MiProyecto/
     ├── harness/           # los hooks, skills, agentes         │ todo esto es
     ├── harness.lock.json  # qué versión, qué archivos, SHA256  │ regenerable
     ├── harness.config.json# tus ajustes — nunca se pisan       │ y va gitignoreado
+    ├── harness.integraciones.json # Jira y GitLab: URL y usuario, sin tokens
+    ├── harness.capacidades.json   # qué integraciones andan, de la última corrida
     └── .harness-backup/   # copia de todo lo que se pisó      ─┘
 ```
 

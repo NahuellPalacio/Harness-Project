@@ -77,7 +77,10 @@ def test_e09_env_example_no_dispara_nada(t):
     """E-09 de docs/cambios/env-credenciales-externas/spec.md -- el .env.example real
     que reparte el harness, entero, no dispara ningun patron del catalogo.
 
-    Las seis variables van con placeholder entre angulos (<...>), que el catalogo ya
+    Tambien es E-34 de docs/cambios/integraciones-bootstrap/spec.md, que redujo el
+    archivo a los tres *_TOKEN: la plantilla cambio y la afirmacion sigue siendo la misma.
+
+    Las variables van con placeholder entre angulos (<...>), que el catalogo ya
     trata como no-secreto (ver 'ignorar'). E-07 y E-08 -que un token real de GitLab o de
     OpenShift SI dispara- estan en tests/fixtures/paridad-secretos.json, cubiertos por
     test_paridad_con_powershell como el resto del catalogo."""

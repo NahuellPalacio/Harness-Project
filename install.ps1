@@ -340,8 +340,13 @@ function Copy-Arbol {
     $copiados = New-Object System.Collections.ArrayList
     if (-not (Test-Path $Origen)) { return ,$copiados }
 
+    # El bytecode no se copia. Se compila en la maquina de quien instala, cambia con
+    # el interprete y entraba al inventario del lockfile: dos instalaciones de la misma
+    # version daban listas de archivos distintas segun si alguien habia corrido la suite.
     $archivos = @(Get-ChildItem $Origen -Recurse -File |
-                  Where-Object { $_.Name -ne '.gitkeep' })
+                  Where-Object { $_.Name -ne '.gitkeep' -and
+                                 $_.Extension -ne '.pyc' -and
+                                 $_.FullName -notlike '*__pycache__*' })
 
     foreach ($a in $archivos) {
         $relArchivo = $a.FullName.Substring($Origen.Length).TrimStart('\')
@@ -747,6 +752,26 @@ function New-EnvProyecto {
 }
 
 
+function New-IntegracionesProyecto {
+    <#
+    .SYNOPSIS
+        harness.integraciones.json se crea UNA SOLA VEZ y no se vuelve a tocar.
+    .DESCRIPTION
+        Es la configuración de las integraciones externas —base URL, usuario, si están
+        habilitadas— y no lleva ni un secreto: los tokens viven en .env. Se siembra con
+        `enabled: null`, que es lo que el setup lee como "todavía nadie decidió".
+
+        Misma regla que harness.config.json y que .env: lo completa la persona, así que
+        pisarlo en un -Update le borraría lo que cargó.
+    #>
+    param([string] $Ruta, [string] $RutaOrigen)
+
+    if (Test-Path $Ruta) { return $false }
+    Write-TextoUtf8 -Ruta $Ruta -Texto (Read-TextoUtf8 $RutaOrigen)
+    return $true
+}
+
+
 function Test-HooksInstalados {
     <#
     .SYNOPSIS
@@ -1131,6 +1156,7 @@ function Invoke-Instalar {
     foreach ($id in $Ids) {
         $origen = Join-Path $script:Repo "harnesses\$id"
         foreach ($x in (Copy-Arbol (Join-Path $origen 'checks') (Join-Path $dirHarness "checks\$id"))) { [void]$instalados.Add($x) }
+        foreach ($x in (Copy-Arbol (Join-Path $origen 'bin')    (Join-Path $dirHarness "bin\$id")))    { [void]$instalados.Add($x) }
         foreach ($x in (Copy-Arbol (Join-Path $origen 'skills') (Join-Path $dirClaude 'skills')))      { [void]$instalados.Add($x) }
         foreach ($x in (Copy-Arbol (Join-Path $origen 'agents') (Join-Path $dirClaude 'agents')))      { [void]$instalados.Add($x) }
     }
@@ -1184,6 +1210,17 @@ function Invoke-Instalar {
             EscribirOk '.env.example y .env creados (.env no se vuelve a tocar nunca)'
         } else {
             EscribirOk '.env.example actualizado; .env ya existía y no se tocó'
+        }
+
+        # La configuración de las integraciones sí vive adentro de .claude, porque no
+        # es secreta y el agente la puede leer. Tampoco entra al lockfile: la completa
+        # la persona, igual que harness.config.json.
+        $rutaIntegraciones = Join-Path $dirClaude 'harness.integraciones.json'
+        $rutaIntegOrigen   = Join-Path $script:Repo 'harnesses\desarrollo\integraciones.plantilla.json'
+        if (New-IntegracionesProyecto -Ruta $rutaIntegraciones -RutaOrigen $rutaIntegOrigen) {
+            EscribirOk 'harness.integraciones.json creado (no se vuelve a tocar nunca)'
+        } else {
+            EscribirOk 'harness.integraciones.json ya existía: no se toca'
         }
     }
 
@@ -1291,6 +1328,11 @@ secrets/
 
     Escribir ''
     Write-Host '  Listo.' -ForegroundColor Green
+    if ($Ids -contains 'desarrollo') {
+        Escribir ''
+        Escribir '  Para conectar Jira y GitLab, en una consola tuya:'
+        Escribir '    python .claude\harness\bin\desarrollo\dev-harness.py setup'
+    }
     Escribir ''
     return 0
 }
@@ -1450,6 +1492,13 @@ function Invoke-Desinstalar {
     $sobrantes = @(Get-ChildItem (Join-Path $dirClaude 'harness') -Recurse -File -Filter '*.nuevo' `
                                  -ErrorAction SilentlyContinue)
     foreach ($s in $sobrantes) { Remove-Item $s.FullName -Force -ErrorAction SilentlyContinue }
+
+    # El bytecode que compiló el intérprete al correr los hooks. No está en el lockfile
+    # -no se copió, se generó acá- y sin esto sobrevive a la desinstalación y deja
+    # .claude\harness en pie, con un __pycache__ adentro y nada más.
+    $caches = @(Get-ChildItem (Join-Path $dirClaude 'harness') -Recurse -Directory -Force `
+                              -Filter '__pycache__' -ErrorAction SilentlyContinue)
+    foreach ($c in $caches) { Remove-Item $c.FullName -Recurse -Force -ErrorAction SilentlyContinue }
 
     # Directorios que quedaron vacíos.
     foreach ($sub in @('harness', 'skills', 'agents')) {

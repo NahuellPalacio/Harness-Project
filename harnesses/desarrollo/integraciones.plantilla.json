@@ -1,0 +1,22 @@
+{
+  "_comentario": [
+    "Configuracion de las integraciones externas. ACA NO VAN TOKENS.",
+    "Los tokens viven en el .env de la raiz del proyecto, que el .gitignore excluye y",
+    "que Claude no puede leer. Este archivo si es legible por el agente a proposito:",
+    "saber con que instancia de Jira habla el proyecto no es un secreto, y es util.",
+    "",
+    "enabled: null significa que todavia nadie decidio. El setup pregunta cuando ve un",
+    "null; un true o un false explicitos son una decision y no se vuelven a preguntar.",
+    "",
+    "Se crea una sola vez, en la instalacion, y el harness no lo vuelve a pisar nunca."
+  ],
+  "jira": {
+    "enabled": null,
+    "baseUrl": "",
+    "usuario": ""
+  },
+  "gitlab": {
+    "enabled": null,
+    "baseUrl": ""
+  }
+}

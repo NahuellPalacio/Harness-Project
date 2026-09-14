@@ -59,3 +59,15 @@ trabajo futuro, no una verificación pendiente.
 Nada. El sujeto de los nueve escenarios es el comportamiento de `install.ps1` y del catálogo de
 secretos, los dos deterministas y sin modelo de por medio — no hay escenario de lectura en este
 cambio.
+
+## Nota posterior — E-04, al cerrar 0.16.0
+
+El cambio `integraciones-bootstrap` sacó las tres `*_BASE_URL` del `.env` y las mudó a
+`.claude/harness.integraciones.json`: la plantilla pasó de seis variables a tres. El texto de E-04
+decía "las mismas seis variables" y se corrigió a "las mismas variables", con el motivo escrito al
+lado del escenario en la spec.
+
+**El veredicto no cambia y no hizo falta volver a correr nada.** Lo que E-04 afirma es que el `.env`
+nace con las variables de su plantilla y sin valores, y el test siempre comparó contra la plantilla
+real, no contra una lista escrita a mano: por eso siguió pasando con el archivo nuevo. Se anota acá
+para que quien lea el número no lea un escenario que se debilitó para que algo cerrara.
