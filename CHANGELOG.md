@@ -3,6 +3,58 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.17.0] — 2026-09-14
+
+**El harness ya puede entender una tarea, no sólo leerla.** Antes, ante "trabajá GCBA-1234", lo
+único posible era pedir ese issue: el ticket dice qué hay que hacer y casi nunca por qué, a qué
+proyecto pertenece ni en qué repositorio se toca. Ahora una clave de Jira entra y sale un
+`TaskContext` que junta el ticket, el conocimiento del proyecto, su documentación y su estado
+técnico — o declara, hueco por hueco, lo que no pudo resolver. Nadie lo consume todavía: es el
+insumo del bloque que sigue. 36 escenarios, 36 sostenidos.
+
+### Agregado
+
+- **`dev-harness.py contexto GCBA-1234`** — resuelve el contexto y lo deja en
+  `.claude/contextos/GCBA-1234.json`. Con `--json` sale por stdout, para consumirlo
+- **La Ficha de Proyecto** — un issue de Jira de tipo reservado donde vive el conocimiento del
+  proyecto: objetivos, alcance, reglas, arquitectura y los documentos como adjuntos. Se busca por
+  tipo dentro del proyecto Jira del ticket, y **si hay más de una no se elige ninguna**: el
+  conflicto se declara
+- **Los documentos, con su texto cuando se puede.** Los adjuntos se bajan y, si markitdown está
+  instalado, se extrae su texto; si no está, queda el archivo y el hueco que dice cómo se arregla
+- **El estado técnico de GitLab** — el proyecto, y sólo las ramas y los merge requests que nombran
+  la clave del ticket
+- **`task-context/1.0`**, en `comun/schemas/task-context.schema.json`, con el mismo vocabulario que
+  `project-context/1.1`. Se valida con el validador que ya existía, importado por ruta
+- **La incertidumbre viaja adentro del contrato** — `gaps_and_conflicts` junta lo que faltó, lo que
+  discrepa, qué capacidad no estaba y qué secretos se redactaron
+
+### Seguridad
+
+- 🔴 **Todo texto que viene de Jira o de GitLab pasa por el detector de secretos antes de tocar el
+  disco.** Un token pegado en la descripción de un ticket no llega al archivo: se reemplaza por su
+  muestra segura y el hallazgo se declara sin el valor. El catálogo es el mismo que usa el hook, no
+  una copia — un patrón nuevo vale en los dos lados
+- **La redacción recorre el documento entero, no campo por campo.** La primera versión dejaba
+  escapar tres rutas; la garantía ahora es estructural
+
+### Criterio que quedó fijado
+
+- **Una capacidad ausente no rompe nada: deja un hueco declarado.** Sin GitLab el contexto sale
+  igual, sin su sección y diciendo por qué. La única excepción es leer el issue: sin eso no hay
+  tarea que resolver
+- **Elegir qué documento es relevante no lo hace el harness.** Declara el corpus; elegir es
+  semántico y lo hace quien tenga un modelo
+- **El repositorio no se adivina.** Sale de la configuración o de la Ficha; deducirlo del nombre del
+  proyecto Jira sería una inferencia invisible
+- **El padre y los enlaces son referencias, no se siguen.** Un resolvedor que sigue enlaces baja el
+  proyecto entero desde un ticket cualquiera
+
+### Cambiado
+
+- **`http.py` sumó un camino binario.** Un PDF que pasa por un decode a texto vuelve roto, y los
+  adjuntos son el caso de uso entero de este bloque
+
 ## [0.16.0] — 2026-09-14
 
 **El harness ya sabe con qué puede hablar.** La versión anterior dejó el lugar donde viven las

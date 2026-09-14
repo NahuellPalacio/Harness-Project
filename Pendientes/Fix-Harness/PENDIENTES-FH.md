@@ -24,6 +24,7 @@ running order.
 | 10 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
 | 11 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
 | 12 | Neither Jira nor GitLab was ever called for real | Two adapters shipped verified against a fake transport; the first real call is what can still disprove the endpoints |
+| 13 | The Ficha de Proyecto is a supposition | The whole Block 2 rests on a concept nobody has written yet in a real Jira |
 
 Items 1 and 2 are what 0.13.1 is for. Item 3 is not code: it is running `-Update` on a real
 project, and it is what tells whether any of this works outside this repo.
@@ -324,6 +325,41 @@ example. The deny list has no allow counterpart today, so the narrow pattern is 
 route: check whether Claude Code resolves a more specific allow over a broader deny before choosing.
 
 ## Verification that was not done
+
+### The redaction guarantee lives in the assembler, not in the resolvers
+
+0.17.0 moved secret redaction out of the individual resolvers and into
+`contexto/ensamblador.py::_limpiar`, which walks the whole document. That was the right fix — the
+per-field version leaked through three paths (acceptance criteria, the ficha's `title`, and the
+`reference` of a source) and each one had to be remembered separately.
+
+What it leaves open: **the guarantee is a property of `armar`, not of the resolvers.** A future
+consumer that calls `tarea.resolver` or `proyecto.resolver` directly and skips the assembler gets
+unredacted text. Today nothing does — `dev-harness.py contexto` always assembles — so this is a
+shape to keep in mind, not a defect in the tree.
+
+Fix. When Block 3 starts consuming resolvers, either it goes through `armar` or the redaction moves
+down into a boundary both paths cross. Decide it then, with the second caller in front of you
+instead of guessed. Worth a scenario either way: today no test says "a resolver used on its own
+returns unredacted text", because nothing uses one on its own.
+
+### Neither the Ficha de Proyecto nor the acceptance-criteria field exists in any real Jira yet
+
+Two suppositions shipped in 0.17.0 that only a real run can confirm or break:
+
+- **The Ficha de Proyecto** is a concept this block introduces: an issue of a reserved type, one per
+  Jira project, whose description carries `Objetivos`, `Alcance`, `Reglas` and `Arquitectura` as
+  headings. Nobody has written one. If the organism models it differently — a separate Jira project,
+  a Confluence space — the Project Resolver changes strategy, though the contract it produces does
+  not.
+- **`campoCriteriosAceptacion`** ships empty, because there is no standard Jira field for acceptance
+  criteria. Until somebody says which custom field holds them in the organism's Jira, every
+  `TaskContext` comes out with an empty `acceptance_criteria` and a declared gap.
+
+Fix. Not code: one real ticket and one real ficha. Run
+`python .claude/harness/bin/desarrollo/dev-harness.py contexto <CLAVE>` against the organism's Jira
+and read what comes back. It also settles whether `/rest/api/3/search/jql` is the right endpoint
+there — see the item about Jira and GitLab never being called for real.
 
 ### Neither Jira nor GitLab was ever called for real
 

@@ -55,3 +55,28 @@ class IntegracionGitLab(Integracion):
         if self.pedir("/api/v4/merge_requests?scope=all&per_page=1").ok:
             capacidades.append("gitlab.merge_request.read")
         return capacidades
+
+    # -- lectura ---------------------------------------------------------------
+
+    def proyecto(self, referencia):
+        """Un proyecto por id numerico o por ruta (`grupo/proyecto`), URL-encodeada."""
+        from urllib.parse import quote
+        return self.pedir("/api/v4/projects/%s" % quote(str(referencia), safe=""))
+
+    def ramas(self, id_proyecto, busqueda=""):
+        """Las ramas del proyecto. `busqueda` filtra del lado del servidor."""
+        from urllib.parse import quote
+        camino = "/api/v4/projects/%s/repository/branches?per_page=50" % quote(
+            str(id_proyecto), safe="")
+        if busqueda:
+            camino += "&search=" + quote(busqueda)
+        return self.pedir(camino)
+
+    def merge_requests(self, id_proyecto, busqueda=""):
+        """Los MR del proyecto, en cualquier estado: uno cerrado tambien es contexto."""
+        from urllib.parse import quote
+        camino = ("/api/v4/projects/%s/merge_requests?scope=all&state=all&per_page=50"
+                  % quote(str(id_proyecto), safe=""))
+        if busqueda:
+            camino += "&search=" + quote(busqueda)
+        return self.pedir(camino)

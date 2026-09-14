@@ -20,6 +20,47 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.16.0 → 0.17.0
+
+`-Update` alcanza. No hay paso manual, y todo lo que suma es aditivo.
+
+Lo que aparece en un proyecto con `desarrollo` instalado: los módulos de `contexto/` bajo
+`.claude\harness\bin\desarrollo\`, y el contrato `task-context.schema.json` en
+`.claude\harness\schemas\`.
+
+Para resolver el contexto de una tarea:
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py contexto GCBA-1234
+```
+
+Queda en `.claude\contextos\GCBA-1234.json`, que **no se versiona** —es contenido de Jira— y
+que ni el `-Update` ni el `-Uninstall` borran.
+
+Tres claves nuevas que un proyecto ya instalado **no** va a ver, porque `harness.config.json` no se
+reescribe nunca. Agregalas a mano si las necesitás:
+
+```json
+"fichaTipoDeIssue": "Ficha de Proyecto",
+"campoCriteriosAceptacion": "",
+"topeTextoDocumento": 20000
+```
+
+Sin ellas funciona igual: el tipo de ficha usa ese mismo default, el tope también, y el campo de
+criterios vacío significa que los criterios salen vacíos con su hueco declarado — que es lo honesto
+mientras nadie diga en qué campo de Jira viven.
+
+Y una más, opcional, adentro del bloque `gitlab` de `.claude\harness.integraciones.json`:
+
+```json
+"gitlabProyecto": "grupo/proyecto"
+```
+
+Es el repositorio del proyecto. Sin eso se intenta sacar de la Ficha de Proyecto; si tampoco está
+ahí, la sección técnica del contexto queda vacía con su hueco.
+
+---
+
 ## 0.15.0 → 0.16.0
 
 🔴 **Hay un paso manual, y es el único: mover tus base URL del `.env` al archivo de configuración.**

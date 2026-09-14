@@ -26,6 +26,9 @@
     "nivelAccesibilidad": "WCAG 2.2 AA",
     "prefijoApi": "api",
     "verificarVersionesHomologadas": true,
-    "timeoutIntegraciones": 5
+    "timeoutIntegraciones": 5,
+    "fichaTipoDeIssue": "Ficha de Proyecto",
+    "campoCriteriosAceptacion": "",
+    "topeTextoDocumento": 20000
   }
 }

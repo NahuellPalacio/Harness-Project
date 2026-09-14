@@ -8,7 +8,11 @@
     "enabled: null significa que todavia nadie decidio. El setup pregunta cuando ve un",
     "null; un true o un false explicitos son una decision y no se vuelven a preguntar.",
     "",
-    "Se crea una sola vez, en la instalacion, y el harness no lo vuelve a pisar nunca."
+    "Se crea una sola vez, en la instalacion, y el harness no lo vuelve a pisar nunca.",
+    "",
+    "gitlabProyecto es el repositorio de este proyecto, como 'grupo/proyecto' o su id.",
+    "Lo usa el contexto de tarea para buscar las ramas y los MR que nombran el ticket.",
+    "Si queda vacio, se intenta sacar de la Ficha de Proyecto; no se adivina."
   ],
   "jira": {
     "enabled": null,
@@ -17,6 +21,7 @@
   },
   "gitlab": {
     "enabled": null,
-    "baseUrl": ""
+    "baseUrl": "",
+    "gitlabProyecto": ""
   }
 }

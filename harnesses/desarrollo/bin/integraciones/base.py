@@ -81,11 +81,16 @@ class Integracion(object):
     campos = ()
     CAPACIDADES = ()
 
-    def __init__(self, configuracion, almacen, timeout=http.TIMEOUT_POR_DEFECTO, transporte=None):
+    def __init__(self, configuracion, almacen, timeout=http.TIMEOUT_POR_DEFECTO,
+                 transporte=None, transporte_bytes=None):
         self.configuracion = dict(configuracion or {})
         self.almacen = almacen
         self.timeout = timeout
         self.transporte = transporte
+        # El de texto y el de bytes se inyectan por separado: una descarga de un PDF y
+        # una llamada a la API no son la misma operacion, y un solo transporte falso
+        # para las dos obliga a que el test adivine cual esta simulando.
+        self.transporte_bytes = transporte_bytes
 
     # -- configuracion ---------------------------------------------------------
 

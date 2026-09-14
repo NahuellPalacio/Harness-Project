@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "task-context/1.0",
+  "title": "TASK_CONTEXT",
+  "description": "El contexto de una tarea: qué hay que hacer, por qué, a qué proyecto pertenece, qué documentación aplica y cuál es el estado técnico. Lo arma el Context Resolver del harness de desarrollo a partir de una clave de Jira, leyendo Jira, la Ficha de Proyecto, sus adjuntos y GitLab, y lo consume cualquier agente que tenga que entender una tarea sin volver a buscarla. Vive en .claude/contextos/<CLAVE>.json, que es regenerable y no se versiona: es contenido de Jira. El vocabulario es el mismo de project-context/1.1 a propósito -knowledge_status, gaps_and_conflicts- para que un agente no tenga que aprender dos. Lo valida el intérprete de subconjunto de contexto-armar.py, que soporta type, properties, required, items, enum y pattern: cualquier otra construcción lo hace fallar en vez de dar el documento por válido.",
+  "type": "object",
+  "required": ["meta", "sources", "task", "project", "documentation", "repository", "gaps_and_conflicts"],
+  "properties": {
+    "meta": {
+      "description": "Trazabilidad. Es lo que permite decir después con qué contexto se trabajó una tarea.",
+      "type": "object",
+      "required": ["schema_version", "context_id", "context_hash", "generated_at",
+                   "harness_version", "task_key", "capabilities_used"],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "enum": ["task-context/1.0"]
+        },
+        "context_id": {
+          "description": "tsk_<clave>. No lleva un resumen del hash a proposito: el hash se calcula sobre el documento que incluye este campo, asi que un id derivado del hash haria que el hash dejara de ser recomputable por quien lee el archivo. Lo que distingue dos resoluciones de la misma tarea es context_hash, que esta al lado.",
+          "type": "string",
+          "pattern": "^tsk_[A-Za-z][A-Za-z0-9_]*-[0-9]+$"
+        },
+        "context_hash": {
+          "description": "sha256 del documento canónico SIN context_hash y SIN generated_at. El reloj queda afuera por el mismo motivo que en project-context: si entrara, dos resoluciones de la misma tarea sobre los mismos datos darían hashes distintos y el campo dejaría de contestar lo único que contesta, que es si dos consumidores están mirando lo mismo.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "generated_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+        },
+        "harness_version": { "type": "string" },
+        "task_key": {
+          "description": "La clave de Jira que se resolvió.",
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$"
+        },
+        "capabilities_used": {
+          "description": "Qué capacidades del registro se usaron de verdad. Las que faltaron están en gaps_and_conflicts.missing_capabilities.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "sources": {
+      "description": "De dónde salió cada cosa. No alcanza con que el dato sea correcto: hay que poder decir qué lo respalda y cuándo se leyó.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_id", "type", "reference", "retrieved_at"],
+        "properties": {
+          "source_id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["jira_issue", "jira_ficha", "jira_attachment",
+                     "gitlab_project", "gitlab_branch", "gitlab_merge_request",
+                     "project_context", "harness_config"]
+          },
+          "reference": {
+            "description": "La clave, la URL o la ruta. Nunca una credencial.",
+            "type": "string"
+          },
+          "retrieved_at": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+          }
+        }
+      }
+    },
+
+    "task": {
+      "description": "Qué hay que hacer. Sale del issue de Jira, normalizado.",
+      "type": "object",
+      "required": ["key", "type", "title", "description", "acceptance_criteria",
+                   "status", "priority", "labels", "parent", "links", "knowledge_status"],
+      "properties": {
+        "key": { "type": "string" },
+        "type": {
+          "description": "El nombre del tipo de issue tal como lo llama el proyecto. Texto libre a propósito: cada Jira nombra los suyos.",
+          "type": "string"
+        },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "acceptance_criteria": {
+          "description": "Vacío si el issue no los tiene. No se derivan de la descripción: un criterio inventado se lee igual que uno escrito.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "labels": { "type": "array", "items": { "type": "string" } },
+        "parent": {
+          "description": "La clave del padre o del epic, o vacío. Una referencia, nunca el issue resuelto.",
+          "type": "string"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "key"],
+            "properties": {
+              "type": { "type": "string" },
+              "key": { "type": "string" }
+            }
+          }
+        },
+        "knowledge_status": {
+          "type": "string",
+          "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+        }
+      }
+    },
+
+    "project": {
+      "description": "A qué proyecto pertenece y qué se sabe de él. El conocimiento vive en la Ficha de Proyecto, que es un issue de Jira de un tipo reservado.",
+      "type": "object",
+      "required": ["jira_key", "name", "ficha", "knowledge_status"],
+      "properties": {
+        "jira_key": { "type": "string" },
+        "name": { "type": "string" },
+        "ficha": {
+          "description": "Vacía si no se encontró, o si se encontró más de una: ahí el conflicto se declara y no se elige ninguna.",
+          "type": "object",
+          "required": ["key", "title", "summary", "objectives", "scope", "rules",
+                       "architecture", "knowledge_status"],
+          "properties": {
+            "key": { "type": "string" },
+            "title": { "type": "string" },
+            "summary": { "type": "string" },
+            "objectives": { "type": "string" },
+            "scope": { "type": "string" },
+            "rules": { "type": "array", "items": { "type": "string" } },
+            "architecture": { "type": "string" },
+            "knowledge_status": {
+              "type": "string",
+              "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+            }
+          }
+        },
+        "knowledge_status": {
+          "type": "string",
+          "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+        }
+      }
+    },
+
+    "documentation": {
+      "description": "El corpus documental del proyecto: los adjuntos de la Ficha. Cuál de estos hay que leer para esta tarea NO se decide acá -es una decisión semántica y la toma quien tenga un modelo-: acá se declara qué hay, de qué tipo y si su contenido está disponible.",
+      "type": "object",
+      "required": ["items", "knowledge_status"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["doc_id", "title", "filename", "mime", "size", "origin",
+                         "classification", "local_path", "text", "text_extracted",
+                         "extractor", "truncated"],
+            "properties": {
+              "doc_id": { "type": "string" },
+              "title": { "type": "string" },
+              "filename": { "type": "string" },
+              "mime": { "type": "string" },
+              "size": { "type": "integer" },
+              "origin": {
+                "description": "La clave del issue del que cuelga el adjunto.",
+                "type": "string"
+              },
+              "classification": {
+                "description": "Inferida del nombre del archivo. Por eso el bloque entero sale `inferred` salvo que no haya documentos.",
+                "type": "string",
+                "enum": ["prd", "adr", "regla", "arquitectura", "manual", "diagrama", "otro"]
+              },
+              "local_path": {
+                "description": "Ruta relativa al proyecto donde quedó el archivo bajado, o vacío si no se bajó.",
+                "type": "string"
+              },
+              "text": {
+                "description": "El texto extraído, o vacío. Vacío no significa que el documento no tenga texto: significa que el harness no lo pudo extraer, y eso está declarado en extractor y en los huecos.",
+                "type": "string"
+              },
+              "text_extracted": { "type": "boolean" },
+              "extractor": {
+                "type": "string",
+                "enum": ["markitdown", "texto-plano", "ninguno"]
+              },
+              "truncated": { "type": "boolean" }
+            }
+          }
+        },
+        "knowledge_status": {
+          "type": "string",
+          "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+        }
+      }
+    },
+
+    "repository": {
+      "description": "El estado técnico relevante. Las ramas y los merge requests que entran son los que nombran la clave de la tarea: el resto del repositorio no es contexto de esta tarea.",
+      "type": "object",
+      "required": ["project", "branches", "merge_requests", "code_context_ref", "knowledge_status"],
+      "properties": {
+        "project": {
+          "type": "object",
+          "required": ["id", "name", "web_url", "default_branch"],
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "web_url": { "type": "string" },
+            "default_branch": { "type": "string" }
+          }
+        },
+        "branches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "last_commit", "web_url"],
+            "properties": {
+              "name": { "type": "string" },
+              "last_commit": { "type": "string" },
+              "web_url": { "type": "string" }
+            }
+          }
+        },
+        "merge_requests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["iid", "title", "state", "source_branch", "target_branch", "web_url"],
+            "properties": {
+              "iid": { "type": "string" },
+              "title": { "type": "string" },
+              "state": { "type": "string" },
+              "source_branch": { "type": "string" },
+              "target_branch": { "type": "string" },
+              "web_url": { "type": "string" }
+            }
+          }
+        },
+        "code_context_ref": {
+          "description": "Puntero al contrato que ya existe -project-context.json, el que escribe dev-iniciador-code al recorrer el código- con su hash. Se referencia y no se copia: son dos contratos distintos y duplicar uno adentro del otro los desincroniza en la primera actualización.",
+          "type": "object",
+          "required": ["path", "context_hash"],
+          "properties": {
+            "path": { "type": "string" },
+            "context_hash": { "type": "string" }
+          }
+        },
+        "knowledge_status": {
+          "type": "string",
+          "enum": ["confirmed", "inferred", "conflicted", "missing", "stale"]
+        }
+      }
+    },
+
+    "gaps_and_conflicts": {
+      "description": "La incertidumbre viaja adentro del contrato. Un agente mejora cuando puede decir «no sé con suficiente certeza» en vez de completar el hueco con una inferencia que nadie ve.",
+      "type": "object",
+      "required": ["missing", "conflicts", "missing_capabilities", "redacted_secrets",
+                   "unresolved_questions"],
+      "properties": {
+        "missing": {
+          "description": "Lo que se buscó y no estaba, con qué se buscó.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "conflicts": {
+          "description": "Dos fuentes que discrepan. Se marca el conflicto; no se elige una realidad en silencio.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "missing_capabilities": {
+          "description": "Las capacidades que el registro no tenía habilitadas, y qué sección quedó vacía por eso. Es lo que ata este contrato al registro del bootstrap.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "redacted_secrets": {
+          "description": "Lo que el detector de secretos encontró en un texto que venía de afuera y reemplazó antes de escribirlo. Nunca el valor: el id del patrón, la muestra segura y dónde estaba.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "unresolved_questions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

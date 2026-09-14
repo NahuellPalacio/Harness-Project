@@ -46,7 +46,7 @@ may sign, labelled `Firmó (delegado):` and never `Leyó:`. Fewer than five foll
 .\tests\Invoke-Tests.ps1
 ```
 
-Green before anything is called done. 966 tests, two engines, one exit code. `install.ps1` uses the
+Green before anything is called done. 1148 tests, two engines, one exit code. `install.ps1` uses the
 same suite as its own gate.
 
 🔴 If the suite is killed mid-run, check the tree before anything else. `tests/casos/03-instalador.ps1`

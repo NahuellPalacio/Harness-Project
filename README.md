@@ -101,7 +101,15 @@ python .claude\harness\bin\desarrollo\dev-harness.py setup
 python .claude\harness\bin\desarrollo\dev-harness.py estado   # qué quedó disponible
 ```
 
-El detalle está en [docs/integraciones.md](docs/integraciones.md).
+Con eso conectado, el harness puede resolver el contexto de una tarea: de una clave de Jira arma un
+documento con el ticket, el conocimiento del proyecto, su documentación y su estado técnico.
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py contexto GCBA-1234
+```
+
+El detalle está en [docs/integraciones.md](docs/integraciones.md) y en
+[docs/contexto-de-tarea.md](docs/contexto-de-tarea.md).
 
 > ⚠️ **Cloná, no descargues el ZIP.** Windows le pone *Mark-of-the-Web* a todo archivo bajado
 > de internet, y la política de ejecución por defecto (`RemoteSigned`) bloquea los `.ps1`
@@ -121,6 +129,7 @@ MiProyecto/
     ├── harness.config.json# tus ajustes — nunca se pisan       │ y va gitignoreado
     ├── harness.integraciones.json # Jira y GitLab: URL y usuario, sin tokens
     ├── harness.capacidades.json   # qué integraciones andan, de la última corrida
+    ├── contextos/          # el contexto resuelto de cada tarea — sobrevive al -Update
     └── .harness-backup/   # copia de todo lo que se pisó      ─┘
 ```
 

@@ -107,6 +107,53 @@ def pedir(url, headers=None, timeout=TIMEOUT_POR_DEFECTO, transporte=None):
     return Respuesta(codigo, cuerpo, SIN_ERROR)
 
 
+class RespuestaBinaria(object):
+    """Lo mismo, con los bytes crudos. Un PDF que pasa por un decode a str vuelve roto."""
+
+    def __init__(self, codigo, datos=b"", error=SIN_ERROR):
+        self.codigo = codigo
+        self.datos = datos
+        self.error = error
+
+    @property
+    def ok(self):
+        return 200 <= self.codigo < 300
+
+    def __repr__(self):
+        return "RespuestaBinaria(codigo=%d, bytes=%d, error=%r)" % (
+            self.codigo, len(self.datos), self.error)
+
+
+# Un adjunto mas grande que esto no se baja entero. Los documentos de un proyecto no
+# llegan a esto y un video sin querer si: el tope evita que una resolucion de contexto
+# se traiga medio Jira a disco.
+MAXIMO_ADJUNTO = 25 * 1024 * 1024
+
+
+def transporte_bytes_urllib(url, headers, timeout):
+    """Devuelve (codigo, bytes)."""
+    pedido = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with _abridor().open(pedido, timeout=timeout) as r:
+            return r.getcode(), r.read(MAXIMO_ADJUNTO)
+    except urllib.error.HTTPError as e:
+        return e.code, b""
+
+
+def pedir_bytes(url, headers=None, timeout=TIMEOUT_POR_DEFECTO, transporte=None):
+    """Una descarga. Nunca levanta, igual que `pedir`."""
+    llamar = transporte or transporte_bytes_urllib
+    try:
+        codigo, datos = llamar(url, dict(headers or {}), timeout)
+    except socket.timeout:
+        return RespuestaBinaria(0, b"", ERROR_TIMEOUT)
+    except urllib.error.URLError as e:
+        return RespuestaBinaria(0, b"", _clase_de_error(e))
+    except (OSError, ssl.SSLError) as e:
+        return RespuestaBinaria(0, b"", _clase_de_error(e))
+    return RespuestaBinaria(codigo, datos, SIN_ERROR)
+
+
 def unir(base, camino):
     """Pega una ruta a una baseUrl sin duplicar ni comerse la barra."""
     return base.rstrip("/") + "/" + camino.lstrip("/")
