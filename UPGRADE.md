@@ -6,14 +6,17 @@ Qué hacer al pasar de una versión del harness a la siguiente. Cada entrada dic
 El procedimiento normal es siempre el mismo:
 
 ```powershell
+git -C C:\Work\gcba-harness pull
 .\install.ps1 -Doctor
 .\install.ps1 -Project C:\Work\GCBA\MiProyecto -Update
 ```
 
-**No hay `git pull` en el medio porque todavía no hay remoto:** el repo del harness vive en una
-sola máquina. Ahí los cambios ya están, y `-Update` los lleva a cada proyecto. En una segunda
-máquina, clonada desde una ruta, el paso previo es `git -C C:\Work\gcba-harness pull` con el
-origen accesible.
+**El `git pull` trae la versión nueva del harness; el `-Update` la lleva a cada proyecto.** Son dos
+pasos porque son dos cosas: el repo del harness es uno solo y los proyectos instalados son muchos.
+En la máquina donde se escribe el harness los cambios ya están y el `pull` no hace falta.
+
+📌 **Esto decía "no hay `git pull` porque todavía no hay remoto".** Lo hubo desde 0.17.0: el repo
+vive en `github.com/NahuellPalacio/Harness-Project`. La frase quedó vieja el día que se publicó.
 
 `-Update` reporta al final los archivos que **no** pisó porque los habías editado a mano.
 Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
