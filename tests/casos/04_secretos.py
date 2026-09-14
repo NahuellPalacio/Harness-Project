@@ -12,8 +12,14 @@ def test_paridad_con_powershell(t):
     catalogo = secretos.importar_patrones(str(RAIZ / "comun/reglas/secretos.patrones.json"))
 
     for caso in testigo["casos"]:
-        h = secretos.buscar_secreto(caso["texto"], catalogo)
-        etiqueta = "E-01 " + caso["texto"][:40]
+        # Un caso puede venir partido en una lista: es como se guarda un valor
+        # que, escrito entero en el archivo, dispararia el propio detector y el
+        # push protection de GitHub. Se junta aca y el caso prueba lo mismo.
+        texto = caso["texto"]
+        if isinstance(texto, list):
+            texto = "".join(texto)
+        h = secretos.buscar_secreto(texto, catalogo)
+        etiqueta = "E-01 " + texto[:40]
         if not caso["hallazgo"]:
             t.igual(etiqueta + " (no debe disparar)", None, h)
             continue
@@ -65,3 +71,16 @@ def test_catalogo_compila(t):
             t.verdadero("E-02 compila ignorar[%d]" % i, True)
         except re.error as e:
             t.verdadero("E-02 compila ignorar[%d] -> %s" % (i, e), False)
+
+
+def test_e09_env_example_no_dispara_nada(t):
+    """E-09 de docs/cambios/env-credenciales-externas/spec.md -- el .env.example real
+    que reparte el harness, entero, no dispara ningun patron del catalogo.
+
+    Las seis variables van con placeholder entre angulos (<...>), que el catalogo ya
+    trata como no-secreto (ver 'ignorar'). E-07 y E-08 -que un token real de GitLab o de
+    OpenShift SI dispara- estan en tests/fixtures/paridad-secretos.json, cubiertos por
+    test_paridad_con_powershell como el resto del catalogo."""
+    catalogo = secretos.importar_patrones(str(RAIZ / "comun/reglas/secretos.patrones.json"))
+    texto = (RAIZ / "harnesses/desarrollo/.env.example").read_text(encoding="utf-8")
+    t.igual("E-09 .env.example no dispara nada", None, secretos.buscar_secreto(texto, catalogo))

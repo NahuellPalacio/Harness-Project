@@ -20,6 +20,25 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.14.0 → 0.15.0
+
+`-Update` alcanza. No hay paso manual, pero sí dos archivos nuevos en la **raíz** del proyecto —no
+adentro de `.claude/`— y solo si el proyecto tiene instalado el harness `desarrollo`:
+
+- `.env.example` — la plantilla del harness. Se pisa en cada `-Update`, como cualquier otro
+  contenido repartido
+- `.env` — el tuyo. Se crea vacío la primera vez y **no se vuelve a tocar nunca**. Si ya lo tenías
+  con tus tokens adentro, el `-Update` lo deja byte a byte igual
+
+Ninguno de los dos entra al lockfile, así que tampoco los borra un `-Uninstall`. Completá `.env` en
+tu máquina: Claude no puede leerlo —`permissions.deny` lo tapa— y el `.gitignore` del harness ya lo
+excluye del repositorio.
+
+Si tu proyecto ya excluía `.env` de otra forma, revisá que el bloque del harness en tu `.gitignore`
+no haya quedado duplicado. No rompe nada, pero ensucia.
+
+---
+
 ## 0.13.0 → 0.14.0
 
 `-Update` alcanza. No hay paso manual.

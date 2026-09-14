@@ -3,6 +3,43 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.15.0] — 2026-09-14
+
+**El proyecto ya tiene dónde guardar las credenciales de Jira, GitLab y OpenShift.** No había
+ningún lugar previsto para eso, así que cada desarrollador iba a improvisar el suyo, con su propio
+nombre de variable y sin garantía de que el `.gitignore` lo cubriera. Ahora el harness lo reparte:
+seis variables con nombre fijo, un `.env` que se crea una vez y no se toca más, y dos patrones
+nuevos en el detector de secretos por si alguno de esos tokens se escapa a un commit. Todavía nadie
+los lee — el consumidor es la versión que viene.
+
+### Agregado
+
+- **`.env.example` en la raíz del proyecto** — la plantilla del harness, con las seis variables
+  comentadas y un placeholder instructivo en cada una. Se pisa en cada `-Update`, como cualquier
+  otro contenido del harness. Solo llega a los proyectos que instalaron `desarrollo`
+- **`.env`, creado una sola vez** — sembrado con las mismas variables vacías, para que el primer
+  paso no sea copiar la plantilla a mano. **No se vuelve a tocar nunca**, ni en `-Update` ni en
+  `-Uninstall`: es la misma regla de `harness.config.json`, y por el mismo motivo — pisarlo
+  borraría credenciales reales sin aviso
+- **Dos patrones de confianza alta en el detector de secretos** — `token-gitlab` (`glpat-…`) y
+  `token-openshift` (`sha256~…`). Bloquean, como el resto de los inequívocos
+
+### Criterio que quedó fijado
+
+- **No hay patrón para el token de Jira, y está escrito por qué.** GitLab y OpenShift tienen
+  prefijo fijo; un token de Jira Cloud es una cadena aleatoria sin nada distintivo. Un patrón para
+  eso o no dispara nunca, o dispara sobre cualquier cadena aleatoria del repo. El hueco se declara
+  en vez de taparse con un patrón que haría ruido
+- **Ninguna URL de GCBA viene precargada.** Cada proyecto habla con su propia instancia, y adivinar
+  una equivocada es peor que no poner ninguna
+
+### Corregido
+
+- **`docs/secretos.md` volvió a coincidir con el catálogo** — la lista en prosa nombraba nueve
+  formas de alta confianza cuando el catálogo ya tenía once, y quedaba una referencia a
+  `tests/casos/04-secretos.ps1`, un archivo que dejó de existir en el puerto a Python de 0.13.0
+- **El conteo de tests del `CLAUDE.md`** decía 455 desde ese mismo puerto. Son 801
+
 ## [0.14.0] — 2026-08-30
 
 **El primer recorrido del código, el mapa de nodos y el contrato del proyecto.** El harness se

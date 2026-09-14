@@ -43,9 +43,10 @@ Esta distinción importa más que los patrones en sí.
 legítimo se desinstala esa misma semana, y ahí se pierde también la protección que sí
 servía. Por eso lo ambiguo pregunta en vez de bloquear.
 
-De alta confianza: claves privadas PEM, identificadores de AWS, tokens de GitHub y Slack,
-API keys de Google, JWT emitidos, credenciales embebidas en una URL, contraseñas en cadenas
-de conexión, `client_secret` literales, cabeceras `Authorization: Bearer` con token.
+De alta confianza: claves privadas PEM, identificadores de AWS, tokens de GitHub, Slack,
+GitLab (`glpat-…`) y OpenShift (`sha256~…`), API keys de Google, JWT emitidos, credenciales
+embebidas en una URL, contraseñas en cadenas de conexión, `client_secret` literales,
+cabeceras `Authorization: Bearer` con token.
 
 De confianza media: asignaciones con nombre de credencial y un valor largo de alta entropía.
 
@@ -98,7 +99,7 @@ Si algo produce un falso positivo, hay dos salidas y las dos son legítimas:
 1. Agregar el caso a `ignorar.patrones` — la mejor, porque arregla el problema para todos.
 2. Bajar el patrón de `alta` a `media`, para que pregunte en vez de bloquear.
 
-Después agregá el caso a `tests/casos/04-secretos.ps1` como `Assert-NoDetecta`. Un falso
+Después agregá el caso a `tests/fixtures/paridad-secretos.json` con `"hallazgo": false`. Un falso
 positivo que no queda cubierto por un test vuelve.
 
 ## La tercera capa

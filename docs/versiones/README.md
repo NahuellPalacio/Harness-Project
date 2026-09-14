@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.15.0](0.15.0.md) | 14-09-2026 | El lugar donde viven las credenciales externas del proyecto: `.env` y `.env.example`, repartidos por `desarrollo` |
 | [0.14.0](0.14.0.md) | 30-08-2026 | El primer recorrido del código, el mapa de nodos y el contrato del proyecto (`project-context.json`); ADR-0008 (lo externo nunca es requisito), ADR-0009 (el veredicto `leído`) y ADR-0010 (la firma delegada) |
 | [0.13.0](0.13.0.md) | 17-08-2026 | Los cuatro hooks, los cinco checks y la suite, de PowerShell a Python; el shim `.sh` que faltaba |
 | [0.12.0](0.12.0.md) | 13-08-2026 | Esta bitácora, y el detector de secretos que bloqueaba su propia documentación |

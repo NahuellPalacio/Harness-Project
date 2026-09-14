@@ -23,6 +23,7 @@ running order.
 | 9 | `ES0902.md` did not close as faithful | Predates all of this |
 | 10 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
 | 11 | The installer ships `__pycache__` | Every install carries bytecode compiled on the author's machine, and the lockfile inventory depends on whether they ran the tests first |
+| 12 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
 
 Items 1 and 2 are what 0.13.1 is for. Item 3 is not code: it is running `-Update` on a real
 project, and it is what tells whether any of this works outside this repo.
@@ -304,6 +305,23 @@ Full plan, with the decisions already taken and the doctrine to extract from the
 3 hours, almost all of it unattended.
 
 ## Installer defects
+
+### `permissions.deny` blocks `.env.example`, the template the harness itself ships
+
+`comun/settings/permissions.deny.json` carries `"Read(./.env)"` and `"Read(./.env.*)"`. The second
+pattern was written for `.env.local`, `.env.production` and the rest of the family, and it also
+matches `.env.example` — which is not a secret: it is the versioned template that 0.15.0 started
+shipping into the root of every project that installs `desarrollo`, and it is committed on purpose
+(`.gitignore` carries `!.env.example`).
+
+The effect, found on 2026-09-14 while closing 0.15.0: Claude cannot read the file the harness left
+for it. Asked "what credentials does this project expect", the agent cannot answer from the
+template — it has to be told. Nothing breaks and no scenario fails; the cost is that a deliberate
+piece of documentation is invisible to its reader.
+
+Fix. Add `"Read(./.env.example)"` to an allow list, or narrow the deny pattern so it stops at the
+example. The deny list has no allow counterpart today, so the narrow pattern is likely the cheaper
+route: check whether Claude Code resolves a more specific allow over a broader deny before choosing.
 
 ### The installer ships `__pycache__` into the project and inventories it in the lockfile
 

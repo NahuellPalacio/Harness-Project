@@ -725,6 +725,28 @@ function New-ConfigProyecto {
 }
 
 
+function New-EnvProyecto {
+    <#
+    .SYNOPSIS
+        .env.example se pisa siempre, con la plantilla del harness. .env se crea UNA
+        SOLA VEZ si no existe, sembrado con el mismo contenido, y no se vuelve a tocar.
+    .DESCRIPTION
+        Las credenciales van por desarrollador y nunca se generan acá: .env sale
+        siempre vacío, con el mismo placeholder instructivo de .env.example. Completarlo
+        con un token real es tarea de cada quien, en su propia máquina — Claude Code ya
+        tiene vedada la lectura de .env* por permissions.deny.
+    #>
+    param([string] $RutaEnvExample, [string] $RutaEnv, [string] $RutaOrigen)
+
+    $textoOrigen = Read-TextoUtf8 $RutaOrigen
+    Write-TextoUtf8 -Ruta $RutaEnvExample -Texto $textoOrigen
+
+    if (Test-Path $RutaEnv) { return $false }
+    Write-TextoUtf8 -Ruta $RutaEnv -Texto $textoOrigen
+    return $true
+}
+
+
 function Test-HooksInstalados {
     <#
     .SYNOPSIS
@@ -1143,6 +1165,26 @@ function Invoke-Instalar {
         EscribirOk "harness.config.json creado para $nombreUsuario (no se vuelve a tocar nunca)"
     } else {
         EscribirOk "harness.config.json ya existía: no se toca (usuario: $nombreUsuario)"
+    }
+
+    # 5b. Credenciales externas del humano. Solo si desarrollo esta instalado: Jira,
+    # GitLab y OpenShift son herramientas del ciclo de desarrollo, y un proyecto de solo
+    # analisis no las necesita.
+    #
+    # 🔴 Ninguno de los dos entra a $instalados. -Uninstall borra exactamente lo que el
+    # lockfile lista, y .env.example (contenido del harness, pero de la raiz del
+    # proyecto) y .env (del desarrollador) sobreviven a -Uninstall igual que
+    # harness.config.json — ninguno de los tres esta en esa lista a proposito.
+    if ($Ids -contains 'desarrollo') {
+        $rutaEnvExample = Join-Path $Project '.env.example'
+        $rutaEnv        = Join-Path $Project '.env'
+        $rutaEnvOrigen  = Join-Path $script:Repo 'harnesses\desarrollo\.env.example'
+        $creado = New-EnvProyecto -RutaEnvExample $rutaEnvExample -RutaEnv $rutaEnv -RutaOrigen $rutaEnvOrigen
+        if ($creado) {
+            EscribirOk '.env.example y .env creados (.env no se vuelve a tocar nunca)'
+        } else {
+            EscribirOk '.env.example actualizado; .env ya existía y no se tocó'
+        }
     }
 
     # 6. Bloques en archivos del humano.
