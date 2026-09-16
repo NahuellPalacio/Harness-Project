@@ -1,0 +1,157 @@
+{
+  "_comentario": [
+    "ES0901 v6.3, seccion 7.1 -Principios de Desarrollo-, como dato consultable.",
+    "",
+    "El texto de cada regla es una CITA y por eso queda en espanol: ADR-0011 dice que la",
+    "fuente normativa no se traduce, porque una cita traducida deja de ser una cita. Lo que",
+    "esta en ingles son los campos operativos, que los lee el orquestador.",
+    "",
+    "owners, skills, policies, checks, capabilities y conditions estan VACIOS a proposito.",
+    "Clasificar una regla es trabajo de criterio que alguien tiene que validar contra el",
+    "estandar, y una matriz inventada se lee igual de autoritativa que una real. Una regla",
+    "sin conditions nunca se cita como aplicable: es lo que hace que el hueco se vea en cada",
+    "corrida en vez de disimularse.",
+    "",
+    "P1 aparece tres veces porque el estandar agrupa tres clausulas bajo ese id y cada una",
+    "tiene un dueno distinto el dia que se clasifiquen. Se les dio id propio.",
+    "",
+    "El texto sale de normativa/extractos/ES0901.md, que es el destilado citable del PDF.",
+    "Para lo que ahi figura como no citable, hay que ir al PDF."
+  ],
+  "source": "ES0901",
+  "version": "6.3",
+  "section": "7.1",
+  "extract": "normativa/extractos/ES0901.md",
+  "rules": [
+    {
+      "id": "ES0901-7.1-G1", "rule": "G1", "level": "general", "page": 12,
+      "text": "Todos los desarrollos deben utilizar las herramientas y versiones homologadas por la Agencia.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-G2", "rule": "G2", "level": "general", "page": 12,
+      "text": "Adoptar las buenas practicas reconocidas por la industria, aplicables a cada tecnologia utilizada.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-D1", "rule": "D1", "level": "diseno", "page": 12,
+      "text": "Todas las aplicaciones que requieran interactuar con el ciudadano deben contar con la autenticacion unica de ciudadano del GCABA.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-D2", "rule": "D2", "level": "diseno", "page": 12,
+      "text": "Toda autenticacion en las aplicaciones del GCABA debera delegar el ingreso de credenciales de usuarios segun lo descripto en el apartado 'Autenticacion'.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-D3", "rule": "D3", "level": "diseno", "page": 12,
+      "text": "Uso de la programacion orientada a objetos (POO) implementando una codificacion de alto nivel y buenas practicas.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-D4", "rule": "D4", "level": "diseno", "page": 12,
+      "text": "El codigo debe ser responsive para adecuarse a cualquier tipo de dispositivo que visualice la aplicacion.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-D5", "rule": "D5", "level": "diseno", "page": 13,
+      "text": "Toda busqueda o carga de direcciones en un frontend tiene que validarse y normalizarse con la opcion catastral del GCABA.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-D6", "rule": "D6", "level": "diseno", "page": 13,
+      "text": "Las visualizaciones georeferenciales de objetos deben utilizar el Mapa del GCABA.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-D7", "rule": "D7", "level": "diseno", "page": 13,
+      "text": "Si la aplicacion gestiona archivos (PDF, DOC, PNG, JPG, etc.) debe almacenarlos en el storage estandar del GCABA. No esta permitido guardar en forma permanente archivos en forma local. Para los casos temporales la destruccion de los mismos debe ser en forma inmediata.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-D8", "rule": "D8", "level": "diseno", "page": 13,
+      "text": "Los servicios deben estar protegidos con sistema de token.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-P1", "rule": "P1", "level": "programacion", "page": 13,
+      "text": "Todo desarrollo debe realizarse utilizando frameworks homologados en este documento. No se permite el uso del lenguaje puro ('vanilla') sin el soporte de su respectivo framework. Las bibliotecas o componentes de bajo nivel podran utilizarse unicamente cuando esten integrados de forma indirecta a traves del framework correspondiente (por ejemplo, conectores de base de datos usados por un ORM).",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-P1.node", "rule": "P1", "level": "programacion", "page": 13,
+      "text": "En desarrollos que utilicen tecnologias basadas en Node.js (como Angular, React o NestJS), se establece que el administrador de paquetes permitido es NPM (Node Package Manager). No esta permitido el uso de YARN u otras alternativas, a fin de garantizar la compatibilidad y trazabilidad de dependencias en los entornos de GCABA.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-P1.plataformas", "rule": "P1", "level": "programacion", "page": 13,
+      "text": "Para ERP, CRM, FSM, etc., su uso esta habilitado bajo los lineamientos propios de cada plataforma, siempre que no contradigan los principios contenidos en este documento.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-P2", "rule": "P2", "level": "programacion", "page": 13,
+      "text": "Utilizar patrones de diseno estandares, por ejemplo: Singleton, Visitor, Strategy, Adapter, Lazy Loading.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-P3", "rule": "P3", "level": "programacion", "page": 13,
+      "text": "Implementar un estilo de programacion unificado y estandarizado, respetando la indentacion, el nombrado de clases y variables, declaracion de variables y comentarios que describan el codigo.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-P4", "rule": "P4", "level": "programacion", "page": 13,
+      "text": "Disponer de una capa de servicios core API REST que permita integrarse con otros sistemas del Ecosistema del GCABA.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-P5", "rule": "P5", "level": "programacion", "page": 13,
+      "text": "Las validaciones se realizan con control duplicado, por frontend y backend.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-P6", "rule": "P6", "level": "programacion", "page": 13,
+      "text": "Todo componente adicional utilizado en codigo debe ser validado y acordado.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-P7", "rule": "P7", "level": "programacion", "page": 13,
+      "text": "No se debe incluir logica de negocio en la capa de base de datos. Toda funcionalidad relacionada con reglas de negocio debe implementarse en la capa correspondiente de la aplicacion, evitando el uso de store procedures, triggers, funciones u otros artefactos de logica en el motor de base de datos.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-C1", "rule": "C1", "level": "control", "page": 13,
+      "text": "El volumen de informacion transferida deber estar controlado para asegurar el buen funcionamiento de la aplicacion.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-C2", "rule": "C2", "level": "control", "page": 13,
+      "text": "Se deben realizar pruebas unitarias para dar cobertura al codigo.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-C3", "rule": "C3", "level": "control", "page": 13,
+      "text": "Los procesos de auditorias deben contar con la forma de depurarlos teniendo en cuenta las fechas de registracion, desde un backoffice y con acceso restringido.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-C4", "rule": "C4", "level": "control", "page": 13,
+      "text": "Los procesos batch deben ser parametrizables desde un backoffice y deben estar preparados para funcionar con una infraestructura de alta disponibilidad y escalable.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-M1", "rule": "M1", "level": "mantenimiento", "page": 14,
+      "text": "Todo sistema debe contar con logueo estandar con errores, alertas y registro de transacciones core que permita medir su salud. El nivel de logueo debe poder parametrizarse sin requerir un despliegue.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-M2", "rule": "M2", "level": "mantenimiento", "page": 14,
+      "text": "Las configuraciones de las variables relacionadas con el entorno (bases de datos, servicios externos, URLs, protocolos, paths, etc.) de la aplicacion deben estar en un archivo externo al codigo. Por ejemplo, debe estar preparada para funcionar bajo protocolo HTTPS (protocolos relativos).",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    },
+    {
+      "id": "ES0901-7.1-M3", "rule": "M3", "level": "mantenimiento", "page": 14,
+      "text": "Toda aplicacion debe documentar la arquitectura en detalle (diagrama de contexto, componentes, integraciones detalladas, tecnologias, procesos, dimensionamiento, etc.), alcance funcional, no funcional y toda documentacion que complemente y sea util para la transferencia de conocimientos (skill transfer) y mantenimiento.",
+      "owners": [], "skills": [], "policies": [], "checks": [], "capabilities": [], "conditions": {}
+    }
+  ]
+}

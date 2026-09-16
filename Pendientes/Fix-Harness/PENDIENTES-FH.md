@@ -25,6 +25,7 @@ running order.
 | 11 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
 | 12 | Neither Jira nor GitLab was ever called for real | Two adapters shipped verified against a fake transport; the first real call is what can still disprove the endpoints |
 | 13 | The Ficha de Proyecto is a supposition | The whole Block 2 rests on a concept nobody has written yet in a real Jira |
+| 14 | Three loadable .md files are in Spanish | ADR-0011 was broken by three files on the day it was written, and nothing measures it |
 
 Items 1 and 2 are what 0.13.1 is for. Item 3 is not code: it is running `-Update` on a real
 project, and it is what tells whether any of this works outside this repo.
@@ -342,6 +343,38 @@ Fix. When Block 3 starts consuming resolvers, either it goes through `armar` or 
 down into a boundary both paths cross. Decide it then, with the second caller in front of you
 instead of guessed. Worth a scenario either way: today no test says "a resolver used on its own
 returns unredacted text", because nothing uses one on its own.
+
+### Three loadable .md files are in Spanish, against ADR-0011
+
+[ADR-0011](../../docs/adr/0011-el-idioma-de-un-archivo-lo-decide-quien-lo-lee.md), accepted
+2026-09-15, says the language of a file is decided by who reads it: English for anything a model
+loads as instructions, Spanish for anything a person reads. The ADR names its own debt in the
+"En contra" section, because three files broke the rule the day it was written:
+
+- `harnesses/desarrollo/agents/dev-refutador.md`
+- `harnesses/analisis/agents/hu-redactor.md`
+- `harnesses/analisis/agents/hu-refutador.md`
+
+They were not translated with the ADR on purpose: mixing the translation with the change that
+introduces the rule would make one diff say two things.
+
+Fix. Translate the three to English, keeping every rule and every example intact — these are
+working agents, not drafts, and `hu-refutador` in particular is the one `dev-refutador` inherited
+its shape from. What they output for people stays in Spanish, and each one should say so in its
+second line, the way `dev-iniciador-code.md` already does.
+
+### Nothing measures whether a loadable .md is in the right language
+
+ADR-0011 claims its criterion is checkable: *"un `.md` con frontmatter `name:`/`description:` es una
+pieza cargable y va en inglés. No hace falta juicio para clasificarlo."* Nothing checks it. The
+three files above prove the rule does not enforce itself.
+
+Fix. A case in `06-composicion.ps1` — the one that already audits the repo's composition — asserting
+that every `.md` with `name:` frontmatter under `harnesses/*/agents/` and `harnesses/*/skills/` is
+in English. Detecting "is in English" mechanically is the hard part; a cheap proxy that would have
+caught all three is the presence of Spanish function words (`que`, `debe`, `para`, `cuando`) in the
+first 40 lines. It warns, it does not block — the same shape as every other measurement in this
+repo.
 
 ### Neither the Ficha de Proyecto nor the acceptance-criteria field exists in any real Jira yet
 

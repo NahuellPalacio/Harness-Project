@@ -1,0 +1,58 @@
+{
+  "_comentario": [
+    "Quien DEBERIA existir para orquestar una tarea, y que capacidad da el propio runtime.",
+    "",
+    "Este archivo declara; el disco decide. Si un agente figura aca y no tiene su .md, el",
+    "plan lo reporta como hueco: el dia que alguien lo escriba deja de serlo sin tocar una",
+    "linea de este archivo. Es al reves de una lista de lo que hay, que envejece sola.",
+    "",
+    "Los siete especialistas y la skill dev-data estan declarados y todavia no existen. Es a",
+    "proposito: su existencia final se valida contra la matriz normativa de ES0901 §7.1, y no",
+    "se crean agentes porque exista una tecnologia.",
+    "",
+    "capacidadesLocales son las que da el runtime, no una integracion externa: leer el",
+    "repositorio, escribirlo, correr los tests. No pasan por el registro del bootstrap porque",
+    "no hay nada que validar contra un servidor. 🔴 Es una DECLARACION, no una comprobacion:",
+    "nadie verifica que la sesion tenga habilitada la herramienta que las provee."
+  ],
+
+  "agents": [
+    { "name": "dev-orchestrator",  "domain": "orchestration", "role": "planner" },
+    { "name": "dev-architecture",  "domain": "architecture",  "role": "specialist" },
+    { "name": "dev-backend",       "domain": "backend",       "role": "specialist" },
+    { "name": "dev-frontend",      "domain": "frontend",      "role": "specialist" },
+    { "name": "dev-integration",   "domain": "integration",   "role": "specialist" },
+    { "name": "dev-devops",        "domain": "devops",        "role": "specialist" },
+    { "name": "dev-quality",       "domain": "quality",       "role": "specialist" },
+    { "name": "dev-security",      "domain": "security",      "role": "specialist" },
+    { "name": "dev-tool-builder",  "domain": "tooling",       "role": "crosscutting" },
+    { "name": "dev-refutador",     "domain": "refutation",    "role": "crosscutting" }
+  ],
+
+  "skills": [
+    { "name": "dev-api",         "domains": ["backend", "integration"] },
+    { "name": "dev-data",        "domains": ["backend"] },
+    { "name": "dev-identidad",   "domains": ["backend", "security"] },
+    { "name": "dev-seguridad",   "domains": ["security"] },
+    { "name": "dev-pantalla",    "domains": ["frontend"] },
+    { "name": "dev-repositorio", "domains": ["devops"] },
+    { "name": "dev-ambientes",   "domains": ["devops"] },
+    { "name": "dev-versiones",   "domains": ["backend", "frontend", "devops"] },
+    { "name": "dev-tramites-asi", "domains": ["devops", "integration"] }
+  ],
+
+  "checks": [
+    { "name": "dev-api-rutas",          "domains": ["backend", "integration"] },
+    { "name": "dev-dependencias",       "domains": ["backend", "frontend", "devops"] },
+    { "name": "dev-infra-en-codigo",    "domains": ["backend", "devops"] },
+    { "name": "dev-accesibilidad-html", "domains": ["frontend"] },
+    { "name": "dev-codebase-forma",     "domains": ["architecture"] }
+  ],
+
+  "capacidadesLocales": [
+    "repository.read",
+    "repository.write",
+    "repository.search",
+    "tests.run"
+  ]
+}

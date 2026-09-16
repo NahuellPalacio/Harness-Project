@@ -51,6 +51,8 @@ from contexto import proyecto as contexto_proyecto                # noqa: E402
 from contexto import repositorio as contexto_repositorio          # noqa: E402
 from contexto import tarea as contexto_tarea                      # noqa: E402
 
+from orquestacion import plan as orq_plan                         # noqa: E402
+
 CLASES = (IntegracionJira, IntegracionGitLab)
 NOMBRES = tuple(c.nombre for c in CLASES)
 
@@ -355,6 +357,168 @@ def mostrar_contexto(consola, documento, destino):
     consola.linea("TaskContext: %s" % destino)
 
 
+# -- el plan de trabajo --------------------------------------------------------
+
+def planificar(args, proyecto, rutas, consola):
+    """Bloque 3: de un TaskContext a un OrchestrationPlan.
+
+    No decide que hacer — eso lo decide dev-orchestrator y llega como propuesta. Lo que
+    hace este comando es todo lo mecanico, que es lo que se puede testear.
+    """
+    clave = args.argumento
+    ruta_contexto = os.path.join(proyecto, ".claude", "contextos", clave + ".json")
+    if not os.path.isfile(ruta_contexto):
+        raise FallaDelHarness(
+            "no hay contexto para %s. Corre primero:\n"
+            "    dev-harness.py contexto %s" % (clave, clave))
+
+    task_context = _json_o_vacio(ruta_contexto)
+    registro = _json_o_vacio(rutas["capacidades"]).get("capacidades") or {}
+    config = _config_harness(rutas)
+    destino = os.path.join(proyecto, ".claude", "planes", clave + ".json")
+
+    if args.plantilla:
+        sys.stdout.write(json.dumps(plantilla_de_propuesta(task_context, registro),
+                                    ensure_ascii=False, indent=2) + "\n")
+        return 0
+
+    if args.replanificar:
+        if not os.path.isfile(destino):
+            raise FallaDelHarness(
+                "no hay un plan de %s para replanificar. Corre `plan %s --propuesta ...` "
+                "primero." % (clave, clave))
+        if not args.motivo:
+            raise FallaDelHarness(
+                "replanificar sin motivo no se puede: un plan que cambia solo no se puede "
+                "auditar despues. Pasa --motivo.")
+        anterior = _json_o_vacio(destino)
+        nueva = _json_o_vacio(args.replanificar)
+        documento = orq_plan.armar(nueva, task_context, registro, config,
+                                   version_de(rutas), _relativa(proyecto, ruta_contexto))
+        documento["meta"]["plan_version"] = anterior.get("meta", {}).get("plan_version", 1)
+        documento["planHistory"] = anterior.get("planHistory", [])
+        documento = orq_plan.replanificar(
+            documento, _que_cambio(anterior, documento), args.motivo, "replanificacion manual")
+    else:
+        if not args.propuesta:
+            raise FallaDelHarness(
+                "plan necesita una propuesta. Sacá el esqueleto con `--plantilla`, que lo "
+                "complete dev-orchestrator, y pasalo con `--propuesta <ruta>`.")
+        if not os.path.isfile(args.propuesta):
+            raise FallaDelHarness("no existe la propuesta %s." % args.propuesta)
+        propuesta = _json_o_vacio(args.propuesta)
+        documento = orq_plan.armar(propuesta, task_context, registro, config,
+                                   version_de(rutas), _relativa(proyecto, ruta_contexto))
+
+    consola.evento("plan.armado", tarea=clave, unidades=len(documento["workUnits"]),
+                   version=documento["meta"]["plan_version"])
+    orq_plan.escribir(documento, destino)
+    consola.evento("plan.estado", estado=documento["status"])
+
+    if args.json:
+        sys.stdout.write(json.dumps(documento, ensure_ascii=False, indent=2,
+                                    sort_keys=True) + "\n")
+    else:
+        mostrar_plan(consola, documento, destino)
+    return 0
+
+
+def _relativa(proyecto, ruta):
+    return os.path.relpath(ruta, proyecto).replace(os.sep, "/")
+
+
+def _que_cambio(anterior, nuevo):
+    cambios = []
+    antes = {u["id"] for u in anterior.get("workUnits", [])}
+    ahora = {u["id"] for u in nuevo.get("workUnits", [])}
+    for uid in sorted(ahora - antes):
+        cambios.append("se agrego la unidad %s" % uid)
+    for uid in sorted(antes - ahora):
+        cambios.append("se saco la unidad %s" % uid)
+    if anterior.get("objective") != nuevo.get("objective"):
+        cambios.append("cambio el objetivo")
+    if sorted(anterior.get("domains", [])) != sorted(nuevo.get("domains", [])):
+        cambios.append("cambiaron los dominios")
+    return cambios or ["el plan se rearmo sin cambios en las unidades"]
+
+
+def plantilla_de_propuesta(task_context, registro):
+    """El esqueleto que dev-orchestrator tiene que completar.
+
+    Lleva adentro lo que necesita para decidir —el resumen de la tarea, que capacidades hay
+    y que roster existe— para que no tenga que ir a buscarlo a cuatro archivos.
+    """
+    tarea = task_context.get("task") or {}
+    ficha = (task_context.get("project") or {}).get("ficha") or {}
+    return {
+        "_comentario": [
+            "Completa objective, domains y workUnits. El resto lo resuelve el harness.",
+            "Cada unidad: id, objective, domain, requiredCapabilities, dependencies y signals.",
+            "signals validas: " + ", ".join(sorted(orq_plan.modelo.PESOS)),
+            "No pongas el tier: lo decide el router a partir de las signals.",
+        ],
+        "_tarea": {
+            "key": tarea.get("key", ""),
+            "type": tarea.get("type", ""),
+            "title": tarea.get("title", ""),
+            "acceptance_criteria": tarea.get("acceptance_criteria", []),
+            "ficha": ficha.get("key", ""),
+        },
+        "_capacidadesDisponibles": orq_plan.cap.disponibles(registro),
+        "_dominiosConocidos": sorted(
+            a["domain"] for a in orq_plan.roster.cargar().get("agents", [])
+            if a.get("role") == "specialist"),
+        "objective": "",
+        "domains": [],
+        "policies": [],
+        "workUnits": [{
+            "id": "", "objective": "", "domain": "",
+            "requiredCapabilities": [], "dependencies": [], "signals": [],
+        }],
+    }
+
+
+def mostrar_plan(consola, documento, destino):
+    consola.linea("")
+    consola.linea("%s — %s" % (documento["meta"]["task_key"], documento["objective"] or "(sin objetivo)"))
+    consola.linea("-" * 60)
+    consola.linea("Dominios     %s" % (", ".join(documento["domains"]) or "—"))
+    consola.linea("Estándares   %s" % (", ".join(documento["applicableStandards"]) or "ninguno aplicable todavía"))
+    consola.linea("")
+    consola.linea("Unidades de trabajo (orden de ejecución)")
+    por_id = {u["id"]: u for u in documento["workUnits"]}
+    for uid in documento["executionOrder"]:
+        u = por_id[uid]
+        consola.linea("  %-20s %-12s %-10s %s" % (
+            u["id"], u["domain"], u["modelPolicy"]["requiredTier"], u["status"]))
+        consola.linea("      %s · %s" % (u["assignedAgent"] or "sin agente", u["objective"]))
+    if documento["capabilityGaps"]:
+        consola.linea("")
+        consola.linea("Capacidades que faltan")
+        for hueco in documento["capabilityGaps"]:
+            consola.linea("  %s → %s (%s), la piden: %s" % (
+                hueco["capability"], hueco["derivedTo"], hueco["toolClass"],
+                ", ".join(hueco["workUnits"])))
+    pendientes = [a for a in documento["humanApprovals"] if a["status"] == "PENDING"]
+    if pendientes:
+        consola.linea("")
+        for solicitud in pendientes:
+            consola.linea(consumo_texto(solicitud))
+    if documento["warnings"]:
+        consola.linea("")
+        consola.linea("Avisos")
+        for aviso in documento["warnings"]:
+            consola.linea("  · " + aviso)
+    consola.linea("")
+    consola.linea("Estado: %s" % documento["status"])
+    consola.linea("Plan: %s" % destino)
+
+
+def consumo_texto(solicitud):
+    from orquestacion import consumo as orq_consumo
+    return orq_consumo.texto_de_solicitud(solicitud)
+
+
 # -- comandos ------------------------------------------------------------------
 
 def comando(args, transporte=None, transporte_bytes=None):
@@ -367,6 +531,9 @@ def comando(args, transporte=None, transporte_bytes=None):
     config = ConfigIntegraciones(rutas["config"])
     almacen = AlmacenSecretos(rutas["env"])
     timeout = timeout_de(rutas)
+
+    if args.comando == "plan":
+        return planificar(args, proyecto, rutas, consola)
 
     if args.comando == "contexto":
         return resolver_contexto(args, proyecto, rutas, config, almacen, timeout,
@@ -399,11 +566,19 @@ def parser():
     p = argparse.ArgumentParser(
         prog="dev-harness.py",
         description="Integraciones y contexto de tarea del harness de desarrollo.")
-    p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto"))
+    p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan"))
     p.add_argument("argumento", nargs="?",
                    help="la integracion, para reconfigurar; la clave de Jira, para contexto")
     p.add_argument("--revalidar", action="store_true",
                    help="revalida las integraciones antes de resolver el contexto")
+    p.add_argument("--plantilla", action="store_true",
+                   help="plan: emite el esqueleto de la propuesta que el agente tiene que completar")
+    p.add_argument("--propuesta", default="",
+                   help="plan: la propuesta que escribio dev-orchestrator")
+    p.add_argument("--replanificar", default="",
+                   help="plan: la propuesta nueva, sobre un plan que ya existe")
+    p.add_argument("--motivo", default="",
+                   help="plan: por que se replanifica. Sin esto no se replanifica")
     p.add_argument("--proyecto", default=os.getcwd(),
                    help="raiz del proyecto (por defecto, el directorio actual)")
     p.add_argument("--json", action="store_true",

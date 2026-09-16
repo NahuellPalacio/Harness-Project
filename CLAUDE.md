@@ -46,7 +46,7 @@ may sign, labelled `Firmó (delegado):` and never `Leyó:`. Fewer than five foll
 .\tests\Invoke-Tests.ps1
 ```
 
-Green before anything is called done. 1148 tests, two engines, one exit code. `install.ps1` uses the
+Green before anything is called done. 1384 tests, two engines, one exit code. `install.ps1` uses the
 same suite as its own gate.
 
 🔴 If the suite is killed mid-run, check the tree before anything else. `tests/casos/03-instalador.ps1`
@@ -79,9 +79,18 @@ git checkout -- comun/hooks/pre-tool-use.py comun/hooks/lib/zonas.py
 
 ## Language
 
-Spanish, rioplatense, for everything that ships: `comun/`, `harnesses/`, `docs/`, `CHANGELOG.md`,
-commit messages and every reply. English inside `.claude/`, `Pendientes/`, file names, commands,
-code and identifiers.
+[ADR-0011](docs/adr/0011-el-idioma-de-un-archivo-lo-decide-quien-lo-lee.md): **the language of a
+file is decided by who reads it.**
+
+English for anything a model loads as instructions — `agents/*.md`, `skills/*/SKILL.md`, standards,
+policies — plus file names, commands, code, identifiers, contract fields, `.claude/` and
+`Pendientes/`.
+
+Spanish, rioplatense, for anything a person reads — `docs/`, `CHANGELOG.md`, `UPGRADE.md`,
+`README.md`, hook and installer messages, commit messages, and **every reply, always**.
+
+🔴 What an agent produces does not inherit the language of its instructions. `normativa/extractos/`
+stays in Spanish: a translated quote stops being a quote.
 
 ## Pending work
 

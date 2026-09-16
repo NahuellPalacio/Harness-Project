@@ -29,6 +29,28 @@
     "timeoutIntegraciones": 5,
     "fichaTipoDeIssue": "Ficha de Proyecto",
     "campoCriteriosAceptacion": "",
-    "topeTextoDocumento": 20000
+    "topeTextoDocumento": 20000,
+    "modelRouting": {
+      "perfiles": {
+        "low_cost": "",
+        "standard": "",
+        "reasoning": "",
+        "premium": ""
+      }
+    },
+    "consumptionPolicy": {
+      "mode": "automatic",
+      "autoApprove": ["low_cost", "standard"],
+      "requireHumanApproval": ["reasoning", "premium"],
+      "sessionBudget": {
+        "premiumCallsAllowed": 0,
+        "maxRetries": 3
+      }
+    },
+    "llmRuntime": {
+      "provider": "",
+      "version": "",
+      "detected": false
+    }
   }
 }

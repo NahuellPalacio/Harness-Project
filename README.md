@@ -108,8 +108,16 @@ documento con el ticket, el conocimiento del proyecto, su documentación y su es
 python .claude\harness\bin\desarrollo\dev-harness.py contexto GCBA-1234
 ```
 
-El detalle está en [docs/integraciones.md](docs/integraciones.md) y en
-[docs/contexto-de-tarea.md](docs/contexto-de-tarea.md).
+Y con el contexto resuelto, planificarla: qué hay que hacer, quién debería hacerlo, en qué orden y
+con cuánto modelo.
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py plan GCBA-1234 --plantilla
+```
+
+El detalle está en [docs/integraciones.md](docs/integraciones.md),
+[docs/contexto-de-tarea.md](docs/contexto-de-tarea.md) y
+[docs/orquestacion.md](docs/orquestacion.md).
 
 > ⚠️ **Cloná, no descargues el ZIP.** Windows le pone *Mark-of-the-Web* a todo archivo bajado
 > de internet, y la política de ejecución por defecto (`RemoteSigned`) bloquea los `.ps1`
@@ -130,6 +138,7 @@ MiProyecto/
     ├── harness.integraciones.json # Jira y GitLab: URL y usuario, sin tokens
     ├── harness.capacidades.json   # qué integraciones andan, de la última corrida
     ├── contextos/          # el contexto resuelto de cada tarea — sobrevive al -Update
+    ├── planes/             # el plan de trabajo de cada tarea — idem
     └── .harness-backup/   # copia de todo lo que se pisó      ─┘
 ```
 

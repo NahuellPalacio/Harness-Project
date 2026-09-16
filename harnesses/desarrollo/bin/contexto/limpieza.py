@@ -23,34 +23,21 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import rutas  # noqa: E402
+
 _CACHE = {}
 
 
-def _raices_posibles(desde):
-    """Las dos formas en que este archivo puede estar parado.
-
-    Instalado: <proyecto>/.claude/harness/bin/desarrollo/contexto/  -> harness/ esta 3 arriba
-    En el repo: <repo>/harnesses/desarrollo/bin/contexto/           -> comun/ esta 4 arriba
-    """
-    d = os.path.dirname(os.path.abspath(desde))
-    arriba = [d]
-    for _ in range(6):
-        d = os.path.dirname(d)
-        arriba.append(d)
-    candidatas = []
-    for base in arriba:
-        candidatas.append(base)
-        candidatas.append(os.path.join(base, "comun"))
-    return candidatas
-
-
 def _localizar(relativa, desde=__file__):
-    """La primera ruta que exista, probando el arbol instalado y el del repositorio."""
-    for base in _raices_posibles(desde):
-        ruta = os.path.join(base, *relativa)
-        if os.path.exists(ruta):
-            return os.path.normpath(ruta)
-    return None
+    """La primera ruta que exista, probando el arbol instalado y el del repositorio.
+
+    La busqueda vive en `rutas.py`, un nivel mas arriba: la necesita tambien orquestacion,
+    y dos busquedas de rutas con criterios parecidos terminan en que un dia una encuentra
+    el catalogo de secretos y la otra no.
+    """
+    return rutas.localizar(relativa, desde)
 
 
 def modulo_secretos():

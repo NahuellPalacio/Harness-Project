@@ -1157,6 +1157,7 @@ function Invoke-Instalar {
         $origen = Join-Path $script:Repo "harnesses\$id"
         foreach ($x in (Copy-Arbol (Join-Path $origen 'checks') (Join-Path $dirHarness "checks\$id"))) { [void]$instalados.Add($x) }
         foreach ($x in (Copy-Arbol (Join-Path $origen 'bin')    (Join-Path $dirHarness "bin\$id")))    { [void]$instalados.Add($x) }
+        foreach ($x in (Copy-Arbol (Join-Path $origen 'reglas') (Join-Path $dirHarness "reglas\$id"))) { [void]$instalados.Add($x) }
         foreach ($x in (Copy-Arbol (Join-Path $origen 'skills') (Join-Path $dirClaude 'skills')))      { [void]$instalados.Add($x) }
         foreach ($x in (Copy-Arbol (Join-Path $origen 'agents') (Join-Path $dirClaude 'agents')))      { [void]$instalados.Add($x) }
     }

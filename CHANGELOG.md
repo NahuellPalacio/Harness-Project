@@ -3,6 +3,56 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.18.0] — 2026-09-16
+
+**El harness ya puede planificar una tarea, no sólo entenderla.** Con el contexto resuelto, lo que
+faltaba era decidir: qué tocar, quién debería hacerlo, con qué capacidades, en qué orden y con
+cuánto modelo. Ahora eso sale como un documento con sus unidades de trabajo, sus dependencias y su
+política de consumo — y con los huecos declarados como huecos. **Nada de esta versión ejecuta:**
+`READY_FOR_EXECUTION` es un estado de un documento. 36 escenarios, 36 sostenidos, después de dos
+pasadas del refutador.
+
+### Agregado
+
+- **`dev-harness.py plan GCBA-1234`** — arma el plan y lo deja en `.claude/planes/`. `--plantilla`
+  saca el esqueleto de la propuesta, `--replanificar` la versiona con su motivo
+- **`orchestration-plan/1.0`** — el contrato, con las unidades de trabajo adentro: objetivo,
+  dominio, agente, contexto aislado, capacidades, dependencias, tier de modelo y estado
+- **Ruteo de modelo por perfiles** — `low_cost`, `standard`, `reasoning`, `premium`, nunca nombres
+  de modelo. El tier sale de señales de complejidad declaradas, y el motivo las nombra
+- **Compuerta humana de consumo** — lo caro se detiene y pregunta, con la alternativa más barata
+  adentro de la solicitud. El presupuesto preautorizado se gasta y después vuelve a preguntar
+- **Las 26 reglas de ES0901 §7.1 como dato**, con su texto citado y su página
+- **Aislamiento de contexto por dominio** — cada unidad lleva lo suyo y **declara lo que dejó
+  afuera**: un aislamiento que no se puede auditar no es un aislamiento
+- **ADR-0011** — el idioma de un archivo lo decide quién lo lee: inglés para lo que carga un modelo,
+  español para lo que lee una persona, y **toda respuesta al usuario en español, siempre**
+
+### Criterio que quedó fijado
+
+- **Orquestar decide; ejecutar modifica.** El orquestador es planner, coordinator y router — no un
+  super developer
+- **Las capacidades, nunca las tools.** Una unidad pide `repository.read`, no `Glob`. Lo que no
+  existe es un hueco que se deriva, y **no se improvisa con una tool parecida**
+- **No se crean agentes porque exista una tecnología.** Los siete especialistas están declarados en
+  el roster y el harness los reporta como huecos hasta que la matriz normativa valide que deben
+  existir. `dev-data` queda como skill, no como agente
+- **El roster declara y el disco decide.** Una lista de lo que hay envejece sola
+- **El modelo menos costoso que pueda hacer el trabajo**, no el más potente
+
+### Seguridad
+
+- 🔴 **Un token escrito con `--motivo` quedaba en claro en el plan.** Lo encontró el refutador. La
+  limpieza recorría una lista de campos y `planHistory` no estaba; ahora recorre las claves del
+  documento, así que una sección nueva queda cubierta por existir. **Es el mismo error que 0.17.0
+  había cometido y corregido un bloque antes**, y la primera corrección fue otra lista
+
+### Corregido
+
+- **Un dominio inventado se llevaba el contexto entero en silencio**, con `omitted` vacío —
+  indistinguible de un dominio con derecho a todo. Tres dominios del propio roster estaban en ese
+  caso. Ahora un dominio desconocido no arma plan
+
 ## [0.17.0] — 2026-09-14
 
 **El harness ya puede entender una tarea, no sólo leerla.** Antes, ante "trabajá GCBA-1234", lo

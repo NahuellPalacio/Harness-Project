@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.18.0](0.18.0.md) | 16-09-2026 | El núcleo de orquestación: de un `TaskContext` a un `OrchestrationPlan`, con ruteo de modelo por perfiles y compuerta humana; ADR-0011 (el idioma lo decide quién lee) |
 | [0.17.0](0.17.0.md) | 14-09-2026 | Context Resolution: de una clave de Jira a un `TaskContext`, con la Ficha de Proyecto como fuente del conocimiento |
 | [0.16.0](0.16.0.md) | 14-09-2026 | Bootstrap e integraciones: Jira Cloud y GitLab, cinco estados de diagnóstico en vez de un booleano, y el registro central de capacidades |
 | [0.15.0](0.15.0.md) | 14-09-2026 | El lugar donde viven las credenciales externas del proyecto: `.env` y `.env.example`, repartidos por `desarrollo` |

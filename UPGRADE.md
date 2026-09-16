@@ -23,6 +23,47 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.17.0 → 0.18.0
+
+`-Update` alcanza. No hay paso manual, y todo lo que suma es aditivo.
+
+Lo que aparece en un proyecto con `desarrollo` instalado: los módulos de `orquestacion/` bajo
+`.claude\harness\bin\desarrollo\`, el contrato `orchestration-plan.schema.json` en
+`.claude\harness\schemas\`, las reglas del harness en
+`.claude\harness\reglas\desarrollo\` y el agente `dev-orchestrator`.
+
+Para planificar una tarea que ya tiene contexto resuelto:
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py plan GCBA-1234 --plantilla
+python .claude\harness\bin\desarrollo\dev-harness.py plan GCBA-1234 --propuesta prop.json
+```
+
+El plan queda en `.claude\planes\GCBA-1234.json`, que **no se versiona** y que ni el `-Update`
+ni el `-Uninstall` borran.
+
+Tres claves nuevas que un proyecto ya instalado **no** va a ver, porque `harness.config.json` no se
+reescribe nunca:
+
+```json
+"modelRouting":      { "perfiles": { "low_cost": "", "standard": "", "reasoning": "", "premium": "" } },
+"consumptionPolicy": { "mode": "automatic", "autoApprove": ["low_cost", "standard"],
+                       "requireHumanApproval": ["reasoning", "premium"],
+                       "sessionBudget": { "premiumCallsAllowed": 0, "maxRetries": 3 } },
+"llmRuntime":        { "provider": "", "version": "", "detected": false }
+```
+
+Sin ellas funciona igual, con esos mismos valores por defecto. **Vale la pena poner los perfiles**:
+mientras estén vacíos, cada plan avisa que no hay modelo declarado para ningún tier, que es lo
+honesto — el harness no sabe qué modelos existen en tu runtime y no los inventa.
+
+🔴 **Si vas a tocar `consumptionPolicy`, mirá bien `autoApprove`.** Poner `premium` ahí hace que el
+harness use el tier más caro sin preguntar y sin gastar presupuesto. Es una configuración
+deliberada y está soportada; lo que no hay que hacer es ponerla creyendo que la compuerta sigue
+puesta.
+
+---
+
 ## 0.16.0 → 0.17.0
 
 `-Update` alcanza. No hay paso manual, y todo lo que suma es aditivo.
