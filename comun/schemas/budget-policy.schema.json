@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BUDGET_POLICY",
+  "description": "El presupuesto de una tarea y de un proyecto, con sus umbrales. Es configuracion del proyecto: el harness no trae ninguno y no inventa un limite por defecto. Sin politica declarada el gate contesta BUDGET_UNDEFINED, que es un estado explicito y no un permiso.",
+  "type": "object",
+  "required": [
+    "policyId",
+    "currency"
+  ],
+  "properties": {
+    "policyId": {
+      "type": "string"
+    },
+    "currency": {
+      "description": "La moneda de todos los limites de esta politica. Comparar contra un costo en otra moneda no se hace: el gate contesta COST_UNRESOLVED.",
+      "type": "string"
+    },
+    "billingMode": {
+      "description": "Como se factura este proyecto. Es lo que decide si la plata medida cae en `actual` o en `apiEquivalentEstimated`, y se declara acá porque nadie lo puede inferir mirando un consumo.",
+      "enum": [
+        "API",
+        "SUBSCRIPTION",
+        "ENTERPRISE",
+        "INTERNAL",
+        "UNKNOWN"
+      ]
+    },
+    "task": {
+      "type": ["object", "null"],
+      "properties": {
+        "softLimit": {
+          "description": "Pasarlo avisa. No bloquea nada: un aviso que bloquea deja de ser un aviso.",
+          "type": ["number", "null"]
+        },
+        "hardLimit": {
+          "type": ["number", "null"]
+        }
+      }
+    },
+    "project": {
+      "type": ["object", "null"],
+      "properties": {
+        "softLimit": {
+          "type": ["number", "null"]
+        },
+        "hardLimit": {
+          "type": ["number", "null"]
+        }
+      }
+    },
+    "premiumModel": {
+      "description": "Que exige un escalamiento caro. El Bloque 4 NO aprueba: contesta HUMAN_APPROVAL_REQUIRED y la autoridad sigue siendo la compuerta humana del Bloque 3.",
+      "type": ["object", "null"],
+      "properties": {
+        "requiresHumanApproval": {
+          "type": "boolean"
+        },
+        "projectedOverrunRequiresApproval": {
+          "type": "boolean"
+        }
+      }
+    },
+    "statusBar": {
+      "description": "Los umbrales con los que la barra pinta WARNING y ERROR, en fraccion del limite. Viven acá y no en el renderizado: un umbral escondido en el codigo de la UI es un numero que nadie puede cambiar sin tocar la UI.",
+      "type": ["object", "null"],
+      "properties": {
+        "warningAt": {
+          "type": ["number", "null"]
+        },
+        "errorAt": {
+          "type": ["number", "null"]
+        },
+        "contextWarningAt": {
+          "type": ["number", "null"]
+        },
+        "contextErrorAt": {
+          "type": ["number", "null"]
+        }
+      }
+    },
+    "rateTable": {
+      "description": "Las tarifas que declara el proyecto, por modelo y por clase de token, en la moneda de la politica y por millon de tokens. El harness no envia ninguna: una tabla que envejece adentro de un repositorio es peor que ninguna porque nadie la mira. Sin esto y sin costo reportado por el proveedor, el costo sale PRICING_UNAVAILABLE.",
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": [
+          "model",
+          "source",
+          "versionOrDate"
+        ],
+        "properties": {
+          "provider": {
+            "type": ["string", "null"]
+          },
+          "model": {
+            "type": "string"
+          },
+          "source": {
+            "description": "De donde salio la tarifa. Una tabla sin fuente citada no sostiene un numero en un reporte administrativo.",
+            "type": "string"
+          },
+          "versionOrDate": {
+            "type": "string"
+          },
+          "inputPerMillion": {
+            "type": ["number", "null"]
+          },
+          "outputPerMillion": {
+            "type": ["number", "null"]
+          },
+          "cacheReadPerMillion": {
+            "type": ["number", "null"]
+          },
+          "cacheCreationPerMillion": {
+            "type": ["number", "null"]
+          }
+        }
+      }
+    }
+  }
+}

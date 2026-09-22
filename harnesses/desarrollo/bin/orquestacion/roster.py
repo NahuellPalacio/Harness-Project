@@ -1,12 +1,16 @@
-"""Quien deberia existir para orquestar una tarea, y quien existe de verdad.
+"""Que hay para orquestar una tarea: checks, capacidades locales y el puente al registro.
 
-🔴 El roster declara; el disco decide. `reglas/roster.json` dice que `dev-backend` es el
-especialista de backend; que exista o no lo contesta el sistema de archivos. Al reves -una
-lista de lo que hay- envejece sola: el dia que alguien escribe el agente, tiene que
-acordarse de anotarlo, y si no se acuerda el harness sigue diciendo que no esta.
+🔴 **Los agentes y las skills ya no se declaran aca.** Viven en
+`reglas/agent-registry.json` y los resuelve `registro_agentes.py`. Este modulo conserva sus
+funciones -`agentes_para`, `skills_para`, `existe_agente`...- como la unica puerta que el
+resto del bloque ya usaba, pero la respuesta sale del registro. Dos rosters compitiendo es
+peor que cualquiera de los dos solo: el dia que difieran, cada modulo va a tener razon.
 
-Asi, un agente declarado y sin archivo es un hueco que se ve en cada plan, y deja de serlo
-el dia que aparece el archivo, sin tocar un dato.
+Lo que sigue siendo de `roster.json` son los checks y las capacidades locales, que el
+registro de agentes no cubre.
+
+La regla vieja era "el roster declara y el disco decide". Ahora el registro declara y
+tambien decide, y el disco diagnostica: un archivo que aparece solo no da de alta nada.
 """
 import io
 import json
@@ -77,14 +81,40 @@ def _dir_del_harness(desde=__file__):
     return [d for d in (del_repo, instalado) if d]
 
 
+def _registro():
+    """Import diferido: `registro_agentes` necesita de aca las rutas de reglas."""
+    from . import registro_agentes
+    return registro_agentes
+
+
 def existe_agente(nombre, desde=__file__):
-    return any(os.path.isfile(os.path.join(d, "agents", nombre + ".md"))
-               for d in _dir_del_harness(desde))
+    """Declarado en el registro Y estructuralmente valido.
+
+    No es "hay un archivo con ese nombre". Un `.md` que aparece solo es un huerfano, y un
+    agente cuyo archivo dice ser otro, o un especialista sin una sola skill instalada, no
+    existen a los efectos de rutear: se rutea cerrado.
+    """
+    reg = _registro()
+    try:
+        doc = reg.cargar(desde)
+    except reg.RegistroInvalido:
+        return False
+    if not reg.hay_agente(nombre, doc, desde):
+        return False
+    informe = reg.validar_registro(doc, desde)
+    return informe["agents"][nombre]["state"] in reg.AGENTE_RUTEABLE
 
 
 def existe_skill(nombre, desde=__file__):
-    return any(os.path.isfile(os.path.join(d, "skills", nombre, "SKILL.md"))
-               for d in _dir_del_harness(desde))
+    """Declarada INSTALLED en el registro y con su SKILL.md donde el registro dice."""
+    reg = _registro()
+    try:
+        doc = reg.cargar(desde)
+    except reg.RegistroInvalido:
+        return False
+    informe = reg.validar_registro(doc, desde)
+    return any(s["id"] == nombre and s["state"] == "SKILL_AVAILABLE"
+               for s in informe["skills"].values())
 
 
 def existe_check(nombre, desde=__file__):
@@ -100,31 +130,77 @@ def existe_check(nombre, desde=__file__):
 # -- consultas que usa el planificador -----------------------------------------
 
 def agentes_para(dominios, desde=__file__):
-    """Los agentes de esos dominios, con si existen. Los transversales no entran solos."""
-    datos = cargar(desde)
+    """Los especialistas de esos dominios, con si existen. Sale del registro."""
+    reg = _registro()
+    try:
+        doc = reg.cargar(desde)
+    except reg.RegistroInvalido:
+        return []
+    informe = reg.validar_registro(doc, desde)
     salida = []
-    for agente in datos.get("agents", []):
-        if agente.get("role") == "specialist" and agente.get("domain") in dominios:
-            salida.append({"name": agente["name"], "domain": agente["domain"],
-                           "role": agente["role"],
-                           "exists": existe_agente(agente["name"], desde)})
+    for agente in doc.get("agents", []):
+        if agente.get("type") != "SPECIALIST_AGENT":
+            continue
+        if agente.get("domain") not in dominios:
+            continue
+        estado = informe["agents"][agente["id"]]["state"]
+        salida.append({"name": agente["id"], "domain": agente["domain"], "role": "specialist",
+                       "exists": estado in reg.AGENTE_RUTEABLE, "validation": estado})
     return sorted(salida, key=lambda a: a["name"])
 
 
 def agente_de_dominio(dominio, desde=__file__):
-    """El especialista de un dominio, o "" si el roster no declara ninguno."""
-    for agente in cargar(desde).get("agents", []):
-        if agente.get("role") == "specialist" and agente.get("domain") == dominio:
-            return agente["name"]
-    return ""
+    """El especialista de un dominio, o "" si el registro no declara ninguno."""
+    reg = _registro()
+    try:
+        return reg.agente_de_dominio(dominio, None, desde)
+    except reg.RegistroInvalido:
+        return ""
 
 
 def skills_para(dominios, desde=__file__):
+    """Las skills de los agentes de esos dominios, con su estado del registro."""
+    reg = _registro()
+    try:
+        doc = reg.cargar(desde)
+    except reg.RegistroInvalido:
+        return []
+    informe = reg.validar_registro(doc, desde)
     salida = []
-    for skill in cargar(desde).get("skills", []):
-        if set(skill.get("domains", [])) & set(dominios):
-            salida.append({"name": skill["name"], "exists": existe_skill(skill["name"], desde)})
+    for agente in doc.get("agents", []):
+        if agente.get("domain") not in dominios:
+            continue
+        for skill in agente.get("skills", []):
+            estado = informe["skills"][(agente["id"], skill["id"])]["state"]
+            salida.append({"name": skill["id"], "exists": estado == "SKILL_AVAILABLE",
+                           "status": skill.get("status"), "validation": estado,
+                           "agent": agente["id"]})
     return sorted(salida, key=lambda s: s["name"])
+
+
+def validacion_de_agente(nombre, desde=__file__):
+    """El estado que el registro le dio, o AGENT_NOT_FOUND si no esta declarado."""
+    if not nombre:
+        return "AGENT_NOT_FOUND"
+    reg = _registro()
+    try:
+        doc = reg.cargar(desde)
+    except reg.RegistroInvalido:
+        return "AGENT_NOT_FOUND"
+    if not reg.hay_agente(nombre, doc, desde):
+        return "AGENT_NOT_FOUND"
+    return reg.validar_registro(doc, desde)["agents"][nombre]["state"]
+
+
+def dominios_declarados(desde=__file__):
+    """Los dominios que tienen especialista declarado. Salen del registro."""
+    reg = _registro()
+    try:
+        doc = reg.cargar(desde)
+    except reg.RegistroInvalido:
+        return []
+    return sorted({a.get("domain", "") for a in doc.get("agents", [])
+                   if a.get("type") == "SPECIALIST_AGENT"})
 
 
 def checks_para(dominios, desde=__file__):

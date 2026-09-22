@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-registry/1.0",
+  "title": "AGENT_REGISTRY",
+  "description": "Que agentes y que skills existen en un harness, y en que estado. Es la UNICA declaracion: el disco no da de alta nada, solo diagnostica, y la matriz normativa de ES0901 no decide si un agente existe -decide que reglas, policies y checks le aplican, que es otra capa-. Vive en reglas/agent-registry.json del harness. El vocabulario esta en ingles, como en orchestration-plan/1.0. Lo valida el interprete de subconjunto de contexto-armar.py: type, properties, required, items, enum y pattern, y nada mas. El artefacto de diseno usaba `const`, que ese interprete rechaza a proposito para no sellar partes del documento que nunca miro; `enum` con un solo valor afirma lo mismo y esta soportado.",
+  "type": "object",
+  "required": ["version", "registryType", "status", "rules", "agentTypes", "agents"],
+  "properties": {
+
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+
+    "registryType": { "type": "string", "enum": ["agent-registry"] },
+
+    "status": { "type": "string", "enum": ["ACTIVE", "DEPRECATED"] },
+
+    "rules": {
+      "description": "De donde sale cada respuesta. Escrito como dato para que la separacion sea legible sin abrir el codigo: la existencia la da el registro, la aplicabilidad normativa la da la matriz, y no se cruzan.",
+      "type": "object",
+      "properties": {
+        "agentExistenceSource": { "type": "string" },
+        "skillExistenceSource": { "type": "string" },
+        "normativeApplicabilitySource": { "type": "string" },
+        "unknownAgentFilePolicy": { "type": "string" },
+        "undeclaredSkillPolicy": { "type": "string" },
+        "pendingSkillPolicy": { "type": "string" },
+        "specialistMinimumInstalledSkills": { "type": "integer" }
+      }
+    },
+
+    "agentTypes": {
+      "description": "La politica de skills de cada tipo. Un ORCHESTRATOR, un CRITIC y un INFRASTRUCTURE valen con cero skills; un SPECIALIST necesita al menos una INSTALLED. No se inventa una skill de mentira para que cierre la validacion estructural.",
+      "type": "object"
+    },
+
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "domain", "declared", "agentFile", "status", "skills"],
+        "properties": {
+
+          "id": { "type": "string", "pattern": "^dev-[a-z0-9-]+$" },
+
+          "type": {
+            "type": "string",
+            "enum": ["ORCHESTRATOR_AGENT", "SPECIALIST_AGENT", "CRITIC_AGENT",
+                     "INFRASTRUCTURE_AGENT"]
+          },
+
+          "domain": {
+            "description": "Por donde entra el ruteo: el Bloque 3 resuelve el agente a partir del dominio de la unidad de trabajo. Dos SPECIALIST instalados con el mismo dominio son DUPLICATE_DOMAIN_OWNER, y no se elige uno en silencio.",
+            "type": "string"
+          },
+
+          "declared": { "type": "boolean", "enum": [true] },
+
+          "agentFile": { "type": "string" },
+
+          "status": {
+            "type": "string",
+            "enum": ["INSTALLED", "DECLARED_NOT_INSTALLED", "DEPRECATED"]
+          },
+
+          "skillValidation": { "type": "string" },
+
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "file", "status"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^dev-[a-z0-9-]+$" },
+                "file": {
+                  "description": "Ruta real: aca una skill es un directorio con su SKILL.md adentro.",
+                  "type": "string",
+                  "pattern": "^skills/[a-z0-9-]+/SKILL\\.md$"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["INSTALLED", "DECLARED_NOT_INSTALLED", "DEPRECATED"]
+                },
+                "reason": {
+                  "description": "Obligatorio cuando el estado no es INSTALLED: una skill pendiente sin motivo es indistinguible de una que nadie escribio todavia.",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

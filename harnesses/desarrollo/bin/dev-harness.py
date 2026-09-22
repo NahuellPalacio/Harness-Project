@@ -53,6 +53,14 @@ from contexto import tarea as contexto_tarea                      # noqa: E402
 
 from orquestacion import plan as orq_plan                         # noqa: E402
 
+from contabilidad import agregacion as cont_agregacion            # noqa: E402
+from contabilidad import barra as cont_barra                      # noqa: E402
+from contabilidad import libro as cont_libro                      # noqa: E402
+from contabilidad import presupuesto as cont_presupuesto          # noqa: E402
+from contabilidad import reporte as cont_reporte                  # noqa: E402
+from contabilidad.adaptadores import contrato as cont_contrato    # noqa: E402
+from contabilidad.adaptadores import registro as cont_registro    # noqa: E402
+
 CLASES = (IntegracionJira, IntegracionGitLab)
 NOMBRES = tuple(c.nombre for c in CLASES)
 
@@ -100,6 +108,9 @@ def rutas_de(proyecto):
         "capacidades": os.path.join(claude, "harness.capacidades.json"),
         "harness_config": os.path.join(claude, "harness.config.json"),
         "lock": os.path.join(claude, "harness.lock.json"),
+        # El presupuesto es un archivo aparte y NO tiene default en el manifiesto. Que no
+        # exista es la respuesta correcta hasta que alguien declare uno: BUDGET_UNDEFINED.
+        "presupuesto": os.path.join(claude, "harness.presupuesto.json"),
     }
 
 
@@ -465,9 +476,7 @@ def plantilla_de_propuesta(task_context, registro):
             "ficha": ficha.get("key", ""),
         },
         "_capacidadesDisponibles": orq_plan.cap.disponibles(registro),
-        "_dominiosConocidos": sorted(
-            a["domain"] for a in orq_plan.roster.cargar().get("agents", [])
-            if a.get("role") == "specialist"),
+        "_dominiosConocidos": orq_plan.roster.dominios_declarados(),
         "objective": "",
         "domains": [],
         "policies": [],
@@ -519,6 +528,142 @@ def consumo_texto(solicitud):
     return orq_consumo.texto_de_solicitud(solicitud)
 
 
+# -- bloque 4: la contabilidad -------------------------------------------------
+
+def contabilizar(args, proyecto, rutas, consola):
+    """Bloque 4: del libro de una tarea a su resumen, su reporte y su barra.
+
+    No ejecuta nada y no aprueba nada. Ingiere lo que una fuente reporta, agrega, y
+    muestra. La compuerta humana del Bloque 3 sigue siendo la que decide.
+    """
+    tarea = str(args.argumento or "")
+    if not tarea:
+        raise FallaDelHarness(
+            "contabilidad necesita la tarea. Ejemplo:\n"
+            "    dev-harness.py contabilidad GCBA-1234")
+
+    ruta_libro = cont_libro.ruta_de(proyecto, tarea)
+    politica = cont_presupuesto.cargar(rutas["presupuesto"])
+
+    if args.ingerir:
+        if not os.path.exists(args.ingerir):
+            raise FallaDelHarness("no existe la fuente %s." % args.ingerir)
+        try:
+            registros = cont_registro.leer(args.adaptador, args.ingerir)
+        except KeyError as e:
+            raise FallaDelHarness(str(e).strip('"'))
+        eventos_nuevos = cont_contrato.a_eventos(
+            registros, tarea, args.adaptador, politica,
+            workUnitId=args.unidad or None, agentId=args.agente or None)
+        escritos, salteados, hallazgos = cont_libro.agregar_varios(ruta_libro, eventos_nuevos)
+        consola.evento("contabilidad.ingesta", adaptador=args.adaptador,
+                       escritos=escritos, repetidos=salteados)
+        for hallazgo in hallazgos:
+            consola.linea("  · " + hallazgo)
+
+    libro_leido = cont_libro.leer(ruta_libro)
+    if not libro_leido:
+        raise FallaDelHarness(
+            "no hay libro contable para %s. Ingerí una fuente primero:\n"
+            "    dev-harness.py contabilidad %s --ingerir <ruta>" % (tarea, tarea))
+
+    decision = {}
+    if politica is not None:
+        resumen_previo = cont_agregacion.resumir(libro_leido, task_id=tarea)
+        gastado, _ = cont_presupuesto.consumido(resumen_previo, politica)
+        decision = cont_presupuesto.evaluar(gastado, 0, politica)
+
+    resumen = cont_agregacion.resumir(libro_leido, task_id=tarea, presupuesto=decision)
+    destino = cont_agregacion.escribir(
+        resumen, cont_libro.ruta_de(proyecto, tarea, cont_libro.RESUMEN))
+    consola.evento("contabilidad.resumen", eventos=resumen["events"]["counted"],
+                   duplicados=resumen["events"]["duplicates"])
+
+    if args.reporte:
+        ruta_reporte = cont_reporte.escribir(
+            resumen, cont_libro.ruta_de(proyecto, tarea, cont_libro.REPORTE))
+        consola.evento("contabilidad.reporte", destino=_relativa(proyecto, ruta_reporte))
+
+    if args.barra:
+        sesion = args.sesion or (cont_barra.sesiones(libro_leido) or [""])[0]
+        estado = cont_barra.de(libro_leido, sesion, politica, tarea)
+        if args.json:
+            sys.stdout.write(json.dumps(estado, ensure_ascii=False, indent=2,
+                                        sort_keys=True) + "\n")
+        else:
+            consola.linea("")
+            consola.linea(cont_barra.compacto(estado))
+        return 0
+
+    if args.json:
+        sys.stdout.write(json.dumps(resumen, ensure_ascii=False, indent=2,
+                                    sort_keys=True) + "\n")
+    else:
+        mostrar_contabilidad(consola, resumen, destino)
+    return 0
+
+
+def mostrar_contabilidad(consola, resumen, destino):
+    from contabilidad import tiempo as cont_tiempo
+
+    costo = resumen["cost"]
+    moneda = costo.get("currency") or ""
+    consola.linea("")
+    consola.linea("%s — contabilidad de ejecución" % (resumen["taskId"] or "(sin tarea)"))
+    consola.linea("-" * 60)
+    consola.linea("Eventos      %d contados · %d duplicados descartados · %d correcciones"
+                  % (resumen["events"]["counted"], resumen["events"]["duplicates"],
+                     resumen["events"]["corrections"]))
+    consola.linea("Tokens       input %s · output %s · cache read %s · cache creation %s" % (
+        resumen["tokens"]["inputTokens"], resumen["tokens"]["outputTokens"],
+        resumen["tokens"]["cacheReadTokens"], resumen["tokens"]["cacheCreationTokens"]))
+    consola.linea("Ventana      %s (es una foto, no una suma)"
+                  % (resumen["context"]["contextTokens"]
+                     if resumen["context"]["contextTokens"] is not None else "sin resolver"))
+    consola.linea("Tiempo       pared %s · modelo %s · tools %s  [%s]" % (
+        cont_tiempo.como_texto(resumen["time"].get("wallMs")),
+        cont_tiempo.como_texto(resumen["time"].get("modelMs")),
+        cont_tiempo.como_texto(resumen["time"].get("toolMs")),
+        resumen.get("timeSource", "")))
+    consola.linea("Costo real   %s" % (
+        ("%s %.4f" % (moneda, costo["actual"])) if costo.get("actual") is not None
+        else "sin resolver"))
+    consola.linea("Equivalente  %s  ← lo que habría costado por API, no lo gastado" % (
+        ("%s %.4f" % (moneda, costo["apiEquivalentEstimated"]))
+        if costo.get("apiEquivalentEstimated") is not None else "sin resolver"))
+
+    for titulo, filas in (("Por agente", resumen["byAgent"]),
+                          ("Por unidad de trabajo", resumen["byWorkUnit"]),
+                          ("Por modelo", resumen["byModel"])):
+        if filas:
+            consola.linea("")
+            consola.linea(titulo)
+            for fila in filas:
+                consola.linea("  %-28s %6d ev · in %s / out %s" % (
+                    fila["id"], fila["events"], fila["tokens"]["inputTokens"],
+                    fila["tokens"]["outputTokens"]))
+
+    sin_unidad = resumen["unattributed"]["workUnitId"]
+    if sin_unidad["events"]:
+        consola.linea("")
+        consola.linea("Sin atribuir a una unidad: %d eventos, %s tokens de output. "
+                      "No se reparten." % (sin_unidad["events"],
+                                           sin_unidad["tokens"]["outputTokens"]))
+
+    if resumen.get("budget"):
+        consola.linea("")
+        consola.linea(cont_presupuesto.texto_de_decision(resumen["budget"]))
+
+    if resumen["unresolved"]:
+        consola.linea("")
+        consola.linea("Sin resolver")
+        for estado in resumen["unresolved"]:
+            consola.linea("  · " + estado)
+
+    consola.linea("")
+    consola.linea("Resumen: %s" % destino)
+
+
 # -- comandos ------------------------------------------------------------------
 
 def comando(args, transporte=None, transporte_bytes=None):
@@ -534,6 +679,9 @@ def comando(args, transporte=None, transporte_bytes=None):
 
     if args.comando == "plan":
         return planificar(args, proyecto, rutas, consola)
+
+    if args.comando == "contabilidad":
+        return contabilizar(args, proyecto, rutas, consola)
 
     if args.comando == "contexto":
         return resolver_contexto(args, proyecto, rutas, config, almacen, timeout,
@@ -566,7 +714,8 @@ def parser():
     p = argparse.ArgumentParser(
         prog="dev-harness.py",
         description="Integraciones y contexto de tarea del harness de desarrollo.")
-    p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan"))
+    p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan",
+                                       "contabilidad"))
     p.add_argument("argumento", nargs="?",
                    help="la integracion, para reconfigurar; la clave de Jira, para contexto")
     p.add_argument("--revalidar", action="store_true",
@@ -579,6 +728,20 @@ def parser():
                    help="plan: la propuesta nueva, sobre un plan que ya existe")
     p.add_argument("--motivo", default="",
                    help="plan: por que se replanifica. Sin esto no se replanifica")
+    p.add_argument("--ingerir", default="",
+                   help="contabilidad: la fuente de uso que se ingiere al libro")
+    p.add_argument("--adaptador", default="claude-code",
+                   help="contabilidad: que adaptador lee la fuente")
+    p.add_argument("--unidad", default="",
+                   help="contabilidad: a que unidad de trabajo se atribuye lo ingerido")
+    p.add_argument("--agente", default="",
+                   help="contabilidad: a que agente se atribuye lo ingerido")
+    p.add_argument("--reporte", action="store_true",
+                   help="contabilidad: genera execution-cost.md del resumen")
+    p.add_argument("--barra", action="store_true",
+                   help="contabilidad: muestra la barra de la sesion activa")
+    p.add_argument("--sesion", default="",
+                   help="contabilidad: que sesion es la activa, para la barra")
     p.add_argument("--proyecto", default=os.getcwd(),
                    help="raiz del proyecto (por defecto, el directorio actual)")
     p.add_argument("--json", action="store_true",
@@ -618,7 +781,8 @@ def main(argv=None, transporte=None, transporte_bytes=None):
     try:
         return comando(args, transporte, transporte_bytes)
     except (FallaDelHarness, ConfigIlegible, ClaveProhibida, ErrorDeAlmacen,
-            contexto_ensamblador.ContratoInvalido) as e:
+            contexto_ensamblador.ContratoInvalido,
+            cont_presupuesto.PoliticaInvalida, cont_contrato.ContratoInvalido) as e:
         sys.stderr.write("harness: %s\n" % e)
         return 2
     except KeyboardInterrupt:

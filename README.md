@@ -115,9 +115,17 @@ con cuánto modelo.
 python .claude\harness\bin\desarrollo\dev-harness.py plan GCBA-1234 --plantilla
 ```
 
+Y con la tarea corriendo, contar lo que costó: tokens, tiempo y plata, con lo que no se pudo medir
+dicho en vez de puesto en cero.
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py contabilidad GCBA-1234 --ingerir <fuente> --reporte
+```
+
 El detalle está en [docs/integraciones.md](docs/integraciones.md),
-[docs/contexto-de-tarea.md](docs/contexto-de-tarea.md) y
-[docs/orquestacion.md](docs/orquestacion.md).
+[docs/contexto-de-tarea.md](docs/contexto-de-tarea.md),
+[docs/orquestacion.md](docs/orquestacion.md) y
+[docs/contabilidad.md](docs/contabilidad.md).
 
 > ⚠️ **Cloná, no descargues el ZIP.** Windows le pone *Mark-of-the-Web* a todo archivo bajado
 > de internet, y la política de ejecución por defecto (`RemoteSigned`) bloquea los `.ps1`

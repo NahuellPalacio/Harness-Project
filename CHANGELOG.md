@@ -3,6 +3,60 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.19.0] — 2026-09-22
+
+**El harness ya no sólo cita la normativa: la clasifica y la comprueba.** 0.18.0 dejaba las 26
+reglas de ES0901 §7.1 citadas y sin clasificar, así que ningún plan real decía qué regla aplicaba.
+Ahora una matriz lo dice, once reglas tienen sus controles construidos, ES0902 entra como segundo
+estándar y el harness empieza a medir lo que gasta. Diecinueve cambios: quince cerrados, G1 cerrado
+con un escenario contradicho a la vista, y dos publicados abiertos.
+
+### Agregado
+
+- **La matriz normativa de §7.1** — las 24 reglas, cuándo aplica cada una y con qué señal. Lo que
+  no se sabe es `UNRESOLVED`, nunca "no aplica"
+- **Once reglas de §7.1 con sus controles**: G1, G2, D1 a D8 y P1. Treinta y un controles entre
+  policies, checks y reviews, bajo `harnesses/desarrollo/controles/`
+- **ES0902 v6.2 como estándar propio** — sus 21 reglas, los entregables E1 a E5 y el WAF, las
+  relaciones con ES0901, y un estado oficial de evaluación que el harness no puede mover solo
+- **La contabilidad de ejecución** — lo que se gasta, en tokens y en plata, contra un presupuesto
+- **Los ambientes de base de datos** — DEV escribe; QA, HML y PRD sólo leen; lo que no se puede
+  clasificar se deniega
+- **La integridad de repositorio** — el modo incidente apaga las seis acciones que destruyen
+  evidencia y preserva antes de tocar nada
+- **El registro de agentes** — un agente existe porque está declarado, no porque haya un `.md`.
+  Ocho especialistas `dev-*` y 27 skills nuevas
+- **El Tool Registry y el contrato de tool**, a medio construir
+
+### Cambiado
+
+- 🔴 **Las ocho skills viejas de `desarrollo` se reemplazan por 27 nuevas**, y `-Update` no borra
+  las que dejaron de existir. Ver [UPGRADE.md](UPGRADE.md)
+
+### Corregido
+
+- **G1 no comparaba el calificativo de la versión.** `jws 6.0 SP2` homologaba contra `6.0 SP1`, y
+  `oracle 19c (LTR)`, la única LTR del Anexo II, no homologaba nunca
+- **La URL del proveedor se colaba en la evidencia sellada** del modo incidente, adentro de
+  `diffMeta`
+
+### Lo que no se cumplió, sin maquillar
+
+- 🔴 **G1, E-17 contradicho.** Una versión con un cero adelante o con dígitos no ASCII
+  (`php 08.2.30`) sale `HOMOLOGATED`, y el orden de evaluación ratificado dice `UNRESOLVED`. Hoy no
+  homologa un artefacto equivocado, pero acepta una forma que la regla rechaza. Es el ítem 2 de
+  `Pendientes/Fix-Harness/PENDIENTES-FH.md`
+- **`integridad-de-repositorio` se publica `EN CURSO`**, con E-04 y E-41 sin sustento después de
+  cuatro pasadas del refutador. El módulo hace lo correcto; los tests no alcanzan para afirmarlo
+- **`tool-builder` se publica `EN CURSO`**, con 11 de 37 escenarios sin sustento: las compuertas
+  de riesgo de tools no existen
+- **Los controles normativos todavía no llegan a un proyecto instalado.** El instalador no copia
+  `controles/`
+
+### Lo que no entra
+
+- **ES0902 O1 y O2** estaban en construcción y quedan para la versión siguiente
+
 ## [0.18.0] — 2026-09-16
 
 **El harness ya puede planificar una tarea, no sólo entenderla.** Con el contexto resuelto, lo que

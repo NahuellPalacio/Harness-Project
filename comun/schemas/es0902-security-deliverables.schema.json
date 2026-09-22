@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "es0902-security-deliverables/1.0",
+  "title": "ES0902_SECURITY_DELIVERABLES",
+  "description": "Los entregables de la seccion 5 de ES0902, por tipo de activo, mas el requisito de WAF. Un sistema puede ser de varios tipos a la vez y entonces los requisitos son la UNION: elegir el conjunto mas chico es el sesgo que deja la preparacion mas corta y no deja rastro. Los requisitos son texto del estandar y no se parafrasean: lo que este archivo diga es lo que el harness pide.",
+  "type": "object",
+  "required": ["standard", "version", "section", "unionWhenMultipleAssetTypes", "waf", "assetTypes"],
+  "additionalProperties": false,
+  "properties": {
+
+    "standard": { "type": "string", "enum": ["ES0902"] },
+    "version": { "type": "string" },
+    "section": { "type": "string" },
+
+    "unionWhenMultipleAssetTypes": {
+      "description": "Se declara en el archivo en vez de estar cableada en el codigo para que quien lo lea vea la decision, no la deduzca de una funcion.",
+      "type": "boolean"
+    },
+
+    "waf": {
+      "type": "object",
+      "required": ["requiredFor", "artifact", "missingTemplateState"],
+      "additionalProperties": false,
+      "properties": {
+        "requiredFor": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tipoDeActivo" }
+        },
+        "artifact": {
+          "description": "El nombre del artefacto que pide el equipo de Prevencion. El harness no inventa sus campos: publica este nombre y nada mas.",
+          "type": "string"
+        },
+        "missingTemplateState": {
+          "type": "string",
+          "enum": ["WAF_FORM_CONTEXT_REQUIRED"]
+        }
+      }
+    },
+
+    "assetTypes": {
+      "type": "object",
+      "required": ["WEB_SERVICE", "WEB_APPLICATION", "MOBILE_APPLICATION", "SERVER", "TOTEM"],
+      "additionalProperties": false,
+      "properties": {
+        "WEB_SERVICE": { "$ref": "#/$defs/entregable" },
+        "WEB_APPLICATION": { "$ref": "#/$defs/entregable" },
+        "MOBILE_APPLICATION": { "$ref": "#/$defs/entregable" },
+        "SERVER": { "$ref": "#/$defs/entregable" },
+        "TOTEM": { "$ref": "#/$defs/entregable" }
+      }
+    }
+  },
+
+  "$defs": {
+
+    "tipoDeActivo": {
+      "type": "string",
+      "enum": ["WEB_SERVICE", "WEB_APPLICATION", "MOBILE_APPLICATION", "SERVER", "TOTEM"]
+    },
+
+    "entregable": {
+      "type": "object",
+      "required": ["sourceId", "requirements"],
+      "additionalProperties": false,
+      "properties": {
+        "sourceId": {
+          "description": "E1 a E5. Es la traza al estandar: sin ella, un requisito no se puede discutir contra el texto.",
+          "type": "string",
+          "pattern": "^E[1-5]$"
+        },
+        "requirements": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

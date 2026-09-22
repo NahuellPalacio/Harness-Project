@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "es0901-7.1-normative-matrix/1.0",
+  "title": "ES0901_7_1_NORMATIVE_MATRIX",
+  "description": "La clasificacion de las reglas de ES0901 7.1: cuando aplica cada una, quien es su dueno normativo y que policies y que checks exige. NO es la fuente citable -esa es es0901-7.1.json, con el texto literal y la pagina, en espanol-; esta matriz clasifica y se une a aquella por id de regla. Nada de aca decide si un agente o una skill existen: eso lo contesta el registro de agentes, y la matriz que nombre un agente no declarado devuelve NORMATIVE_AGENT_REFERENCE_INVALID en vez de crearlo. Lo valida el interprete de subconjunto de contexto-armar.py: type, properties, required, items, enum y pattern, y nada mas. El artefacto de diseno usaba minItems/maxItems, que ese interprete no soporta; el inventario exacto -24 reglas, ids unicos, G1 a M3- lo comprueba el cargador, que ademas puede decir CUAL falta en vez de solo cuantas hay.",
+  "type": "object",
+  "required": ["version", "matrixType", "standard", "rules"],
+  "properties": {
+
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+
+    "matrixType": { "type": "string", "enum": ["normative-matrix"] },
+
+    "standard": {
+      "description": "Que estandar, que version y que seccion clasifica. Cargar una matriz de otra version del estandar es NORMATIVE_STANDARD_VERSION_MISMATCH: las reglas cambian entre versiones y una clasificacion vieja aplicada a un estandar nuevo miente sin avisar.",
+      "type": "object",
+      "required": ["id", "version", "section"],
+      "properties": {
+        "id": { "type": "string", "enum": ["ES0901"] },
+        "version": { "type": "string" },
+        "section": { "type": "string" },
+        "title": { "type": "string" }
+      }
+    },
+
+    "classificationPolicy": {
+      "type": "object",
+      "properties": {
+        "unknownConditionalApplicability": { "type": "string" },
+        "agentExistenceOwnedBy": { "type": "string" },
+        "policyCheckIdsAreDerived": { "type": "boolean" }
+      }
+    },
+
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "applicability", "primaryAgents", "policies",
+                     "checks", "status"],
+        "properties": {
+
+          "id": { "type": "string", "pattern": "^[GDPCM][0-9]+$" },
+
+          "category": {
+            "type": "string",
+            "enum": ["GENERAL", "DESIGN", "PROGRAMMING", "CONTROL", "MAINTENANCE"]
+          },
+
+          "operationalIntentEn": {
+            "description": "Parafrasis operativa, en ingles. NO es la cita: la cita vive en es0901-7.1.json y no se traduce.",
+            "type": "string"
+          },
+
+          "applicability": {
+            "description": "ALWAYS aplica siempre que la unidad este gobernada por 7.1. CONDITIONAL depende de senales explicitas del contexto, y una senal ausente deja la regla sin resolver: desconocido no es falso.",
+            "type": "object",
+            "required": ["mode", "signals"],
+            "properties": {
+              "mode": { "type": "string", "enum": ["ALWAYS", "CONDITIONAL"] },
+              "signals": { "type": "array", "items": { "type": "string" } },
+              "combination": { "type": "string", "enum": ["ALL", "ANY"] }
+            }
+          },
+
+          "primaryAgents": {
+            "description": "Duenos normativos de la regla. No significa crear, instalar ni rutear: la existencia la contesta el registro de agentes.",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+
+          "skills": { "type": "array", "items": { "type": "string" } },
+
+          "policies": {
+            "description": "Contratos de gobierno que la regla exige. Se declaran; su implementacion es otro cambio, y mientras no exista se reporta DECLARED_POLICY_NOT_INSTALLED.",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+
+          "checks": {
+            "description": "Verificaciones objetivas que la regla exige. Misma razon que policies. Una regla puede exigir revision humana y ningun check mecanico: inventar un check para que cierre es peor que declarar el hueco.",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+
+          "reviews": {
+            "description": "Lo que la regla exige que alguien REVISE con criterio: un control que no admite comprobacion mecanica. Opcional — una fila sin reviews sigue siendo valida, que es lo que permite que G2 lo declare sin tocar las otras 23.",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+
+          "status": { "type": "string", "enum": ["CLASSIFIED", "UNCLASSIFIED"] }
+        }
+      }
+    }
+  }
+}

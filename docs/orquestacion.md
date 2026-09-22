@@ -59,6 +59,43 @@ podría testearlo.
 Todo lo demás lo completa el núcleo: el agente asignado si no se declaró, las skills y los checks
 del dominio, el contexto aislado, el tier de modelo con su motivo y el estado.
 
+## El registro de agentes
+
+Qué agentes y qué skills existen sale de **`reglas/desarrollo/agent-registry.json`**, y de ningún
+otro lado. El disco no da de alta nada: diagnostica.
+
+| Capa | Qué contesta |
+|---|---|
+| el registro | qué agentes y qué skills existen, y en qué estado |
+| el disco | huérfanos y skills no declaradas — diagnóstico, nunca alta |
+| la matriz normativa | qué reglas, policies y checks aplican |
+
+🔴 **Las tres no se cruzan.** Que la matriz de §7.1 esté sin clasificar no puede hacer que un
+agente declarado y válido deje de existir.
+
+Un agente lleva su tipo, y el tipo decide cuántas skills necesita: `ORCHESTRATOR_AGENT`,
+`CRITIC_AGENT` e `INFRASTRUCTURE_AGENT` valen con cero; un `SPECIALIST_AGENT` necesita al menos una
+`INSTALLED`. No se inventa una skill para que cierre la validación.
+
+Una skill declarada puede estar `INSTALLED`, `DECLARED_NOT_INSTALLED` —con el motivo escrito— o
+`DEPRECATED`. Sólo la primera rutea.
+
+### Tres huecos que no son el mismo
+
+```
+AGENT_NOT_FOUND         el agente no está declarado
+SPECIALIZED_SKILL_GAP   el agente existe; su skill especializada está declarada y todavía no
+                        se puede escribir. NO deriva a dev-tool-builder
+CAPABILITY_GAP          existe todo, falta una capacidad ejecutable. Este sí deriva
+```
+
+`dev-miba` y `dev-esb` son el primer caso de `SPECIALIZED_SKILL_GAP`: falta información
+autoritativa de esas integraciones. Pedirle a un constructor de tools que las reemplace sería
+pedirle que fabrique conocimiento que nadie tiene.
+
+Se rutea **cerrado**: cualquier estado que no sea `VALID`, `VALID_WITH_PENDING_SKILLS` o
+`SKILL_AVAILABLE` devuelve `routable: false`, y nada se repara solo.
+
 ## Capacidades, nunca tools
 
 Una unidad pide `repository.read`, no `Glob`. Atar el plan al nombre de una tool lo ata a un
@@ -162,25 +199,76 @@ accesibilidad, porque lo que está adelante se usa.
 ## La normativa
 
 Las 26 reglas de ES0901 §7.1 están como dato en `reglas/desarrollo/es0901-7.1.json`, con su id, su
-texto y su página.
+texto y su página. Al lado, `es0901-7.1-normative-matrix.json` clasifica las 24: cuándo aplica cada
+una, quién es su dueño, y qué policies y qué checks exige. Los dos archivos se unen por id de regla,
+y el citable es el único que se cita: la paráfrasis operativa en inglés sirve para clasificar y no
+para citar.
 
-> 🔴 **Están sin clasificar, y por eso todavía no se citan.** `owners`, `skills`, `policies` y
-> `checks` están vacíos: clasificarlas es trabajo de criterio que alguien tiene que validar contra
-> el estándar, y una matriz inventada se lee igual de autoritativa que una real. Una regla sin
-> `conditions` nunca se cita, y cada plan dice cuántas quedan.
-
-Cuando la matriz exista, una regla clasificada se ve así:
+Cada unidad de trabajo lleva su resolución en `normative`:
 
 ```json
-{
-  "id": "ES0901-7.1-P1.node",
-  "conditions": { "domains": ["frontend", "backend"] },
-  "policies": ["npm-only"],
-  "checks": ["dev-dependencias"]
+"normative": {
+  "applicableRules": ["G1", "G2", "D1"],
+  "notApplicableRules": [],
+  "unresolvedRules": [{"rule": "D4", "reason": "APPLICABILITY_UNRESOLVED",
+                       "missingSignals": ["frontendPresent"]}],
+  "declaredPolicies": ["approved-technology-required", "gcba-citizen-authentication-required"],
+  "declaredChecks": ["technology-homologation", "citizen-authentication-mechanism"],
+  "declaredReviews": ["technology-practice-review"]
 }
 ```
 
-y el plan empieza a citarla en `applicableStandards` sin que cambie una línea de código.
+> 🔴 **Que una policy o un check estén declarados no significa que existan.** Lo que existe lo dice
+> el registro de controles, no la matriz. Los que faltan se reportan
+> `DECLARED_POLICY_NOT_INSTALLED` y `DECLARED_CHECK_NOT_INSTALLED`, y eso no invalida nada: es el
+> estado correcto de un harness que clasificó antes de construir. Hoy están construidos los de
+> `G1`, `G2` y `D1`.
+
+## Las señales
+
+Siete de las 24 reglas aplican siempre. Las otras 17 son condicionales: aplican si el trabajo
+toca algo en particular —el ciudadano, una base, un frontend, archivos—. Eso lo decide una **señal**.
+
+Una señal no es un booleano:
+
+```json
+{
+  "signalId": "citizenFacing",
+  "value": "TRUE",
+  "evidence": [{"evidenceId": "ev-1", "sourceType": "JIRA_FICHA_DE_PROYECTO",
+                "reference": "GCBA-1234", "claim": "trámite de inicio para el ciudadano"}],
+  "producer": {"type": "HUMAN"}
+}
+```
+
+Tres valores, y el tercero es el que importa:
+
+```text
+TRUE         la regla aplica
+FALSE        NOT_APPLICABLE
+UNRESOLVED   APPLICABILITY_UNRESOLVED, con la señal que falta escrita al lado
+```
+
+> 🔴 **Lo que falta nunca es `FALSE`.** Que nadie haya escrito "ciudadano" en ningún lado no prueba
+> que la aplicación no interactúe con el ciudadano: prueba que nadie lo escribió. Convertir lo
+> ausente en `FALSE` hace desaparecer la regla del reporte, y una regla que desaparece no se vuelve
+> a buscar.
+
+Cuatro reglas más, todas por la misma razón:
+
+- **Sin evidencia no hay valor.** Una señal que afirma `TRUE` o `FALSE` y no cita nada se degrada a
+  `UNRESOLVED` con `SIGNAL_EVIDENCE_MISSING`.
+- **Dos evidencias que se contradicen no se deciden.** `SIGNAL_CONFLICT`, con las dos conservadas.
+- **Lo que interpreta un modelo no pisa un dato estructurado.** Gana lo estructurado y la
+  interpretación queda anotada como `SIGNAL_INTERPRETATION_OVERRIDDEN`.
+- **La afirmación de un agente, sola, no sostiene nada.** Es una opinión con formato de evidencia.
+
+El inventario de señales válidas sale de la matriz: una que la matriz no declara se rechaza con
+`SIGNAL_NOT_DECLARED`.
+
+> 🔴 **La evidencia entra como dato y todavía nadie la junta.** Existe quién produce la señal;
+> no existe quién releva el material. Por eso un plan real sigue saliendo casi todo sin resolver,
+> y ese es el estado honesto.
 
 ## Replanificar
 
@@ -203,3 +291,7 @@ El motivo es obligatorio. Un plan que cambió sin que nadie dijera por qué no s
 - **No inventa modelos.** Un perfil sin modelo declarado se dice.
 - **No decide qué documento es relevante.** Eso lo declaró el Bloque 2 y lo elige quien tenga un
   modelo.
+- **No mide lo que se gasta.** El `expectedConsumption` de la compuerta dice `ALTO` o `BAJO`: una
+  etiqueta, no un número. Los tokens, el tiempo y la plata los cuenta el Bloque 4 —
+  [la contabilidad de una tarea](contabilidad.md)—, que observa a éste sin tocarlo: no lo importa,
+  no lo importan, y la compuerta humana de `consumo.py` sigue siendo la única que aprueba.

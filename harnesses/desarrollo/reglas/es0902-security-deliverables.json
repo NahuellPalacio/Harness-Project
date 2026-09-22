@@ -1,0 +1,71 @@
+{
+  "standard": "ES0902",
+  "version": "6.2",
+  "section": "5",
+  "unionWhenMultipleAssetTypes": true,
+  "waf": {
+    "requiredFor": [
+      "WEB_SERVICE",
+      "WEB_APPLICATION"
+    ],
+    "artifact": "Prevention team WAF policy form",
+    "missingTemplateState": "WAF_FORM_CONTEXT_REQUIRED"
+  },
+  "assetTypes": {
+    "WEB_SERVICE": {
+      "sourceId": "E1",
+      "requirements": [
+        "description of all Web Service methods",
+        "specific usage examples for those methods",
+        "data required for use",
+        "Web Service type (e.g. SOAP, RESTful)",
+        "integration description"
+      ]
+    },
+    "WEB_APPLICATION": {
+      "sourceId": "E2",
+      "requirements": [
+        "URL or IP",
+        "users covering all roles handled by the application",
+        "architecture document: service description",
+        "architecture document: integration description",
+        "architecture document: logical and physical data model",
+        "architecture document: technology architecture including OS, base software and database engine"
+      ]
+    },
+    "MOBILE_APPLICATION": {
+      "sourceId": "E3",
+      "requirements": [
+        "APK",
+        "users covering all roles handled by the application",
+        "architecture document: service description",
+        "architecture document: integration description",
+        "architecture document: logical and physical data model",
+        "architecture document: technology architecture including OS, base software and database engine"
+      ]
+    },
+    "SERVER": {
+      "sourceId": "E4",
+      "requirements": [
+        "IP",
+        "administrator user",
+        "architecture document: service description",
+        "architecture document: technology architecture including OS, base software and database engine"
+      ]
+    },
+    "TOTEM": {
+      "sourceId": "E5",
+      "requirements": [
+        "physical asset",
+        "users covering all roles handled by the application",
+        "architecture document: service description",
+        "architecture document: integration description",
+        "architecture document: topology and modularization",
+        "architecture document: logical and physical data model",
+        "architecture document: global design policies including concurrency, data storage, communication, security mechanisms and error handling",
+        "architecture document: technology architecture including OS, base software and database engine",
+        "sizing aligned with non-functional specifications"
+      ]
+    }
+  }
+}

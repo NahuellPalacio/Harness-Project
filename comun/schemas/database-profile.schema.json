@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Database Connection Profile",
+  "type": "object",
+  "required": [
+    "logicalDatabase",
+    "environment",
+    "engine",
+    "hostRef",
+    "portRef",
+    "databaseRef",
+    "usernameSecretRef",
+    "passwordSecretRef"
+  ],
+  "properties": {
+    "logicalDatabase": {
+      "type": "string"
+    },
+    "environment": {
+      "enum": [
+        "DEV",
+        "QA",
+        "HML",
+        "PRD"
+      ]
+    },
+    "engine": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "hostRef": {
+      "type": "string"
+    },
+    "portRef": {
+      "type": "string"
+    },
+    "databaseRef": {
+      "type": "string"
+    },
+    "usernameSecretRef": {
+      "type": "string"
+    },
+    "passwordSecretRef": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

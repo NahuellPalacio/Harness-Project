@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EXECUTION_ACCOUNTING_EVENT",
+  "description": "Un hecho de consumo del Bloque 4: tokens, tiempo o plata de una ejecucion, o una decision de presupuesto. Es la unidad del `ledger.jsonl`, que es append-only y es la unica fuente de verdad contable. Lo que falta NO es cero: un uso desconocido queda USAGE_UNRESOLVED y un costo sin tarifa queda COST_UNRESOLVED. Lo que no se pudo atribuir a una sesion, una unidad de trabajo o un agente queda sin atribuir y se ve en el resumen; nunca se reparte entre los conocidos.",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "timestamp",
+    "taskId",
+    "source"
+  ],
+  "properties": {
+    "eventId": {
+      "description": "Unico dentro del libro. Un eventId repetido no se agrega dos veces: es lo que hace que reingerir la misma fuente sea inofensivo.",
+      "type": "string"
+    },
+    "eventType": {
+      "description": "Los trece tipos del ciclo de vida. Un agente o una skill NUNCA llaman a la contabilidad: estos eventos los emite quien orquesta la ejecucion, no quien la hace.",
+      "enum": [
+        "TASK_STARTED",
+        "TASK_COMPLETED",
+        "SESSION_STARTED",
+        "SESSION_COMPLETED",
+        "WORKUNIT_STARTED",
+        "WORKUNIT_COMPLETED",
+        "AGENT_RUN_STARTED",
+        "AGENT_RUN_COMPLETED",
+        "MODEL_CALL_COMPLETED",
+        "TOOL_CALL_COMPLETED",
+        "MODEL_ESCALATION_REQUESTED",
+        "BUDGET_DECISION_RECORDED",
+        "ACCOUNTING_CORRECTION"
+      ]
+    },
+    "timestamp": {
+      "description": "ISO 8601. Es cuando paso el hecho, no cuando se escribio la linea.",
+      "type": "string"
+    },
+    "taskId": {
+      "description": "La tarea a la que pertenece el libro. Es el unico identificador obligatorio: sin tarea no hay libro donde escribir.",
+      "type": "string"
+    },
+    "projectId": {
+      "type": ["string", "null"]
+    },
+    "sessionId": {
+      "description": "La sesion de chat. Ausente deja SESSION_ATTRIBUTION_UNRESOLVED en el resumen: no se adivina cual fue.",
+      "type": ["string", "null"]
+    },
+    "workUnitId": {
+      "description": "La unidad de trabajo del OrchestrationPlan. Ausente deja WORKUNIT_ATTRIBUTION_UNRESOLVED, y el consumo cuenta en el total de la tarea sin entrar en ninguna fila de unidad.",
+      "type": ["string", "null"]
+    },
+    "agentId": {
+      "type": ["string", "null"]
+    },
+    "dedupKey": {
+      "description": "La clave de idempotencia del hecho observado, tal como la calcula el adaptador. Dos eventos con la misma clave son el mismo hecho visto dos veces y se cuentan una sola. El nucleo no sabe como se construye: para una transcripcion es el id del mensaje, que es lo que impide sumar una vez por bloque de contenido.",
+      "type": ["string", "null"]
+    },
+    "correctsEventId": {
+      "description": "Solo en ACCOUNTING_CORRECTION: el eventId que esta correccion enmienda. La linea corregida queda donde estaba, byte a byte; una correccion nunca reescribe historia.",
+      "type": ["string", "null"]
+    },
+    "source": {
+      "description": "De donde salio el hecho. `adapter` es obligatorio porque un evento sin adaptador no se puede volver a derivar ni contrastar.",
+      "type": "object",
+      "required": [
+        "adapter"
+      ],
+      "properties": {
+        "adapter": {
+          "type": "string"
+        },
+        "rawReference": {
+          "description": "Una referencia local y segura al origen: nombre de archivo y numero de linea, o el id de un mensaje. NUNCA contenido: el libro no guarda prompts ni conversacion.",
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "usage": {
+      "description": "El consumo de tokens. Las cuatro clases van separadas y no se colapsan: cache read no es input. `contextTokens` es una FOTO de la ventana y no se suma nunca entre eventos.",
+      "type": ["object", "null"],
+      "properties": {
+        "state": {
+          "description": "USAGE_UNRESOLVED cuando la fuente no reporta consumo. Un consumo desconocido no es cero.",
+          "enum": [
+            "RESOLVED",
+            "USAGE_UNRESOLVED"
+          ]
+        },
+        "provider": {
+          "type": ["string", "null"]
+        },
+        "model": {
+          "type": ["string", "null"]
+        },
+        "inputTokens": {
+          "type": ["integer", "null"]
+        },
+        "outputTokens": {
+          "type": ["integer", "null"]
+        },
+        "cacheReadTokens": {
+          "type": ["integer", "null"]
+        },
+        "cacheCreationTokens": {
+          "type": ["integer", "null"]
+        },
+        "contextTokens": {
+          "description": "Cuanto ocupa la ventana en este momento. NO es facturable y NO se suma: sumar fotos de contexto es la forma mas facil de reportar un numero enorme y falso.",
+          "type": ["integer", "null"]
+        },
+        "contextLimit": {
+          "type": ["integer", "null"]
+        }
+      }
+    },
+    "time": {
+      "description": "Las tres clases separadas. Tiempo de pared NO es tiempo de modelo mientras no haya evidencia de que lo sea.",
+      "type": ["object", "null"],
+      "properties": {
+        "state": {
+          "enum": [
+            "RESOLVED",
+            "TIME_ATTRIBUTION_UNRESOLVED"
+          ]
+        },
+        "wallMs": {
+          "type": ["integer", "null"]
+        },
+        "modelMs": {
+          "type": ["integer", "null"]
+        },
+        "toolMs": {
+          "type": ["integer", "null"]
+        }
+      }
+    },
+    "cost": {
+      "description": "La plata. `actual` es lo que se gasto; `apiEquivalentEstimated` es lo que habria costado por API. Presentar el segundo como el primero es el error que estos dos campos existen para hacer imposible.",
+      "type": ["object", "null"],
+      "properties": {
+        "state": {
+          "description": "COST_UNRESOLVED cuando no hay como calcular; PRICING_UNAVAILABLE cuando falta la fuente de precios. El harness no trae tarifas adentro y no inventa ninguna.",
+          "enum": [
+            "RESOLVED",
+            "COST_UNRESOLVED",
+            "PRICING_UNAVAILABLE"
+          ]
+        },
+        "provider": {
+          "description": "Uno de los siete campos que todo calculo monetario conserva. Sin los siete no hay costo: un numero sin su fuente, su version y su moneda no se puede contrastar contra nada.",
+          "type": ["string", "null"]
+        },
+        "model": {
+          "type": ["string", "null"]
+        },
+        "billingMode": {
+          "description": "Se declara, no se infiere. Con SUBSCRIPTION o ENTERPRISE la plata reportada es equivalente de API, no gasto incremental.",
+          "enum": [
+            "API",
+            "SUBSCRIPTION",
+            "ENTERPRISE",
+            "INTERNAL",
+            "UNKNOWN"
+          ]
+        },
+        "actualState": {
+          "description": "Que significa `actual` en este modo de facturacion: resuelto, cubierto por un plan fijo, o desconocido.",
+          "enum": [
+            "RESOLVED",
+            "FIXED_PLAN",
+            "UNKNOWN"
+          ]
+        },
+        "currency": {
+          "type": ["string", "null"]
+        },
+        "actual": {
+          "type": ["number", "null"]
+        },
+        "apiEquivalentEstimated": {
+          "type": ["number", "null"]
+        },
+        "pricingSource": {
+          "type": ["string", "null"]
+        },
+        "pricingVersionOrDate": {
+          "type": ["string", "null"]
+        },
+        "calculationMethod": {
+          "description": "PROVIDER_REPORTED cita la plata que reporto el proveedor; RATE_TABLE aplica una tabla que declaro el proyecto. No hay un tercero.",
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "metadata": {
+      "type": ["object", "null"]
+    }
+  }
+}

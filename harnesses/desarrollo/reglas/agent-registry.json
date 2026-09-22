@@ -1,0 +1,300 @@
+{
+  "_comentario": [
+    "El registro de agentes del Bloque 3. Declara QUE agentes y QUE skills existen, y es la",
+    "unica fuente: el disco no da de alta nada, solo diagnostica.",
+    "",
+    "Tres diferencias con el artefacto de diseno, todas a proposito y explicadas en",
+    "docs/cambios/agent-registry/spec.md:",
+    "",
+    "  1. `domain` no estaba y hace falta: el Bloque 3 rutea por dominio, y sin este campo",
+    "     haria falta un segundo archivo de mapeo, que es el segundo roster otra vez.",
+    "  2. Las rutas de skill son skills/<id>/SKILL.md, porque aca una skill es un directorio.",
+    "     Se corrigen en el dato: un validador que arregla la ruta que lee no valida.",
+    "  3. knownOrphans no vive aca. El huerfano se descubre contra el disco; el acuse de",
+    "     recibo esta en huerfanos-reconocidos.json, afuera de la declaracion de agentes, y",
+    "     no vuelve ruteable a nadie.",
+    "",
+    "dev-miba y dev-esb estan DECLARED_NOT_INSTALLED con su motivo: falta informacion",
+    "autoritativa de esas integraciones. No se generan, no se rutean, y NO derivan a",
+    "dev-tool-builder: eso es un hueco de conocimiento, no de capacidad ejecutable."
+  ],
+  "version": "1.0.0",
+  "registryType": "agent-registry",
+  "status": "ACTIVE",
+  "rules": {
+    "agentExistenceSource": "AGENT_REGISTRY",
+    "skillExistenceSource": "SKILL_REGISTRY",
+    "normativeApplicabilitySource": "NORMATIVE_MATRIX",
+    "unknownAgentFilePolicy": "ORPHAN_AGENT",
+    "undeclaredSkillPolicy": "UNDECLARED_SKILL",
+    "pendingSkillPolicy": "DECLARED_NOT_INSTALLED",
+    "specialistMinimumInstalledSkills": 1
+  },
+  "agentTypes": {
+    "ORCHESTRATOR_AGENT": {
+      "requiresSkills": false,
+      "skillPolicy": "OPTIONAL"
+    },
+    "SPECIALIST_AGENT": {
+      "requiresSkills": true,
+      "skillPolicy": "AT_LEAST_ONE_INSTALLED"
+    },
+    "CRITIC_AGENT": {
+      "requiresSkills": false,
+      "skillPolicy": "OPTIONAL"
+    },
+    "INFRASTRUCTURE_AGENT": {
+      "requiresSkills": false,
+      "skillPolicy": "NONE_REQUIRED"
+    }
+  },
+  "agents": [
+    {
+      "id": "dev-orchestrator",
+      "type": "ORCHESTRATOR_AGENT",
+      "domain": "orchestration",
+      "declared": true,
+      "agentFile": "agents/dev-orchestrator.md",
+      "status": "INSTALLED",
+      "skills": [],
+      "skillValidation": "VALID_WITH_ZERO_SKILLS"
+    },
+    {
+      "id": "dev-refutador",
+      "type": "CRITIC_AGENT",
+      "domain": "refutation",
+      "declared": true,
+      "agentFile": "agents/dev-refutador.md",
+      "status": "INSTALLED",
+      "skills": [],
+      "skillValidation": "VALID_WITH_ZERO_SKILLS"
+    },
+    {
+      "id": "dev-architecture",
+      "type": "SPECIALIST_AGENT",
+      "domain": "architecture",
+      "declared": true,
+      "agentFile": "agents/dev-architecture.md",
+      "status": "INSTALLED",
+      "skills": [
+        {
+          "id": "dev-architecture-analysis",
+          "file": "skills/dev-architecture-analysis/SKILL.md",
+          "status": "INSTALLED"
+        }
+      ]
+    },
+    {
+      "id": "dev-backend",
+      "type": "SPECIALIST_AGENT",
+      "domain": "backend",
+      "declared": true,
+      "agentFile": "agents/dev-backend.md",
+      "status": "INSTALLED",
+      "skills": [
+        {
+          "id": "dev-backend-implementation",
+          "file": "skills/dev-backend-implementation/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-api",
+          "file": "skills/dev-api/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-data",
+          "file": "skills/dev-data/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-persistence",
+          "file": "skills/dev-persistence/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-storage",
+          "file": "skills/dev-storage/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-observability",
+          "file": "skills/dev-observability/SKILL.md",
+          "status": "INSTALLED"
+        }
+      ]
+    },
+    {
+      "id": "dev-frontend",
+      "type": "SPECIALIST_AGENT",
+      "domain": "frontend",
+      "declared": true,
+      "agentFile": "agents/dev-frontend.md",
+      "status": "INSTALLED",
+      "skills": [
+        {
+          "id": "dev-frontend-implementation",
+          "file": "skills/dev-frontend-implementation/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-ui",
+          "file": "skills/dev-ui/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-accessibility",
+          "file": "skills/dev-accessibility/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-responsive",
+          "file": "skills/dev-responsive/SKILL.md",
+          "status": "INSTALLED"
+        }
+      ]
+    },
+    {
+      "id": "dev-quality",
+      "type": "SPECIALIST_AGENT",
+      "domain": "quality",
+      "declared": true,
+      "agentFile": "agents/dev-quality.md",
+      "status": "INSTALLED",
+      "skills": [
+        {
+          "id": "dev-quality-validation",
+          "file": "skills/dev-quality-validation/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-test-automation",
+          "file": "skills/dev-test-automation/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-performance-validation",
+          "file": "skills/dev-performance-validation/SKILL.md",
+          "status": "INSTALLED"
+        }
+      ]
+    },
+    {
+      "id": "dev-integration",
+      "type": "SPECIALIST_AGENT",
+      "domain": "integration",
+      "declared": true,
+      "agentFile": "agents/dev-integration.md",
+      "status": "INSTALLED",
+      "skills": [
+        {
+          "id": "dev-integration-implementation",
+          "file": "skills/dev-integration-implementation/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-service-integration",
+          "file": "skills/dev-service-integration/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-external-integration",
+          "file": "skills/dev-external-integration/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-openid-connect",
+          "file": "skills/dev-openid-connect/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-miba",
+          "file": "skills/dev-miba/SKILL.md",
+          "status": "DECLARED_NOT_INSTALLED",
+          "reason": "Authoritative miBA integration information is not available yet."
+        },
+        {
+          "id": "dev-esb",
+          "file": "skills/dev-esb/SKILL.md",
+          "status": "DECLARED_NOT_INSTALLED",
+          "reason": "Authoritative ESB integration information is not available yet."
+        }
+      ]
+    },
+    {
+      "id": "dev-security",
+      "type": "SPECIALIST_AGENT",
+      "domain": "security",
+      "declared": true,
+      "agentFile": "agents/dev-security.md",
+      "status": "INSTALLED",
+      "skills": [
+        {
+          "id": "dev-security-analysis",
+          "file": "skills/dev-security-analysis/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-security-assessment",
+          "file": "skills/dev-security-assessment/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-appsec-review",
+          "file": "skills/dev-appsec-review/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-vulnerability-management",
+          "file": "skills/dev-vulnerability-management/SKILL.md",
+          "status": "INSTALLED"
+        }
+      ]
+    },
+    {
+      "id": "dev-devops",
+      "type": "SPECIALIST_AGENT",
+      "domain": "devops",
+      "declared": true,
+      "agentFile": "agents/dev-devops.md",
+      "status": "INSTALLED",
+      "skills": [
+        {
+          "id": "dev-devops-implementation",
+          "file": "skills/dev-devops-implementation/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-environments",
+          "file": "skills/dev-environments/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-deployment",
+          "file": "skills/dev-deployment/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-openshift",
+          "file": "skills/dev-openshift/SKILL.md",
+          "status": "INSTALLED"
+        },
+        {
+          "id": "dev-ci-cd",
+          "file": "skills/dev-ci-cd/SKILL.md",
+          "status": "INSTALLED"
+        }
+      ]
+    },
+    {
+      "id": "dev-tool-builder",
+      "type": "INFRASTRUCTURE_AGENT",
+      "domain": "tooling",
+      "declared": true,
+      "agentFile": "agents/dev-tool-builder.md",
+      "status": "INSTALLED",
+      "skills": [],
+      "skillValidation": "VALID_WITH_ZERO_SKILLS"
+    }
+  ]
+}

@@ -137,8 +137,9 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "objective", "domain", "assignedAgent", "agentExists", "context",
-                     "skills", "requiredCapabilities", "applicablePolicies",
+        "required": ["id", "objective", "domain", "assignedAgent", "agentExists",
+                     "agentValidation", "context", "skills", "skillStates",
+                     "requiredCapabilities", "applicablePolicies", "normative",
                      "requiredChecks", "dependencies", "modelPolicy", "status"],
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
@@ -148,6 +149,75 @@
           "agentExists": {
             "description": "Si el agente asignado tiene su .md de verdad. Va en la unidad y no solo en los avisos del plan: un especialista recibe su unidad suelta, y tiene que poder saber ahi mismo que el agente al que esta asignada todavia no existe, sin ir a buscar una lista de avisos tres niveles mas arriba.",
             "type": "boolean"
+          },
+
+          "agentValidation": {
+            "description": "Lo que el registro de agentes dijo de el. `agentExists` es el booleano; esto es el motivo. Un false puede ser un archivo que falta, un id que no coincide o un especialista sin skills instaladas, y son tres problemas distintos.",
+            "type": "string",
+            "enum": ["VALID", "VALID_WITH_PENDING_SKILLS", "AGENT_NOT_FOUND", "ORPHAN_AGENT",
+                     "AGENT_FILE_MISSING", "AGENT_ID_MISMATCH", "AGENT_TYPE_INVALID",
+                     "AGENT_SKILL_POLICY_INVALID", "DUPLICATE_AGENT_ID",
+                     "DUPLICATE_DOMAIN_OWNER", "DEPRECATED_AGENT"]
+          },
+
+          "skillStates": {
+            "description": "El estado de cada skill de la unidad. `skills` sigue siendo la lista de nombres de siempre -no cambia de tipo y no rompe a quien ya la consume-; esto va al lado. Sin esto, una skill declarada y todavia no escrita -dev-miba- se lee igual que una que falta por error.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "status", "validation"],
+              "properties": {
+                "id": { "type": "string" },
+                "status": {
+                  "type": "string",
+                  "enum": ["INSTALLED", "DECLARED_NOT_INSTALLED", "DEPRECATED"]
+                },
+                "validation": {
+                  "type": "string",
+                  "enum": ["SKILL_AVAILABLE", "SPECIALIZED_SKILL_GAP", "SKILL_FILE_MISSING",
+                           "SKILL_ID_MISMATCH", "SKILL_OWNER_CONFLICT", "DEPRECATED_SKILL"]
+                }
+              }
+            }
+          },
+
+          "normative": {
+            "description": "Que reglas de ES0901 §7.1 le aplican a esta unidad, cuales no, y cuales no se pudieron decidir porque falta la senal. Una senal ausente deja la regla en unresolvedRules con el nombre de lo que falta: NUNCA en notApplicableRules. declaredPolicies y declaredChecks son lo que exige lo aplicable; que existan o no es otra capa.",
+            "type": "object",
+            "required": ["standard", "applicableRules", "notApplicableRules",
+                         "unresolvedRules", "declaredPolicies", "declaredChecks"],
+            "properties": {
+              "standard": { "type": "object" },
+              "applicableRules": { "type": "array", "items": { "type": "string" } },
+              "notApplicableRules": { "type": "array", "items": { "type": "string" } },
+              "unresolvedRules": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["rule", "reason"],
+                  "properties": {
+                    "rule": { "type": "string" },
+                    "reason": {
+                      "type": "string",
+                      "enum": ["APPLICABILITY_UNRESOLVED", "APPLICABILITY_EXPRESSION_UNRESOLVED"]
+                    },
+                    "missingSignals": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              },
+              "declaredPolicies": { "type": "array", "items": { "type": "string" } },
+              "declaredChecks": { "type": "array", "items": { "type": "string" } },
+              "signals": {
+              "description": "Que senal se produjo, que valor dio y de donde sale. Una senal ausente no aparece aca y deja su regla en unresolvedRules: lo que falta se ve, no se convierte en que no aplica. La evidencia viaja con el valor porque un booleano sin respaldo se equivoca en silencio en las dos direcciones.",
+              "type": "object"
+            },
+            "declaredReviews": {
+                "description": "Lo que exige criterio y no admite un check. Va al lado de las otras dos listas y no las cambia: quien ya consume declaredPolicies o declaredChecks no se entera.",
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "evidence": { "type": "object" }
+            }
           },
 
           "context": {

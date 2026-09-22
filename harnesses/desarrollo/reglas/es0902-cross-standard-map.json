@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "relations": [
+    {
+      "from": "ES0902.C1",
+      "to": "ES0901.D2",
+      "type": "OVERLAP_REUSE",
+      "sharedControls": [
+        "credential-entry-delegation-required",
+        "authentication-delegation"
+      ],
+      "rule": "Reuse execution where applicability overlaps; preserve separate normative traces."
+    },
+    {
+      "from": "ES0902.C1",
+      "to": "ES0901.D1",
+      "type": "POTENTIAL_CONFLICT",
+      "state": "CROSS_STANDARD_INTERPRETATION_REQUIRED",
+      "rule": "Do not reconcile citizen authentication and ES0902 Keycloak/OIDC requirements without authoritative GCBA/ASI evidence."
+    },
+    {
+      "from": "ES0902.C3",
+      "to": "ES0901.G1",
+      "type": "CONTROL_REUSE",
+      "sharedControls": [
+        "approved-technology-required",
+        "homologated-version-required",
+        "technology-homologation",
+        "technology-version-compliance"
+      ]
+    },
+    {
+      "from": "ES0902.Ve1",
+      "to": "ES0901.G1",
+      "type": "CONTROL_REUSE",
+      "sharedControls": [
+        "approved-technology-required",
+        "homologated-version-required",
+        "technology-homologation",
+        "technology-version-compliance"
+      ]
+    },
+    {
+      "from": "ES0902.Vu5",
+      "to": "ES0901.P5",
+      "type": "EQUIVALENCE_REVIEW_REQUIRED",
+      "state": "CROSS_STANDARD_CONTROL_BINDING_REQUIRED",
+      "rule": "When P5 is implemented, compare exact semantics and deduplicate execution only if outcomes are equivalent."
+    },
+    {
+      "from": "ES0902.C2",
+      "to": "ES0901.ANNEX_V",
+      "type": "SUPPORTS",
+      "rule": "Internal readiness is not official QA security approval."
+    },
+    {
+      "from": "ES0902.Ve2",
+      "to": "ES0901.G1",
+      "type": "ADDITIONAL_GOVERNANCE",
+      "rule": "A newer/more secure version still requires Infrastructure consensus before use."
+    },
+    {
+      "from": "ES0902.G1",
+      "to": "HARNESS.SECURITY_ASSESSMENT",
+      "type": "NO_AUTO_PASS",
+      "rule": "Passing security-principle controls never produces official assessment approval."
+    }
+  ]
+}

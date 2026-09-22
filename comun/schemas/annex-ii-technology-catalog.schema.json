@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "annex-ii-technology-catalog/1.0",
+  "title": "ANNEX_II_TECHNOLOGY_CATALOG",
+  "description": "El Anexo II de ES0901: que tecnologias homologo la ASI y en que versiones. Es el dato contra el que se evalua G1 -aprobada la herramienta, homologada la version- y nada mas: el harness no homologa, y lo que no esta en este catalogo es ASI_EVALUATION_REQUIRED, ni aprobado ni rechazado. Las versiones vienen crudas -8.2.30, 19.2.18 (LTS), 4.1.x, 2.51.0 a 2.57.1, framework-dependent- porque asi estan en el estandar y recortarlas al cargar seria perder el calificativo o el motivo. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["catalogVersion", "catalogType", "source", "status", "versionRules", "entries"],
+  "properties": {
+
+    "catalogVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+
+    "catalogType": {
+      "type": "string",
+      "enum": ["gcba-homologated-technology-catalog"]
+    },
+
+    "source": {
+      "description": "De que estandar y de que secciones sale. Un catalogo de otra version del estandar no se carga: las versiones homologadas cambian entre versiones, y usar uno viejo homologa lo que ya no esta homologado.",
+      "type": "object",
+      "required": ["standard", "version"],
+      "properties": {
+        "standard": { "type": "string", "enum": ["ES0901"] },
+        "version": { "type": "string" },
+        "sections": { "type": "array", "items": { "type": "string" } },
+        "title": { "type": "string" }
+      }
+    },
+
+    "status": { "type": "string" },
+
+    "versionRules": {
+      "description": "La regla por defecto -el parche sube dentro de su rama- y la tolerancia de despliegue. La tolerancia es de despliegue, no homologacion: una version del estandar inmediatamente anterior se tolera con observacion formal, y la ASI puede rechazar igual dentro de la ventana.",
+      "type": "object",
+      "properties": {
+        "defaultRule": { "type": "string" },
+        "deploymentTolerance": { "type": "object" }
+      }
+    },
+
+    "toolchainRule": {
+      "description": "Las herramientas de build, empaquetado, dependencias y transpilacion NO se homologan individualmente. Que algo sea auxiliar se DECLARA en el inventario; una herramienta desconocida no se clasifica como auxiliar en silencio para sacarsela de encima.",
+      "type": "object",
+      "properties": {
+        "individuallyHomologated": { "type": "boolean" },
+        "requirements": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "category", "homologatedVersionsRaw", "versionRule",
+                     "sourcePage"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]*$" },
+          "name": { "type": "string" },
+          "aliases": { "type": "array", "items": { "type": "string" } },
+          "category": { "type": "string" },
+          "scope": {
+            "description": "Ambito declarado en el estandar. Viene null en la mayoria de las entradas y por eso no se le fija tipo: exigir string convertiria en invalidas 122 filas que el estandar dejo en blanco.",
+            "default": null
+          },
+
+          "homologatedVersionsRaw": {
+            "description": "Tal como figuran en el estandar. El calificativo -LTS, LTR, SP, CE- se conserva: es parte de que version se homologo.",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+
+          "deprecatedVersionsRaw": {
+            "description": "Toleradas con observacion de actualizacion. Deprecada no es homologada, y no deja de aparecer en el reporte.",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+
+          "versionRule": {
+            "type": "string",
+            "enum": ["DEFAULT", "CONTEXT_DEPENDENT", "FRAMEWORK_DEPENDENT",
+                     "PROVIDER_ASSIGNED_BY_DGSEI"]
+          },
+
+          "sourcePage": {
+            "description": "La pagina del estandar. Es lo que hace auditable una transcripcion de 142 filas.",
+            "type": "integer"
+          },
+
+          "notes": { "type": "array", "items": { "type": "string" } },
+          "constraints": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

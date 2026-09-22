@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NORMATIVE_REVIEW",
+  "type": "object",
+  "required": [
+    "reviewId",
+    "controlType",
+    "source",
+    "subject",
+    "evidence",
+    "findings",
+    "result",
+    "reviewer"
+  ],
+  "properties": {
+    "reviewId": {
+      "type": "string"
+    },
+    "controlType": {
+      "enum": [
+        "REVIEW"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "standard",
+        "version",
+        "section",
+        "rule"
+      ],
+      "properties": {
+        "standard": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "section": {
+          "type": "string"
+        },
+        "rule": {
+          "type": "string"
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "required": [
+        "type",
+        "id"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "description": "admite null: string o null"
+        },
+        "domain": {
+          "description": "admite null: string o null"
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "evidenceId",
+          "sourceType",
+          "reference",
+          "claim"
+        ],
+        "properties": {
+          "evidenceId": {
+            "type": "string"
+          },
+          "sourceType": {
+            "enum": [
+              "GCBA_NORMATIVE",
+              "OFFICIAL_TECHNOLOGY_DOCUMENTATION",
+              "FORMAL_STANDARD",
+              "RECOGNIZED_INDUSTRY_GUIDANCE",
+              "PROJECT_IMPLEMENTATION",
+              "PROJECT_ARCHITECTURE",
+              "PROJECT_CONVENTION"
+            ]
+          },
+          "reference": {
+            "type": "string"
+          },
+          "versionOrDate": {
+            "description": "admite null: string o null"
+          },
+          "claim": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "findingId",
+          "practice",
+          "applicability",
+          "status",
+          "evidenceRefs",
+          "rationale"
+        ],
+        "properties": {
+          "findingId": {
+            "type": "string"
+          },
+          "practice": {
+            "type": "string"
+          },
+          "applicability": {
+            "enum": [
+              "APPLICABLE",
+              "NOT_APPLICABLE",
+              "UNRESOLVED"
+            ]
+          },
+          "dimension": {
+            "description": "Que propiedad del diseño evalua el hallazgo. D3 la exige de un vocabulario cerrado: un conteo -240 clases, tres niveles de herencia- NO es una dimension, y por eso no puede ser un hallazgo por si solo. Puede ser evidencia de una, y entonces la conclusion es sobre la dimension y la firma quien revisa.",
+            "type": "string"
+          },
+          "materiality": {
+            "description": "Cuanto pesa el desvio en ESTE sistema. Es el eje con el que D3 pesa un hallazgo, como G2 lo pesa con practiceStrength. Sin declarar NO se resuelve hacia el lado suave: la revision queda REVIEW_INCOMPLETE. Elegir por defecto que habra sido menor es como un NON_COMPLIANT se convierte en una observacion sin que nadie lo decida.",
+            "enum": [
+              "MATERIAL",
+              "MINOR",
+              "UNRESOLVED"
+            ]
+          },
+          "practiceStrength": {
+            "enum": [
+              "REQUIRED_BY_SOURCE",
+              "RECOMMENDED_BY_SOURCE",
+              "OPTIONAL_BY_SOURCE",
+              "UNRESOLVED"
+            ]
+          },
+          "versionDependent": {
+            "description": "Si la guia que sostiene el hallazgo depende de la version de la tecnologia. Opcional: sin declarar vale false, y una revision que no lo trae se resuelve igual que antes. Cuando es true y el sujeto no trae `version`, el hallazgo no se puede juzgar -ni para cumplir ni para no aplicar- y la revision queda REVIEW_INCOMPLETE con REVIEW_VERSION_CONTEXT_MISSING.",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "ADOPTED",
+              "DEVIATION",
+              "NOT_APPLICABLE",
+              "EVIDENCE_MISSING",
+              "JUSTIFICATION_PENDING",
+              "TECHNOLOGY_PARADIGM_CONFLICT"
+            ]
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "result": {
+      "enum": [
+        "COMPLIANT",
+        "COMPLIANT_WITH_OBSERVATIONS",
+        "NON_COMPLIANT",
+        "REVIEW_INCOMPLETE"
+      ]
+    },
+    "reviewer": {
+      "type": "object",
+      "required": [
+        "ownerAgent",
+        "reviewMode"
+      ],
+      "properties": {
+        "ownerAgent": {
+          "type": "string"
+        },
+        "supportingAgents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reviewMode": {
+          "enum": [
+            "AGENT_REVIEW",
+            "HUMAN_REVIEW",
+            "HYBRID_REVIEW"
+          ]
+        }
+      }
+    }
+  },
+  "$id": "normative-review/1.0",
+  "description": "El resultado de una REVIEW normativa: sujeto, evidencia con su fuente, hallazgos ligados a esa evidencia, resultado y revisor. Es el contrato que hace la diferencia entre una revision y una opinion: sin fuente citada, un hallazgo no sostiene nada. La estructura se valida mecanicamente SIEMPRE -schema, tupla normativa, referencias de evidencia, agentes declarados-; el juicio tecnico lo aporta quien revisa y ningun test lo puede contradecir. Lo valida el interprete de subconjunto de contexto-armar.py, que no soporta `type` como lista: los campos que admiten null quedan sin tipo declarado."
+}

@@ -1,0 +1,456 @@
+{
+  "standard": "ES0902",
+  "version": "6.2",
+  "sourceDate": "2025-08",
+  "expectedRuleCount": 21,
+  "rules": [
+    {
+      "id": "O1",
+      "ruleKey": "ES0902.O1",
+      "category": "ORGANIZATION",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "gcba-it-security-normative-compliance-required"
+      ],
+      "checks": [],
+      "reviews": [
+        "gcba-it-security-normative-review"
+      ]
+    },
+    {
+      "id": "O2",
+      "ruleKey": "ES0902.O2",
+      "category": "ORGANIZATION",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "gcba-security-control-authority-required"
+      ],
+      "checks": [
+        "security-control-authority-evidence"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "C1",
+      "ruleKey": "ES0902.C1",
+      "category": "QUALITY",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "authenticationPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-integration"
+      ],
+      "policies": [
+        "openid-connect-authentication-required",
+        "dgsei-keycloak-provider-required",
+        "credential-entry-delegation-required"
+      ],
+      "checks": [
+        "oidc-keycloak-integration",
+        "authentication-delegation"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "C2",
+      "ruleKey": "ES0902.C2",
+      "category": "QUALITY",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "securityHomologationPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "qa-security-approval-required"
+      ],
+      "checks": [
+        "qa-security-approval-evidence"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "C3",
+      "ruleKey": "ES0902.C3",
+      "category": "QUALITY",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-architecture",
+        "dev-security"
+      ],
+      "policies": [
+        "approved-technology-required",
+        "homologated-version-required"
+      ],
+      "checks": [
+        "technology-homologation",
+        "technology-version-compliance"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu1",
+      "ruleKey": "ES0902.Vu1",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "authenticationPagePresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "authentication-abuse-protection-required"
+      ],
+      "checks": [
+        "authentication-abuse-protection"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu2",
+      "ruleKey": "ES0902.Vu2",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "sensitiveDataTransmissionPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "sensitive-data-plaintext-transmission-prohibited"
+      ],
+      "checks": [
+        "sensitive-data-transport-protection"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu3",
+      "ruleKey": "ES0902.Vu3",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "browserSessionPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-frontend"
+      ],
+      "policies": [
+        "browser-close-session-termination-required"
+      ],
+      "checks": [
+        "browser-close-session-termination"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu4",
+      "ruleKey": "ES0902.Vu4",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "sessionPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-backend"
+      ],
+      "policies": [
+        "session-inactivity-timeout-required"
+      ],
+      "checks": [
+        "session-inactivity-timeout"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu5",
+      "ruleKey": "ES0902.Vu5",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "clientValidationPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-backend",
+        "dev-frontend"
+      ],
+      "policies": [
+        "client-validation-server-mirroring-required"
+      ],
+      "checks": [
+        "client-server-validation-parity"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu6",
+      "ruleKey": "ES0902.Vu6",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "userFacingErrorPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-backend",
+        "dev-frontend"
+      ],
+      "policies": [
+        "custom-error-messages-required"
+      ],
+      "checks": [
+        "custom-error-message-compliance"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu8",
+      "ruleKey": "ES0902.Vu8",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "applicationRolesPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-backend"
+      ],
+      "policies": [
+        "user-profile-role-enforcement-required"
+      ],
+      "checks": [
+        "role-profile-consistency"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu9",
+      "ruleKey": "ES0902.Vu9",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "unauthenticatedPublicInterfacePresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-backend",
+        "dev-devops"
+      ],
+      "policies": [
+        "public-interface-abuse-control-required"
+      ],
+      "checks": [
+        "public-interface-abuse-protection"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu7",
+      "ruleKey": "ES0902.Vu7",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-devops"
+      ],
+      "policies": [
+        "base-software-private-data-disclosure-prohibited"
+      ],
+      "checks": [
+        "base-software-data-disclosure-configuration"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Vu10",
+      "ruleKey": "ES0902.Vu10",
+      "category": "SECURITY_PRINCIPLE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "owaspApplicableAssetPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "owasp-security-guidance-required"
+      ],
+      "checks": [],
+      "reviews": [
+        "owasp-security-guidance-review"
+      ]
+    },
+    {
+      "id": "Ve1",
+      "ruleKey": "ES0902.Ve1",
+      "category": "VERSIONING",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-architecture",
+        "dev-security"
+      ],
+      "policies": [
+        "approved-technology-required",
+        "homologated-version-required"
+      ],
+      "checks": [
+        "technology-homologation",
+        "technology-version-compliance"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "Ve2",
+      "ruleKey": "ES0902.Ve2",
+      "category": "VERSIONING",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "newerSecurityVersionProposed"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-devops"
+      ],
+      "policies": [
+        "infrastructure-consensus-for-newer-security-version-required"
+      ],
+      "checks": [
+        "infrastructure-consensus-evidence"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "G1",
+      "ruleKey": "ES0902.G1",
+      "category": "ACCEPTANCE",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "security-principles-do-not-imply-assessment-approval"
+      ],
+      "checks": [],
+      "reviews": []
+    },
+    {
+      "id": "G2",
+      "ruleKey": "ES0902.G2",
+      "category": "ACCEPTANCE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "securityAssessmentResultPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "security-vulnerability-acceptance-threshold"
+      ],
+      "checks": [
+        "security-vulnerability-acceptance-threshold"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "G3",
+      "ruleKey": "ES0902.G3",
+      "category": "ACCEPTANCE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "securityResubmissionPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "security-resubmission-full-finding-recheck-required"
+      ],
+      "checks": [
+        "security-resubmission-coverage"
+      ],
+      "reviews": []
+    },
+    {
+      "id": "G4",
+      "ruleKey": "ES0902.G4",
+      "category": "ACCEPTANCE",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "priorVulnerabilityReportPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security"
+      ],
+      "policies": [
+        "security-reassessment-full-scope-required"
+      ],
+      "checks": [
+        "security-reassessment-full-scope"
+      ],
+      "reviews": []
+    }
+  ]
+}

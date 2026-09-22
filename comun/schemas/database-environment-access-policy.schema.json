@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Database Environment Access Policy",
+  "type": "object",
+  "required": [
+    "version",
+    "environments",
+    "default"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "environments": {
+      "type": "object",
+      "required": [
+        "DEV",
+        "QA",
+        "HML",
+        "PRD"
+      ],
+      "properties": {
+        "DEV": {
+          "$ref": "#/$defs/access"
+        },
+        "QA": {
+          "$ref": "#/$defs/access"
+        },
+        "HML": {
+          "$ref": "#/$defs/access"
+        },
+        "PRD": {
+          "$ref": "#/$defs/access"
+        }
+      },
+      "additionalProperties": false
+    },
+    "default": {
+      "type": "object",
+      "required": [
+        "mode",
+        "reason"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "DENY"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "DATABASE_ENVIRONMENT_UNRESOLVED"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "access": {
+      "type": "object",
+      "required": [
+        "mode",
+        "read",
+        "write",
+        "ddl",
+        "migrations"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "FULL",
+            "READ_ONLY"
+          ]
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "write": {
+          "type": "boolean"
+        },
+        "ddl": {
+          "type": "boolean"
+        },
+        "migrations": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

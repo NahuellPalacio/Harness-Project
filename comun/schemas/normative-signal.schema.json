@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NORMATIVE_SIGNAL",
+  "description": "Una senal de aplicabilidad normativa: el dato que decide si una regla CONDITIONAL de ES0901 7.1 aplica a una unidad de trabajo. Tres valores y no dos, porque el tercero -UNRESOLVED- es el unico que la matriz obliga a distinguir: una senal ausente NUNCA es una senal falsa. `evidence` es obligatorio: una senal que afirma TRUE o FALSE sin respaldo se degrada a UNRESOLVED con SIGNAL_EVIDENCE_MISSING.",
+  "type": "object",
+  "required": [
+    "signalId",
+    "value",
+    "evidence",
+    "producer"
+  ],
+  "properties": {
+    "signalId": {
+      "description": "El id de la senal, tal como lo declara la matriz normativa. Uno que la matriz no declara se rechaza con SIGNAL_NOT_DECLARED: el inventario de senales validas sale de la matriz y no de una lista paralela.",
+      "type": "string"
+    },
+    "value": {
+      "enum": [
+        "TRUE",
+        "FALSE",
+        "UNRESOLVED"
+      ]
+    },
+    "evidence": {
+      "description": "De donde sale el valor. Vacio con TRUE o FALSE degrada la senal a UNRESOLVED.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "evidenceId",
+          "sourceType",
+          "reference",
+          "claim"
+        ],
+        "properties": {
+          "evidenceId": {
+            "type": "string"
+          },
+          "sourceType": {
+            "description": "Las cuatro primeras son estructuradas -un dato explicito que alguien escribio-; las dos siguientes son interpretadas. Si las dos clases discrepan gana la estructurada, y la interpretacion queda como SIGNAL_INTERPRETATION_OVERRIDDEN. Las dos ultimas son debiles y NO sostienen ningun valor por si solas: AGENT_STATEMENT es una opinion con formato de evidencia, y REPOSITORY_DEPENDENCY prueba que un paquete esta instalado, no que la aplicacion lo use. Una libreria de OIDC en el manifiesto no es una aplicacion que autentica.",
+            "enum": [
+              "TASK_CONTEXT",
+              "PROJECT_CONTEXT",
+              "REPOSITORY_CONFIGURATION",
+              "HUMAN_CONFIRMATION",
+              "JIRA_FICHA_DE_PROYECTO",
+              "PROJECT_DOCUMENTATION",
+              "AGENT_STATEMENT",
+              "REPOSITORY_DEPENDENCY"
+            ]
+          },
+          "reference": {
+            "description": "Donde esta: la clave del issue, la ruta del archivo, el campo del contexto. Vacia no referencia nada y no cuenta como evidencia.",
+            "type": "string"
+          },
+          "claim": {
+            "description": "Que afirma la fuente sobre la senal. Dos evidencias con claims opuestos dan SIGNAL_CONFLICT.",
+            "type": "string"
+          },
+          "supports": {
+            "description": "Que valor sostiene esta evidencia. Si no esta, sostiene el valor declarado de la senal.",
+            "enum": [
+              "TRUE",
+              "FALSE"
+            ]
+          },
+          "versionOrDate": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "producer": {
+      "description": "Quien produjo la senal. DETERMINISTIC lee un dato estructurado; AGENT_EVIDENCE_BACKED interpreta material no estructurado y no puede pisar lo estructurado; HUMAN es una confirmacion de una persona.",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "DETERMINISTIC",
+            "AGENT_EVIDENCE_BACKED",
+            "HUMAN"
+          ]
+        },
+        "id": {
+          "description": "El id del agente cuando el tipo es AGENT_EVIDENCE_BACKED. Tiene que estar declarado en el registro de agentes: la senal no crea agentes.",
+          "type": "string"
+        }
+      }
+    },
+    "reason": {
+      "type": "string"
+    },
+    "source": {
+      "description": "La tupla normativa de la regla que consume la senal, cuando se produce para una en particular.",
+      "type": "object",
+      "properties": {
+        "standard": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "section": {
+          "type": "string"
+        },
+        "rule": {
+          "type": "string"
+        }
+      }
+    },
+    "scope": {
+      "description": "El alcance de orquestacion para el que se produjo la senal. Opcional: ninguna regla lo exigia hasta D5, y las senales que ya existen siguen validando sin el. ES0901 7.1 D5 exige que la senal y la evaluacion de la regla sean del MISMO alcance: mezclar evidencia de todo el proyecto con una aplicabilidad de una sola unidad de trabajo, sin declarar la relacion entre los dos alcances, deja la regla en APPLICABILITY_UNRESOLVED. No se adjudica la logica de la contencion; se exige que este declarada y citada.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Cual es el alcance: la clave del proyecto, el id de la unidad de trabajo, la clave de la tarea.",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "PROJECT",
+            "WORKUNIT",
+            "TASK"
+          ]
+        },
+        "reference": {
+          "description": "Donde esta declarado ese alcance. Vacia no referencia nada.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

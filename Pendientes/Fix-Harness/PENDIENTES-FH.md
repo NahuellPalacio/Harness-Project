@@ -13,22 +13,40 @@ running order.
 | | What | Why now |
 |---|---|---|
 | 1 | Two installer tests break versioned files | It can leave `pre-tool-use.py` — the only blocking rule of the harness — broken in the tree, and four agents were killed by a watchdog during 0.13.0 |
-| 2 | Review the four contract fixes on their own diff | They rode inside a port that promised not to change behaviour. Until somebody reads them alone, the promise is unverified |
-| 3 | The IGE stayed on v0.9.0 | It is now four versions behind, and 0.13.0 breaks the check contract: any `.ps1` check written there stops running |
-| 4 | What the checks witness never exercised | 25 branches with no test and no implementation left to compare against |
-| 5 | The always loaded cost of agents and skills | The repo went from 53 to 449 tokens per turn during 0.13.0 and nothing caps it |
-| 6 | The budget has to measure the session | Same blind spot, one level up |
-| 7 | The four minor port divergences | None changes a verdict. Cheap to close while touching the files anyway |
-| 8 | Skill routing in `UserPromptSubmit` is mute | A capability that was never built, not a defect |
-| 9 | `ES0902.md` did not close as faithful | Predates all of this |
-| 10 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
-| 11 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
-| 12 | Neither Jira nor GitLab was ever called for real | Two adapters shipped verified against a fake transport; the first real call is what can still disprove the endpoints |
-| 13 | The Ficha de Proyecto is a supposition | The whole Block 2 rests on a concept nobody has written yet in a real Jira |
-| 14 | Three loadable .md files are in Spanish | ADR-0011 was broken by three files on the day it was written, and nothing measures it |
+| 2 | G1 reads a leading zero or a non-ASCII digit as a canonical version | `php 08.2.30` and an Arabic-Indic `8` come out `HOMOLOGATED`. The only fail-open result in six refuter passes, and a one-line fix |
+| 3 | `controles/` never reaches an installed project | Thirty-one normative controls declare `INSTALLED` and the installer never copies them: outside this repository every one of them is `CONTROL_FILE_MISSING`. Each rule installed makes this worse; D7 added six at once, D8 two and P1 five |
+| 4 | `19_contexto / E-29` is not deterministic | It fired once and never again. It asserts determinism, so the one time it fires nobody can tell the finding from the flake |
+| 5 | Close `integridad-de-repositorio` and `tool-builder` | They shipped in 0.19.0 with their verdict `EN CURSO`: two `sin sustento` in the first, eleven in the second |
+| 6 | Review the four contract fixes on their own diff | They rode inside a port that promised not to change behaviour. Until somebody reads them alone, the promise is unverified |
+| 7 | The IGE stayed on v0.9.0 | It is now four versions behind, and 0.13.0 breaks the check contract: any `.ps1` check written there stops running |
+| 8 | What the checks witness never exercised | 25 branches with no test and no implementation left to compare against |
+| 9 | The always loaded cost of agents and skills | The repo went from 53 to 449 tokens per turn during 0.13.0 and nothing caps it |
+| 10 | The budget has to measure the session | Same blind spot, one level up |
+| 11 | The four minor port divergences | None changes a verdict. Cheap to close while touching the files anyway |
+| 12 | Skill routing in `UserPromptSubmit` is mute | A capability that was never built, not a defect |
+| 13 | `ES0902.md` did not close as faithful | Predates all of this |
+| 14 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
+| 15 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
+| 16 | Neither Jira nor GitLab was ever called for real | Two adapters shipped verified against a fake transport; the first real call is what can still disprove the endpoints |
+| 17 | The Ficha de Proyecto is a supposition | The whole Block 2 rests on a concept nobody has written yet in a real Jira |
+| 18 | Three loadable .md files are in Spanish | ADR-0011 was broken by three files on the day it was written, and nothing measures it |
+| 19 | ES0902 declares 38 controls and none of them is built | The largest declared-not-built gap the harness has had. Whoever reads "ES0902 installed" can easily read "ES0902 complied with" |
+| 20 | Nothing produces the G2 severity mapping | Every real run of the acceptance threshold comes out `VULNERABILITY_RISK_MAPPING_UNRESOLVED`, so the threshold is installed and unusable |
 
-Items 1 and 2 are what 0.13.1 is for. Item 3 is not code: it is running `-Update` on a real
-project, and it is what tells whether any of this works outside this repo.
+Item 2 is what comes first now: it is the only place where the harness says `HOMOLOGATED` for
+something the ratified rule rejects. 0.19.0 released the backlog of verdict files that had piled up
+since 0.18.0; two of those changes shipped open (item 5) and G1 shipped with E-17 contradicted and
+in plain sight.
+
+🔴 Recount it, do not copy the number: `docs/cambios/*/verificacion.md` that `git ls-files` does
+not know are the unreleased ones.
+
+Item 1 is what makes a killed run dangerous, and it stays at the top
+for that reason. Item 7 is not code: it is running `-Update` on a real project, and it is what tells
+whether any of this works outside this repo.
+
+📌 Two changes still have a `spec.md` and no verdict: `sdd-capacidad` and `mapa-en-la-bitacora`,
+which predate the habit of writing one.
 
 ## Missing measurement
 
@@ -38,6 +56,11 @@ Measured by hand on 2026-08-14: 15 pieces, around 1540 tokens, average 103 per p
 one token every four characters of `name` plus `description`, paid on every turn. Meanwhile
 `CLAUDE.md` has five caps with a check that warns. This is exactly the boundary the harness
 claims to guard and does not measure. Nothing stops the next piece from doubling that number.
+
+Measured again on 2026-09-18, after the eight agent files landed: the eight `name` plus
+`description` pairs add **3175 characters, around 793 tokens per turn**, on top of what was already
+there. Nothing warned, because nothing measures it. And 27 skills were installed in the same
+stretch, each with its own always-loaded description, none of them counted here.
 
 Fix. `-Doctor` measures and reports the total; new cap `techoAssetsSiempreCargados` in
 `comun/manifest.json`. It warns, it never blocks.
@@ -90,6 +113,129 @@ decision — which of the file's sections is "fija" vs "cache" vs unzoned prose 
 `techoFueraDeZonas` needs a meaning that holds even for a file with zero zones marked.
 
 ## Incomplete capabilities
+
+### Eight of the 24 ES0901 §7.1 rules are operationalized
+
+Where this stands on 2026-09-21, written so it can be picked up cold. The rules are installed **one
+at a time**, each from its own governance package — the request arrives as a
+`prompt-install-dN-governance.md` plus the `dN-*.md` artifacts of its signal, policy and
+check/review.
+
+```
+G1  approved technologies        2 policies + 2 checks   spec.md, NO verificacion.md
+G2  industry good practices      1 policy  + 1 review    spec.md, NO verificacion.md
+D1  citizen authentication       1 policy  + 1 check     31 upheld, closed
+D2  credential delegation        1 policy  + 1 check     31 upheld, closed
+D3  object-oriented design       1 policy  + 1 review    28 upheld, closed
+D4  responsive behaviour         1 policy  + 1 check     31 upheld, closed
+D6  georeferenced visualization  1 policy  + 1 check     31 upheld, closed
+D5  cadastral normalization      1 policy  + 1 check     37 upheld, closed
+```
+
+Eighteen controls installed of the 36 policies, 34 checks and 2 reviews the matrix declares. Six of
+the fourteen signals have a producer: `citizenFacing`, `authenticationPresent`,
+`applicationCodePresent`, `frontendPresent`, `georeferencedVisualizationPresent`,
+`frontendAddressInputPresent`. Nobody collects the evidence for any of them yet, so a real WorkUnit
+still resolves almost every conditional rule as `APPLICABILITY_UNRESOLVED` — that is the honest
+state, not a defect.
+
+**Eight rules have all of their declared controls built: G1, G2 and D1 to D6.** The other sixteen
+still declare controls that do not exist, and that is the normal state of a one-rule-at-a-time
+rollout — their packages have not arrived. 🔴 Do not restate this as *no rule is left with declared
+and unbuilt controls*: that claim was written twice while installing D5 and it is false. Twenty-four
+rows, eighteen controls.
+
+D5 was installed last, out of order: its package arrived on 2026-09-20 and D6's on 2026-09-21, and
+D6 went first because it does not depend on D5. D5 was the only rule whose package had arrived and
+was not installed, and it left two green assertions in D6 that had to be rewritten —
+`31_d6 / E-26` and the control count in `31_d6 / E-30`. That was deliberate and it worked: whoever
+installed D5 had to change a passing test.
+
+🔴 **G1 and G2 were never refuted.** They have `spec.md` and no `verificacion.md`, and every rule
+after them builds on them — D3 extended `revisiones.py`, which G2's scenarios cover. That is item 4
+of the table above, and it is now the only change in the repository without a verdict.
+
+The cycle every closed rule used, and worth keeping: spec with `E-nn` scenarios mapped to the
+request's `Dn-nn` → build → tests → a deliberate mutation pass for the `rojo visto` mark → verdict
+from `harness-spec-refuter` → `verificacion.md`. **None of the five closed on the first verdict.**
+D4 needed three passes and D6 needed three; Block 4's E-37 needed six. Every one of those passes
+found a test that was green while proving something adjacent to its scenario — and twice, in D6 and
+in Block 4, a pass found a defect *introduced by the fix from the pass before*.
+
+### The tool-builder change is half built and its spec says so
+
+`docs/cambios/tool-builder/spec.md` has 37 scenarios. Twenty-six carry `rojo visto: si` — the tool
+contract, the Tool Registry, the lifecycle, the versioning and the secret handling, all covered by
+`tests/casos/21_tools.py`. Eleven are still `no consta`:
+
+```text
+E-12 .. E-16   the two gates: tool risk, separate from model cost
+E-32           the non-sensitive execution trace
+E-33           TOOL_BUILD_CAPABILITY_GAP: no recursive tool building
+E-34, E-35     a CHECK_GAP does not reach dev-tool-builder; no policies, no checks
+E-36           agents/dev-tool-builder.md is in English
+E-37           a real run of the agent  · verificación: lectura
+```
+
+E-36 is the cheap one and it is already true: the agent file landed on 2026-09-18 with the other
+seven specialists, in English. It has no test, so the mark stays honest at `no consta`.
+
+Refuted on 2026-09-22: 26 sostenidos, 11 sin sustento — exactly these eleven, and nothing else.
+`docs/cambios/tool-builder/verificacion.md` records it and says `EN CURSO`. The code shipped in
+0.19.0 declared open.
+
+Fix. Build the two gates in `consumo.py` — the tool-risk gate lives beside the model gate and
+neither covers the other — then the trace and the limits. E-37 needs `write-a-lectura` and a person
+who is not whoever built it.
+
+### G1 reads a leading zero or a non-ASCII digit as a canonical version
+
+Found on 2026-09-22 by `harness-spec-refuter` in the sixth pass over
+`docs/cambios/g1-tecnologias-homologadas/`, and the reason E-17 closed contradicted. The ratified
+order of evaluation says form first: what is not written the way Annex II writes it is
+`UNRESOLVED`. The number does not obey it:
+
+```
+php '08.2.30'           HOMOLOGATED    matched 8.2.30
+cib-seven '01.1.0 CE'   HOMOLOGATED    matched 1.1.0 CE
+oracle '019c'           HOMOLOGATED    matched 19c (LTR)
+php '٨.2.30'       HOMOLOGATED    Arabic-Indic 8
+php '８.2.30'       HOMOLOGATED    full-width 8
+```
+
+`_NUM` and the numeric part of `_CON_CALIFICATIVO` in `harnesses/desarrollo/bin/orquestacion/anexo2.py`
+use `\d+`, which in Python takes leading zeros and any Unicode digit, and `_tupla` converts them
+with `int()`. The service pack is already closed with `(?:0|[1-9]\d*)`.
+
+Three smaller things from the same six passes, none of which homologates: the spec does not say
+which uppercase word counts as an edition (`cib-seven 1.1.0 ABC` gives `NOT_HOMOLOGATED`, `jws 6.0 SP`
+gives `UNRESOLVED`), nor what a different suffix in the same branch is (`oracle 19d`), nor how many
+components a number has (`php 8.2.30.0` homologates through the patch rule). "An earlier service
+pack gives `NOT_HOMOLOGATED`" is ratified and tested only with `SP0`, a builder decision, because
+the catalogue lists nothing but `SP1`. And `technology-version-compliance.py` was edited by the
+backend engineer, who flagged that a `checks/` directory is the hook engineer's.
+
+Fix. Bound every numeric component to ASCII `(?:0|[1-9][0-9]*)` and assert the five lines above as
+`UNRESOLVED`, each seen red. Then a spec-author decision on the three silent cases.
+
+### Three domains route to a blank agent, in silence
+
+Found on 2026-09-17 while removing the `dev-integration` agent. A work unit whose domain has no
+`SPECIALIST_AGENT` declared comes out with `assignedAgent: ""`, `agentExists: false`, **no warning
+at all**, valid against the schema, and the plan reaches `READY_FOR_EXECUTION`.
+
+Reproduced with `orchestration`, which is in that situation today along with `tooling` and
+`refutation` — the three non-specialist domains of `CONTEXTO_POR_DOMINIO` in `plan.py`. An agent
+declared and missing is a reported gap; an agent that was never declared for the domain is a blank
+string nobody sees.
+
+```python
+agente = str(propuesta_unidad.get("assignedAgent") or roster.agente_de_dominio(dominio))
+```
+
+Fix. Either those three domains get their declared owner in `agent-registry.json`, or an empty
+`assignedAgent` becomes a gap like any other. The second is cheaper and closes the class, not the
+three cases.
 
 ### Skill routing in `UserPromptSubmit` is mute
 
@@ -306,7 +452,328 @@ Full plan, with the decisions already taken and the doctrine to extract from the
 `autoliquidador`, in `~\.claude\plans\te-parece-si-planificamos-kind-shell.md`. Estimate: around
 3 hours, almost all of it unattended.
 
+### A declared accounting field can carry a sensitive fragment that no catalogue recognises
+
+Block 4's ledger cannot hold a conversation: `eventos.CLAVES_DE_METADATA` closes `metadata` to
+seven keys, `eventos.ESCALARES` forbids a nested object or a list inside any of them, and
+`libro.TOPE_DE_TEXTO` trims every string in the event at 300 characters. The ceiling is seven flat
+fields by 300 characters, with no turns and no growth.
+
+What it does not stop is a fragment. `metadata={"reason": "la base esta en 10.20.30.40"}` is
+written verbatim. `contexto/limpieza` only redacts high-confidence patterns — a deliberate Block 2
+decision, because a false positive that mutilates a text is worse than a warning and there is
+nobody to ask — and an internal IP, a hostname or a person's name is not one of them.
+
+Verified on 2026-09-20 while closing Block 4. It is asserted **green** in
+`tests/casos/30_b4_contabilidad.py::test_e37_el_libro_no_guarda_ni_prompts_ni_secretos` so that
+whoever closes it has to change a passing test and talk about it first.
+
+Fix. Not obvious, and it belongs to Block 2 rather than Block 4: either a medium-confidence pass
+that only applies inside `.claude/runtime/`, where there is no prose to mutilate, or a rule that
+`reason` is built from a closed vocabulary of phrases instead of free text. The second is cheaper
+and narrower; it costs the ability to explain an unusual correction in words.
+
+### Block 4 has thirteen event types and only one producer
+
+`eventos.TIPOS` declares the full lifecycle — `TASK_STARTED`, `WORKUNIT_STARTED`,
+`AGENT_RUN_STARTED`, `TOOL_CALL_COMPLETED` and the rest. The only thing that emits events today is
+a provider adapter reading a transcript, which produces `MODEL_CALL_COMPLETED` and
+`SESSION_COMPLETED` and nothing else.
+
+The consequence is not cosmetic: attribution by work unit and by agent comes from fields the
+adapter cannot know, so on any real run `WORKUNIT_ATTRIBUTION_UNRESOLVED` and
+`AGENT_ATTRIBUTION_UNRESOLVED` are the normal answer, and the per-agent and per-work-unit tables of
+`execution-cost.md` are empty unless somebody passes `--unidad` and `--agente` by hand.
+
+This is written down in the spec under `Qué queda afuera` with its reason — Block 3 builds a plan
+and executes nothing, so there is no executor to emit them — and it is here so it is not read as a
+defect of Block 4 when the executor arrives.
+
+Fix. Whoever builds the block that executes a work unit calls `libro.agregar` at the lifecycle
+boundaries. Nothing in Block 4 changes; the contract is already there.
+
+### `.claude/runtime/accounting/` grows and nothing prunes it
+
+One directory per task, three files each, forever. No retention, no rotation, no size cap. A
+project with a thousand tasks has a thousand directories, and `-Update` and `-Uninstall` both
+preserve them on purpose — losing accounting evidence to an upgrade would be worse.
+
+Fix. A `--podar` on `dev-harness.py contabilidad` that drops the `ledger.jsonl` of tasks closed
+more than N days ago while keeping `summary.json`, which is the part anyone reads afterwards. The
+number comes from whoever has to answer for the spend, not from here.
+
+### A whitespace-padded `sourceType` lowers a FAIL to a PARTIAL and erases the trail
+
+D6's check normalizes every **identity** field with `declarado()` — provider id and reference,
+contract id and reference, view id, the provider a view declares and the one a run reports. The
+enumerated fields are read raw on purpose: `source`, `execution`, `mode`, `buildId`, `runtime`,
+`evidenceId` and `sourceType`.
+
+Six of the seven err toward not approving. The seventh loses information. Found by
+`harness-spec-refuter` on 2026-09-21:
+
+```
+sourceType = "RENDERED_MAP_RUN " (trailing space) and the run reports another map
+  -> PARTIAL / RENDERED_EVIDENCE_MISSING, and "otro-mapa" appears in no field of the output
+  -> with the exact sourceType: FAIL / ALTERNATE_MAP_PROVIDER
+```
+
+It is the same **shape** as the E-18/E-19 defect that shipped and was fixed the same day, one field
+outside the normalized list.
+
+Fix. Not obvious, and both positions defend themselves. Normalizing the enum fixes it. Leaving it raw
+makes a malformed evidence class visible, which is the check's own doctrine — evidence that does not
+prove sustains nothing. It needs a scenario in the spec before anything is built; the change closed
+without one deliberately.
+
+### D5's integration contract cannot be resolved in any project today
+
+Recorded on 2026-09-21 while installing D5, and it is the mirror image of D6's provider gap rather
+than the same one, so it is worth stating precisely.
+
+```
+D6   which mechanism is the GCBA Map        in no extract this harness holds
+D5   which service is the cadastral option  named on page 19 of ES0901
+D5   what using it looks like               in no extract this harness holds
+```
+
+So a project **can** resolve D5's provider identity: the Georreferenciación paragraph names a catalog
+service, it is transcribed in `normativa/extractos/ES0901.md:461`, and a project that cites it has a
+defensible `GCBA_NORMATIVE` source. What no project can supply is the contract — the harness holds no
+endpoint, no request or response field, no cadastral identifier, no coordinate field, no
+authentication method and no timeout, and inventing one would read as though the standard required
+it.
+
+Effect: every real run of `address-normalization-integration` today answers
+`INTEGRATION_CONTRACT_MISSING`, which is correct and also means the check will not be exercised end
+to end until somebody obtains that contract. It is the same shape as D6's provider gap and it is not
+a defect in the check.
+
+🔴 Do not close it by writing a plausible contract into the policy. `D5/E-13` sweeps six artifacts
+for exactly that and will catch it — but the sweep permits the **quoted** name of the service,
+because a quote is not an invention, so the line between the two is narrower here than in D6.
+
+Fix. Get the contract from the ASI or from a project integration agreement and declare it as data,
+with its source. Nothing in this repository changes.
+
+### D5's run evidence proves without a reference or a claim, and its policy lists other names
+
+Two loose ends from D5's second refutation on 2026-09-21. Neither contradicts a scenario and neither
+leaks a `PASS`; both are the kind of thing that only shows up when somebody compares two artifacts
+of the same change.
+
+**One.** `address-normalization-integration` accepts a `NORMALIZED_ADDRESS_RUN` whose `reference` and
+`claim` are both blank, and proves with it. The signal module has enforced the opposite since D1
+(`senales._utiles`: *"las evidencias que referencian algo y afirman algo. El resto no cuenta"*), and
+the policy of D5 lists both fields under *Evidence it requires*. The check never asks. Repro: take
+the happy case and blank `reference` and `claim` on the run evidence — still `PASS`.
+
+**Two.** The policy declares eight `Outcomes` — `SATISFIED`, `NON_COMPLIANT`, `NOT_APPLICABLE`,
+`APPLICABILITY_UNRESOLVED`, `EVIDENCE_INCOMPLETE`, `ADDRESS_FLOW_COVERAGE_UNRESOLVED`,
+`CADASTRAL_PROVIDER_UNRESOLVED`, `INTEGRATION_CONTRACT_MISSING` — and the check produces nine states
+with partly different names. `D5/E-30` checks the check's nine; nothing compares the two lists.
+`SATISFIED` and `EVIDENCE_INCOMPLETE` are never produced by anything, and `PASS`/`FAIL`/`PARTIAL`
+appear in no policy. The same mismatch exists in D1, D2, D4 and D6 — the shape came from the
+governance packages, which write policy outcomes and check states as two vocabularies.
+
+Fix. The first is three lines in the check plus a scenario. The second is a decision, not a bug:
+either the policies adopt the check's states, or a mapping is declared and verified once for all six
+rules. It is worth one change that touches the six together, not six patches.
+
+### D5's cadastral sweep cannot be widened beyond its six artifacts
+
+Recorded on 2026-09-21. `32_d5 / E-13` sweeps six texts for an invented integration contract, and
+the subject is deliberately narrow: the policy, the check, the two registry rows, the D5 matrix row,
+the whole matrix, and the two D5 sections of `docs/normativa-7.1.md`.
+
+It cannot be widened to the rest of the repository, and that is not a defect of the sweep:
+
+```
+normativa/extractos/ES0901.md   transcribes real URLs from the standard, and "port: 8080"
+docs/secretos.md                is about secrets: it says `password = ${DB_PASSWORD}`
+docs/contrato-hooks.md          measures latency: "260 ms"
+```
+
+The three are legitimate and the sweep fires on them. Widening the subject needs per-document
+exemptions, and an exemption list is the thing that ages worst. The three patterns that fired on
+**ordinary Spanish prose** were tightened on the same day — a time written in words, a locator key
+whose value is a sentence, and `9001` colliding with ISO 9001 — because that is the risk that
+actually grows as D5's own artifacts grow. Six legitimate prose forms are pinned green against
+exactly that.
+
+### D5 cannot tell a consumed raw value from a consumed normalized one when the provider echoes it
+
+Recorded on 2026-09-21, pinned **green** in `tests/casos/32_d5_normalizacion_catastral.py::test_e22…`
+so that closing it forces a conversation.
+
+`address-normalization-integration` decides whether the normalization was consumed by comparing
+opaque tokens: `CONSUMED_VALUE` against `NORMALIZED_RESULT` and against `RAW_INPUT`. When the
+provider returns exactly what the person typed, all three tokens are equal, and *consuming the raw
+value* and *consuming the normalized one* become indistinguishable. The result is `PASS` carrying
+`NORMALIZATION_INDISTINGUISHABLE` in `issues`.
+
+That is deliberate. Lowering it to `PARTIAL` would turn every project that validates an
+already-normalized address red, and a check that goes red for no reason is a check somebody switches
+off. But it does leave a shape a fabricated run could exploit: declare `RAW_INPUT` and
+`NORMALIZED_RESULT` as the same token and the raw-value guard cannot fire.
+
+Reproduce it: take the happy case and set `chain.RAW_INPUT == chain.NORMALIZED_RESULT ==
+chain.CONSUMED_VALUE`. The state is `PASS` and the only trace is the issue string.
+
+Fix, if it is ever worth it. The discriminator would have to come from outside the token comparison
+— the provider response declaring whether it changed the input, or the run declaring both the
+pre-call and post-call persisted values under different identities. Both need contract evidence the
+harness does not have, which is the item above. Until then the residue is visible and asserted, not
+hidden.
+
+### One absurd number from a provider aborts the whole accounting ingest
+
+`eventos.validar` rejects any number over 18 digits, which is what stops a conversation encoded as
+an integer from reaching the ledger. But `adaptadores/contrato.a_eventos` builds every event in a
+loop and lets `EventoInvalido` escape, so a single bad record kills the run: nothing is written,
+including the hundreds of records that were fine.
+
+Reproduced on 2026-09-20 by `harness-spec-refuter` with a transcript carrying
+`"input_tokens": 10**30`. It is not reachable from a real Claude Code transcript today — the field
+is an int the provider computes — but a future provider, a corrupted file or a truncated write
+makes it reachable, and the failure mode is the worst one: total loss instead of partial.
+
+It also contradicts the doctrine the block already states twice. `libro.leer` tolerates a broken
+line on purpose — *"un libro con una linea corrupta sigue siendo la mejor fuente que hay"* — and
+the whole block is built on *what is missing is not zero, it is unresolved*.
+
+Fix. `a_eventos` catches `EventoInvalido` per record and emits `contrato.sin_resolver` in its
+place, so the record becomes `USAGE_UNRESOLVED` with its reason instead of taking the ingest down.
+Needs a scenario in the spec before it is built — the change closed without one, deliberately,
+rather than shipping behaviour no test covers.
+
+### Four holes in Block 4's invariant sweeps, all of them shapes nobody writes today
+
+Found by `harness-spec-refuter` on 2026-09-20, after the sweeps were already raised once. None of
+them is reachable by the code as it stands; all four are ways a future edit could slip past a
+guard that is otherwise an invariant.
+
+```
+E-03  the destructive-verb sweep covers the eight operations the spec enumerates.
+      Path(ruta).write_text("") and shutil.copyfile(x, ruta) are not among them.
+E-13  a rate written as a string -- {"input": "3.0"} -- is not a number, so the
+      container sweep does not see it. Same for a scalar constant outside a container.
+E-28  _aperturas() reads the AST for open/io.open. Path(ruta).read_text() is neither.
+E-32  a provider name split across two concatenated strings, or written with no
+      separator at all -- "CLAUDECODE" -- passes. No text sweep can catch the first.
+```
+
+Fix. For E-03 and E-28, sweep `pathlib` usage too, or assert the package never imports `pathlib` —
+it does not today, and that assertion is cheaper and harder to weaken. For E-13, widen the
+container sweep to numeric strings. E-32's concatenation case is not fixable by any text sweep and
+should be written down as such rather than chased.
+
+### Three evidence helpers are now copy-pasted across three normative checks
+
+Found on 2026-09-21 while installing D8. The same three helpers exist three times, written
+independently and already drifting in their names:
+
+```
+declarado / declarado            strip a declared value, so a blank is not a declared datum
+_de_esta_corrida                 bind a piece of evidence to the build and runtime under test
+_evaluar/_usables/usables        resolve evidence references into used / orphan / out-of-build
+```
+
+They live in `controles/checks/gcba-map-usage.py` (D6), `controles/lib/flujos.py` (D7),
+`controles/checks/service-token-protection.py` (D8) and
+`controles/checks/framework-homologation.py` (P1). The D6 and D7 copies were verified
+separately, and each one carries the lesson of the bug that produced it — D6's `declarado` has a
+four-line comment about normalizing both sides of a comparison that the other two copies do not.
+That comment is exactly what gets lost when a fourth rule copies the nearest version.
+
+The counting, on 2026-09-22: about 60 lines repeated **four** times, and the next rule makes it
+five. `descubrir_no_declarados` only scans `controles/policies` and `controles/checks`,
+so a shared module under `controles/lib/` is not reported as an undeclared control — which is why
+D7 could put `flujos.py` there in the first place.
+
+Fix. Move the three into `controles/lib/evidencia.py` and have the four checks import it, keeping
+the comments of the strictest copy. It is behaviour-frozen work for `harness-staff-engineer`: the
+four changes are already verified, so the fence is that `31_d6`, `34_d7`, `35_d8` and `36_p1` stay
+green without editing a single assertion. Doing it inside a rule installation was refused on purpose —
+it would mean touching two verified changes from inside a third.
+
+### The plan schema does not close its root
+
+Found on 2026-09-22 while verifying `matriz-normativa`: a `normative` block added at the root of an
+`OrchestrationPlan` still validates against `comun/schemas/orchestration-plan.schema.json`. Only the
+new assertion of `23_matriz_normativa / E-23` catches it.
+
+Fix. `additionalProperties: false` at the root of the plan schema, after checking nothing writes
+an extra root key today.
+
+### G2's reuse of G1's inventory is an instruction, not a fact
+
+`docs/cambios/g2-buenas-practicas/` E-20 was narrowed on 2026-09-22: nothing produces G1's
+inventory, so "the inventory is reused" could not be tested. What the test holds is structural — by
+AST, `revisiones.py` opens no file but its schema and defines no detector. Two holes the refuter
+named: a read at module level, outside any function, and a `subprocess` call both pass.
+
+Fix. When something produces the inventory, test the real path. Meanwhile, extend the AST sweep to
+module level and to `subprocess`.
+
+### `descubrir_no_declarados` never looks inside `controles/reviews/`
+
+Found on 2026-09-22 by `harness-spec-refuter` while verifying an ES0902 change.
+`controles.descubrir_no_declarados` — `harnesses/desarrollo/bin/orquestacion/controles.py:191` —
+walks two directories, `controles/policies/` for `.md` and `controles/checks/` for `.py`.
+`controles/reviews/` is not one of them, and it now holds two files:
+`object-oriented-design-review.md` and `technology-practice-review.md`.
+
+The consequence is narrow and real: a review document dropped into that directory and never
+declared in `control-registry.json` does not show up in `reporte()["undeclared"]`, and
+`filesystemClean` stays true. Every scenario that leans on "no stray files" — `36_p1/E-39`,
+`35_d8/E-37` — covers less surface than it sounds like it does. Nothing is
+wrong today: the two reviews that exist are declared and report `INSTALLED`.
+
+Fix. Add the third directory to the walk, with `.md` as its extension, the same way `policies` is
+already handled. It is the same loop; what it needs is the third pair.
+
 ## Installer defects
+
+### The installer tests fail at random under load, and the python test counts drift
+
+Found on 2026-09-22 while installing the repository-integrity capability. Right after a mutation
+pass — 49 subprocess suites, thousands of `__pycache__` directories created and deleted — the gate
+came back with seven failures, all of them in the PowerShell installer cases:
+
+```
+[Instalador - el indice del codigo]     -Uninstall sale con codigo 0   esperado <0> / obtenido <1>
+[Instalador - el contrato del contexto] instalar desarrollo sale con codigo 0  esperado <0> / obtenido <1>
+[14-contexto-instalador] No se pudo encontrar 'harness.lock.json'
+```
+
+Running `install.ps1` by hand with the exact arguments of the failing case returned **0**, and the
+next full gate run — with the same tree — returned `24061/24061`. So the installer is fine and the
+cases are not deterministic: they shell out to `powershell.exe -File install.ps1` into `%TEMP%` and
+something under load (antivirus lock, temp contention) makes a run exit 1.
+
+🔴 The cost is not the red: it is that a gate which fails at random teaches people to re-run it, and
+a re-run that goes green hides the failure that was real. This nearly happened here — a bisection
+pointed at the new files and was wrong.
+
+A second, smaller symptom of the same family: **the python test counts drift between runs of the
+same tree** — `33_bases_de_datos` reported 3565, 3586 and 3604 in three consecutive runs, and
+`30_b4_contabilidad` 793, 795 and 796. A test that emits a variable number of assertions over a
+fixed tree is measuring something that is not the tree.
+
+🔴 And the same day, a third symptom that names the cause out loud. `19_contexto` E-29 —
+*"dos resoluciones de los mismos datos dan el mismo hash; el reloj no cuenta"* — failed once with
+two different `context_hash` values for the same input, and then passed three consecutive runs on
+the untouched tree. The test's own title states the invariant that broke: **the clock counted.**
+Whatever leaks time into `context_hash` is almost certainly the same thing drifting the counts, so
+the two should be chased together.
+
+Fix. Two separate pieces. For the installer cases: retry the subprocess once on a non-zero exit
+before asserting, or serialize them behind a lock, and print the installer's own output on failure
+so the next person does not have to reproduce it by hand. For the drifting counts: find what varies
+— a timestamp, a directory listing, a clock — and pin it; the exact-count assertions of the control
+registry already show the shape of the fix.
+
 
 ### `permissions.deny` blocks `.env.example`, the template the harness itself ships
 
@@ -325,7 +792,278 @@ Fix. Add `"Read(./.env.example)"` to an allow list, or narrow the deny pattern s
 example. The deny list has no allow counterpart today, so the narrow pattern is likely the cheaper
 route: check whether Claude Code resolves a more specific allow over a broader deny before choosing.
 
+### `controles/` never reaches an installed project
+
+Found on 2026-09-19 while building D1. `install.ps1:1155-1161` copies a hardcoded list per
+harness — `checks`, `bin`, `reglas`, `skills`, `agents` — and `controles/` is not in it. The
+directory was born with G1 and holds the normative controls: **sixteen policies, thirteen checks and two
+reviews** today (`harnesses/desarrollo/controles/`), thirty-one in all. It was four, three and one
+when this was found; every rule installed since has made it worse, and D7 added six at once — the
+largest single jump. D7 also added `controles/lib/`, which holds no control and is not copied
+either, so its three checks would fail to import outside this repository.
+
+The effect is invisible in this repository and total outside it. `controles.py` resolves a control
+file against `roster._dir_del_harness`, which in an installed project points at `.claude`; nothing
+was copied there, so every declared control resolves to `CONTROL_FILE_MISSING` and
+`controles.reporte()["result"]["registryValid"]` goes false. Here the suite is green because the
+factory reads the repository tree. `G1`, `G2` and `D1` all ship a control registry that says
+`INSTALLED` and an installed project where nothing is.
+
+Reproduce it: install `desarrollo` into an empty project and look for
+`.claude\harness\controles\` — it is not created, and neither is `.claude\controles\`.
+
+Fix. Two decisions and they are not independent. First, where the controls live once installed:
+`.claude\harness\controles\<id>\` follows what `checks` already does and keeps the harnesses
+apart, and then `controles._ruta_de` needs the same second candidate that `roster.existe_check`
+already carries for `harness/checks/<id>/`. Second, whether the copy is added to the hardcoded
+list or the list is replaced by reading `aporta` — which is the item above, and doing this one by
+hand makes that one a little worse. It needs its own spec: it touches `install.ps1`, `controles.py`
+and a new installer case.
+
 ## Verification that was not done
+
+### `integridad-de-repositorio` shipped with E-04 and E-41 unsupported
+
+Four refuter passes on 2026-09-22 took it from four `sin sustento` to two, and found a real leak on
+the way (the provider URL travelled inside `diffMeta` into the sealed snapshot; fixed). No scenario
+is contradicted and the module behaves correctly in every case tried. What remains is the test:
+
+- E-04: `reason: "ES0902_APPROVED"` or `verdict: "ES0902_PASSED"` added to a clean review stays
+  green. The value sweep deliberately ignores compound tokens so it does not flag the baseline
+  provenance `APPROVED_RELEASE`, and no premise checks that `ES0902_APPROVED` *is* caught.
+- E-41: the 560-signal product fixes `location`, `evidence` and the validity of the category.
+  Exposing the facts only when `location` is present, or dropping them when the finding is
+  `REVIEW_INCOMPLETE`, stays green.
+
+Also: `instantanea()` copies whatever `diffMeta` it receives. It does not leak today because the
+adapters normalize first.
+
+Fix. Add the compound tokens to the value vocabulary with a premise that each is caught and
+`APPROVED_RELEASE` is not; add `location`, `evidence` and an invalid category to the E-41 product.
+Then a fifth refuter pass.
+
+### The leak half of `26_d1 / E-28` degrades silently if its first half is weakened
+
+Found on 2026-09-19 by `harness-spec-refuter` while re-verifying E-28, and it does not contradict
+the scenario — E-28 says nothing about this. The case has two halves: the first runs the forbidden
+patterns over the two D1 artifacts, the second injects eight realistic leaks and asserts
+`any(re.search(p, base + fuga) for p in PROHIBIDOS)`.
+
+That `any()` is only meaningful because the base text matches nothing, which is what the first half
+proves. The coupling is implicit: delete or weaken the first bucle and the second keeps passing for
+every leak, including one nothing catches. Eight assertions turn into decoration, in green.
+
+Fix. Assert the premise instead of relying on it: one line that the base matches zero patterns,
+inside the leak half, before the loop. Two lines of test and the coupling stops being implicit.
+`27_d2 / E-28` was written with that assertion from the start; this item is only about the D1
+case, whose verdict is already closed and which is not touched without re-verifying it.
+
+### Two of D2's seven result states are never produced by a real run
+
+Found on 2026-09-19 by `harness-spec-refuter` while verifying D2, and it does not contradict any
+scenario. `NOT_APPLICABLE` and `APPLICABILITY_UNRESOLVED` are exercised in
+`tests/casos/27_d2_delegacion_credenciales.py` only as synthetic dictionaries `{"state": X}` fed to
+`aprueba()`. No call to `CHECK.evaluar` in that case passes the signal as `FALSE` or unresolved, so
+the two branches of `harnesses/desarrollo/controles/checks/authentication-delegation.py` that
+produce them are never run.
+
+The same shape appeared in D1 and was closed there before the verdict, by adding the assertion to
+`E-18`. In D2 the scenario text is narrower —E-17 says `PASS` is the only state that approves, a
+proposition about `aprueba()`— so the verdict stands; what is missing is coverage, not compliance.
+
+Fix. Two calls in `E-17`: one with the signal `FALSE` asserting `NOT_APPLICABLE` and that it does
+not approve, one with it unresolved asserting `APPLICABILITY_UNRESOLVED` and `missingSignals`. It
+re-opens a closed verdict, so it goes back through `harness-spec-refuter` for that scenario.
+
+### `FUENTES_INSUFICIENTES` in D1's check says less than the code does
+
+Found on 2026-09-19 while verifying D2.
+`harnesses/desarrollo/controles/checks/citizen-authentication-mechanism.py` declares
+
+    FUENTES_INSUFICIENTES = ("REPOSITORY_CONFIGURATION", "AGENT_STATEMENT")
+
+and does not list `REPOSITORY_DEPENDENCY`, which D2 split out of `REPOSITORY_CONFIGURATION` and
+which the D2 check does list. Behaviour is identical in both: the real gate is the whitelist
+`sourceType in FUENTES_SUFICIENTES`, so the new class is already insufficient in D1 by omission.
+What is wrong is the constant, which is declarative and reads as the list of what does not count.
+
+Somebody adding a class tomorrow will read that tuple as the inventory it looks like and conclude
+the new one was considered and left out. Both files are verified and closed, so this is a one-line
+change that still goes back through the refuter for the scenarios that name the constant — `E-21`
+in D1 and `E-16` in D2.
+
+### `applicability: NOT_APPLICABLE` erases a finding's state, including a paradigm conflict
+
+Found on 2026-09-20 by `harness-spec-refuter` while verifying D3. In `revisiones.resolver` the
+applicability branch runs before the status branch, so a finding that declares
+`applicability: NOT_APPLICABLE` is skipped whatever its `status` says. Verified in-session:
+
+```
+TECHNOLOGY_PARADIGM_CONFLICT + NOT_APPLICABLE  ->  COMPLIANT, states [], issues []
+JUSTIFICATION_PENDING        + NOT_APPLICABLE  ->  COMPLIANT
+EVIDENCE_MISSING             + NOT_APPLICABLE  ->  COMPLIANT
+```
+
+The conflict disappears with no trace. The three scenario texts that say these never reach
+compliant — `G2/E-16`, `G2/E-17` and `D3/E-19` — are all flat, and all three are currently upheld
+because no test combines the two fields. The precedence is inherited from G2; D3 did not introduce
+it, which is why D3's verdict does not turn on it.
+
+Requiring a `rationale` does not help: these findings carry one and still resolve to compliant.
+
+Fix. Decide which states survive a `NOT_APPLICABLE` and make the loop check them first. A finding
+that says "the paradigm conflicts with the rule" and "the rule does not apply here" is either
+contradictory — and should be rejected structurally — or it means the reviewer scoped the conflict
+out, which is a decision that has to stay visible. It touches `G2` and `D3`, both of which then go
+back through the refuter for those scenarios.
+
+### `resolver` carries a dead branch for a missing weighting axis
+
+Found on 2026-09-20 by `harness-spec-refuter` while verifying D3, and reported again when it
+checked that the first report had been written down — it had not. In
+`harnesses/desarrollo/bin/orquestacion/revisiones.py`, `resolver` tests `if peso is None or peso ==
+"UNRESOLVED"`. The `is None` half is unreachable: `validar_estructura` already rejects a finding
+that does not declare its rule's axis, so `resolver` returns early with `SCHEMA_INVALID` and never
+reaches the weighting. Only the explicit `UNRESOLVED` value gets there.
+
+It changes no output, which is why it is here and not in a verdict. What it costs is a reader who
+concludes the missing-axis case is handled in two places and only patches one.
+
+Fix. Drop the `peso is None` half, or move the axis requirement out of `validar_estructura` and
+leave `resolver` as the single place that decides. Whichever way, `G2/E-14`, `G2/E-15` and `D3/E-17`
+name the behaviour and go back through the refuter.
+
+### A same-size mutation in the same second leaves stale bytecode behind
+
+Found on 2026-09-20 while running the `rojo visto` pass for D3. A mutation script that rewrites a
+`.py`, runs the suite and restores the original leaves `__pycache__` holding the bytecode compiled
+from the mutated source: Python invalidates a `.pyc` by (mtime, size), and `"G1"` -> `"D3"` keeps
+the size while the restore lands in the same filesystem second.
+
+The effect: `24_g1`, `25_g2` and `28_d3` failed against a traceability value that was no longer on
+disk, minutes after the same suite had been green. `git status` showed nothing, because the file
+really was restored. Fifteen minutes to find.
+
+Fix. Any script that mutates sources deliberately purges `__pycache__` after restoring, and the
+red-seen driver in the scratchpad already does. Worth a line in `write-a-spec` where it explains
+the mark, because the next person to break code on purpose will hit exactly this.
+
+### Nothing enforces "unless project coverage is known to be complete"
+
+Found on 2026-09-20 by `harness-spec-refuter` while verifying D4, on a doctrine the signal module
+inherited from D1. `responsive-ui-required.md` writes the boundary the way every signal contract
+writes it: *"Not finding a frontend directory is not `FALSE` unless project coverage is known to be
+complete."* The module has no notion of complete coverage. It has a table of source classes, and
+which one an absence gets labelled with is chosen by whoever writes the evidence.
+
+Reproduced in-session with one claim — "no aparecio ninguna carpeta frontend" — under seven classes:
+
+```
+REPOSITORY_DEPENDENCY, AGENT_STATEMENT            -> D4 unresolved
+REPOSITORY_CONFIGURATION, PROJECT_CONTEXT,
+TASK_CONTEXT, HUMAN_CONFIRMATION,
+PROJECT_DOCUMENTATION                             -> D4 NOT_APPLICABLE
+```
+
+The same absence, relabelled, takes a rule out of the report. It does not contradict any scenario:
+`D4/E-05` walks four paths that all stay unresolved, and `D4/E-07` *requires* structured evidence to
+resolve `FALSE` — reading E-05 as universal would put the two in direct conflict. What is missing is
+anything that holds the policy's own sentence.
+
+Fix. Either the signal carries a `coverage` field that a `FALSE` from an absence has to declare, or
+the contracts stop promising the "unless" and say plainly that a `FALSE` is whatever the evidence
+class says. The first is more work and matches what the policies already claim; the second is honest
+and cheap. Both touch `senales.py` and every installed signal contract, so they go back through the
+refuter for `D1/E-06`, `D2/E-05`, `D3/E-05` and `D4/E-05`.
+
+📌 **D5 closed this for itself on 2026-09-21, and only for itself.** Its check takes
+`scopeCompleteness: {complete, source, reference}` and is the one place in the harness where a
+`FALSE` derived from an absence — `frontendPresent = FALSE` — has to declare its coverage with a
+source from a closed list and a citation. See `aplicabilidad()` in
+`controles/checks/address-normalization-integration.py` and `D5/E-07`. It is a working precedent for
+the first option above, and it is worth reading before choosing: the derivation lives in the rule's
+check, not in `senales.py`, precisely because D5 was the only rule that needed it. Generalizing it
+is the open half.
+
+### `EVIDENCIA_QUE_NO_PRUEBA` and `EVIDENCIA_DE_APOYO` read load-bearing and are inert
+
+Found on 2026-09-20 while verifying D4. In
+`harnesses/desarrollo/controles/checks/responsive-behavior.py`, three constants declare how evidence
+classes are treated. Only one is used:
+
+```
+EVIDENCIA_DE_CORRIDA        4 occurrences   (read by _evaluar_caso)
+EVIDENCIA_DE_APOYO          1 occurrence    (its own definition)
+EVIDENCIA_QUE_NO_PRUEBA     1 occurrence    (its own definition)
+```
+
+The gate is a whitelist — a class not in `EVIDENCIA_DE_CORRIDA` cannot sustain a passing case, which
+is why closure by default works and why an unforeseen class is rejected. The other two tuples are
+documentation shaped like configuration. Test assertions of the form
+`"REPOSITORY_DEPENDENCY" in CHECK.EVIDENCIA_QUE_NO_PRUEBA` assert that a string is in a tuple and
+prove nothing about behaviour; the state assertions beside them are what hold `D4/E-09` to `E-13`.
+
+Same smell as `aporta` in the manifests, one item above: a name that reads like a contract and is a
+comment. Fix. Either drop the two tuples into the module docstring where a reader expects prose, or
+have `_evaluar_caso` reject a declared-useless class explicitly instead of by omission. Touches
+`D4/E-09`..`E-13`, which name the constants.
+
+### The `D4 / E-16` guard will break on a correct edit, not on a leak
+
+Found on 2026-09-20 by `harness-spec-refuter` on the third pass over D4, and it is the durability
+observation, not a hole. `E-16` rests on an invariant — a D4 artifact carries no number, because the
+standard defines none — implemented as `\d{2,4}` over both artifacts. The invariant is true
+today: zero matches, verified independently.
+
+The cost is that legitimate prose goes red:
+
+```
+ES0901 §7.1 D4, pag. 12      RED        Bootstrap 5 esta instalado   RED
+revisado en 2026             RED        Angular 17                   RED
+ver tambien ISO 9241         RED        Section 7 of the standard    RED
+```
+
+And citing the page is the house style. Of the seven installed policies,
+`responsive-ui-required.md` is the **only** one with no numbers:
+
+```
+approved-technology-required.md            10
+credential-entry-delegation-required.md    18, 19
+gcba-citizen-authentication-required.md    18
+homologated-version-required.md            10, 29, 30, 31
+technology-version-compliance.py           29, 30, 31
+responsive-ui-required.md                  none          <- the outlier
+```
+
+The day somebody adds `pág. 12` to the D4 policy — which four of the others already do — the case
+goes red against correct content, and the fix under pressure will be to loosen the half that is an
+invariant today. That is how this guard dies.
+
+Fix. Scope the band instead of dropping it: page citations and versions in this repository are one
+or two digits, and a viewport value is three or four, or two with a unit. Moving to `\d{3,4}`
+plus the existing unit pattern lets the house style through and keeps every declared leak red — all
+18 are three digits or carry a unit. Two known escapes go with the decision: `ANCHO = 1_440`, where
+Python's thousands separator kills the word boundary and which matters because one artifact is a
+`.py`, and the lowercase brand form `fairphone 5`, because the model pattern requires an initial
+capital. It touches `D4/E-16`, so it goes back through the refuter.
+
+### `19_contexto / E-29` is not deterministic, and what it asserts is determinism
+
+Seen on 2026-09-16: in a full suite run, `E-29 mismo hash` failed with two different hashes for two
+resolutions of the same data. It then passed in three isolated runs of `19_contexto` and in every
+full run since — dozens of them between 2026-09-16 and 2026-09-18.
+
+```text
+MAL 19_contexto / E-29 mismo hash
+  esperado <'sha256:8892b287cc232fc30fea60279f07994e10046ae4603938849e3a68276803d497'>
+  obtenido <'sha256:419bbae8f20deb810b372238aaa4929a824db5b98ba18c08f1b039ef1ee3f8a2'>
+```
+
+The scenario asserts that two resolutions of the same data give the same hash — which is exactly
+what failed. A test that is itself non-deterministic about determinism is worse than no test: the
+one time it fires, nobody knows whether it found the bug or was the bug.
+
+Nothing was changed. The cause was not found and is not guessed here.
 
 ### The redaction guarantee lives in the assembler, not in the resolvers
 
@@ -476,7 +1214,16 @@ running the installer against it, and restoring the file in a `finally`.
 `try/finally` only unwinds inside a live process. If the PowerShell process running the suite is
 killed outright — `Stop-Process -Force`, a CI timeout, an agent watchdog — the `finally` never
 runs and the file stays broken in the working tree. During the `hooks-en-python` change four
-agents were killed by a watchdog, so the window is not theoretical. The worst case leaves
+agents were killed by a watchdog, so the window is not theoretical.
+
+🔴 **And there is a second way in that has nothing to do with being killed: two runs at once.**
+On 22-09-2026 two refuter agents were launched in parallel and both ran the full gate. One
+appended `def (((` while the other was between its own break and its own restore, so one
+`finally` wrote back a copy that already carried the other's damage. Both agents reported the
+tree broken; the suite had been green minutes earlier. The window is a few seconds wide and it
+does not need anybody to kill anything — **running the PowerShell gate twice concurrently is
+enough**, which is easy to do by accident with background agents. Until the fix below lands,
+never run `.\tests\Invoke-Tests.ps1` while another agent might be running it. The worst case leaves
 `pre-tool-use.py` — the hook that carries the only blocking rule in the harness — with a syntax
 error, and nothing detects it beyond somebody running `git status`.
 
@@ -538,6 +1285,89 @@ None of them changes a verdict. They are here so they are not rediscovered as su
   generic mechanism of `invoke_hook` (E-07 and E-08), not by a case tied to the real hook.
 - `_correr` and `_correr_proceso` live duplicated as local functions in each case file. It is a
   pre-existing pattern; if a third variant appears, that is when it earns a shared module.
+
+### ES0902 declares thirty-eight controls and not one of them is built
+
+Twenty policies, sixteen checks and two reviews. Six more are already installed because ES0901 G1
+and D2 share them, which is why the number is not forty-four.
+
+This is the correct state of a harness that classified before building — the same decision ES0901
+took for its own twenty-four rows — but it is the biggest instance of it so far, and the risk is
+not technical. It is that somebody reads "ES0902 installed" and understands "ES0902 complied
+with". `docs/seguridad-es0902.md` says it on the first screen and `37_es0902 / E-70` pins the
+exact counts, so a control that appears later moves the number and somebody has to look.
+
+What is missing: the controls themselves, rule by rule, each one its own change.
+
+### Nothing produces the authoritative severity mapping that ES0902 G2 needs
+
+The acceptance threshold — no finding above LOW and at most ten LOW — is only computed when the
+scanner's severity labels are mapped to the ES0902 risk categories by an authoritative source.
+Nobody produces that mapping today, so every real run comes out
+`VULNERABILITY_RISK_MAPPING_UNRESOLVED` and no count is published at all.
+
+That is the correct behaviour — deciding that a tool's `medium` is the standard's `LOW` is an
+equivalence somebody has to sign — and it is also a hole: the threshold is installed and cannot be
+used until the mapping exists. Where it comes from is not a code question; it is a question for
+whoever owns the scanner and DGSEI.
+
+### ES0901 P5 does not exist, so Vu5's equivalence cannot be decided
+
+`es0902-cross-standard-map.json` declares `ES0902.Vu5 -> ES0901.P5` as
+`EQUIVALENCE_REVIEW_REQUIRED`, resolving to `CROSS_STANDARD_CONTROL_BINDING_REQUIRED`. P5 is one of
+the sixteen ES0901 rules still unclassified, so there is nothing to compare semantics against and
+nothing to deduplicate.
+
+The day P5 is implemented this has to be resolved for real: compare the exact semantics of both
+and deduplicate execution **only** if the outcomes are equivalent. Deduplicating first and
+comparing later is how one rule silently stops being evaluated.
+
+### The provided ES0902 matrix declares one control id with two types
+
+`security-vulnerability-acceptance-threshold` is declared by G2 as a policy **and** as a check.
+The file is a provided normative artifact and it is not corrected here: correcting provided
+normative content is inventing it. `seguridad.colisiones_de_id` reports
+`SECURITY_CONTROL_ID_TYPE_COLLISION` with the id and both types, and the id shows up twice in the
+not-installed report, once per type.
+
+What should happen: whoever owns the ES0902 matrix splits the id, or confirms that one control
+plays both roles. Until then the double entry is correct and intentional.
+
+### A signal name shared by the two standards is not prevented from colliding
+
+`senales.declaradas` now reads both matrices, so a signal declared only by ES0902 is valid. That
+also means two rules from different standards can declare the same signal id and get resolved by
+the same document.
+
+Today that happens once and on purpose: `authenticationPresent` is shared between ES0901 D2 and
+ES0902 C1 because the installation package says to reuse it. But nothing stops a future signal
+from colliding by accident with a different meaning, and the collision would be silent — the
+second standard would simply read somebody else's evidence.
+
+What should happen: either namespace the signal ids per standard, or declare the shared ones
+explicitly so an undeclared collision is an error.
+
+### `docs/normativa-7.1.md` is a reconstruction, and nobody has the original
+
+The file was truncated by accident on 22-09-2026: a patch script opened it with
+`io.open(path, "w")` — which truncates on open — and the `.write()` on the next line raised a
+`UnicodeEncodeError` on a badly escaped emoji. It was **untracked**, like most of `docs/cambios/`,
+`comun/schemas/` and `harnesses/desarrollo/agents/`, so `git checkout` could not bring it back and
+there was no copy anywhere on disk.
+
+It was rebuilt against the assertions of the five test groups that read it — `31_d6`, `32_d5`,
+`34_d7`, `35_d8`, `36_p1` — which turned out to be a fairly precise specification: the exact
+section titles, the minimum lengths, the sentences that must appear inside D7's section, and the
+leak patterns no section may contain. All five groups pass. **The text is not the original.**
+
+What the rebuild already got wrong and was corrected: the section "Lo que está y lo que falta"
+carried "eight complete rules and sixteen incomplete", a number that was true when D5 closed and
+went stale when D7, D8 and P1 landed. Measured: **eleven and thirteen**. No test reads that
+section, so the stale number survived the rebuild without anything turning red — which is exactly
+the shape of thing to look for if anything else in that file reads wrong.
+
+What should happen: somebody who knows what the file said reads it once against the five specs it
+documents. Until then it is an honest reconstruction and not a restoration.
 
 ## Outside the harness, written down so it is not lost
 

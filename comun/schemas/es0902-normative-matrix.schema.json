@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ES0902 Normative Matrix",
+  "type": "object",
+  "required": [
+    "standard",
+    "version",
+    "expectedRuleCount",
+    "rules"
+  ],
+  "properties": {
+    "standard": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "sourceDate": {
+      "type": "string"
+    },
+    "expectedRuleCount": {
+      "type": "integer"
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "ruleKey",
+          "category",
+          "applicability",
+          "primaryAgents",
+          "policies",
+          "checks",
+          "reviews"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ruleKey": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "applicability": {
+            "type": "object",
+            "required": [
+              "mode",
+              "signals"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "ALWAYS",
+                  "CONDITIONAL"
+                ]
+              },
+              "signals": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "primaryAgents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "policies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

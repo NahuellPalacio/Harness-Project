@@ -1,0 +1,2563 @@
+{
+  "_comentario": [
+    "El Anexo II de ES0901 6.3 como dato: 142 tecnologias con sus versiones homologadas y",
+    "deprecadas, la regla de version de cada una y la pagina del estandar de donde sale.",
+    "",
+    "La pagina no es decorativa: 142 entradas transcriptas de un PDF son 142 lugares donde un",
+    "numero mal copiado se vuelve una homologacion falsa, y ningun test puede contradecir eso.",
+    "La pagina es lo que hace la transcripcion auditable contra el estandar.",
+    "",
+    "Seis entradas NO fijan un numero, y cada una tiene su motivo y su estado:",
+    "  CONTEXT_DEPENDENT / FRAMEWORK_DEPENDENT -> VERSION_CONTEXT_REQUIRED",
+    "  PROVIDER_ASSIGNED_BY_DGSEI              -> PROVIDER_VERSION_REQUIRED",
+    "Tratarlas como si les faltara el dato seria perder la razon por la que no lo tienen.",
+    "",
+    "Una version deprecada se TOLERA con observacion de actualizacion; no pasa a homologada.",
+    "Y una tecnologia que no esta aca no se rechaza: es ASI_EVALUATION_REQUIRED. El harness",
+    "no homologa."
+  ],
+  "catalogVersion": "1.0.0",
+  "catalogType": "gcba-homologated-technology-catalog",
+  "source": {
+    "standard": "ES0901",
+    "version": "6.3",
+    "sections": [
+      "6.10",
+      "7.1/G1",
+      "Annex II"
+    ],
+    "title": "Herramientas de Desarrollo y Versiones Homologadas"
+  },
+  "status": "COMPLETE_FOR_ANNEX_II_V6_3",
+  "versionRules": {
+    "defaultRule": "PATCH_AT_OR_ABOVE_MINIMUM_WITHIN_SAME_MINOR_BRANCH",
+    "deploymentTolerance": {
+      "immediatelyPreviousStandard": "TOLERATED_WITH_FORMAL_UPDATE_OBSERVATION",
+      "twoOrMoreStandardsBehind": "DEPLOYMENT_BLOCKED",
+      "asiOverride": "MAY_REJECT_FOR_CRITICAL_VULNERABILITY_SUPPORT_OR_INFRASTRUCTURE_INCOMPATIBILITY"
+    }
+  },
+  "toolchainRule": {
+    "individuallyHomologated": false,
+    "requirements": [
+      "compatible with homologated languages, frameworks and platforms",
+      "must not introduce institutional infrastructure incompatibilities",
+      "must comply with ASI update, security and maintenance criteria"
+    ]
+  },
+  "entries": [
+    {
+      "id": "php",
+      "name": "PHP",
+      "aliases": [],
+      "category": "LANGUAGE",
+      "scope": "WEB",
+      "deprecatedVersionsRaw": [
+        "8.2.29",
+        "8.3.25"
+      ],
+      "homologatedVersionsRaw": [
+        "8.2.30",
+        "8.3.29"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 31,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "python",
+      "name": "Python",
+      "aliases": [],
+      "category": "LANGUAGE",
+      "scope": "WEB_AND_MOBILE",
+      "deprecatedVersionsRaw": [
+        "3.12.11"
+      ],
+      "homologatedVersionsRaw": [
+        "3.11.13",
+        "3.12.12"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 31,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "java-openjdk",
+      "name": "Java (OpenJDK)",
+      "aliases": [],
+      "category": "LANGUAGE_RUNTIME",
+      "scope": "WEB_AND_MOBILE",
+      "deprecatedVersionsRaw": [
+        "17.0.16",
+        "21.0.8"
+      ],
+      "homologatedVersionsRaw": [
+        "17.0.17",
+        "21.0.9"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 31,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "nodejs",
+      "name": "Node.js",
+      "aliases": [],
+      "category": "RUNTIME",
+      "scope": "WEB",
+      "deprecatedVersionsRaw": [
+        "20.19.5",
+        "22.19.0"
+      ],
+      "homologatedVersionsRaw": [
+        "20.20.0",
+        "22.22.0",
+        "24.13.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 31,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "kotlin",
+      "name": "Kotlin",
+      "aliases": [],
+      "category": "LANGUAGE",
+      "scope": "MOBILE",
+      "deprecatedVersionsRaw": [
+        "2.2.10",
+        "2.1.21"
+      ],
+      "homologatedVersionsRaw": [
+        "2.2.21",
+        "2.3.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 31,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "swift",
+      "name": "Swift",
+      "aliases": [],
+      "category": "LANGUAGE",
+      "scope": "MOBILE",
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "6.0",
+        "6.1",
+        "6.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 31,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "angular",
+      "name": "Angular",
+      "aliases": [],
+      "category": "FRAMEWORK_FRONTEND",
+      "scope": "WEB",
+      "deprecatedVersionsRaw": [
+        "18.2.13",
+        "19.2.15",
+        "20.3.0"
+      ],
+      "homologatedVersionsRaw": [
+        "19.2.18 (LTS)",
+        "20.3.16 (LTS)"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "nextjs",
+      "name": "Next.js",
+      "aliases": [],
+      "category": "FRAMEWORK_FRONTEND",
+      "scope": "WEB",
+      "deprecatedVersionsRaw": [
+        "14.2.32",
+        "15.5.3"
+      ],
+      "homologatedVersionsRaw": [
+        "15.5.9",
+        "16.1.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "ionic",
+      "name": "Ionic",
+      "aliases": [],
+      "category": "FRAMEWORK_FRONTEND",
+      "scope": "PWA",
+      "deprecatedVersionsRaw": [
+        "8.7.3"
+      ],
+      "homologatedVersionsRaw": [
+        "8.7.16"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "capacitor",
+      "name": "Capacitor",
+      "aliases": [],
+      "category": "RUNTIME_MOBILE",
+      "scope": "HYBRID",
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "8.0.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "nestjs",
+      "name": "NestJS",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [
+        "10.4.18",
+        "11.1.6"
+      ],
+      "homologatedVersionsRaw": [
+        "10.4.22",
+        "11.1.11"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "django",
+      "name": "Django",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [
+        "4.2",
+        "5.2.6"
+      ],
+      "homologatedVersionsRaw": [
+        "5.2.10 (LTS)"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "fastapi",
+      "name": "FastAPI",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [
+        "0.116.1"
+      ],
+      "homologatedVersionsRaw": [
+        "0.128.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "laravel",
+      "name": "Laravel",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [
+        "11.46.0"
+      ],
+      "homologatedVersionsRaw": [
+        "12.47.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "livewire",
+      "name": "Livewire",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "3.7.4"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "expressjs",
+      "name": "Express.js",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [
+        "4.21.2",
+        "5.1.0"
+      ],
+      "homologatedVersionsRaw": [
+        "4.22.1",
+        "5.2.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "fastify",
+      "name": "Fastify.js",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [
+        "5.6.0"
+      ],
+      "homologatedVersionsRaw": [
+        "4.29.1",
+        "5.6.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "spring-boot",
+      "name": "Spring Boot",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [
+        "3.3.13",
+        "3.4.9",
+        "3.5.5"
+      ],
+      "homologatedVersionsRaw": [
+        "3.4.13",
+        "3.5.9"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "dotnet",
+      "name": ".NET",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [
+        "8.0.20",
+        "9.0.9"
+      ],
+      "homologatedVersionsRaw": [
+        "8.0.23 (LTS)",
+        "9.0.12"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": [
+        "Selection requires documented justification."
+      ]
+    },
+    {
+      "id": "kotlin-backend",
+      "name": "Kotlin",
+      "aliases": [],
+      "category": "FRAMEWORK_BACKEND",
+      "scope": "BACKEND",
+      "deprecatedVersionsRaw": [
+        "2.1.21",
+        "2.2.10"
+      ],
+      "homologatedVersionsRaw": [
+        "2.2.21",
+        "2.3.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": [
+        "Verify compatibility with homologated Java versions."
+      ]
+    },
+    {
+      "id": "oracle",
+      "name": "Oracle",
+      "aliases": [],
+      "category": "DATABASE",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "19c (LTR)"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": [
+        "New implementations require prior version validation with DGISIS and DGINFRA."
+      ]
+    },
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "aliases": [],
+      "category": "DATABASE",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "15.13"
+      ],
+      "homologatedVersionsRaw": [
+        "15.15",
+        "17.7"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": [
+        "New implementations require prior version validation with DGISIS and DGINFRA.",
+        "Use requires documented justification for the specific cases described by Annex II."
+      ]
+    },
+    {
+      "id": "mariadb",
+      "name": "MariaDB",
+      "aliases": [],
+      "category": "DATABASE",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "10.11.2",
+        "11.4.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": [
+        "New implementations require prior version validation with DGISIS and DGINFRA."
+      ]
+    },
+    {
+      "id": "mongodb",
+      "name": "MongoDB",
+      "aliases": [],
+      "category": "DATABASE",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "8.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": [
+        "New implementations require prior version validation with DGISIS and DGINFRA."
+      ]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "aliases": [],
+      "category": "DATABASE_CACHE",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "7.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": [
+        "New implementations require prior version validation with DGISIS and DGINFRA."
+      ]
+    },
+    {
+      "id": "apache-solr",
+      "name": "Apache Solr",
+      "aliases": [],
+      "category": "SEARCH_PLATFORM",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "9.9.0"
+      ],
+      "homologatedVersionsRaw": [
+        "9.10.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "elasticsearch",
+      "name": "Elastic Search",
+      "aliases": [],
+      "category": "SEARCH_PLATFORM",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "8.17"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "android-core",
+      "name": "core",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.13.1",
+        "1.15.0",
+        "1.16.0"
+      ],
+      "homologatedVersionsRaw": [
+        "1.17.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "material-components",
+      "name": "material-components",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.12.0"
+      ],
+      "homologatedVersionsRaw": [
+        "1.13.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "android-maps",
+      "name": "Maps",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "18.2.0",
+        "19.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "android-places",
+      "name": "Places",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "3.5.0",
+        "4.4.1",
+        "5.1.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "compose",
+      "name": "Compose",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.3.2",
+        "1.9.1"
+      ],
+      "homologatedVersionsRaw": [
+        "1.4.0",
+        "1.5.15",
+        "1.9.5"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "viewpager2",
+      "name": "ViewPager2",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "1.1.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "compose-navigation",
+      "name": "Compose Navigation",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.7.7",
+        "2.8.9",
+        "2.9.4"
+      ],
+      "homologatedVersionsRaw": [
+        "2.9.6"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "workmanager",
+      "name": "WorkManager",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.9.1",
+        "2.10.4"
+      ],
+      "homologatedVersionsRaw": [
+        "2.11.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "rxjava3",
+      "name": "RXJava3",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "3.1.11"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "camerax",
+      "name": "camerax",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.3.4",
+        "1.4.2",
+        "1.5.0"
+      ],
+      "homologatedVersionsRaw": [
+        "1.5.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "android-retrofit",
+      "name": "retrofit",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.10.0",
+        "2.11.0"
+      ],
+      "homologatedVersionsRaw": [
+        "2.12.0",
+        "3.0.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "android-okhttp3",
+      "name": "Okhttp3",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "5.0.0",
+        "5.1.0"
+      ],
+      "homologatedVersionsRaw": [
+        "5.3.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "paging-runtime",
+      "name": "paging-runtime",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "3.3.6"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 32,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "livedata",
+      "name": "livedata",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.7.0",
+        "2.8.7",
+        "2.9.3"
+      ],
+      "homologatedVersionsRaw": [
+        "2.10.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "dagger-hilt",
+      "name": "dagger hilt",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.51.0 a 2.57.1"
+      ],
+      "homologatedVersionsRaw": [
+        "2.57.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "room",
+      "name": "room",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.7.0",
+        "2.8.0"
+      ],
+      "homologatedVersionsRaw": [
+        "2.8.4"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "coil",
+      "name": "Coil",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.1.0",
+        "3.2.0"
+      ],
+      "homologatedVersionsRaw": [
+        "2.7.0",
+        "3.3.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "three",
+      "name": "three",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "0.170.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "lottie-android",
+      "name": "lottie-android",
+      "aliases": [],
+      "category": "LIBRARY_ANDROID",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "6.6.0"
+      ],
+      "homologatedVersionsRaw": [
+        "6.7.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "spring-cloud",
+      "name": "Spring Cloud",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2023.0.5",
+        "2024.0.2",
+        "2025.0.0"
+      ],
+      "homologatedVersionsRaw": [
+        "2023.0.9",
+        "2024.0.3",
+        "2025.0.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "java-okhttp3",
+      "name": "Okhttp3",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "5.0.0",
+        "5.1.0"
+      ],
+      "homologatedVersionsRaw": [
+        "5.3.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "java-retrofit",
+      "name": "retrofit",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.10.0",
+        "2.11.0"
+      ],
+      "homologatedVersionsRaw": [
+        "2.12.0",
+        "3.0.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "junit-jupiter-api",
+      "name": "junit-jupiter-api",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "5.12.0",
+        "5.13.0"
+      ],
+      "homologatedVersionsRaw": [
+        "5.14.2",
+        "6.0.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "modelmapper",
+      "name": "modelmapper",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.2.4"
+      ],
+      "homologatedVersionsRaw": [
+        "3.2.6"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "hibernate",
+      "name": "Hibernate",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "6.6.29",
+        "7.1.1"
+      ],
+      "homologatedVersionsRaw": [
+        "7.2.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "ojdbc11",
+      "name": "ojdbc11",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "21.19.0",
+        "23.9.0"
+      ],
+      "homologatedVersionsRaw": [
+        "21.20.0",
+        "23.26.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "mockito-core",
+      "name": "mockito-core",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "5.17.0",
+        "5.18.0",
+        "5.19.0"
+      ],
+      "homologatedVersionsRaw": [
+        "5.21.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "apache-poi",
+      "name": "apache poi",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "5.3.0",
+        "5.4.0"
+      ],
+      "homologatedVersionsRaw": [
+        "5.5.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "aws-java-sdk-core",
+      "name": "aws-java-sdk-core",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.31.0",
+        "2.32.0"
+      ],
+      "homologatedVersionsRaw": [
+        "2.41.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "unirest-java-core",
+      "name": "unirest-java-core",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.4.0",
+        "4.5.0"
+      ],
+      "homologatedVersionsRaw": [
+        "4.7.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "mapstruct",
+      "name": "MapStruct",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.6.0"
+      ],
+      "homologatedVersionsRaw": [
+        "1.6.3"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "gson",
+      "name": "Gson",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.11.0",
+        "2.12.0",
+        "2.13.0"
+      ],
+      "homologatedVersionsRaw": [
+        "2.13.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "lombok",
+      "name": "lombok",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.18.32"
+      ],
+      "homologatedVersionsRaw": [
+        "1.18.42"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "commons-codec",
+      "name": "commons-codec",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.17.0",
+        "1.18.0",
+        "1.19.0"
+      ],
+      "homologatedVersionsRaw": [
+        "1.20.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "commons-lang3",
+      "name": "commons-lang3",
+      "aliases": [],
+      "category": "LIBRARY_JAVA",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.16.0",
+        "3.17.0",
+        "3.18.0"
+      ],
+      "homologatedVersionsRaw": [
+        "3.20.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "matplotlib",
+      "name": "Matplotlib",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.8.4",
+        "3.9.4",
+        "3.10.6"
+      ],
+      "homologatedVersionsRaw": [
+        "3.10.8"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "bokeh",
+      "name": "Bokeh",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.6.x",
+        "3.7.x",
+        "3.8.x"
+      ],
+      "homologatedVersionsRaw": [
+        "3.8.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "numpy",
+      "name": "NumPy",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.26.x",
+        "2.2.x",
+        "2.3.x"
+      ],
+      "homologatedVersionsRaw": [
+        "2.4.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "scipy",
+      "name": "SciPy",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.14.1",
+        "1.15.3",
+        "1.16.1"
+      ],
+      "homologatedVersionsRaw": [
+        "1.17.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "spacy",
+      "name": "SpaCy",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.7.5",
+        "3.8.7"
+      ],
+      "homologatedVersionsRaw": [
+        "3.8.11"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "pandas",
+      "name": "Pandas",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.2.3",
+        "2.3.2"
+      ],
+      "homologatedVersionsRaw": [
+        "2.3.3"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "pytorch",
+      "name": "PyTorch",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.7.x",
+        "2.8.0"
+      ],
+      "homologatedVersionsRaw": [
+        "2.9.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "nltk",
+      "name": "NLTK",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "3.9.4"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "gensim",
+      "name": "Gensim",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.3.x"
+      ],
+      "homologatedVersionsRaw": [
+        "4.4.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "transformers",
+      "name": "transformers",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.53.x",
+        "4.54.x",
+        "4.55.x"
+      ],
+      "homologatedVersionsRaw": [
+        "4.57.6"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "pillow",
+      "name": "Pillow",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "10.4.x",
+        "11.2.x"
+      ],
+      "homologatedVersionsRaw": [
+        "11.3.0",
+        "12.0.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 33,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "scrapy",
+      "name": "Scrapy",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.12.x",
+        "2.13.x"
+      ],
+      "homologatedVersionsRaw": [
+        "2.14.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "tensorflow",
+      "name": "TensorFlow",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.18.x",
+        "2.19.x"
+      ],
+      "homologatedVersionsRaw": [
+        "2.20.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "oracledb",
+      "name": "Oracledb",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.1.1",
+        "3.2.x"
+      ],
+      "homologatedVersionsRaw": [
+        "3.3.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": [
+        "Database connector may only be used through an approved framework and structured ORM; direct use is not authorized."
+      ]
+    },
+    {
+      "id": "mysql-connector-python",
+      "name": "mysql-connector-python",
+      "aliases": [],
+      "category": "LIBRARY_PYTHON",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "9.3.0",
+        "9.4.0"
+      ],
+      "homologatedVersionsRaw": [
+        "9.5.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": [
+        "Database connector may only be used through an approved framework and structured ORM; direct use is not authorized."
+      ]
+    },
+    {
+      "id": "ngx-extended-pdf-viewer",
+      "name": "ngx-extended-pdf-viewer",
+      "aliases": [],
+      "category": "LIBRARY_ANGULAR",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "19.7.x",
+        "20.5.x",
+        "22.3.x",
+        "23.3.x",
+        "24.3.x"
+      ],
+      "homologatedVersionsRaw": [
+        "21.4.0",
+        "25.6.4"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "ngx-permissions",
+      "name": "ngx-permissions",
+      "aliases": [],
+      "category": "LIBRARY_ANGULAR",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "17.1.x"
+      ],
+      "homologatedVersionsRaw": [
+        "19.0.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "ngx-spinner",
+      "name": "ngx-spinner",
+      "aliases": [],
+      "category": "LIBRARY_ANGULAR",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "depends on Angular version"
+      ],
+      "versionRule": "CONTEXT_DEPENDENT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "primeng",
+      "name": "PrimeNg",
+      "aliases": [],
+      "category": "LIBRARY_ANGULAR",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "18.0.2",
+        "20.1.x"
+      ],
+      "homologatedVersionsRaw": [
+        "19.1.4",
+        "20.3.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "react",
+      "name": "React",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "18.3.0",
+        "19.0.1",
+        "19.1.2"
+      ],
+      "homologatedVersionsRaw": [
+        "18.3.1",
+        "19.2.3"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "react-redux",
+      "name": "React-Redux",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "9.1.2"
+      ],
+      "homologatedVersionsRaw": [
+        "9.2.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "redux-toolkit",
+      "name": "@reduxjs/toolkit",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "2.11.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "js-maps",
+      "name": "Maps",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.60",
+        "3.61",
+        "3.62",
+        "quarterly"
+      ],
+      "homologatedVersionsRaw": [
+        "3.63"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "jwt-decode",
+      "name": "jwt-decode",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "4.0.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "chartjs",
+      "name": "Chart.js",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.4.x",
+        "4.5.0"
+      ],
+      "homologatedVersionsRaw": [
+        "4.5.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "animejs",
+      "name": "Anime.js",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.1.x"
+      ],
+      "homologatedVersionsRaw": [
+        "4.3.5"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "apache-echarts",
+      "name": "Apache ECharts",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "5.6.0",
+        "6.0.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "apexcharts",
+      "name": "ApexCharts",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "5.3.0"
+      ],
+      "homologatedVersionsRaw": [
+        "4.7.0",
+        "5.3.6"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "jose",
+      "name": "JOSE",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.15.9",
+        "5.8.x",
+        "6.1.0"
+      ],
+      "homologatedVersionsRaw": [
+        "5.10.0",
+        "6.1.3"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "modernizr",
+      "name": "Modernizr",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "3.13.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "openlayers",
+      "name": "Openlayers.js",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "10.6.0"
+      ],
+      "homologatedVersionsRaw": [
+        "9.2.4",
+        "10.7.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "dayjs",
+      "name": "Day.js",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.11.18"
+      ],
+      "homologatedVersionsRaw": [
+        "1.11.19"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "fullcalendar-core",
+      "name": "@fullcalendar/core",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "6.1.0"
+      ],
+      "homologatedVersionsRaw": [
+        "6.1.19"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "helmet",
+      "name": "helmet",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "7.2.0",
+        "8.1.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "core-js",
+      "name": "core-js",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.41.0",
+        "3.45.0"
+      ],
+      "homologatedVersionsRaw": [
+        "3.48.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "dotenv",
+      "name": "dotenv",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "17.2.0"
+      ],
+      "homologatedVersionsRaw": [
+        "17.2.3"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "express-fileupload",
+      "name": "express-fileupload",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "1.5.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "underscore",
+      "name": "Underscore",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "1.13.7"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "backbone",
+      "name": "Backbone.js",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.6.0"
+      ],
+      "homologatedVersionsRaw": [
+        "1.6.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 34,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "quill",
+      "name": "Quill",
+      "aliases": [],
+      "category": "LIBRARY_JAVASCRIPT",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "2.0.3"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": [
+        "CKEditor 5 and TinyMCE require specific technical-legal assessment."
+      ]
+    },
+    {
+      "id": "quartz-dotnet",
+      "name": "Quartz.NET",
+      "aliases": [],
+      "category": "LIBRARY_DOTNET",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.15.0"
+      ],
+      "homologatedVersionsRaw": [
+        "3.15.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "nunit",
+      "name": "NUnit",
+      "aliases": [],
+      "category": "LIBRARY_DOTNET",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.3.2"
+      ],
+      "homologatedVersionsRaw": [
+        "4.4.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "fluentvalidation",
+      "name": "FluentValidation",
+      "aliases": [],
+      "category": "LIBRARY_DOTNET",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "11.11.0",
+        "12.0.0"
+      ],
+      "homologatedVersionsRaw": [
+        "12.1.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "nlog",
+      "name": "NLog",
+      "aliases": [],
+      "category": "LIBRARY_DOTNET",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "5.5.0"
+      ],
+      "homologatedVersionsRaw": [
+        "6.0.5"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "log4net",
+      "name": "Log4Net",
+      "aliases": [],
+      "category": "LIBRARY_DOTNET",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.2.0"
+      ],
+      "homologatedVersionsRaw": [
+        "3.2.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "nservicebus",
+      "name": "NServiceBus",
+      "aliases": [],
+      "category": "LIBRARY_DOTNET",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "9.2.4"
+      ],
+      "homologatedVersionsRaw": [
+        "9.2.8"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "mimekit",
+      "name": "MimeKit",
+      "aliases": [],
+      "category": "LIBRARY_DOTNET",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.10.0"
+      ],
+      "homologatedVersionsRaw": [
+        "4.14.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "polly",
+      "name": "Polly",
+      "aliases": [],
+      "category": "LIBRARY_DOTNET",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "8.6.0"
+      ],
+      "homologatedVersionsRaw": [
+        "8.6.5"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "hangfire",
+      "name": "Hangfire",
+      "aliases": [],
+      "category": "LIBRARY_DOTNET",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.8.18"
+      ],
+      "homologatedVersionsRaw": [
+        "1.8.22"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "opencv",
+      "name": "Open CV",
+      "aliases": [],
+      "category": "LIBRARY_OTHER",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.10.0",
+        "4.11.0"
+      ],
+      "homologatedVersionsRaw": [
+        "4.13.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "libpng",
+      "name": "Libpng",
+      "aliases": [],
+      "category": "LIBRARY_OTHER",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.6.48"
+      ],
+      "homologatedVersionsRaw": [
+        "1.6.54"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "zlib-ng",
+      "name": "Zlib-ng",
+      "aliases": [],
+      "category": "LIBRARY_OTHER",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.2.5"
+      ],
+      "homologatedVersionsRaw": [
+        "2.3.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "obelisco-v2",
+      "name": "Obelisco V2",
+      "aliases": [],
+      "category": "DESIGN_SYSTEM",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "1.6.2",
+        "1.8.4"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": [
+        "Required GCBA design system by the referenced resolution."
+      ]
+    },
+    {
+      "id": "bootstrap",
+      "name": "Bootstrap",
+      "aliases": [],
+      "category": "DESIGN_LIBRARY",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "5.3.0"
+      ],
+      "homologatedVersionsRaw": [
+        "5.3.8"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [
+        "Obelisco uses Bootstrap as a library."
+      ],
+      "constraints": []
+    },
+    {
+      "id": "wordpress",
+      "name": "Wordpress",
+      "aliases": [],
+      "category": "CMS",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "6.6.2",
+        "6.7.2",
+        "6.8.0"
+      ],
+      "homologatedVersionsRaw": [
+        "6.6.4",
+        "6.7.4",
+        "6.8.3"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "drupal",
+      "name": "Drupal",
+      "aliases": [],
+      "category": "CMS",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "10.4",
+        "11.1"
+      ],
+      "homologatedVersionsRaw": [
+        "10.6",
+        "11.3"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "moodle",
+      "name": "Moodle",
+      "aliases": [],
+      "category": "LMS",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "4.5.3 (LTS)",
+        "5.0"
+      ],
+      "homologatedVersionsRaw": [
+        "4.5.8 (LTS)",
+        "5.1.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 35,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "ckan",
+      "name": "Ckan",
+      "aliases": [],
+      "category": "DMS",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.10.7",
+        "2.11.2"
+      ],
+      "homologatedVersionsRaw": [
+        "2.10.9",
+        "2.11.4"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "geoserver",
+      "name": "GeoServer",
+      "aliases": [],
+      "category": "DMS",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "2.27.0"
+      ],
+      "homologatedVersionsRaw": [
+        "2.28.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "flyway",
+      "name": "Flyway",
+      "aliases": [],
+      "category": "DB_MIGRATION_MANAGER",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "11.x"
+      ],
+      "homologatedVersionsRaw": [
+        "11.13.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "laravel-migrations",
+      "name": "Laravel (Migrations)",
+      "aliases": [],
+      "category": "DB_MIGRATION_MANAGER",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "framework-dependent"
+      ],
+      "versionRule": "FRAMEWORK_DEPENDENT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "django-migrations",
+      "name": "Django (Migrations)",
+      "aliases": [],
+      "category": "DB_MIGRATION_MANAGER",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "framework-dependent"
+      ],
+      "versionRule": "FRAMEWORK_DEPENDENT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "ef-core-migrations",
+      "name": "Entity Framework Core (Migrations)",
+      "aliases": [],
+      "category": "DB_MIGRATION_MANAGER",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "framework-dependent"
+      ],
+      "versionRule": "FRAMEWORK_DEPENDENT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "alembic",
+      "name": "Alembic",
+      "aliases": [],
+      "category": "DB_MIGRATION_MANAGER",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.15.2",
+        "1.16.0"
+      ],
+      "homologatedVersionsRaw": [
+        "1.17.2"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "typeorm",
+      "name": "TypeORM",
+      "aliases": [],
+      "category": "DB_MIGRATION_MANAGER",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "0.3.26"
+      ],
+      "homologatedVersionsRaw": [
+        "0.3.28"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "sequelize-migrations",
+      "name": "Sequelize Migrations",
+      "aliases": [],
+      "category": "DB_MIGRATION_MANAGER",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "6.37.7"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "cib-seven",
+      "name": "CIB seven",
+      "aliases": [],
+      "category": "BPM",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "1.1.0 CE",
+        "2.1.0 CE"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": [
+        "Homologated Community editions are the listed CE versions."
+      ]
+    },
+    {
+      "id": "apache-kafka",
+      "name": "Apache Kafka",
+      "aliases": [],
+      "category": "MESSAGE_QUEUE",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "3.6.2"
+      ],
+      "homologatedVersionsRaw": [
+        "4.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [
+        "Default queue manager."
+      ],
+      "constraints": []
+    },
+    {
+      "id": "activemq-artemis",
+      "name": "Apache ActiveMQ Artemis",
+      "aliases": [],
+      "category": "MESSAGE_QUEUE",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "2.40.0"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": [
+        "Use only in specific scenarios where justified."
+      ]
+    },
+    {
+      "id": "apache-web-server",
+      "name": "Apache Web Server",
+      "aliases": [],
+      "category": "WEB_SERVER",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "2.4.62"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [
+        "Preferred/default web server."
+      ],
+      "constraints": []
+    },
+    {
+      "id": "apache-tomcat",
+      "name": "Apache Tomcat",
+      "aliases": [],
+      "category": "WEB_SERVER",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "10.1.36"
+      ],
+      "homologatedVersionsRaw": [
+        "10.1.48"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "nginx",
+      "name": "Nginx",
+      "aliases": [],
+      "category": "WEB_SERVER",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "1.24"
+      ],
+      "homologatedVersionsRaw": [
+        "1.29"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": [
+        "Use only where no viable technical alternative exists."
+      ]
+    },
+    {
+      "id": "jws",
+      "name": "JWS (JBoss Web Server)",
+      "aliases": [],
+      "category": "WEB_SERVER",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "6.0 SP1",
+        "6.1"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 36,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "rhel",
+      "name": "Red Hat Enterprise Linux - RHEL",
+      "aliases": [],
+      "category": "OPERATING_SYSTEM",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "8.7",
+        "9.6"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 37,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "android-os",
+      "name": "Android",
+      "aliases": [],
+      "category": "OPERATING_SYSTEM_MOBILE",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 37,
+      "notes": [
+        "Versions listed are mobile validation targets, not a user-device restriction."
+      ],
+      "constraints": []
+    },
+    {
+      "id": "ios",
+      "name": "iOS",
+      "aliases": [],
+      "category": "OPERATING_SYSTEM_MOBILE",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "18",
+        "26"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 37,
+      "notes": [
+        "Versions listed are mobile validation targets, not a user-device restriction."
+      ],
+      "constraints": []
+    },
+    {
+      "id": "openssl",
+      "name": "OpenSSL",
+      "aliases": [],
+      "category": "SECURITY",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "3.5 (LTS)"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 37,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "primekey-ejbca",
+      "name": "PrimeKey EJBCA",
+      "aliases": [],
+      "category": "SECURITY",
+      "scope": null,
+      "deprecatedVersionsRaw": [
+        "9.3.0"
+      ],
+      "homologatedVersionsRaw": [
+        "9.3.6"
+      ],
+      "versionRule": "DEFAULT",
+      "sourcePage": 37,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "openid-connect",
+      "name": "OpenID Connect (OIDC)",
+      "aliases": [],
+      "category": "SECURITY",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "provided-by-DGSEI"
+      ],
+      "versionRule": "PROVIDER_ASSIGNED_BY_DGSEI",
+      "sourcePage": 37,
+      "notes": [],
+      "constraints": []
+    },
+    {
+      "id": "keycloak",
+      "name": "Keycloak",
+      "aliases": [],
+      "category": "SECURITY",
+      "scope": null,
+      "deprecatedVersionsRaw": [],
+      "homologatedVersionsRaw": [
+        "provided-by-DGSEI"
+      ],
+      "versionRule": "PROVIDER_ASSIGNED_BY_DGSEI",
+      "sourcePage": 37,
+      "notes": [],
+      "constraints": []
+    }
+  ]
+}

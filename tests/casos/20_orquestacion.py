@@ -214,28 +214,64 @@ def test_e10_una_capacidad_deshabilitada_es_faltante(t):
 # -- E-11 a E-14 — el roster ---------------------------------------------------
 
 def test_e11_un_agente_declarado_sin_md(t):
-    """E-11 — aparece como hueco mientras no exista su archivo."""
+    """E-11 — un agente declarado en el roster y sin su .md aparece como hueco.
+
+    Contra un roster fabricado, no contra el real. El sujeto era `dev-backend`, y el dia que
+    se escribio su archivo el escenario se quedo sin sujeto: hoy los diez agentes existen y
+    no hay ninguno hueco contra el cual afirmar la regla. Un test que la afirmara sobre el
+    roster real pasaria en vacio. La regla vive en `huecos`, que es una funcion de sus
+    argumentos, asi que se la prueba ahi y sigue siendo verdadera se escriban los agentes que
+    se escriban.
+    """
+    avisos = c_roster.huecos(
+        [{"name": "dev-fantasma", "exists": False}, {"name": "dev-real", "exists": True}],
+        [], [])
+    t.igual("E-11 un aviso, el del que falta", 1, len(avisos))
+    t.contiene("E-11 lo nombra", "dev-fantasma", avisos[0])
+    t.contiene("E-11 y dice que le falta el .md", "no tiene su .md", avisos[0])
+    t.verdadero("E-11 el que existe no se avisa",
+                not any("dev-real" in a for a in avisos))
+
+    # Y la existencia la sigue diciendo el disco: un nombre que no esta no existe.
+    t.igual("E-11 el disco decide", False, c_roster.existe_agente("dev-fantasma"))
+
+    # En un plan real, el agente que SI existe no figura como hueco y la unidad lo dice.
     documento = _armar()
     backend = [a for a in documento["agents"] if a["name"] == "dev-backend"]
     t.igual("E-11 el roster lo declara", 1, len(backend))
-    t.igual("E-11 y todavia no existe", False, backend[0]["exists"])
-    t.verdadero("E-11 el aviso lo dice",
-                any("dev-backend" in w and "no tiene su .md" in w
-                    for w in documento["warnings"]))
-    # Y la unidad tambien: un especialista recibe su unidad suelta, sin la lista de avisos.
-    t.igual("E-11 la unidad asignada lo dice", False, documento["workUnits"][0]["agentExists"])
-    t.igual("E-11 y nombra al agente igual", "dev-backend",
+    t.igual("E-11 la unidad nombra al agente", "dev-backend",
             documento["workUnits"][0]["assignedAgent"])
+    t.igual("E-11 y su existencia viaja en la unidad", backend[0]["exists"],
+            documento["workUnits"][0]["agentExists"])
+    t.verdadero("E-11 si existe, no se avisa",
+                backend[0]["exists"] != any("dev-backend" in w and "no tiene su .md" in w
+                                            for w in documento["warnings"]))
 
 
 def test_e12_una_skill_declarada_sin_archivo(t):
-    """E-12 — dev-data esta declarada y no existe: hueco."""
-    documento = _armar()
-    data = [s for s in documento["skills"] if s["name"] == "dev-data"]
-    t.igual("E-12 declarada", 1, len(data))
-    t.igual("E-12 y no existe", False, data[0]["exists"])
-    t.verdadero("E-12 el aviso lo dice",
-                any("dev-data" in w for w in documento["warnings"]))
+    """E-12 — una skill declarada en el roster y sin su SKILL.md aparece como hueco.
+
+    Sin nombre propio a proposito. El sujeto era `dev-data` y dejo de servir el dia que el
+    archivo entro: un test que nombra una skill envejece con el roster. Lo que se afirma es
+    la regla, contra el roster real -la que falta se avisa, la que esta no-, y el guardia de
+    que haya al menos una faltando es lo que impide que pase en vacio. El dia que existan
+    todas esto se pone en rojo, y ahi se decide que sujeto tiene E-12.
+    """
+    # Sobre TODOS los dominios, no sobre uno. Con el plan armado solo con `backend`, el dia
+    # que ese dominio quedo completo el escenario se quedo sin sujeto y el guardia salto:
+    # la propiedad se afirma contra el roster entero, que es donde siempre hay un hueco.
+    dominios = sorted(c_plan.CONTEXTO_POR_DOMINIO)
+    unidades = [_unidad("u%d" % i, dominio=d) for i, d in enumerate(dominios, 1)]
+    documento = _armar(_propuesta(unidades, domains=dominios))
+    faltan = [s["name"] for s in documento["skills"] if not s["exists"]]
+    estan = [s["name"] for s in documento["skills"] if s["exists"]]
+    avisos = [w for w in documento["warnings"] if "la skill" in w]
+    t.verdadero("E-12 hay al menos una declarada sin archivo", len(faltan) > 0)
+    t.igual("E-12 un aviso por cada una que falta", len(faltan), len(avisos))
+    t.verdadero("E-12 y el aviso la nombra",
+                all(any(n in w for w in avisos) for n in faltan))
+    t.verdadero("E-12 la que existe no se avisa",
+                not any(n in w for n in estan for w in avisos))
 
 
 def test_e13_la_existencia_la_dice_el_disco(t):
@@ -246,9 +282,6 @@ def test_e13_la_existencia_la_dice_el_disco(t):
     t.igual("E-13 y existe de verdad", True, rutas[0]["exists"])
     t.verdadero("E-13 no figura como hueco",
                 not any("dev-api-rutas" in w for w in documento["warnings"]))
-    # Y una skill que existe tampoco.
-    api = [s for s in documento["skills"] if s["name"] == "dev-api"]
-    t.igual("E-13 la skill dev-api existe", True, api[0]["exists"])
 
 
 def test_e14_el_ruteo_no_trae_a_todos(t):
@@ -536,7 +569,9 @@ def test_e29_cada_unidad_lleva_lo_suyo(t):
     for dominio in ("tooling", "orchestration", "refutation"):
         t.verdadero("E-29 %s esta en la tabla" % dominio,
                     dominio in c_plan.CONTEXTO_POR_DOMINIO)
-    declarados = sorted(a["domain"] for a in c_roster.cargar()["agents"])
+    # El roster ya no declara agentes: la lista sale del registro, que es la unica
+    # declaracion desde el cambio agent-registry.
+    declarados = c_roster.dominios_declarados()
     sin_fila = [d for d in declarados if d not in c_plan.CONTEXTO_POR_DOMINIO]
     t.igual("E-29 ningun dominio del roster queda sin fila", [], sin_fila)
 

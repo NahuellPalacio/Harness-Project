@@ -23,6 +23,40 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.18.0 → 0.19.0
+
+`-Update` alcanza para todo lo nuevo, y hay **un paso manual**: borrar las skills que dejaron de
+existir.
+
+🔴 **`-Update` copia y no borra.** Las ocho skills de `desarrollo` que esta versión reemplaza siguen
+en el proyecto después de actualizar, al lado de las 27 nuevas:
+
+```powershell
+$viejas = 'dev-ambientes','dev-api','dev-identidad','dev-pantalla',
+          'dev-repositorio','dev-seguridad','dev-tramites-asi','dev-versiones'
+foreach ($s in $viejas) { Get-ChildItem "C:\Work\GCBA\MiProyecto\.claude\skills\$s" -ErrorAction SilentlyContinue }
+```
+
+Antes de borrar, mirá que no las hayas editado a mano. `dev-api` **sigue existiendo** con otro
+contenido: esa no se borra, la pisa el `-Update`. Las otras siete se borran:
+
+```powershell
+foreach ($s in $viejas | Where-Object { $_ -ne 'dev-api' }) {
+    Remove-Item "C:\Work\GCBA\MiProyecto\.claude\skills\$s" -Recurse -Force
+}
+```
+
+Lo que aparece en un proyecto con `desarrollo` instalado: los ocho agentes `dev-*` nuevos, las 27
+skills, los módulos nuevos de `orquestacion/` y `contabilidad/`, los 17 schemas nuevos y las
+reglas del harness. `reglas/database-profiles.json` se instala **vacío**, a propósito: los
+perfiles de base son del proyecto.
+
+📌 **Los controles normativos no llegan todavía.** `controles/` no lo copia el instalador, así que
+en un proyecto instalado los 31 controles figuran como `CONTROL_FILE_MISSING`. Está anotado en
+`Pendientes/Fix-Harness/PENDIENTES-FH.md` y no es algo que se arregle a mano.
+
+---
+
 ## 0.17.0 → 0.18.0
 
 `-Update` alcanza. No hay paso manual, y todo lo que suma es aditivo.

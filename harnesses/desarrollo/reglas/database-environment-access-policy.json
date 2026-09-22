@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "environments": {
+    "DEV": {
+      "mode": "FULL",
+      "read": true,
+      "write": true,
+      "ddl": true,
+      "migrations": true
+    },
+    "QA": {
+      "mode": "READ_ONLY",
+      "read": true,
+      "write": false,
+      "ddl": false,
+      "migrations": false
+    },
+    "HML": {
+      "mode": "READ_ONLY",
+      "read": true,
+      "write": false,
+      "ddl": false,
+      "migrations": false
+    },
+    "PRD": {
+      "mode": "READ_ONLY",
+      "read": true,
+      "write": false,
+      "ddl": false,
+      "migrations": false
+    }
+  },
+  "default": {
+    "mode": "DENY",
+    "reason": "DATABASE_ENVIRONMENT_UNRESOLVED"
+  }
+}

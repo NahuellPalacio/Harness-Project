@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "es0902-cross-standard-map/1.0",
+  "title": "ES0902_CROSS_STANDARD_MAP",
+  "description": "Que relacion hay entre una regla de ES0901 y una de ES0902. No reconcilia nada: declara que dos reglas se tocan y de que manera, y cuando la manera es un conflicto declara el estado en el que queda hasta que llegue evidencia autoritativa. Las claves son compuestas -ES0901.G1 y ES0902.G1 no son la misma regla- y por eso el patron exige el prefijo del estandar.",
+  "type": "object",
+  "required": ["version", "relations"],
+  "additionalProperties": false,
+  "properties": {
+
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "type"],
+        "additionalProperties": false,
+        "properties": {
+
+          "from": {
+            "description": "La clave compuesta de la regla de origen. Siempre de ES0902: el mapa se lee desde el estandar que se esta instalando.",
+            "type": "string",
+            "pattern": "^ES0902\\.[A-Za-z]+[0-9]*$"
+          },
+
+          "to": {
+            "description": "La clave compuesta de la regla de destino, o un sujeto del harness -HARNESS.<algo>- cuando la relacion no es contra otra regla sino contra una capacidad.",
+            "type": "string",
+            "pattern": "^(ES0901|ES0902|HARNESS)\\.[A-Za-z_0-9]+$"
+          },
+
+          "type": {
+            "description": "OVERLAP_REUSE y CONTROL_REUSE comparten ejecucion. POTENTIAL_CONFLICT y EQUIVALENCE_REVIEW_REQUIRED no se deciden solas y por eso traen `state`. SUPPORTS y ADDITIONAL_GOVERNANCE agregan obligacion sin compartir control. NO_AUTO_PASS es una prohibicion: pasar de un lado nunca aprueba del otro.",
+            "type": "string",
+            "enum": ["OVERLAP_REUSE", "CONTROL_REUSE", "POTENTIAL_CONFLICT",
+                     "EQUIVALENCE_REVIEW_REQUIRED", "SUPPORTS", "ADDITIONAL_GOVERNANCE",
+                     "NO_AUTO_PASS"]
+          },
+
+          "state": {
+            "description": "El estado en el que queda el cruce cuando la relacion no se puede resolver sin evidencia autoritativa. Su ausencia no significa resuelto: significa que esta relacion no necesita decidirse.",
+            "type": "string",
+            "enum": ["CROSS_STANDARD_INTERPRETATION_REQUIRED",
+                     "CROSS_STANDARD_CONTROL_BINDING_REQUIRED"]
+          },
+
+          "sharedControls": {
+            "description": "Los ids de control que las dos reglas ejecutan una sola vez. Compartir ejecucion no es compartir resultado: cada fuente normativa conserva el suyo.",
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+          },
+
+          "rule": { "type": "string" }
+        }
+      }
+    }
+  }
+}

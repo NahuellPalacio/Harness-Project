@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tool-registry/1.0",
+  "title": "TOOL_REGISTRY",
+  "description": "Que tools existen, en que version, con que riesgo y en que punto de su ciclo de vida. Vive en .claude/harness.tools.json, al lado de harness.capacidades.json, y es lo que el Capability Registry consulta para resolver una capacidad hacia algo que se pueda usar de verdad. Una tool generada NUNCA entra APPROVED: entra EXPERIMENTAL o TEMPORARY y alguien distinto de quien la construyo la promueve. El vocabulario esta en ingles, segun ADR-0011. Lo valida el interprete de subconjunto de contexto-armar.py: type, properties, required, items, enum y pattern, y nada mas.",
+  "type": "object",
+  "required": ["schema_version", "tools"],
+  "properties": {
+
+    "schema_version": { "type": "string", "enum": ["tool-registry/1.0"] },
+
+    "tools": {
+      "description": "Una entrada por tool Y version. Dos versiones de la misma tool conviven: el contrato viejo sigue sirviendo a quien lo pidio.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "version", "lifecycle", "capabilities", "sideEffects",
+                     "riskLevel", "permissions", "secretsRequired", "blastRadius",
+                     "validations", "contractHash"],
+        "properties": {
+
+          "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+
+          "lifecycle": {
+            "description": "EXPERIMENTAL esta bajo validacion. TEMPORARY sirve para la WorkUnit de hoy y no es parte del set reutilizable. PROMOTION_CANDIDATE demostro valor y espera revision formal. APPROVED es reutilizable y registrada oficialmente. DEPRECATED sigue disponible por compatibilidad y no se elige para trabajo nuevo. RETIRED no se ejecuta.",
+            "type": "string",
+            "enum": ["EXPERIMENTAL", "TEMPORARY", "PROMOTION_CANDIDATE", "APPROVED",
+                     "DEPRECATED", "RETIRED"]
+          },
+
+          "capabilities": { "type": "array", "items": { "type": "string" } },
+
+          "sideEffects": {
+            "type": "string",
+            "enum": ["READ_ONLY", "MUTATING", "DESTRUCTIVE"]
+          },
+
+          "riskLevel": {
+            "type": "string",
+            "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+          },
+
+          "permissions": { "type": "array", "items": { "type": "string" } },
+          "secretsRequired": { "type": "array", "items": { "type": "string" } },
+
+          "blastRadius": {
+            "type": "object",
+            "required": ["scope", "environments", "productionImpact"],
+            "properties": {
+              "scope": {
+                "type": "string",
+                "enum": ["local", "repository", "project", "external-system", "organization"]
+              },
+              "environments": { "type": "array", "items": { "type": "string" } },
+              "productionImpact": { "type": "boolean" }
+            }
+          },
+
+          "validations": {
+            "description": "El resultado de cada etapa del pipeline. Tres valores y no dos: un booleano no sabe decir NOT_RUN, y NOT_RUN es la diferencia entre una etapa que paso y una que nadie pudo correr. Hoy sandbox sale NOT_RUN en toda corrida real porque el harness no tiene entorno aislado, y eso tiene que verse.",
+            "type": "object",
+            "required": ["static", "unit", "contract", "security", "sandbox", "capability"],
+            "properties": {
+              "static":     { "type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"] },
+              "unit":       { "type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"] },
+              "contract":   { "type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"] },
+              "security":   { "type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"] },
+              "sandbox":    { "type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"] },
+              "capability": { "type": "string", "enum": ["PASS", "FAIL", "NOT_RUN"] }
+            }
+          },
+
+          "contractHash": {
+            "description": "sha256 del contrato con el que se registro esta version. Es lo que permite rechazar un contrato distinto bajo la misma name@version sin guardar el contrato entero dos veces.",
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+
+          "registeredAt": { "type": "string" },
+
+          "promotedBy": {
+            "description": "Quien movio el estado. dev-tool-builder no puede figurar aca para el salto a APPROVED: quien construye no aprueba.",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

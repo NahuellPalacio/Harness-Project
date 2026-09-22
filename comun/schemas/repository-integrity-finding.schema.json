@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Repository Integrity Finding",
+  "type": "object",
+  "required": [
+    "findingId",
+    "reviewId",
+    "repository",
+    "category",
+    "status",
+    "confidence",
+    "evidence"
+  ],
+  "properties": {
+    "findingId": {
+      "type": "string"
+    },
+    "reviewId": {
+      "type": "string"
+    },
+    "repository": {
+      "type": "string"
+    },
+    "baselineCommit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "currentCommit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "commits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "file": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "location": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "beforeHash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "afterHash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "category": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "SUSPICIOUS_BEHAVIOR_DETECTED",
+        "MALICIOUS_BEHAVIOR_CONFIRMED_BY_EVIDENCE",
+        "REVIEW_INCOMPLETE"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "severity": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reasoningSummary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "recommendedNextAction": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "requiresHumanReview": {
+      "type": "boolean"
+    }
+  }
+}

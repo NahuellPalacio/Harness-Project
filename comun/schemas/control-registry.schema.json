@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "control-registry/1.0",
+  "title": "CONTROL_REGISTRY",
+  "description": "Que controles normativos existen, de que tipo y de que regla salen. Es la unica respuesta a la pregunta 'esto esta instalado': sin el registro, `instalado` es una afirmacion de quien la dice y la matriz no tiene contra que comparar. Misma forma que agent-registry/1.0 y por la misma razon — el registro declara, el disco diagnostica —. No dice si un control se CUMPLE: dice si existe. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["version", "registryType", "controlTypes", "controls"],
+  "properties": {
+
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+
+    "registryType": { "type": "string", "enum": ["control-registry"] },
+
+    "controlTypes": {
+      "description": "POLICY restringe antes, CHECK verifica objetivamente despues, y REVIEW es criterio tecnico estructurado sobre evidencia explicita. REVIEW no es un alias de CHECK: existe justamente para lo que no admite una comprobacion mecanica, y forzarlo a un check binario falso es peor que declarar que hace falta criterio.",
+      "type": "array",
+      "items": { "type": "string", "enum": ["POLICY", "CHECK", "REVIEW"] }
+    },
+
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "rule", "file", "status"],
+        "properties": {
+
+          "id": {
+            "description": "El mismo id que declara la matriz normativa. Es la union entre lo que una regla exige y lo que existe.",
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+
+          "type": { "type": "string", "enum": ["POLICY", "CHECK", "REVIEW"] },
+
+          "rule": {
+            "description": "La regla de la que sale, en ids locales. Acepta los de ES0901 §7.1 —G, D, P, C, M— y los de ES0902 —O, Vu, Ve, C, G—. Es el id PRINCIPAL: cuando el control lo citan dos estándares, la lista entera vive en `normativeSources` y este campo queda como el de la regla que lo instaló.",
+            "type": "string",
+            "pattern": "^(Vu|Ve|[GDPCMO])[0-9]+$"
+          },
+
+          "file": { "type": "string" },
+
+          "status": {
+            "type": "string",
+            "enum": ["INSTALLED", "DECLARED_NOT_INSTALLED", "DEPRECATED"]
+          },
+
+          "source": {
+            "description": "La tupla normativa, en su forma singular. Sigue valiendo y no se borra: el registro viaja a proyectos instalados que se actualizan en momentos distintos, y un campo que desaparece rompe a distancia sin avisar. Un control con `source` y sin `normativeSources` se lee como una fuente.",
+            "type": "object",
+            "required": ["standard", "version", "section", "rule"],
+            "properties": {
+              "standard": { "type": "string" },
+              "version": { "type": "string" },
+              "section": { "type": "string" },
+              "rule": { "type": "string" }
+            }
+          },
+
+          "normativeSources": {
+            "description": "Las fuentes normativas del control, todas. Un control puede salir de mas de una regla y de mas de un estandar —`authentication-delegation` sale de ES0901 D2 y de ES0902 C1— y entonces se declara UNA vez con las dos fuentes. Compartir la ejecucion no es compartir el resultado: cada fuente conserva el suyo, y que una de PASS no aprueba la otra. Uno de los dos campos tiene que estar; cual, lo comprueba `controles.validar`, porque este validador no tiene `anyOf`.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["standard", "version", "rule"],
+              "additionalProperties": false,
+              "properties": {
+                "standard": { "type": "string", "enum": ["ES0901", "ES0902"] },
+                "version": { "type": "string" },
+                "section": { "type": "string" },
+                "rule": { "type": "string" },
+                "ruleKey": {
+                  "description": "La clave global compuesta. `G1` no identifica una regla: los dos estandares tienen G1 y no son la misma.",
+                  "type": "string",
+                  "pattern": "^(ES0901|ES0902)\\.[A-Za-z]+[0-9]*$"
+                }
+              }
+            }
+          },
+
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}

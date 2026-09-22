@@ -732,12 +732,48 @@ class SchemaNoSoportado(Exception):
 
 
 ANOTACIONES = frozenset(("$schema", "$id", "title", "description", "examples",
-                         "default", "deprecated"))
-VALIDACIONES = frozenset(("type", "properties", "required", "items", "enum", "pattern"))
+                         "default", "deprecated", "$defs"))
+VALIDACIONES = frozenset(("type", "properties", "required", "items", "enum", "pattern",
+                          "additionalProperties", "$ref"))
+
+# El unico valor de `additionalProperties` que este validador interpreta. `true` es el
+# default de JSON Schema y escribirlo no agrega nada; un SCHEMA como valor -o sea "las
+# claves de mas tienen que cumplir esto"- es otra funcionalidad y no se finge soportarla.
+#
+# 🔴 Y esto no es azucar: `additionalProperties: false` es lo que hace que un perfil de
+# conexion con un campo `password` se rechace en vez de viajar con el sello puesto. El
+# Bloque 4 tuvo que escribir a mano el recorrido equivalente -`eventos.validar_estructura`-
+# porque el validador no lo tenia. Se amplia el validador, no se afloja el schema.
+SIN_CLAVES_DE_MAS = False
+
+PREFIJO_DE_REF = "#/$defs/"
 TIPOS = {
     "object": dict, "array": list, "string": str, "boolean": bool,
-    "integer": int, "number": (int, float),
+    "integer": int, "number": (int, float), "null": type(None),
 }
+
+
+def nombres_de_tipo(tipo, ruta="$"):
+    """`type` como tupla de nombres. Draft 2020-12 lo admite como lista y este lo lee.
+
+    🔴 Se amplia el validador, no se afloja el schema. La alternativa era la que ya tomo
+    `normative-review.schema.json`: dejar sin tipo declarado los campos que admiten null,
+    que es exactamente un campo que nadie valida. Un entero que llega como string pasaba
+    verde, y en un libro contable eso es plata mal sumada.
+    """
+    nombres = tuple(tipo) if isinstance(tipo, list) else (tipo,)
+    for nombre in nombres:
+        if nombre not in TIPOS:
+            raise SchemaNoSoportado("%s: tipo `%s` desconocido" % (ruta, nombre))
+    return nombres
+
+
+def _clases_de(nombres):
+    clases = []
+    for nombre in nombres:
+        clase = TIPOS[nombre]
+        clases.extend(clase if isinstance(clase, tuple) else [clase])
+    return tuple(clases)
 
 
 def ruta_schema():
@@ -755,7 +791,44 @@ def cargar_schema():
         return json.load(f)
 
 
-def controlar_soporte(esquema, ruta="$"):
+def resolver_ref(esquema, raiz, ruta="$"):
+    """El schema apuntado por `$ref`, o el mismo esquema si no tiene uno.
+
+    Se resuelven SOLO referencias locales a `#/$defs/<nombre>`. Una referencia a otro
+    archivo, a una URL o a cualquier otro puntero no se interpreta: un `$ref` que este
+    validador siguiera a medias es una rama del contrato que nadie mira.
+
+    🔴 **Se sigue la CADENA hasta el final.** La primera version resolvia un solo salto, asi
+    que un `$defs` que era a su vez un `$ref` dejaba a `validar` con un diccionario cuya unica
+    clave era `$ref`: sin `type`, sin `properties` y sin `required`, devolvia `[]` sobre
+    cualquier dato. Y `controlar_soporte` seguia la cadena y decia que estaba soportado, o sea
+    que el sello de "soportado" era justo lo que volvia peligrosa a esa rama. Lo encontro el
+    refutador de la capacidad de base de datos.
+
+    🔴 Y una cadena circular se RECHAZA. Devolverla resuelta a medias es lo mismo de antes.
+    """
+    vistos = []
+    while isinstance(esquema, dict) and "$ref" in esquema:
+        ref = esquema["$ref"]
+        if not isinstance(ref, str) or not ref.startswith(PREFIJO_DE_REF):
+            raise SchemaNoSoportado(
+                "%s: `$ref` apunta a `%s` y este validador solo resuelve referencias locales "
+                "a %s<nombre>" % (ruta, ref, PREFIJO_DE_REF))
+        if ref in vistos:
+            raise SchemaNoSoportado(
+                "%s: la cadena de `$ref` vuelve sobre `%s`. Un ciclo no se resuelve a medias: "
+                "se rechaza" % (ruta, ref))
+        vistos.append(ref)
+        nombre = ref[len(PREFIJO_DE_REF):]
+        destino = ((raiz or {}).get("$defs") or {}).get(nombre)
+        if not isinstance(destino, dict):
+            raise SchemaNoSoportado(
+                "%s: `$ref` apunta a `%s` y el schema no declara ese `$defs`" % (ruta, ref))
+        esquema = destino
+    return esquema
+
+
+def controlar_soporte(esquema, ruta="$", raiz=None, vistos=None):
     """Recorre el schema entero ANTES de validar y falla ante lo que no interpreta.
 
     Es la mitad que importa. Un validador que se saltea las palabras que no conoce
@@ -764,6 +837,10 @@ def controlar_soporte(esquema, ruta="$"):
     """
     if not isinstance(esquema, dict):
         raise SchemaNoSoportado("%s: se esperaba un objeto de schema" % ruta)
+    if raiz is None:
+        raiz = esquema
+    if vistos is None:
+        vistos = set()
 
     for clave in esquema:
         if clave in ANOTACIONES or clave in VALIDACIONES:
@@ -773,27 +850,69 @@ def controlar_soporte(esquema, ruta="$"):
             "validador, no se afloja el schema. Soportado: %s"
             % (ruta, clave, ", ".join(sorted(VALIDACIONES))))
 
+    if "additionalProperties" in esquema:
+        if esquema["additionalProperties"] is not SIN_CLAVES_DE_MAS:
+            raise SchemaNoSoportado(
+                "%s: `additionalProperties` solo se interpreta como `false`. Vino `%s`, y "
+                "un schema como valor es otra funcionalidad que este validador no tiene"
+                % (ruta, esquema["additionalProperties"]))
+        # 🔴 `properties` tiene que existir Y tener algo. Con `properties: {}` el schema acepta
+        # y despues rechaza todo objeto que no este vacio, que es exactamente el caso que este
+        # mensaje declara indeseable: una llave vacia lo dejaba pasar.
+        if not isinstance(esquema.get("properties"), dict) or not esquema["properties"]:
+            raise SchemaNoSoportado(
+                "%s: `additionalProperties: false` sin `properties`, o con `properties` vacio, "
+                "rechaza todo objeto que no este vacio, que no es lo que nadie quiso escribir"
+                % ruta)
+
+    if "$ref" in esquema:
+        # Una referencia no convive con otras palabras: cual gana no es una decision que
+        # este validador tenga que inventar.
+        de_mas = [c for c in esquema if c != "$ref" and c not in ANOTACIONES]
+        if de_mas:
+            raise SchemaNoSoportado(
+                "%s: `$ref` viene junto con %s, y este validador no combina una referencia "
+                "con otras reglas" % (ruta, ", ".join(sorted(de_mas))))
+        if esquema["$ref"] in vistos:
+            return
+        vistos = vistos | {esquema["$ref"]}
+        controlar_soporte(resolver_ref(esquema, raiz, ruta), ruta, raiz, vistos)
+        return
+
+    # El nombre del tipo tambien se controla acá y no al validar: un `type` mal escrito en
+    # una rama que ningun documento de prueba toca no se descubre nunca si se espera al
+    # primer dato que pase por ahi.
+    if esquema.get("type"):
+        nombres_de_tipo(esquema["type"], ruta)
+
     for nombre, sub in (esquema.get("properties") or {}).items():
-        controlar_soporte(sub, "%s.%s" % (ruta, nombre))
+        controlar_soporte(sub, "%s.%s" % (ruta, nombre), raiz, vistos)
     if "items" in esquema:
-        controlar_soporte(esquema["items"], "%s[]" % ruta)
+        controlar_soporte(esquema["items"], "%s[]" % ruta, raiz, vistos)
+    # Y los `$defs`, usados o no. Un def que ningun documento de prueba toca con un `type`
+    # mal escrito no se descubre nunca si se espera a que alguien lo referencie.
+    for nombre, sub in ((raiz.get("$defs") or {}) if esquema is raiz else {}).items():
+        controlar_soporte(sub, "$defs.%s" % nombre, raiz, vistos)
 
 
-def validar(dato, esquema, ruta="$"):
+def validar(dato, esquema, ruta="$", raiz=None):
     """Lista de errores. Vacia es valido."""
     errores = []
+    if raiz is None:
+        raiz = esquema
+    esquema = resolver_ref(esquema, raiz, ruta)
     tipo = esquema.get("type")
 
     if tipo:
-        esperado = TIPOS.get(tipo)
-        if esperado is None:
-            raise SchemaNoSoportado("%s: tipo `%s` desconocido" % (ruta, tipo))
+        nombres = nombres_de_tipo(tipo, ruta)
+        texto = tipo if isinstance(tipo, str) else " o ".join(nombres)
         # bool es subclase de int en Python y colarse como `integer` seria un falso verde.
-        if isinstance(dato, bool) and tipo in ("integer", "number"):
-            return ["%s: se esperaba %s y vino un booleano" % (ruta, tipo)]
-        if not isinstance(dato, esperado):
+        if (isinstance(dato, bool) and "boolean" not in nombres
+                and ("integer" in nombres or "number" in nombres)):
+            return ["%s: se esperaba %s y vino un booleano" % (ruta, texto)]
+        if not isinstance(dato, _clases_de(nombres)):
             return ["%s: se esperaba %s y vino %s"
-                    % (ruta, tipo, type(dato).__name__)]
+                    % (ruta, texto, type(dato).__name__)]
 
     if "enum" in esquema and dato not in esquema["enum"]:
         errores.append("%s: `%s` no esta entre los valores permitidos (%s)"
@@ -808,13 +927,21 @@ def validar(dato, esquema, ruta="$"):
         for req in esquema.get("required") or []:
             if req not in dato:
                 errores.append("%s.%s: falta y es obligatorio" % (ruta, req))
-        for nombre, sub in (esquema.get("properties") or {}).items():
+        declaradas = esquema.get("properties") or {}
+        for nombre, sub in declaradas.items():
             if nombre in dato:
-                errores.extend(validar(dato[nombre], sub, "%s.%s" % (ruta, nombre)))
+                errores.extend(validar(dato[nombre], sub, "%s.%s" % (ruta, nombre), raiz))
+        # 🔴 Lo que el schema no declara se RECHAZA cuando lo pide. Sin esto, un campo de
+        # mas viaja con el sello puesto: una clave `password` adentro de un perfil que
+        # promete llevar solo referencias, o un ambiente que la politica no declara.
+        if esquema.get("additionalProperties") is SIN_CLAVES_DE_MAS:
+            for nombre in sorted(k for k in dato if k not in declaradas):
+                errores.append("%s.%s: el schema no declara esta clave y no admite claves "
+                               "de mas" % (ruta, nombre))
 
     if isinstance(dato, list) and "items" in esquema:
         for i, item in enumerate(dato):
-            errores.extend(validar(item, esquema["items"], "%s[%d]" % (ruta, i)))
+            errores.extend(validar(item, esquema["items"], "%s[%d]" % (ruta, i), raiz))
 
     return errores
 

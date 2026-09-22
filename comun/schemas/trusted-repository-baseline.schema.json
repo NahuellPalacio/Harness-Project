@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Trusted Repository Baseline",
+  "type": "object",
+  "required": [
+    "repository",
+    "ref",
+    "commitSha",
+    "source",
+    "evidence"
+  ],
+  "properties": {
+    "repository": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "commitSha": {
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "APPROVED_RELEASE",
+        "DEPLOYED_RELEASE",
+        "SECURITY_APPROVED_RELEASE",
+        "HUMAN_CONFIRMED",
+        "OTHER_AUTHORITATIVE"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "establishedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "establishedBy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

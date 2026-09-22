@@ -264,6 +264,7 @@ def _armar_unidad(propuesta_unidad, task_context, capacidades, politica, dominio
 
     ruteo = modelo.enrutar(senales)
     agente = str(propuesta_unidad.get("assignedAgent") or roster.agente_de_dominio(dominio))
+    skills_del_dominio = roster.skills_para([dominio])
     unidad_para_gate = {"id": propuesta_unidad.get("id"), "assignedAgent": agente}
     aprobada, solicitud, presupuesto = consumo.decidir(
         unidad_para_gate, ruteo["requiredTier"], ruteo["reason"], politica)
@@ -287,10 +288,25 @@ def _armar_unidad(propuesta_unidad, task_context, capacidades, politica, dominio
         # agente al que esta asignada todavia no existe, sin ir a buscar la lista de
         # avisos tres niveles mas arriba.
         "agentExists": bool(agente) and roster.existe_agente(agente),
+        # Que dijo el registro, no solo si existe. Un `false` puede ser un archivo que
+        # falta, un id que no coincide o un especialista sin skills instaladas, y quien
+        # recibe la unidad suelta no tiene como distinguirlos mirando un booleano.
+        "agentValidation": roster.validacion_de_agente(agente),
         "context": contexto_para(dominio, task_context),
-        "skills": [s["name"] for s in roster.skills_para([dominio])],
+        "skills": [s["name"] for s in skills_del_dominio],
+        # El contrato viejo era una lista de nombres y sigue siendolo: `skills` no cambia
+        # de tipo. Al lado va el estado de cada una, que es lo que permite ver que
+        # `dev-miba` esta declarada y todavia no se puede usar sin que parezca que falta.
+        "skillStates": [{"id": s["name"], "status": s.get("status", ""),
+                         "validation": s.get("validation", "")}
+                        for s in skills_del_dominio],
         "requiredCapabilities": list(propuesta_unidad.get("requiredCapabilities") or []),
         "applicablePolicies": list(propuesta_unidad.get("applicablePolicies") or []),
+        # Que reglas de §7.1 le aplican, cuales no y cuales no se pudieron decidir. Las
+        # senales entran como booleanos explicitos -la forma vieja- o como documentos con su
+        # evidencia y su productor; lo que no viene queda sin resolver, nunca en "no aplica".
+        # El valor resuelto y su evidencia viajan en `normative.signals`.
+        "normative": normativa.resolucion(propuesta_unidad.get("normativeSignals") or {}),
         "requiredChecks": [c["name"] for c in roster.checks_para([dominio])],
         "dependencies": list(propuesta_unidad.get("dependencies") or []),
         "modelPolicy": {

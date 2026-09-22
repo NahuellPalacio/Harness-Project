@@ -1,0 +1,26 @@
+{
+  "_comentario": [
+    "Que permisos necesita cada capacidad, como dato. Es lo que hace comprobable el least",
+    "privilege: un contrato que pide mas de lo que figura aca devuelve",
+    "PERMISSION_SCOPE_TOO_BROAD y nombra el permiso sobrante.",
+    "",
+    "Estan SOLO las cuatro capacidades locales que el harness tiene hoy, las mismas que",
+    "declara capacidadesLocales en roster.json. Las que nombran las skills instaladas",
+    "-adr.read, architecture.inspect, database.schema.inspect, filesystem.read y las",
+    "demas- NO estan, y eso no es un olvido: escribir el permiso minimo de una capacidad",
+    "que todavia no existe es inventar un modelo de permisos, y un mapa inventado se lee",
+    "igual de autoritativo que uno real. Es la misma razon por la que las 26 reglas de",
+    "ES0901 7.1 entraron sin clasificar.",
+    "",
+    "Una capacidad que no figura aca es un HUECO, no un permiso concedido: el contrato no",
+    "se aprueba por defecto ni se le dan todos los permisos. Lo completa una persona, una",
+    "capacidad por vez, cuando esa capacidad exista de verdad."
+  ],
+
+  "capacidades": {
+    "repository.read":   { "permisos": ["repository.read"] },
+    "repository.search": { "permisos": ["repository.read"] },
+    "repository.write":  { "permisos": ["repository.read", "repository.write"] },
+    "tests.run":         { "permisos": ["repository.read", "tests.run"] }
+  }
+}

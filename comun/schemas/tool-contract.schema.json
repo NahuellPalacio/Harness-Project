@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tool-contract/1.0",
+  "title": "TOOL_CONTRACT",
+  "description": "Lo que una tool promete antes de que exista una sola linea de su codigo. Lo escribe dev-tool-builder cuando el nucleo le deriva un capabilityGap, y sin un contrato valido no empieza la implementacion ni entra nada al Tool Registry. El contrato es lo que permite decir despues con que permisos, con que alcance y con que riesgo se resolvio una capacidad; una tool sin contrato es una capacidad que aparecio sola. El vocabulario esta en ingles, como en orchestration-plan/1.0; lo que se le muestra a una persona va en espanol, segun ADR-0011. Lo valida el interprete de subconjunto de contexto-armar.py: type, properties, required, items, enum y pattern, y nada mas.",
+  "type": "object",
+  "required": ["name", "version", "capabilities", "inputs", "outputs", "sideEffects",
+               "permissions", "secretsRequired", "networkAccess", "timeoutSeconds",
+               "idempotent", "retryPolicy", "riskLevel", "blastRadius"],
+  "properties": {
+
+    "name": {
+      "description": "Kebab-case y estable: es la mitad de la identidad de la tool. La otra mitad es la version.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+
+    "version": {
+      "description": "Semver. Un cambio incompatible del contrato es una major nueva, nunca un reemplazo en el lugar: otras skills y agentes dependen de lo que el contrato promete, y pisarlo rompe a distancia y en silencio.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+
+    "capabilities": {
+      "description": "Que capacidades resuelve. Es el nexo con el Capability Registry: la unidad pide una capacidad, no el nombre de una tool.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "inputs": {
+      "description": "Que necesita recibir. Forma libre a proposito: la forma de un input la fija el contrato de cada tool, no este schema.",
+      "type": "object"
+    },
+
+    "outputs": {
+      "description": "Que devuelve. Misma razon que inputs.",
+      "type": "object"
+    },
+
+    "sideEffects": {
+      "description": "READ_ONLY observa sin modificar. MUTATING modifica repositorios, archivos, sistemas externos, estado o configuracion. DESTRUCTIVE puede borrar datos, remover recursos, cambiar privilegios o sobreescribir estado critico: nunca se habilita en silencio.",
+      "type": "string",
+      "enum": ["READ_ONLY", "MUTATING", "DESTRUCTIVE"]
+    },
+
+    "permissions": {
+      "description": "Los permisos minimos que la capacidad necesita, y ninguno mas. Lo que excede lo declarado en permisos-por-capacidad.json es PERMISSION_SCOPE_TOO_BROAD: no se conceden permisos por las dudas.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "secretsRequired": {
+      "description": "El NOMBRE del secreto, nunca su valor. La inyeccion la hace el runtime desde el almacen; una tool no guarda, no loguea, no devuelve y no escribe un secreto.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "networkAccess": {
+      "description": "Si sale de la maquina. Una tool que sale a la red no puede quedar en riesgo LOW.",
+      "type": "boolean"
+    },
+
+    "timeoutSeconds": {
+      "description": "Tope duro. Sin esto, una tool colgada es una corrida colgada, que es exactamente como se perdieron veinticuatro horas en 0.18.0.",
+      "type": "integer"
+    },
+
+    "idempotent": {
+      "description": "Si correrla dos veces deja el mismo resultado que correrla una. Es lo que habilita o prohibe el reintento automatico.",
+      "type": "boolean"
+    },
+
+    "retryPolicy": {
+      "description": "Reintentos acotados o ninguno. Una tool MUTATING o DESTRUCTIVE no se reintenta sola salvo que sea idempotente y la policy lo permita explicitamente.",
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxRetries": { "type": "integer" }
+      }
+    },
+
+    "riskLevel": {
+      "description": "El riesgo declarado. El nucleo lo deriva por su cuenta del resto del contrato: declarar menos que lo derivado se rechaza, declarar mas se respeta. Sin esa asimetria el campo se completa para pasar la compuerta. NO depende del modelo con el que se construyo la tool: un modelo barato tambien escribe una tool peligrosa.",
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    },
+
+    "blastRadius": {
+      "description": "El impacto maximo posible si falla o se usa mal. Es lo que hace que el riesgo no sea una opinion.",
+      "type": "object",
+      "required": ["scope", "environments", "productionImpact"],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["local", "repository", "project", "external-system", "organization"]
+        },
+        "environments": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "productionImpact": { "type": "boolean" }
+      }
+    }
+  }
+}

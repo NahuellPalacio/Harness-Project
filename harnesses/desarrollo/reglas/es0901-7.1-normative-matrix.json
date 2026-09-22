@@ -1,0 +1,571 @@
+{
+  "_comentario": [
+    "La clasificacion de las 24 reglas de ES0901 7.1: cuando aplica cada una, quien es su",
+    "dueno normativo, y que policies y que checks exige.",
+    "",
+    "NO reemplaza a es0901-7.1.json, que sigue al lado con el TEXTO CITADO y la pagina, en",
+    "espanol. Aca hay operationalIntentEn, que es una parafrasis operativa en ingles: sirve",
+    "para clasificar y no sirve para citar. ADR-0011: una cita traducida deja de ser una cita.",
+    "Los dos archivos se unen por id de regla.",
+    "",
+    "El archivo citable tiene 26 filas porque partio P1 en P1, P1.node y P1.plataformas -el",
+    "estandar agrupa tres clausulas bajo ese id y cada una va a tener dueno distinto-. Esta",
+    "matriz clasifica 24, y las dos clausulas derivadas HEREDAN la clasificacion de P1. La",
+    "herencia la aplica matriz.py y esta testeada; no se deduce del punto en el nombre en",
+    "ningun otro lado.",
+    "",
+    "Una senal ausente NO es una senal falsa: la regla queda APPLICABILITY_UNRESOLVED. Desde",
+    "D1 hay quien las produce -senales.py-, pero la evidencia entra como dato y todavia nadie",
+    "la junta, asi que un plan real sigue saliendo casi todo sin resolver. Es el estado",
+    "honesto, y lo que lo destraba es el analisis de impacto que las complete.",
+    "",
+    "Los ids de senal que se declaran aca son el inventario: senales.py rechaza con",
+    "SIGNAL_NOT_DECLARED cualquier senal que esta matriz no nombre. No hay lista paralela.",
+    "",
+    "Las 36 policies y los 34 checks que se declaran aca NO existen todavia. Se reportan",
+    "DECLARED_POLICY_NOT_INSTALLED y DECLARED_CHECK_NOT_INSTALLED, y eso no invalida nada:",
+    "es un harness que clasifico antes de construir. Se construyen de a una regla: G1, G2 y D1",
+    "ya tienen los suyos. La fila de una regla NO cambia cuando sus controles se instalan."
+  ],
+  "version": "1.0.0",
+  "matrixType": "normative-matrix",
+  "standard": {
+    "id": "ES0901",
+    "version": "6.3",
+    "section": "7.1",
+    "title": "Principios de Desarrollo"
+  },
+  "classificationPolicy": {
+    "unknownConditionalApplicability": "APPLICABILITY_UNRESOLVED",
+    "agentExistenceOwnedBy": "Agent Registry",
+    "policyCheckIdsAreDerived": true
+  },
+  "rules": [
+    {
+      "id": "G1",
+      "category": "GENERAL",
+      "operationalIntentEn": "Development must use GCBA-approved tools and homologated versions.",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-architecture",
+        "dev-devops"
+      ],
+      "policies": [
+        "approved-technology-required",
+        "homologated-version-required"
+      ],
+      "checks": [
+        "technology-homologation",
+        "technology-version-compliance"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "G2",
+      "category": "GENERAL",
+      "operationalIntentEn": "Apply recognized industry practices relevant to each technology.",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-architecture"
+      ],
+      "policies": [
+        "industry-good-practices-required"
+      ],
+      "checks": [],
+      "status": "CLASSIFIED",
+      "reviews": [
+        "technology-practice-review"
+      ]
+    },
+    {
+      "id": "D1",
+      "category": "DESIGN",
+      "operationalIntentEn": "Citizen-facing applications must use the GCBA citizen single-authentication mechanism.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "citizenFacing"
+        ]
+      },
+      "primaryAgents": [
+        "dev-integration"
+      ],
+      "policies": [
+        "gcba-citizen-authentication-required"
+      ],
+      "checks": [
+        "citizen-authentication-mechanism"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "D2",
+      "category": "DESIGN",
+      "operationalIntentEn": "Credential entry must be delegated according to the GCBA authentication model.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "authenticationPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-integration"
+      ],
+      "policies": [
+        "credential-entry-delegation-required"
+      ],
+      "checks": [
+        "authentication-delegation"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "D3",
+      "category": "DESIGN",
+      "operationalIntentEn": "Use object-oriented, high-level coding and good practices.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "applicationCodePresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-architecture"
+      ],
+      "policies": [
+        "high-level-oop-design-required"
+      ],
+      "checks": [],
+      "status": "CLASSIFIED",
+      "reviews": [
+        "object-oriented-design-review"
+      ]
+    },
+    {
+      "id": "D4",
+      "category": "DESIGN",
+      "operationalIntentEn": "Frontend code must adapt responsively to viewing devices.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "frontendPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-frontend"
+      ],
+      "policies": [
+        "responsive-ui-required"
+      ],
+      "checks": [
+        "responsive-behavior"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "D5",
+      "category": "DESIGN",
+      "operationalIntentEn": "Address search/input must use GCBA cadastral validation and normalization.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "frontendAddressInputPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-integration",
+        "dev-frontend"
+      ],
+      "policies": [
+        "gcba-cadastral-address-normalization-required"
+      ],
+      "checks": [
+        "address-normalization-integration"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "D6",
+      "category": "DESIGN",
+      "operationalIntentEn": "Georeferenced visualizations must use the GCBA Map.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "georeferencedVisualizationPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-integration",
+        "dev-frontend"
+      ],
+      "policies": [
+        "gcba-map-required"
+      ],
+      "checks": [
+        "gcba-map-usage"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "D7",
+      "category": "DESIGN",
+      "operationalIntentEn": "Files must use GCBA standard storage; permanent local storage is prohibited; temporary files must be destroyed immediately.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "fileHandlingPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-backend"
+      ],
+      "policies": [
+        "gcba-standard-storage-required",
+        "persistent-local-file-storage-prohibited",
+        "temporary-file-immediate-destruction-required"
+      ],
+      "checks": [
+        "storage-backend-compliance",
+        "persistent-local-file-storage",
+        "temporary-file-cleanup"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "D8",
+      "category": "DESIGN",
+      "operationalIntentEn": "Services must be protected by a token-based mechanism.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "serviceEndpointPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-security",
+        "dev-integration",
+        "dev-backend"
+      ],
+      "policies": [
+        "service-token-protection-required"
+      ],
+      "checks": [
+        "service-token-protection"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "P1",
+      "category": "PROGRAMMING",
+      "operationalIntentEn": "Use homologated frameworks; pure-language development is not allowed; Node.js projects must use NPM.",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-architecture",
+        "dev-devops"
+      ],
+      "policies": [
+        "homologated-framework-required",
+        "vanilla-development-prohibited",
+        "node-package-manager-npm-only"
+      ],
+      "checks": [
+        "framework-homologation",
+        "node-package-manager-compliance"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "P2",
+      "category": "PROGRAMMING",
+      "operationalIntentEn": "Use established design patterns where applicable.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "applicationCodePresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-architecture"
+      ],
+      "policies": [
+        "standard-design-patterns-required"
+      ],
+      "checks": [],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "P3",
+      "category": "PROGRAMMING",
+      "operationalIntentEn": "Use a unified and standardized coding style.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "applicationCodePresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-quality"
+      ],
+      "policies": [
+        "standard-code-style-required"
+      ],
+      "checks": [
+        "code-style-compliance"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "P4",
+      "category": "PROGRAMMING",
+      "operationalIntentEn": "Provide a core REST API service layer for integration with the GCBA ecosystem.",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-backend",
+        "dev-architecture"
+      ],
+      "policies": [
+        "core-rest-api-layer-required"
+      ],
+      "checks": [
+        "core-rest-api-layer"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "P5",
+      "category": "PROGRAMMING",
+      "operationalIntentEn": "Validation must be duplicated in frontend and backend where applicable.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "frontendBackendValidationFlowPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-frontend",
+        "dev-backend"
+      ],
+      "policies": [
+        "dual-layer-validation-required"
+      ],
+      "checks": [
+        "frontend-backend-validation"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "P6",
+      "category": "PROGRAMMING",
+      "operationalIntentEn": "Additional code components must be validated and agreed.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "additionalComponentIntroduced"
+        ]
+      },
+      "primaryAgents": [
+        "dev-architecture"
+      ],
+      "policies": [
+        "additional-component-approval-required"
+      ],
+      "checks": [
+        "additional-component-approval-evidence"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "P7",
+      "category": "PROGRAMMING",
+      "operationalIntentEn": "Business logic must not reside in the database layer; preserve n-layer decoupling.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "databasePresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-backend",
+        "dev-architecture"
+      ],
+      "policies": [
+        "database-business-logic-prohibited",
+        "n-layer-decoupling-required"
+      ],
+      "checks": [
+        "database-business-logic",
+        "layer-decoupling"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "C1",
+      "category": "CONTROL",
+      "operationalIntentEn": "Transferred information volume must be controlled.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "dataTransferPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-backend",
+        "dev-architecture"
+      ],
+      "policies": [
+        "data-transfer-volume-control-required"
+      ],
+      "checks": [
+        "data-transfer-volume-control"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "C2",
+      "category": "CONTROL",
+      "operationalIntentEn": "Unit tests must provide code coverage.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "applicationCodePresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-quality"
+      ],
+      "policies": [
+        "unit-tests-required"
+      ],
+      "checks": [
+        "unit-tests-present",
+        "unit-test-execution"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "C3",
+      "category": "CONTROL",
+      "operationalIntentEn": "Audit processes must support date-based purge through restricted backoffice access.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "auditProcessPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-backend"
+      ],
+      "policies": [
+        "audit-purge-backoffice-required",
+        "audit-purge-restricted-access-required"
+      ],
+      "checks": [
+        "audit-purge-date-control",
+        "audit-purge-access-control"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "C4",
+      "category": "CONTROL",
+      "operationalIntentEn": "Batch processes must be configurable from backoffice and support scalable high-availability infrastructure.",
+      "applicability": {
+        "mode": "CONDITIONAL",
+        "signals": [
+          "batchProcessPresent"
+        ]
+      },
+      "primaryAgents": [
+        "dev-backend",
+        "dev-devops"
+      ],
+      "policies": [
+        "batch-backoffice-parameterization-required",
+        "batch-ha-scalability-required"
+      ],
+      "checks": [
+        "batch-backoffice-parameterization",
+        "batch-ha-scalability"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "M1",
+      "category": "MAINTENANCE",
+      "operationalIntentEn": "Systems must provide standard logging and runtime-configurable log levels without redeployment.",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-backend"
+      ],
+      "policies": [
+        "standard-application-logging-required",
+        "runtime-log-level-config-required"
+      ],
+      "checks": [
+        "application-logging-coverage",
+        "runtime-log-level-configuration"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "M2",
+      "category": "MAINTENANCE",
+      "operationalIntentEn": "Environment-specific configuration must be external to code.",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-devops"
+      ],
+      "policies": [
+        "environment-configuration-externalization-required",
+        "environment-specific-values-in-code-prohibited"
+      ],
+      "checks": [
+        "environment-config-externalized",
+        "environment-value-hardcoding"
+      ],
+      "status": "CLASSIFIED"
+    },
+    {
+      "id": "M3",
+      "category": "MAINTENANCE",
+      "operationalIntentEn": "Applications must document architecture, functional scope, NFRs, knowledge transfer and maintenance information.",
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": []
+      },
+      "primaryAgents": [
+        "dev-architecture"
+      ],
+      "policies": [
+        "application-documentation-required",
+        "architecture-documentation-required",
+        "knowledge-transfer-documentation-required"
+      ],
+      "checks": [
+        "architecture-documentation",
+        "functional-documentation",
+        "nonfunctional-documentation",
+        "knowledge-transfer-documentation"
+      ],
+      "status": "CLASSIFIED"
+    }
+  ]
+}

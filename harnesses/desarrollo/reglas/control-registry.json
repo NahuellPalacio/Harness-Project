@@ -1,0 +1,642 @@
+{
+  "_comentario": [
+    "Que controles normativos existen, de que tipo y de que regla salen.",
+    "",
+    "Misma forma que el registro de agentes, y por la misma razon: el registro declara y el",
+    "disco diagnostica. Un archivo que aparece solo no da de alta un control, y un control",
+    "declarado sin archivo es un hueco que se ve.",
+    "",
+    "Nace con POLICY y CHECK. El tercer tipo es REVIEW -lo que exige criterio humano y no",
+    "admite un check mecanico- y entra con G2: se extiende ESTE registro, no se abre otro.",
+    "",
+    "🔴 Estos checks NO son los checks del hook. Los de comun/checks/ y */checks/ corren en",
+    "PreToolUse, tienen tres salidas, salen 0 siempre y pagan latencia en cada llamada. Un",
+    "check normativo se evalua contra evidencia y devuelve su estado con el motivo. Comparten",
+    "la palabra y nada mas, y por eso no comparten registro.",
+    "",
+    "Lo que este registro NO dice es si un control se cumple. Dice si existe.",
+    "",
+    "D2 comparte con D1 el apartado de autenticacion del estandar y NO comparte controles: D1",
+    "dice que mecanismo le toca a una aplicacion ciudadana y D2 dice que la credencial no se",
+    "escribe en la aplicacion. Una app ciudadana dispara las dos, y ninguna contesta por la otra.",
+    "",
+    "D1 es la primera regla CONDITIONAL con sus controles construidos. No sumo un tipo: sumo",
+    "una policy y un check, y lo que cambio esta afuera de este registro -quien produce la",
+    "senal que decide si D1 aplica-. Que dev-miba siga DECLARED_NOT_INSTALLED no afecta a",
+    "estos dos: el control existe, y lo que falta es el material para remediar.",
+    "",
+    "G2 sumo el tercer tipo: REVIEW. No es un alias de CHECK — existe para lo que",
+    "no admite comprobacion mecanica, y forzar G2 a un `goodPractices == true` seria",
+    "escribir una funcion que se lee autoritativa y no comprueba nada.",
+    "",
+    "D6 suma los dos controles de la visualizacion georreferenciada. Lo que tiene de propio es",
+    "que el MECANISMO que la regla exige -el Mapa del GCBA- no esta en ningun extracto que este",
+    "harness tenga: ni SDK, ni endpoint, ni tile source, ni layer id, ni CRS. Por eso la",
+    "identidad del proveedor entra como dato declarado con su fuente citada, y sin eso el check",
+    "contesta GCBA_MAP_PROVIDER_UNRESOLVED en vez de inventarla.",
+    "",
+    "D5 y D6 salen del mismo parrafo del estandar -pagina 19- y son dos reglas. D5 es normalizar",
+    "direcciones con API GEO; D6 es dibujarlas en el mapa institucional. Ninguna contesta por la",
+    "otra, y GEO_API_CALL es evidencia inerte para D6.",
+    "",
+    "D5 suma los dos controles de la normalizacion catastral, y con eso son ocho las reglas con",
+    "TODOS sus controles construidos: G1, G2 y D1 a D6. Las otras dieciseis siguen declarando",
+    "controles que no existen, que es el estado normal de una instalacion de a una regla.",
+    "",
+    "Lo que D5 tiene de propio no es la identidad del proveedor -la norma nombra el servicio del",
+    "catalogo, asi que GCBA_NORMATIVE es una fuente que un proyecto puede usar de verdad- sino el",
+    "CONTRATO: citar el nombre no es tener un endpoint, un campo ni una autenticacion. El hueco",
+    "vivo de D5 es INTEGRATION_CONTRACT_MISSING. Y lo que su check verifica no es que se llame al",
+    "servicio, es que el valor normalizado sea el que la aplicacion USA: la llamada es la parte",
+    "visible, y un control que la mire aprueba una aplicacion que guarda el valor crudo.",
+    "",
+    "D7 suma SEIS controles -tres policies y tres checks- y es la fila mas grande de las 24. La",
+    "oracion del estandar lleva tres obligaciones independientes: el persistente va al storage",
+    "estandar, el local permanente esta prohibido y el temporal se destruye al terminar su",
+    "proposito. Se verifican por separado y ninguna contesta por las otras: colapsarlas en un",
+    "unico \"usa S3\" es el atajo que los tres controles existen para cerrar.",
+    "",
+    "Lo que D7 tiene de propio es que el estandar nombra la TECNOLOGIA -el protocolo S3- y NO",
+    "nombra el repositorio: dice \"el repositorio estandar para tal fin del GCABA\" y se detiene.",
+    "Asi que la identidad entra como dato declarado con su fuente citada, igual que en D6, y sin",
+    "eso el check contesta STANDARD_STORAGE_PROVIDER_UNRESOLVED en vez de inventarla. Hablar el",
+    "protocolo no identifica un repositorio, como hablar HTTP no identifica un sitio.",
+    "",
+    "Y la otra mitad: \"inmediata\" es un momento, no un numero. Ningun artefacto de D7 declara una",
+    "duracion. Lo que aprueba es la atadura al ciclo de vida del proposito temporal, y un cron, un",
+    "reinicio o un TTL no la sustituyen.",
+    "",
+    "Con D7 son VEINTICUATRO los controles declarados y nueve las reglas con TODOS sus controles",
+    "construidos: G1, G2 y D1 a D7. Las otras quince siguen declarando controles que no existen,",
+    "que es el estado normal de una instalacion de a una regla.",
+    "",
+    "Los tres checks comparten `controles/lib/flujos.py` -el inventario de flujos y la particion",
+    "de evidencia-. Ese archivo NO es un control: no se declara aca, no se evalua y no tiene",
+    "estado. Esta afuera de `checks/` a proposito.",
+    "",
+    "D8 suma dos controles y es la primera regla cuyo check NO lleva escritos sus ids: los",
+    "DERIVA de la fila de la matriz -el id de la policy, el id del check, la senal, los agentes",
+    "duenos y la tupla normativa entera-. Lo unico escrito adentro del modulo es su propio id,",
+    "que es lo que ESTE registro necesita para encontrar el archivo, y se verifica contra la",
+    "fila: si la matriz no lo declara como check de D8, el modulo no se arroga el binding y",
+    "contesta D8_MATRIX_BINDING_UNRESOLVED sin evaluar nada mas.",
+    "",
+    "Esa compuerta corre ANTES que la senal, y es el unico check instalado que empieza por algo",
+    "que no es la aplicabilidad. Tambien es el unico cuyo resultado, en ese camino, no lleva la",
+    "tupla normativa: la tupla sale de la matriz que no se pudo leer, y el resultado lo dice.",
+    "",
+    "Lo que D8 tiene de propio ademas: un camino se identifica por el COMPORTAMIENTO protegido",
+    "que alcanza y no por su direccion, asi que un bypass se deriva en vez de buscarse. Y no hay",
+    "ninguna categoria exenta: un endpoint publico necesita su excepcion declarada, sea un",
+    "ingreso, un chequeo de salud o una API abierta.",
+    "",
+    "Con D8 son VEINTISEIS los controles declarados y diez las reglas con TODOS sus controles",
+    "construidos: G1, G2 y D1 a D8. Las otras catorce siguen declarando controles que no existen.",
+    "",
+    "P1 es la primera regla de PROGRAMACION que se instala y la primera ALWAYS con controles",
+    "desde G1 y G2: cinco controles, la segunda fila mas grande despues de D7. Como es ALWAYS,",
+    "sus dos checks NUNCA contestan NOT_APPLICABLE — no hay senal de aplicabilidad y no se",
+    "inventa ninguna: Node y plataforma de negocio son RAMAS INTERNAS de evaluacion.",
+    "",
+    "Y por eso aparece NOT_RELEVANT, que no es NOT_APPLICABLE: un proyecto sin Node sigue",
+    "debiendo frameworks homologados, y lo que no tiene sujeto es la clausula P1.node. Las dos",
+    "clausulas derivadas -P1.node y P1.plataformas- HEREDAN la clasificacion de P1 en",
+    "matriz.regla y no son filas nuevas.",
+    "",
+    "La frontera con G1 es la decision central: P1 reusa el catalogo del Anexo II -el mismo",
+    "archivo- y CONSUME el veredicto que G1 produjo, citado. No compara versiones, no tolera lo",
+    "deprecado y no cuenta estandares hacia atras: eso esta construido en G1 y tener dos",
+    "respuestas a la misma pregunta es peor que no tener ninguna. Sin veredicto de G1:",
+    "G1_EVIDENCE_REQUIRED.",
+    "",
+    "Con P1 son TREINTA Y UNO los controles declarados y once las reglas con TODOS sus controles",
+    "construidos: G1, G2, D1 a D8 y P1. Las otras trece siguen declarando controles que no",
+    "existen."
+  ],
+  "version": "1.0.0",
+  "registryType": "control-registry",
+  "controlTypes": [
+    "POLICY",
+    "CHECK",
+    "REVIEW"
+  ],
+  "controls": [
+    {
+      "id": "approved-technology-required",
+      "type": "POLICY",
+      "rule": "G1",
+      "file": "controles/policies/approved-technology-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "G1"
+      },
+      "normativeSources": [
+        {
+          "standard": "ES0901",
+          "version": "6.3",
+          "section": "7.1",
+          "rule": "G1",
+          "ruleKey": "ES0901.G1"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "C3",
+          "ruleKey": "ES0902.C3"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "Ve1",
+          "ruleKey": "ES0902.Ve1"
+        }
+      ]
+    },
+    {
+      "id": "homologated-version-required",
+      "type": "POLICY",
+      "rule": "G1",
+      "file": "controles/policies/homologated-version-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "G1"
+      },
+      "normativeSources": [
+        {
+          "standard": "ES0901",
+          "version": "6.3",
+          "section": "7.1",
+          "rule": "G1",
+          "ruleKey": "ES0901.G1"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "C3",
+          "ruleKey": "ES0902.C3"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "Ve1",
+          "ruleKey": "ES0902.Ve1"
+        }
+      ]
+    },
+    {
+      "id": "technology-homologation",
+      "type": "CHECK",
+      "rule": "G1",
+      "file": "controles/checks/technology-homologation.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "G1"
+      },
+      "normativeSources": [
+        {
+          "standard": "ES0901",
+          "version": "6.3",
+          "section": "7.1",
+          "rule": "G1",
+          "ruleKey": "ES0901.G1"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "C3",
+          "ruleKey": "ES0902.C3"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "Ve1",
+          "ruleKey": "ES0902.Ve1"
+        }
+      ]
+    },
+    {
+      "id": "technology-version-compliance",
+      "type": "CHECK",
+      "rule": "G1",
+      "file": "controles/checks/technology-version-compliance.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "G1"
+      },
+      "normativeSources": [
+        {
+          "standard": "ES0901",
+          "version": "6.3",
+          "section": "7.1",
+          "rule": "G1",
+          "ruleKey": "ES0901.G1"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "C3",
+          "ruleKey": "ES0902.C3"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "Ve1",
+          "ruleKey": "ES0902.Ve1"
+        }
+      ]
+    },
+    {
+      "id": "industry-good-practices-required",
+      "type": "POLICY",
+      "rule": "G2",
+      "file": "controles/policies/industry-good-practices-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "G2"
+      }
+    },
+    {
+      "id": "technology-practice-review",
+      "type": "REVIEW",
+      "rule": "G2",
+      "file": "controles/reviews/technology-practice-review.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "G2"
+      }
+    },
+    {
+      "id": "gcba-citizen-authentication-required",
+      "type": "POLICY",
+      "rule": "D1",
+      "file": "controles/policies/gcba-citizen-authentication-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D1"
+      }
+    },
+    {
+      "id": "citizen-authentication-mechanism",
+      "type": "CHECK",
+      "rule": "D1",
+      "file": "controles/checks/citizen-authentication-mechanism.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D1"
+      }
+    },
+    {
+      "id": "credential-entry-delegation-required",
+      "type": "POLICY",
+      "rule": "D2",
+      "file": "controles/policies/credential-entry-delegation-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D2"
+      },
+      "normativeSources": [
+        {
+          "standard": "ES0901",
+          "version": "6.3",
+          "section": "7.1",
+          "rule": "D2",
+          "ruleKey": "ES0901.D2"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "C1",
+          "ruleKey": "ES0902.C1"
+        }
+      ]
+    },
+    {
+      "id": "authentication-delegation",
+      "type": "CHECK",
+      "rule": "D2",
+      "file": "controles/checks/authentication-delegation.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D2"
+      },
+      "normativeSources": [
+        {
+          "standard": "ES0901",
+          "version": "6.3",
+          "section": "7.1",
+          "rule": "D2",
+          "ruleKey": "ES0901.D2"
+        },
+        {
+          "standard": "ES0902",
+          "version": "6.2",
+          "rule": "C1",
+          "ruleKey": "ES0902.C1"
+        }
+      ]
+    },
+    {
+      "id": "high-level-oop-design-required",
+      "type": "POLICY",
+      "rule": "D3",
+      "file": "controles/policies/high-level-oop-design-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D3"
+      }
+    },
+    {
+      "id": "object-oriented-design-review",
+      "type": "REVIEW",
+      "rule": "D3",
+      "file": "controles/reviews/object-oriented-design-review.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D3"
+      }
+    },
+    {
+      "id": "responsive-ui-required",
+      "type": "POLICY",
+      "rule": "D4",
+      "file": "controles/policies/responsive-ui-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D4"
+      }
+    },
+    {
+      "id": "responsive-behavior",
+      "type": "CHECK",
+      "rule": "D4",
+      "file": "controles/checks/responsive-behavior.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D4"
+      }
+    },
+    {
+      "id": "gcba-cadastral-address-normalization-required",
+      "type": "POLICY",
+      "rule": "D5",
+      "file": "controles/policies/gcba-cadastral-address-normalization-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D5"
+      }
+    },
+    {
+      "id": "address-normalization-integration",
+      "type": "CHECK",
+      "rule": "D5",
+      "file": "controles/checks/address-normalization-integration.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D5"
+      }
+    },
+    {
+      "id": "gcba-map-required",
+      "type": "POLICY",
+      "rule": "D6",
+      "file": "controles/policies/gcba-map-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D6"
+      }
+    },
+    {
+      "id": "gcba-map-usage",
+      "type": "CHECK",
+      "rule": "D6",
+      "file": "controles/checks/gcba-map-usage.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D6"
+      }
+    },
+    {
+      "id": "gcba-standard-storage-required",
+      "type": "POLICY",
+      "rule": "D7",
+      "file": "controles/policies/gcba-standard-storage-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D7"
+      }
+    },
+    {
+      "id": "persistent-local-file-storage-prohibited",
+      "type": "POLICY",
+      "rule": "D7",
+      "file": "controles/policies/persistent-local-file-storage-prohibited.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D7"
+      }
+    },
+    {
+      "id": "temporary-file-immediate-destruction-required",
+      "type": "POLICY",
+      "rule": "D7",
+      "file": "controles/policies/temporary-file-immediate-destruction-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D7"
+      }
+    },
+    {
+      "id": "storage-backend-compliance",
+      "type": "CHECK",
+      "rule": "D7",
+      "file": "controles/checks/storage-backend-compliance.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D7"
+      }
+    },
+    {
+      "id": "persistent-local-file-storage",
+      "type": "CHECK",
+      "rule": "D7",
+      "file": "controles/checks/persistent-local-file-storage.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D7"
+      }
+    },
+    {
+      "id": "temporary-file-cleanup",
+      "type": "CHECK",
+      "rule": "D7",
+      "file": "controles/checks/temporary-file-cleanup.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D7"
+      }
+    },
+    {
+      "id": "service-token-protection-required",
+      "type": "POLICY",
+      "rule": "D8",
+      "file": "controles/policies/service-token-protection-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D8"
+      }
+    },
+    {
+      "id": "service-token-protection",
+      "type": "CHECK",
+      "rule": "D8",
+      "file": "controles/checks/service-token-protection.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "D8"
+      }
+    },
+    {
+      "id": "homologated-framework-required",
+      "type": "POLICY",
+      "rule": "P1",
+      "file": "controles/policies/homologated-framework-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "P1"
+      }
+    },
+    {
+      "id": "vanilla-development-prohibited",
+      "type": "POLICY",
+      "rule": "P1",
+      "file": "controles/policies/vanilla-development-prohibited.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "P1"
+      }
+    },
+    {
+      "id": "node-package-manager-npm-only",
+      "type": "POLICY",
+      "rule": "P1",
+      "file": "controles/policies/node-package-manager-npm-only.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "P1"
+      }
+    },
+    {
+      "id": "framework-homologation",
+      "type": "CHECK",
+      "rule": "P1",
+      "file": "controles/checks/framework-homologation.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "P1"
+      }
+    },
+    {
+      "id": "node-package-manager-compliance",
+      "type": "CHECK",
+      "rule": "P1",
+      "file": "controles/checks/node-package-manager-compliance.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0901",
+        "version": "6.3",
+        "section": "7.1",
+        "rule": "P1"
+      }
+    }
+  ]
+}
