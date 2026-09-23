@@ -1754,10 +1754,10 @@ def test_e36_el_validador_lee_los_schemas_del_pedido(t):
                                       "$defs": {"a": {"type": "string"}}}),
         ("additionalProperties true", {"type": "object", "properties": {},
                                        "additionalProperties": True}),
-        ("additionalProperties como schema",
-         {"type": "object", "properties": {}, "additionalProperties": {"type": "string"}}),
         ("additionalProperties sin properties", {"type": "object",
                                                  "additionalProperties": False}),
+        ("un mapa con un tipo mal escrito adentro",
+         {"type": "object", "additionalProperties": {"type": "strng"}}),
         ("una palabra que no interpreta", {"type": "object", "oneOf": []}),
     )
     for nombre, esquema in NO_SOPORTADO:
@@ -1769,6 +1769,19 @@ def test_e36_el_validador_lee_los_schemas_del_pedido(t):
             t.verdadero("E-36 %s se rechaza" % nombre, False)
         except ARMADOR.SchemaNoSoportado:
             t.verdadero("E-36 %s se rechaza" % nombre, True)
+
+    # 🔴 `additionalProperties` con un SCHEMA si se interpreta: es como se declara un mapa de
+    # clave libre a objeto con forma, y lo pidio el estado de las fuentes. Se amplio el
+    # validador en vez de aflojar el contrato, que es la mitad que este escenario cuida: lo que
+    # entra a interpretarse VALIDA de verdad, y lo que no se interpreta se sigue rechazando.
+    mapa = {"type": "object", "additionalProperties": {"type": "object", "required": ["a"],
+                                                       "properties": {"a": {"type": "string"}}}}
+    ARMADOR.controlar_soporte(mapa)
+    t.vacio("E-36 un mapa valido pasa", ARMADOR.validar({"x": {"a": "1"}}, mapa))
+    t.verdadero("E-36 y uno con el valor de otro tipo no",
+                bool(ARMADOR.validar({"x": {"a": 1}}, mapa)))
+    t.verdadero("E-36 ni uno al que le falta lo obligatorio",
+                bool(ARMADOR.validar({"x": {}}, mapa)))
 
     # 📌 La guarda del `$ref` no local y la de "ese `$defs` no existe" rechazan las dos, asi
     # que sacar la primera no cambia el veredicto — cambia el MENSAJE, y un rechazo que no dice

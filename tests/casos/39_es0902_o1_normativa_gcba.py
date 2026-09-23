@@ -237,7 +237,10 @@ def test_e07_es0901_y_es0902_son_las_dos_cargadas(t):
         f = lb.fuente(fid, LINEA)
         t.verdadero("E-07 %s esta en la linea base" % fid, f is not None)
         t.igual("E-07 %s es LOADED" % fid, "LOADED", lb.estado_de(f))
-        t.igual("E-07 %s con su version" % fid, version, f.get("version"))
+        # La version ya no la declara la linea base: la dice el registro de fuentes, que es
+        # la unica autoridad sobre la identidad de una fuente. El escenario es el mismo -que
+        # ES0901 esta en 6.3- y cambia de donde se lee.
+        t.igual("E-07 %s con su version" % fid, version, lb.version_de(f))
         t.contiene("E-07 %s con su autoridad" % fid, "Agencia de Sistemas de", f["authority"])
     t.igual("E-07 ES0902 declara la fecha de su fuente", "2025-08",
             lb.fuente("ES0902", LINEA).get("sourceDate"))

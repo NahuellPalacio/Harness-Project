@@ -5,14 +5,12 @@
     {
       "id": "ES0901",
       "title": "Estándar de Desarrollo",
-      "version": "6.3",
       "status": "LOADED",
       "authority": "Agencia de Sistemas de Información"
     },
     {
       "id": "ES0902",
       "title": "Estándar de Seguridad",
-      "version": "6.2",
       "sourceDate": "2025-08",
       "status": "LOADED",
       "authority": "Agencia de Sistemas de Información"

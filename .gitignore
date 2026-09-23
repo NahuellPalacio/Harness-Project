@@ -20,6 +20,11 @@ normativa/fuentes/*
 !normativa/fuentes/.gitkeep
 !normativa/fuentes/LEEME.md
 
+# Estado runtime del harness en el propio repositorio. Se DERIVA de la evidencia en cada
+# corrida: versionarlo seria dejar escrito que una fuente estaba al dia el dia que alguien
+# corrio el comando, y que se lea como si lo estuviera hoy.
+.claude/harness.*.json
+
 # Salidas de prueba y trabajo local
 tests/out/
 *.log

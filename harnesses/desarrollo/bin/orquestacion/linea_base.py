@@ -38,6 +38,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import rutas                                     # noqa: E402
+from . import registro_fuentes                  # noqa: E402
 from . import revisiones                         # noqa: E402
 from . import roster                             # noqa: E402
 from . import seguridad                          # noqa: E402
@@ -166,8 +167,21 @@ def validar(doc=None, desde=None):
                            % (fid, reemplazo))
         if not f.get("authority"):
             errores.append("%s no dice quien la dicta: sin autoridad es un documento" % fid)
+        # 🔴 Un solo mapeo. Si el registro de fuentes gestiona esta fuente, la version la dice
+        # el registro: declararla tambien aca es la segunda copia que envejece sola.
+        if f.get("version") and _la_gestiona_el_registro(fid, desde):
+            errores.append("%s declara la version `%s` y ademas esta en el registro de "
+                           "fuentes: la version de una fuente gestionada la dice el registro"
+                           % (fid, f.get("version")))
 
     return (LINEA_BASE_INVALIDA if errores else LINEA_BASE_VALIDA), errores
+
+
+def _la_gestiona_el_registro(fid, desde=None, registro=None):
+    try:
+        return registro_fuentes.buscar(fid, doc=registro, desde=desde) is not None
+    except registro_fuentes.RegistroInvalido:
+        return False
 
 
 # -- consultas -----------------------------------------------------------------
@@ -191,9 +205,34 @@ def estado_de(f):
 
 
 def vigencia_de(f):
-    """La vigencia declarada. Ausente y desconocida son las dos `UNRESOLVED`."""
+    """La vigencia declarada. Ausente y desconocida son las dos `UNRESOLVED`.
+
+    🔴 **No se deriva de la frescura, a proposito.** Que el canal configurado muestre el mismo
+    documento no es constancia de que la norma siga vigente: es constancia de que el canal no
+    cambio. Derivar lo primero de lo segundo es la afirmacion que el harness tiene prohibida —
+    «este es el documento mas nuevo que existe»— dicha con otras palabras.
+    """
     vigencia = (f or {}).get("currency")
     return vigencia if vigencia in VIGENCIAS else VIGENCIA_SIN_RESOLVER
+
+
+def version_de(f, desde=None, registro=None):
+    """La version de una fuente. La dice el registro de fuentes; acá no se declara.
+
+    🔴 Dos lugares que dicen que version de ES0901 tiene cargada el harness son dos lugares
+    que el dia que difieran van a tener razon los dos. La identidad de una fuente —id, version,
+    hash del original, extracto— es de `source-registry.json`, y esta linea base declara lo
+    suyo: si el contenido autoritativo esta, quien la dicta y si consta que sigue vigente.
+
+    Una fuente que el registro no gestiona —las tres resoluciones de la ASI, que entran sin
+    documento— conserva lo que declare, que normalmente es nada.
+    """
+    fid = (f or {}).get("id")
+    try:
+        del_registro = registro_fuentes.version_de(fid, doc=registro, desde=desde)
+    except registro_fuentes.RegistroInvalido:
+        del_registro = None
+    return del_registro or (f or {}).get("version")
 
 
 def cargadas(doc=None, desde=None):
@@ -248,7 +287,7 @@ def resolver(doc=None, desde=None):
         estados.extend(propios)
         motivos.extend(razones)
         filas.append({"id": f.get("id"), "title": f.get("title"),
-                      "version": f.get("version"), "status": estado_de(f),
+                      "version": version_de(f, desde), "status": estado_de(f),
                       "currency": vigencia_de(f), "authority": f.get("authority"),
                       "states": propios})
     return {"version": documento.get("version"), "authority": documento.get("authority"),

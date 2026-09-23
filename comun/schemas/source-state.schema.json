@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sources-state/1.1",
+  "title": "HARNESS_SOURCE_STATE",
+  "description": "En que estado quedo cada fuente gestionada la ultima vez que se pudo mirar. Vive en .claude/harness.fuentes.json, se DERIVA de la evidencia y no se escribe a mano: quien lo edite esta declarando una frescura que nadie verifico. Ningun estado de ausencia se degrada a CURRENT — sin version resoluble es VERSION_UNRESOLVED, sin canal es FRESHNESS_UNVERIFIED, sin la fuente es SOURCE_MISSING —, y esa es la unica garantia que da este archivo: el harness puede estar desactualizado, pero no puede creerse al dia sin haberlo verificado. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "verified_at",
+    "sources",
+    "decisions",
+    "pending_count"
+  ],
+  "additionalProperties": false,
+  "properties": {
+
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "sources-state/1.1"
+      ]
+    },
+
+    "verified_at": {
+      "description": "Cuando se resolvio esto. `null` es que nunca se pudo.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+
+    "ficha": {
+      "description": "Contra que Ficha se resolvio, si se pudo. `null` es que no se la consulto, y entonces ninguna fuente puede decir CURRENT.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "issue_type": {
+          "type": "string"
+        },
+        "reachable": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+
+    "sources": {
+      "description": "Una entrada por fuente gestionada, con la clave del registro.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "state",
+          "registry_version",
+          "observed_version",
+          "derived_impact"
+        ],
+        "additionalProperties": false,
+        "properties": {
+
+          "state": {
+            "description": "CURRENT exige las cinco condiciones de frescura. Todo lo demas es alguna forma de no poder afirmarlo.",
+            "type": "string",
+            "enum": [
+              "CURRENT",
+              "NEW_SOURCE",
+              "UPDATE_AVAILABLE",
+              "SOURCE_CHANGED_SAME_VERSION",
+              "SOURCE_INTEGRITY_ALERT",
+              "VERSION_REGRESSION",
+              "SOURCE_MISSING",
+              "VERSION_UNRESOLVED",
+              "FRESHNESS_UNVERIFIED",
+              "RETIRED",
+              "ACKNOWLEDGED_PENDING",
+              "KNOWLEDGE_PROMOTION_INCOMPLETE"
+            ]
+          },
+
+          "registry_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "observed_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "attachmentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+
+          "created": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "observed_sha256": {
+            "description": "SHA-256 del original observado. `null` es que no se bajo o no se pudo hashear.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+
+          "registry_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+
+          "downloaded": {
+            "description": "Si hubo que bajar el adjunto en esta corrida. Falso con la metadata sin cambios: no se baja un PDF por sesion para hashear lo mismo.",
+            "type": "boolean"
+          },
+
+          "effectiveRisk": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL",
+              "UNRESOLVED"
+            ]
+          },
+
+          "derived_impact": {
+            "description": "Los activos que salen de esta fuente, calculados de la procedencia que cada uno declara. No se escribe a mano en ningun registro.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+
+          "stale_derived": {
+            "description": "Los derivados que declaran una version distinta de la aceptada. Mientras haya uno, la fuente no puede decir CURRENT.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+
+          "blocking": {
+            "description": "Si este estado impide tratar el conocimiento derivado como vigente.",
+            "type": "boolean"
+          },
+
+          "evidence": {
+            "description": "Con que se resolvio, en el orden en que se miro. Un estado sin evidencia es una afirmacion sin con que contradecirla.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+
+    "decisions": {
+      "description": "Lo que una persona decidio sobre una identidad observada. Posponer silencia el aviso de esa identidad exacta y NO crea frescura: una fuente pospuesta queda ACKNOWLEDGED_PENDING.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "decision",
+          "observed_version",
+          "observed_sha256"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPLY",
+              "POSTPONE"
+            ]
+          },
+          "observed_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_sha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+
+    "pending_count": {
+      "description": "Cuantas fuentes bloquean. Sale de los estados, no de quien escribe el documento.",
+      "type": "integer"
+    },
+
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

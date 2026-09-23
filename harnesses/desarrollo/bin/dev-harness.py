@@ -51,7 +51,11 @@ from contexto import proyecto as contexto_proyecto                # noqa: E402
 from contexto import repositorio as contexto_repositorio          # noqa: E402
 from contexto import tarea as contexto_tarea                      # noqa: E402
 
+from integraciones import fuentes as int_fuentes                # noqa: E402
+
+from orquestacion import frescura as orq_frescura                # noqa: E402
 from orquestacion import plan as orq_plan                         # noqa: E402
+from orquestacion import registro_fuentes as orq_fuentes         # noqa: E402
 
 from contabilidad import agregacion as cont_agregacion            # noqa: E402
 from contabilidad import barra as cont_barra                      # noqa: E402
@@ -259,6 +263,131 @@ def mostrar(consola, documento):
 
 
 # -- contexto de tarea ---------------------------------------------------------
+
+def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
+                     transporte, transporte_bytes):
+    """Bloque 1: del registro de fuentes al estado de frescura de cada una.
+
+    🔴 Sale 0 aunque haya fuentes en alerta. Una fuente desactualizada no es una falla del
+    harness: es justo lo que este comando existe para poder decir. El codigo 2 queda para lo
+    que la persona tiene que arreglar antes de seguir.
+
+    🔴 Sin canal que consultar -ni una clave de Jira ni un directorio local- no se declara
+    que este todo bien: se declara que no se pudo verificar, que es otra cosa.
+    """
+    try:
+        registro = orq_fuentes.cargar()
+    except orq_fuentes.RegistroInvalido as e:
+        # Un registro que no se puede leer entero no se lee a medias: es lo que la persona
+        # tiene que arreglar antes de seguir, y por eso sale 2 y no 0.
+        raise FallaDelHarness(str(e))
+    entradas = orq_fuentes.gestionadas(registro)
+    for hallazgo in orq_fuentes.hallazgos(registro):
+        consola.linea("  aviso: " + hallazgo)
+
+    destino = orq_frescura.ruta_por_defecto(proyecto)
+    anterior = orq_frescura.leer(destino)
+    previo = anterior.get("sources") or {}
+    decisiones = anterior.get("decisions") or {}
+
+    canal = None
+    observaciones = []
+
+    if args.archivo:
+        directorio = os.path.abspath(args.archivo)
+        if not os.path.isdir(directorio):
+            raise FallaDelHarness("el directorio %s no existe." % directorio)
+        observaciones = int_fuentes.observar_archivos(entradas, directorio)
+        canal = {"reachable": True, "reason": "originales leidos de %s" % directorio}
+        consola.evento("fuentes.local", directorio=directorio)
+
+    elif args.argumento:
+        clave = str(args.argumento)
+        if not CLAVE_JIRA.match(clave):
+            raise FallaDelHarness(
+                "fuentes necesita una clave de Jira con la forma PROYECTO-123, o --archivo "
+                "con el directorio de los originales.")
+        canal, observaciones = _observar_por_ficha(
+            clave, args, proyecto, rutas, config, almacen, timeout, consola,
+            transporte, transporte_bytes, entradas, previo)
+
+    else:
+        consola.linea("Sin clave de Jira ni --archivo no hay canal que consultar: cada fuente "
+                      "queda sin verificar.")
+
+    documento = orq_frescura.documento(entradas, observaciones, canal, decisiones)
+    try:
+        orq_frescura.escribir(documento, destino)
+    except (ValueError, OSError) as e:
+        raise FallaDelHarness(str(e))
+    consola.evento("fuentes.listo", fuentes=len(documento["sources"]),
+                   pendientes=documento["pending_count"])
+
+    if args.json:
+        sys.stdout.write(json.dumps(documento, ensure_ascii=False, indent=2,
+                                    sort_keys=True) + "\n")
+    else:
+        mostrar_fuentes(consola, documento, destino)
+    return 0
+
+
+def _observar_por_ficha(clave, args, proyecto, rutas, config, almacen, timeout, consola,
+                        transporte, transporte_bytes, entradas, previo):
+    """Los adjuntos de la Ficha de Proyecto del ticket. Devuelve (canal, observaciones).
+
+    La Ficha se resuelve con el mismo resolvedor del Bloque 2. Una segunda busqueda con un
+    criterio parecido es como un dia una encuentra la Ficha y la otra no.
+    """
+    capacidades = _json_o_vacio(rutas["capacidades"]).get("capacidades") or {}
+    jira = armar(IntegracionJira, config, almacen, timeout, transporte)
+    jira.transporte_bytes = transporte_bytes
+    acumulador = contexto_comun.Acumulador(capacidades)
+
+    try:
+        _tarea, campos_tarea = contexto_tarea.resolver(
+            jira, clave, CATALOGO(), _config_harness(rutas), acumulador)
+    except contexto_tarea.TareaNoResuelta as e:
+        raise FallaDelHarness(str(e))
+
+    ficha, campos_ficha = contexto_proyecto.resolver(
+        jira, campos_tarea, CATALOGO(), _config_harness(rutas), acumulador)
+    clave_ficha = ficha["ficha"]["key"]
+    consola.evento("fuentes.ficha", ficha=clave_ficha or "ninguna")
+
+    if not clave_ficha or campos_ficha is None:
+        return {"reachable": False,
+                "reason": "no se pudo resolver la Ficha de Proyecto del ticket %s" % clave}, []
+
+    adjuntos = [a for a in (campos_ficha.get("attachment") or []) if isinstance(a, dict)]
+    texto = contexto_comun.texto_de_adf(campos_ficha.get("description"))
+    descargas = os.path.join(proyecto, ".claude", "conocimiento", "fuentes")
+    observaciones = int_fuentes.observar(entradas, adjuntos, previo, jira.bajar_adjunto,
+                                         descargas, texto)
+    tipo = str(_config_harness(rutas).get("fichaTipoDeIssue")
+               or contexto_proyecto.TIPO_POR_DEFECTO)
+    return {"key": clave_ficha, "issue_type": tipo, "reachable": True}, observaciones
+
+
+def mostrar_fuentes(consola, documento, destino):
+    consola.linea("")
+    consola.linea("Fuentes gestionadas")
+    for sid in sorted(documento["sources"]):
+        f = documento["sources"][sid]
+        versiones = "%s -> %s" % (f["registry_version"] or "sin version",
+                                  f["observed_version"] or "sin observar")
+        derivados = "%d derivados" % len(f["derived_impact"])
+        if f["stale_derived"]:
+            derivados += ", %d desactualizados" % len(f["stale_derived"])
+        consola.linea("  %-12s %-22s %-28s %s" % (sid, versiones, f["state"], derivados))
+    consola.linea("")
+    if documento["pending_count"]:
+        consola.linea("%d de %d fuentes no se pueden tratar como vigentes."
+                      % (documento["pending_count"], len(documento["sources"])))
+    else:
+        consola.linea("Las %d fuentes estan verificadas contra el canal configurado."
+                      % len(documento["sources"]))
+    consola.linea("Estado en %s" % destino)
+
 
 def resolver_contexto(args, proyecto, rutas, config, almacen, timeout, consola,
                       transporte, transporte_bytes):
@@ -687,6 +816,10 @@ def comando(args, transporte=None, transporte_bytes=None):
         return resolver_contexto(args, proyecto, rutas, config, almacen, timeout,
                                  consola, transporte, transporte_bytes)
 
+    if args.comando == "fuentes":
+        return resolver_fuentes(args, proyecto, rutas, config, almacen, timeout,
+                                consola, transporte, transporte_bytes)
+
     if args.comando == "reconfigurar":
         configurar(dict((c.nombre, c) for c in CLASES)[args.argumento],
                    config, almacen, consola)
@@ -715,9 +848,11 @@ def parser():
         prog="dev-harness.py",
         description="Integraciones y contexto de tarea del harness de desarrollo.")
     p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan",
-                                       "contabilidad"))
+                                       "contabilidad", "fuentes"))
     p.add_argument("argumento", nargs="?",
                    help="la integracion, para reconfigurar; la clave de Jira, para contexto")
+    p.add_argument("--archivo", default="",
+                   help="fuentes: el directorio con los originales, para resolver sin Jira")
     p.add_argument("--revalidar", action="store_true",
                    help="revalida las integraciones antes de resolver el contexto")
     p.add_argument("--plantilla", action="store_true",

@@ -430,6 +430,13 @@ Entre paréntesis, el `DB-nn` del pedido de instalación.
   `properties`. Y la ampliación es aditiva: los contratos que ya existían siguen validando igual.
   · rojo visto: si
 
+  📌 **2026-09-23 — una cláusula de E-36 quedó superada.** `additionalProperties` con un schema
+  como valor **ya se interpreta**: es como se declara un mapa de clave libre a objeto con forma, y
+  lo pidió el estado de las fuentes de `conocimiento-fuentes-y-frescura`. Se amplió el validador
+  en vez de aflojar el contrato, que es la mitad que este escenario cuida. Todo lo demás de E-36
+  sigue vigente, y el test del mapa exige las dos mitades: que valide de verdad y que un schema
+  roto adentro del mapa se siga rechazando.
+
 - **E-37** — La compuerta arranca en un **árbol instalado**, con `reglas/` colgando de
   `.claude/harness/reglas/<id>/` y no del repositorio. · rojo visto: sí
 

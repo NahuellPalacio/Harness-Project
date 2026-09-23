@@ -734,6 +734,51 @@ wrong today: the three reviews that exist are declared and report `INSTALLED`.
 Fix. Add the third directory to the walk, with `.md` as its extension, the same way `policies` is
 already handled. It is the same loop; what it needs is the third pair.
 
+### The six managed sources have no accepted hash, so none of them can ever be current
+
+Written on 2026-09-23, when `source-registry.json` shipped with `conocimiento-fuentes-y-frescura`.
+All six entries carry `sha256: null`, because the original PDFs are gitignored —
+`normativa/fuentes/` holds only its `LEEME.md` — and this machine does not have them. Freshness
+resolution is honest about it and fails closed: without an accepted hash there is nothing to
+compare an observed document against, so every source resolves to `FRESHNESS_UNVERIFIED` and none
+can ever reach `CURRENT`. `dev-harness.py fuentes` says so on every run, six times.
+
+This is the designed behaviour, not a defect in the resolver. What is open is that nothing closes
+it: there is no command yet that accepts an original and writes its hash into the registry.
+
+Fix. It belongs to the decisions slice — `conocimiento decidir <source> aplicar` — which is what
+turns an observed original into an accepted one. Until that exists, a hash can only be written by
+hand, and writing it by hand without the file in front of you is exactly what the registry exists
+to prevent.
+
+### `normativa/` never reaches an installed project, so every source there declares a missing extract
+
+Written on 2026-09-23. `source-registry.json` points each source at `normativa/extractos/<id>.md`,
+and `normativa/fuentes/LEEME.md` states the folder is the factory's: it is never copied to a
+project and no hook, check or skill opens a PDF at runtime. So inside this repository the six
+extracts resolve, and in an installed project `registro_fuentes.ruta_de_extracto` returns `None`
+for all six, `validar` reports `SOURCE_EXTRACT_MISSING`, and freshness cannot establish the fourth
+condition for any of them.
+
+It is the same class as `controles/` never reaching an installed project, and it deserves the same
+decision: either the knowledge subsystem is factory-only for `norma` sources — and the installed
+harness says so instead of reporting six missing extracts — or the extracts travel with the
+install. Nothing chose yet.
+
+### Four source states and the postponement logic are built and no scenario refutes them
+
+Written on 2026-09-23, from the verdict of `conocimiento-fuentes-y-frescura`. The contract
+`sources-state/1.1` declares twelve states; the spec's scenarios exercise eight. `NEW_SOURCE`,
+`RETIRED`, `ACKNOWLEDGED_PENDING` and `KNOWLEDGE_PROMOTION_INCOMPLETE` are reachable in
+`frescura._estado_de` and `frescura._pospuesta` — which also decides that a postponement never
+covers an integrity alert or a regression — and not one scenario names them. The refuter flagged
+it as a free decision, not as non-compliance: it is code ahead of its scenarios.
+
+Fix. The decisions slice covers `ACKNOWLEDGED_PENDING` and the postponement rules; the promotion
+slice covers `KNOWLEDGE_PROMOTION_INCOMPLETE`. `NEW_SOURCE` and `RETIRED` need a scenario of their
+own wherever they land — they are one line each and they are the two that nothing else will pick
+up.
+
 ## Installer defects
 
 ### The installer tests fail at random under load, and the python test counts drift

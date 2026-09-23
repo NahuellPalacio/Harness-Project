@@ -26,6 +26,7 @@ sys.path.insert(0, str(BIN))
 from orquestacion import seguridad                      # noqa: E402
 from orquestacion import normativa                      # noqa: E402
 from orquestacion import linea_base                     # noqa: E402
+from orquestacion import registro_fuentes as c_fuentes  # noqa: E402
 from orquestacion import controles as c_controles       # noqa: E402
 from orquestacion import registro_agentes as c_reg      # noqa: E402
 from orquestacion import estandar_de_desarrollo as bt        # noqa: E402
@@ -59,6 +60,20 @@ def _linea(*fuentes):
 
 
 ES0901 = {"id": "ES0901", "title": "Estandar de Desarrollo", "version": "6.3", "status": "LOADED"}
+
+
+def _registro(version="6.4"):
+    """Un registro de fuentes forjado. Aca vive la version de una fuente gestionada.
+
+    🔴 La linea base dejo de declararla -una sola autoridad por dato-, asi que un escenario que
+    dice "el harness esta en 6.4" se escribe aca. Escribirlo en la linea base ya no significa
+    nada, y un test que lo escriba ahi pasa por una razon que no es la suya.
+    """
+    fuentes = [] if version is None else [{
+        "id": "ES0901", "kind": "norma", "title": "Estandar de Desarrollo",
+        "version": version, "sha256": None, "extract": "normativa/extractos/ES0901.md",
+        "status": "CURRENT"}]
+    return {"schema_version": "source-registry/1.1", "sources": fuentes}
 
 
 def _catalogo(**cambios):
@@ -241,7 +256,6 @@ def test_e16_sin_resolver(t):
         "dos cargados sin vigente": _linea(ES0901, dict(ES0901, version="6.4")),
         "dos vigentes": _linea(dict(ES0901, currency="CURRENT"),
                                dict(ES0901, version="6.4", currency="CURRENT")),
-        "sin version": _linea(dict(ES0901, version=None)),
     }
     for nombre, linea in casos.items():
         b = bt.resolver_base(linea=linea)
@@ -284,6 +298,11 @@ def test_e16_sin_resolver(t):
     for nombre, linea in ilegibles.items():
         t.igual("E-16 %s" % nombre, ["DEVELOPMENT_STANDARD_TECHNOLOGY_BASELINE_UNRESOLVED"],
                 bt.resolver_base(linea=linea)["states"])
+    # 🔴 "Sin version" ya no se escribe en la linea base: la dice el registro de fuentes. Sin
+    # registro que la diga, la base queda sin resolver igual — que es lo que el escenario pide.
+    t.igual("E-16 sin version", ["DEVELOPMENT_STANDARD_TECHNOLOGY_BASELINE_UNRESOLVED"],
+            bt.resolver_base(linea=_linea(dict(ES0901, version=None)),
+                             registro_de_fuentes=_registro(None))["states"])
     uno = _linea(dict(ES0901, currency="CURRENT"),
                  dict(ES0901, version="6.2", currency="SUPERSEDED"))
     t.igual("E-16 con uno solo vigente resuelve", "RESOLVED", bt.resolver_base(linea=uno)["status"])
@@ -291,19 +310,22 @@ def test_e16_sin_resolver(t):
 
 def test_e17_desfase_de_version(t):
     """E-17 (C3-17)."""
-    nueva = _linea(dict(ES0901, version="6.4"))
+    nueva = _linea(ES0901)
+    en64 = _registro("6.4")
     t.igual("E-17 6.4 contra el catalogo de 6.3",
             ["DEVELOPMENT_STANDARD_TECHNOLOGY_BASELINE_MISMATCH"],
-            bt.resolver_base(linea=nueva)["states"])
+            bt.resolver_base(linea=nueva, registro_de_fuentes=en64)["states"])
     cat64 = _catalogo(source=dict(CATALOGO["source"], version="6.4"),
                       status="COMPLETE_FOR_ANNEX_II_V6_4")
     t.igual("E-17 catalogo 6.4 y controles de 6.3",
             ["DEVELOPMENT_STANDARD_TECHNOLOGY_BASELINE_MISMATCH"],
-            bt.resolver_base(linea=nueva, catalogo=cat64)["states"])
+            bt.resolver_base(linea=nueva, catalogo=cat64, registro_de_fuentes=en64)["states"])
     t.igual("E-17 los tres en 6.4 resuelven", "RESOLVED",
-            bt.resolver_base(linea=nueva, catalogo=cat64, version_de_controles="6.4")["status"])
+            bt.resolver_base(linea=nueva, catalogo=cat64, version_de_controles="6.4",
+                             registro_de_fuentes=en64)["status"])
     r = seguridad.resultado("C3", {"technologyInventory": INVENTARIO,
-                                   "developmentStandardBaseline": bt.resolver_base(linea=nueva)},
+                                   "developmentStandardBaseline": bt.resolver_base(
+                                       linea=nueva, registro_de_fuentes=en64)},
                             {}, MATRIZ)
     t.igual("E-17 y C3 no pasa", "UNRESOLVED", r["result"])
     # 🔴 Del segundo pase: la puerta mira el mismo catalogo contra el que se ejecuta.
@@ -415,13 +437,18 @@ def test_e24_g1_no_se_copia(t):
             ["compartidos", "clave_de_regla"], list(inspect.signature(bt.agregar).parameters))
     compartidos = bt.ejecutar(copy.deepcopy(INVENTARIO))
     t.igual("E-24 G1 cumple", "COMPLIANT", bt.agregar(compartidos, "ES0901.G1")["result"])
-    desfasada = bt.resolver_base(linea=_linea(dict(ES0901, version="6.4")))
+    desfasada = bt.resolver_base(linea=_linea(ES0901), registro_de_fuentes=_registro("6.4"))
     c3 = bt.evaluar_c3(INVENTARIO, base=desfasada, compartidos=compartidos)
     t.igual("E-24 y C3 con la linea base desfasada no", "UNRESOLVED", c3["result"])
     # 🔴 El caso del primer pase: la linea base INSTALADA desfasada, y una base forjada en la
     # evidencia que dice RESOLVED. La que llega solo puede restringir.
     original = linea_base.cargar
-    linea_base.cargar = lambda desde=None: _linea(dict(ES0901, version="6.4"))
+    original_fuentes = c_fuentes.cargar
+    linea_base.cargar = lambda desde=None: _linea(ES0901)
+    # 🔴 Las dos mitades de la identidad instalada: la linea base dice que ES0901 esta cargado
+    # y el registro de fuentes dice en que version. Forjar una sola dejaba el escenario
+    # pasando contra la otra, que seguia siendo la de verdad.
+    c_fuentes.cargar = lambda desde=None: _registro("6.4")
     try:
         for nombre, forjada in (("RESOLVED", {"status": "RESOLVED"}),
                                 ("RESOLVED 6.3", {"status": "RESOLVED", "version": "6.3",
@@ -442,6 +469,7 @@ def test_e24_g1_no_se_copia(t):
                 bt.c3_para_unidad({"ruleKey": "ES0902.C3", "result": "COMPLIANT"})["result"])
     finally:
         linea_base.cargar = original
+        c_fuentes.cargar = original_fuentes
     t.igual("E-24 con la instalada resuelta, una base de otra version restringe", "UNRESOLVED",
             bt.evaluar_c3(INVENTARIO, base={"status": "RESOLVED", "version": "6.4"})["result"])
 
@@ -586,7 +614,7 @@ def test_e39_la_traza_de_c3(t):
     """E-39 (C3-39)."""
     caminos = {"pasa": _c3(), "vacio": _c3([]),
                "desfasada": bt.evaluar_c3(INVENTARIO, base=bt.resolver_base(
-                   linea=_linea(dict(ES0901, version="6.4"))))}
+                   linea=_linea(ES0901), registro_de_fuentes=_registro("6.4")))}
     for nombre, r in caminos.items():
         t.igual("E-39 %s conserva la traza" % nombre, TRAZA, r["source"])
         t.igual("E-39 %s y la clave" % nombre, "ES0902.C3", r["ruleKey"])

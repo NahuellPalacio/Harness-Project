@@ -107,7 +107,7 @@ def _id_canonico(valor):
                    if unicodedata.category(c)[0] in ("L", "N")).upper()
 
 
-def _vigente(linea, motivos):
+def _vigente(linea, motivos, desde=None, registro_de_fuentes=None):
     """La version de ES0901 vigente, o `None`.
 
     🔴 Una fuente que no se puede leer no se descarta: podia ser la vigente. Un `sources` que no
@@ -162,7 +162,11 @@ def _vigente(linea, motivos):
                            % (len(cargadas), ESTANDAR_DE_DESARROLLO, len(vigentes)))
             return None
         cargadas = vigentes
-    version = cargadas[0].get("version")
+    # 🔴 La version de una fuente gestionada la dice el registro de fuentes, no la linea base:
+    # dos lugares que contestan que version de ES0901 rige son dos lugares que el dia que
+    # difieran van a tener razon los dos. La linea base sigue diciendo lo suyo -si esta cargada
+    # y si consta que sigue vigente-, que es lo que se acaba de mirar arriba.
+    version = linea_base.version_de(cargadas[0], desde, registro_de_fuentes)
     if not isinstance(version, str) or not version.strip():
         motivos.append("el %s cargado no declara su version" % ESTANDAR_DE_DESARROLLO)
         return None
@@ -170,7 +174,7 @@ def _vigente(linea, motivos):
 
 
 def resolver_base(linea=None, catalogo=None, registro=None, version_de_controles=None,
-                  desde=None):
+                  desde=None, registro_de_fuentes=None):
     """La linea base tecnologica que C3 consume. Falla cerrado, y dice en que paso.
 
     Cada argumento reemplaza lo instalado; sin argumentos lee la linea base normativa, el
@@ -187,7 +191,8 @@ def resolver_base(linea=None, catalogo=None, registro=None, version_de_controles
     except Exception as e:                           # noqa: BLE001 - se falla cerrado
         motivos.append("la linea base normativa no se pudo leer: %s" % e)
         doc_linea = None
-    vigente = _vigente(doc_linea, motivos) if doc_linea is not None else None
+    vigente = (_vigente(doc_linea, motivos, desde, registro_de_fuentes)
+               if doc_linea is not None else None)
     salida["version"] = vigente
     if vigente is None:
         return _base(salida, SIN_RESOLVER, BASE_SIN_RESOLVER)

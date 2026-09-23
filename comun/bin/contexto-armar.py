@@ -736,9 +736,11 @@ ANOTACIONES = frozenset(("$schema", "$id", "title", "description", "examples",
 VALIDACIONES = frozenset(("type", "properties", "required", "items", "enum", "pattern",
                           "additionalProperties", "$ref"))
 
-# El unico valor de `additionalProperties` que este validador interpreta. `true` es el
-# default de JSON Schema y escribirlo no agrega nada; un SCHEMA como valor -o sea "las
-# claves de mas tienen que cumplir esto"- es otra funcionalidad y no se finge soportarla.
+# El valor de `additionalProperties` que cierra el objeto. `true` es el default de JSON
+# Schema y escribirlo no agrega nada, asi que no se interpreta. Un SCHEMA como valor -o sea
+# "las claves de mas tienen que cumplir esto"- SI se interpreta: es como se declara un mapa
+# de clave libre a objeto con forma, y sin eso el estado de las fuentes -una entrada por
+# fuente, con la misma forma- habria que escribirlo como arreglo para esquivar al validador.
 #
 # 🔴 Y esto no es azucar: `additionalProperties: false` es lo que hace que un perfil de
 # conexion con un campo `password` se rechace en vez de viajar con el sello puesto. El
@@ -851,15 +853,20 @@ def controlar_soporte(esquema, ruta="$", raiz=None, vistos=None):
             % (ruta, clave, ", ".join(sorted(VALIDACIONES))))
 
     if "additionalProperties" in esquema:
-        if esquema["additionalProperties"] is not SIN_CLAVES_DE_MAS:
+        de_mas = esquema["additionalProperties"]
+        if isinstance(de_mas, dict):
+            # Un mapa de clave libre a objeto con forma: lo que `properties` no declara se
+            # valida contra ESTE schema. Es lo que permite escribir "un estado por fuente,
+            # con la forma de un estado" sin enumerar las fuentes una por una.
+            controlar_soporte(de_mas, "%s{}" % ruta, raiz, vistos)
+        elif de_mas is not SIN_CLAVES_DE_MAS:
             raise SchemaNoSoportado(
-                "%s: `additionalProperties` solo se interpreta como `false`. Vino `%s`, y "
-                "un schema como valor es otra funcionalidad que este validador no tiene"
-                % (ruta, esquema["additionalProperties"]))
+                "%s: `additionalProperties` se interpreta como `false` o como un schema. "
+                "Vino `%s`, que no es ninguno de los dos" % (ruta, de_mas))
         # 🔴 `properties` tiene que existir Y tener algo. Con `properties: {}` el schema acepta
         # y despues rechaza todo objeto que no este vacio, que es exactamente el caso que este
         # mensaje declara indeseable: una llave vacia lo dejaba pasar.
-        if not isinstance(esquema.get("properties"), dict) or not esquema["properties"]:
+        elif not isinstance(esquema.get("properties"), dict) or not esquema["properties"]:
             raise SchemaNoSoportado(
                 "%s: `additionalProperties: false` sin `properties`, o con `properties` vacio, "
                 "rechaza todo objeto que no este vacio, que no es lo que nadie quiso escribir"
@@ -934,10 +941,17 @@ def validar(dato, esquema, ruta="$", raiz=None):
         # 🔴 Lo que el schema no declara se RECHAZA cuando lo pide. Sin esto, un campo de
         # mas viaja con el sello puesto: una clave `password` adentro de un perfil que
         # promete llevar solo referencias, o un ambiente que la politica no declara.
-        if esquema.get("additionalProperties") is SIN_CLAVES_DE_MAS:
+        de_mas = esquema.get("additionalProperties")
+        if de_mas is SIN_CLAVES_DE_MAS:
             for nombre in sorted(k for k in dato if k not in declaradas):
                 errores.append("%s.%s: el schema no declara esta clave y no admite claves "
                                "de mas" % (ruta, nombre))
+        elif isinstance(de_mas, dict):
+            # Un mapa: la clave es libre y el valor tiene forma. Se valida cada valor que
+            # `properties` no declara, y se lo nombra por su clave — un error que dice `$`
+            # en un documento con doce entradas no se puede encontrar.
+            for nombre in sorted(k for k in dato if k not in declaradas):
+                errores.extend(validar(dato[nombre], de_mas, "%s.%s" % (ruta, nombre), raiz))
 
     if isinstance(dato, list) and "items" in esquema:
         for i, item in enumerate(dato):

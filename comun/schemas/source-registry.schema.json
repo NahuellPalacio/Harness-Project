@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source-registry/1.1",
+  "title": "SOURCE_REGISTRY",
+  "description": "Que documentos autoritativos gestiona el harness, en que version y con que hash del ORIGINAL. Es la unica autoridad sobre la identidad de una fuente: quien quiera saber que version de ES0901 tiene cargada el harness pregunta aca y no en otro lado. Una entrada por fuente y nada mas: no hay historial, no hay `fuente@6.2` conviviendo con `fuente@6.3`, y no hay una lista de derivados escrita a mano — el impacto se calcula de la procedencia que cada activo ya declara. El hash es el del archivo original aceptado, nunca el del markdown del extracto: el extracto se reescribe sin que la fuente cambie, y cambia sin que el extracto se toque. Lo que no consta entra `null`: un hash inventado es peor que ningun hash. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "sources"
+  ],
+  "additionalProperties": false,
+  "properties": {
+
+    "_comentario": {
+      "description": "Para quien abre el archivo. No lo lee ningun modulo.",
+      "type": "string"
+    },
+
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "source-registry/1.1"
+      ]
+    },
+
+    "sources": {
+      "description": "Las fuentes gestionadas. Un adjunto de la Ficha que no esta aca es documentacion contextual, no una fuente gestionada: gestionarla es una decision que alguien toma, no algo que pase por adjuntar un archivo.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "status",
+          "version",
+          "extract",
+          "sha256"
+        ],
+        "additionalProperties": false,
+        "properties": {
+
+          "id": {
+            "description": "Con el que la citan los controles, las matrices y los extractos. Es el mismo que usa `normativeSources[].standard`: dos vocabularios para la misma fuente es como un dia el impacto sale vacio.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          },
+
+          "kind": {
+            "description": "`norma` obliga, `proceso` describe como se trabaja, `tecnologia` documenta una herramienta. Importa porque fija el piso de riesgo de cualquier cambio derivado de esta fuente.",
+            "type": "string",
+            "enum": [
+              "norma",
+              "proceso",
+              "tecnologia"
+            ]
+          },
+
+          "title": {
+            "type": "string"
+          },
+
+          "issuer": {
+            "description": "Quien la dicta. Sin emisor, una norma es un documento.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "version": {
+            "description": "La version aceptada, tal como la nombra la fuente. `null` es que no se pudo resolver, y eso NO es lo mismo que estar al dia.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "filenamePattern": {
+            "description": "Expresion regular sobre el nombre del archivo, con un grupo que captura la version. Es como se resuelve la version de un adjunto sin abrirlo.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "sha256": {
+            "description": "SHA-256 del archivo ORIGINAL aceptado, en minuscula y sin prefijo. `null` mientras nadie acepto un original: la integridad queda sin poder verificarse y se dice.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+
+          "extract": {
+            "description": "La ruta del conocimiento activo que sale de esta fuente, relativa a la raiz del repositorio.",
+            "type": "string"
+          },
+
+          "config": {
+            "description": "La configuracion de la fuente, cuando la tiene. Hoy la usa `tecnologia`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "status": {
+            "description": "`CURRENT` es gestionada. `RETIRED` es que ya no se sigue: no se descubre, no se resuelve y no bloquea nada.",
+            "type": "string",
+            "enum": [
+              "CURRENT",
+              "RETIRED"
+            ]
+          },
+
+          "authorityRef": {
+            "description": "Evidencia de emisor o de autoridad, cuando existe. La Ficha es el canal de entrada configurado, no prueba criptografica de autoria.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "acceptedAt": {
+            "description": "Cuando se acepto esta identidad. Fecha ISO.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+
+          "refutedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
