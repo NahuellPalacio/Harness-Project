@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "authority": "GCBA / ASI",
+  "sources": [
+    {
+      "id": "ES0901",
+      "title": "Estándar de Desarrollo",
+      "version": "6.3",
+      "status": "LOADED",
+      "authority": "Agencia de Sistemas de Información"
+    },
+    {
+      "id": "ES0902",
+      "title": "Estándar de Seguridad",
+      "version": "6.2",
+      "sourceDate": "2025-08",
+      "status": "LOADED",
+      "authority": "Agencia de Sistemas de Información"
+    },
+    {
+      "id": "RES-177-ASINF-2013",
+      "title": "Resolución 177-ASINF-2013",
+      "status": "DECLARED_EXTERNAL_NOT_LOADED",
+      "authority": "GCBA / ASINF"
+    },
+    {
+      "id": "RES-239-ASINF-2014",
+      "title": "Resolución 239-ASINF/2014",
+      "status": "DECLARED_EXTERNAL_NOT_LOADED",
+      "authority": "GCBA / ASINF"
+    },
+    {
+      "id": "RES-12-ASINF-2017",
+      "title": "N° 12/ASINF/17",
+      "status": "DECLARED_EXTERNAL_NOT_LOADED",
+      "authority": "GCBA / ASINF"
+    }
+  ]
+}

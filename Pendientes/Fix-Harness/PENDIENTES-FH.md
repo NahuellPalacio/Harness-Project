@@ -718,17 +718,18 @@ module level and to `subprocess`.
 
 ### `descubrir_no_declarados` never looks inside `controles/reviews/`
 
-Found on 2026-09-22 by `harness-spec-refuter` while verifying an ES0902 change.
+Found on 2026-09-22 by `harness-spec-refuter` while verifying ES0902 O1.
 `controles.descubrir_no_declarados` — `harnesses/desarrollo/bin/orquestacion/controles.py:191` —
 walks two directories, `controles/policies/` for `.md` and `controles/checks/` for `.py`.
-`controles/reviews/` is not one of them, and it now holds two files:
-`object-oriented-design-review.md` and `technology-practice-review.md`.
+`controles/reviews/` is not one of them, and it now holds three files:
+`object-oriented-design-review.md`, `technology-practice-review.md` and
+`gcba-it-security-normative-review.md`.
 
 The consequence is narrow and real: a review document dropped into that directory and never
 declared in `control-registry.json` does not show up in `reporte()["undeclared"]`, and
 `filesystemClean` stays true. Every scenario that leans on "no stray files" — `36_p1/E-39`,
-`35_d8/E-37` — covers less surface than it sounds like it does. Nothing is
-wrong today: the two reviews that exist are declared and report `INSTALLED`.
+`35_d8/E-37`, `39_es0902_o1/E-28` — covers less surface than it sounds like it does. Nothing is
+wrong today: the three reviews that exist are declared and report `INSTALLED`.
 
 Fix. Add the third directory to the walk, with `.md` as its extension, the same way `policies` is
 already handled. It is the same loop; what it needs is the third pair.
@@ -819,6 +820,212 @@ already carries for `harness/checks/<id>/`. Second, whether the copy is added to
 list or the list is replaced by reading `aporta` — which is the item above, and doing this one by
 hand makes that one a little worse. It needs its own spec: it touches `install.ps1`, `controles.py`
 and a new installer case.
+
+### ES0902 C2 leaves four identity and freshness choices as the spec wrote them
+
+Found on 2026-09-23 by `harness-spec-refuter`, first pass over ES0902 C2
+(`harnesses/desarrollo/controles/checks/qa-security-approval-evidence.py`). None breaks a scenario;
+each is a policy decision the C2 spec took and nobody has confirmed against the real circuit:
+
+- **A shared `releaseId` alone establishes `EXACT`.** A candidate that declares only
+  `releaseId: 1.4.0` and omits its commit relates exactly to an approval of `1.4.0`. `releaseId` is
+  one of the five immutable identifiers the package lists; whether a release label is immutable
+  enough on its own is exactly the "similar version" doubt the package wanted closed.
+- **A change dated on or before the assessment is ignored**, even inside the change set that runs
+  from the approved artifact to the candidate. The spec decided it ("the assessment already saw
+  it"); a mis-dated change is the way around it.
+- **The fingerprint depends on the order of lists inside the approval.** Reordering `scope` or
+  `authorityEvidence` reads as `SECURITY_APPROVAL_EVIDENCE_CHANGED`. It fails safe.
+- **A newer approval in DEV hides an older one in QA** and reads `SECURITY_APPROVAL_NOT_IN_QA`. It
+  fails safe; whether the latest-wins rule should look only at QA approvals is open.
+- **A readable previous decision about another approval id is ignored.** If `previousDecision`
+  names `apr-1 ` (or any id other than the chosen one), no change is flagged. The spec says "for that
+  approval"; whether a decision about a different id should force re-evaluation is open. Found on
+  the second pass.
+- **An evaluation date before the assessment, with `development: false`, passes.** The age is
+  discarded as invalid only when there was development. Found on the second pass.
+
+No fix is decided for any of them.
+
+### ES0902 C2 closed with three leftovers of its own class, outside every scenario's letter
+
+Found on 2026-09-23 by `harness-spec-refuter`, fourth pass over ES0902 C2. The change closed at 56
+sustained; these three are the same class the four passes spent closing —something that can say
+"no" arrives unreadable and is lost— and no scenario's letter reaches them:
+
+- **A homoglyph is not "written another way".** A newer `REJECTED` approval whose `projectId` is
+  `trаmites` with a Cyrillic «а» is treated as another subject, and the older approval passes.
+  `canonico()` folds accents, format characters, case and separators; it does not fold scripts.
+- **The work-unit projection is filtered on two of five fields.** `c2_para_unidad` filters
+  `approvalEvidenceRef` and `evidence`, and still copies `reassessment.triggers`,
+  `reassessment.required` and `assessedArtifactRelation` as they come. The real check never emits
+  anything else there; a hand-built result can.
+- **A non-dict link in O2's scope chain is skipped.** `"PROJECT:licencias"` as a string does not
+  contradict the candidate's project, and the approval passes. The real O2 never emits string links.
+
+Fix. Each one is a line: a confusables fold (or rejecting mixed scripts) in `canonico`; the same
+field-by-field shape filter on the three remaining fields; any non-dict link makes the chain
+unreadable. It needs the C2 scenarios E-24, E-56 and E-13 to grow the text that reaches them.
+
+### ES0902 C3 leaves four behaviours of the shared G1 path as they are
+
+Found on 2026-09-23 by `harness-spec-refuter`, first pass over ES0902 C3
+(`harnesses/desarrollo/bin/orquestacion/estandar_de_desarrollo.py`). None breaks a C3 scenario:
+
+- **An unknown `role` is ignored by G1.** `role: "BOGUS"` with a homologated version reads
+  `HOMOLOGATED`. It is G1's semantics, reused untouched; changing it is a G1 change.
+- **The check cache ignores `desde`.** `_check` caches the loaded G1 module by id only; a second
+  harness root in the same process would get the first one's module.
+- **Empty normative sources say nothing.** If the control registry cannot be read, `ejecutar`
+  leaves `normativeSources` empty with no issue raised.
+- **Nobody aggregates G1 from the shared path in production.** "One execution, two aggregations"
+  exists as an API and the C3 tests exercise it; no harness path calls `agregar(..., "ES0901.G1")`,
+  because ES0901 rules have no per-rule result function yet.
+
+And from the second pass, the same fail-open class outside every scenario's letter:
+
+- **Shared results passed through the API are matched by `(technology, declaredVersion)` only.**
+  Forged rows with the right `control` ids and `HOMOLOGATED` for Cobol 85 pass; `role` and
+  `context` are not compared. `seguridad.resultado` never reaches it —the evidence channel ignores
+  shared results since the first pass—; only a direct caller of `evaluar_c3(compartidos=...)` can.
+  Nor do shared rows record which catalog they ran against: rows from `ejecutar(..., catalogo=<6.2>)`
+  passed later as `compartidos` with no `catalogo` are gated against the installed one and pass
+  (third pass).
+- **Identifiers that look like `ES0901` and are not, by Unicode's count.** The source-id rule of
+  E-16 folds spaces, signs, combining marks, case and width. It does not fold scripts or digit
+  systems: Cyrillic homoglyphs (`ЕЅ0901`), Arabic-Indic digits (`ES٠٩٠١`), `ESO9O1`, a truncated
+  `ES901`, modifier letters that look like signs (`ESʼ0901`, `ESʹ0901`, the Arabic tatweel), and
+  the invisible Hangul filler U+3164 —alone, it counts as "a text with a letter"— all let the
+  baseline resolve on the remaining 6.3. Same class as the C2 homoglyph leftover; a confusables
+  fold would close both. Found on the fourth and fifth passes.
+- **`c3_para_unidad` trusts any result that says `ruleKey: ES0902.C3`**, even one with no technology
+  or one whose own states contradict `COMPLIANT`. Same level of trust `c2_para_unidad` has.
+- **An explicit `currency: UNRESOLVED` on the single ES0901** resolves like a missing currency. The
+  spec names the missing case as a known risk; the explicit one is not named.
+- **`COMPLIANT_WITH_OBSERVATIONS` reaches the work unit as plain `COMPLIANT`**, and the observations
+  do not travel.
+- **`anexo2.cargar` and the check module load still sit outside the `try`.** A catalog with the
+  right source but broken entries, or a G1 check with a syntax error, still breaks
+  `seguridad.resultado` instead of leaving C3 unresolved.
+
+No fix is decided.
+
+### ES0901's hotfix path contradicts Annex V, and ES0902 C2 does not resolve it
+
+Found on 2026-09-22 while building ES0902 C2. `normativa/extractos/ES0901.md`, internal
+contradiction 2: page 29 says a hotfix gets its security assessment *after* the production
+deployment, in QA; Annex V (page 42) says the assessment is mandatory *before* HML and PRD and does
+not mention the hotfix. C2's check treats a hotfix like any other version, so a hotfix promoted under
+the page-29 path reads `SECURITY_APPROVAL_REQUIRED` until its after-the-fact assessment exists.
+
+No fix is decided, and none belongs in code: it is a normative contradiction. What it needs is an
+authoritative reading of which path governs, and then a C2 scenario for it.
+
+### ES0902 C1 does not treat contradicting well-formed evidence as a veto
+
+Found on 2026-09-22 by `harness-spec-refuter`, fifth pass over ES0902 C1
+(`harnesses/desarrollo/controles/checks/oidc-keycloak-integration.py`). Two cases, both with
+well-formed evidence, both outside every scenario of the C1 spec:
+
+- A surface whose protocol is proven by `PROJECT_CONFIGURATION` and that also cites a
+  `RUNTIME_INTEGRATION_TEST` with `outcome: FAIL` passes. The failed test simply does not count;
+  it does not veto. The spec says each class proves on its own and a test counts only with
+  `CONFIRMED`; it never says a failed test blocks.
+- An `INSTITUTIONAL` surface citing one `AUDIENCE` evidence with `value: INSTITUTIONAL` and another
+  with `value: CITIZEN` (both valid classes, both naming the surface) passes: the institutional one
+  wins and the contradiction is not reported.
+
+Neither is a defect against the spec; both are a policy decision nobody has taken. Malformed
+evidence that could say "no" is already fail-closed since that pass.
+
+A third one, found on the seventh and eighth passes: a contrary reconciliation that is legible but
+carries no authority (`sourceType: AGENT_STATEMENT`, blank `reference`, `establishes: []`) does not
+count, and the citizen surface passes on the other reconciliation. Same question: whether a
+contrary piece without authority should still block.
+
+No fix is decided. The candidate is the same shape C1 already uses for reconciliations: two
+well-formed pieces that contradict each other on the same dimension leave it unresolved. It needs a
+spec change and new scenarios.
+
+### ES0902 C1 reads a misspelled catalog value as "not this dimension", in silence
+
+Found on 2026-09-22 by `harness-spec-refuter`, eighth pass over ES0902 C1. A contrary
+reconciliation with `establishes: ["CROSS_STANDARD_RECONCILIATON"]` (one letter missing) or
+`sourceType: "IDENTITY_TIKET"` does not qualify as a reconciliation, is dropped without an entry in
+`issues`, and the citizen surface passes on the other reconciliation. It is the same class the C1
+change spent eight passes closing — something that can say "no" arrives unreadable and is lost —
+one field earlier than the `resolution` value that was closed on the seventh pass. No C1 scenario's
+letter reaches it; the cycle was cut there on purpose, and the change closed at 50 sustained.
+
+Fix. The refuter's suggestion, which closes the class rather than the case: a value that is in no
+known catalogue — the keys of `SUFICIENTES`, `INSUFICIENTES`, the dimensions — makes the evidence
+unreadable, and an unreadable cited id already blocks the reconciliation path since the sixth pass.
+It needs a C1 scenario of its own.
+
+### Four project-owned registries live in `reglas/`, which every `-Update` overwrites
+
+Found on 2026-09-22 while building ES0902 C1; ES0902 C2 added the fourth the same day. Four files
+ship empty on purpose because their content belongs to the project, not to the harness:
+`reglas/database-profiles.json` (database environments), `reglas/security-control-authority.json`
+(ES0902 O2), `reglas/authentication-surfaces.json` (ES0902 C1) and
+`reglas/security-approval-evidence.json` (ES0902 C2). All four sit in `reglas/`, which the
+installer copies with `-Force`. A project that fills any of them and then runs `-Update` gets the
+empty copy back and loses what it wrote, silently. For C2 it is worse than lost data: the check
+fingerprints consumed approvals, and an overwritten registry loses the record the fingerprint was
+taken from.
+
+The O2 spec says this debt "queda anotada en `Pendientes/`"; it was not, until this entry. Nothing
+fails today because no real project has filled any of the three.
+
+No fix is decided. The two obvious roads are a separate project-owned directory that `-Update`
+never touches, or an exclusion list in `install.ps1`; either one touches `roster.ruta_de_regla`,
+which is how the four checks find their file, and needs an installer case.
+
+Since 2026-09-23 there is a fourth: `reglas/authentication-abuse-protection.json`, installed empty
+by ES0902 Vu1, with the same exposure.
+
+### ES0902 Vu1 has no field for "expected side effects known" on a runtime test
+
+The Vu1 package lists four conditions for a failed-login runtime test: authorized environment,
+dedicated test identity, no real-user account, and known expected side effects. The provided
+`authentication-abuse-protection.schema.json` has `runtimeTest.authorized`,
+`environment`, `dedicatedTestIdentityRef` and `result`, and nothing for the fourth. Since
+2026-09-23 the check reads `authorized: true` as the authorization of the test with its side
+effects, which is a reading, not evidence. The schema is closed with `additionalProperties: false`,
+so a project cannot add the field on its own.
+
+Fix. Add `expectedSideEffectsAcknowledged` (boolean or null) to `runtimeTest` in the schema and
+require it `true` in `prueba_segura` of `controles/checks/authentication-abuse-protection.py`, with
+a scenario in `tests/casos/44_es0902_vu1_proteccion_de_autenticacion.py`. It changes a provided
+contract, so it needs whoever owns the package to agree.
+
+### ES0902 Vu1 closed with E-39 and E-42 contradicted, and one equivalence leftover
+
+Third and final refuter pass, 2026-09-23: 42 upheld, 2 contradicted, documented in
+`docs/cambios/es0902-vu1-proteccion-de-la-pagina-de-autenticacion/verificacion.md`.
+
+E-39. The credential pattern in `controles/checks/authentication-abuse-protection.py` starts with
+`(?<![:/\w-])` so the `:secret:` segment of a secrets-manager ARN does not close the registry.
+The same lookbehind lets `app:password=hunter2`, `env/DB_PASSWORD=hunter2`, `ci-job:api_key=abc123`
+and `realm:token=abc123` through, in `details` and in a `surfaceId`, into the output.
+
+Fix. Decide on the value, not on the key: allow the ARN only when the whole string is an ARN
+(`^arn:[^\s]+$`), and drop `:` and `/` from the lookbehind. Re-run the legitimate texts of E-39
+(`passwordPolicy:`, `tokenLifespan=`, `Bypass:`, the ARN) as the guard.
+
+E-42. `evaluar_pagina` finds unreadable evidence about a page with
+`sid in json.dumps(e, sort_keys=True, default=str)`. `json.dumps` escapes non-ASCII and quotes, so
+`trámites-login` or `log"in` are never found and malformed or repeated uncited INACTIVE evidence
+about them is discarded in silence (PASS). The same substring match also over-blocks: malformed
+evidence about `ciudadano-v2` leaves `ciudadano` unresolved.
+
+Fix. Walk the strings of the evidence (`_textos`) and compare each one, or each item of a
+`surfaceIds` list, for equality with the surfaceId; fall back to the substring only when
+`surfaceIds` is not a list. That closes both sides.
+
+Equivalence. A `MECHANISM_EQUIVALENCE` with `value: SUPPORTED` counts and avoids FAIL; the module
+rejects that value everywhere else as a capability claim. Fix: exclude `VALORES_DE_CAPACIDAD` from
+equivalence values, with a line in `test_e22`.
 
 ## Verification that was not done
 

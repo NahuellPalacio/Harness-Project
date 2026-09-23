@@ -233,7 +233,8 @@ def test_e09_la_review_reusa_la_infraestructura_de_g2(t):
                 "REVIEW" in c_controles.TIPOS)
     hay = c_controles.instalados()
     t.igual("E-09 las reviews estan en el mismo registro",
-            ["object-oriented-design-review", "technology-practice-review"],
+            ["gcba-it-security-normative-review", "object-oriented-design-review",
+             "technology-practice-review"],
             sorted(hay["REVIEW"]))
 
     # Un solo contrato de review para las dos.

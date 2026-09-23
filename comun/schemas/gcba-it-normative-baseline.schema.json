@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gcba-it-normative-baseline/1.0",
+  "title": "GCBA_IT_NORMATIVE_BASELINE",
+  "description": "Que normativa de TI del GCABA existe, de quien es y en que estado esta. Es un registro de APOYO para ES0902 O1, no una matriz normativa: no declara reglas, no las clasifica y nadie resuelve aplicabilidad contra el. Dice dos cosas y solo dos — si el harness tiene cargado el contenido autoritativo de una fuente, y si consta que esa fuente sigue vigente —. Lo que no dice se queda sin decir: una fuente nombrada por un estandar y no cargada entra con su titulo y su autoridad, y su contenido no se transcribe, no se resume y no se deduce. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["version", "authority", "sources"],
+  "additionalProperties": false,
+  "properties": {
+
+    "version": {
+      "description": "La version del registro, no la de ninguna fuente.",
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)+$"
+    },
+
+    "authority": {
+      "description": "De quien es la linea base. No es la autoridad de cada fuente, que viaja en la fuente.",
+      "type": "string"
+    },
+
+    "sources": {
+      "description": "Las fuentes normativas de TI del GCABA que la linea base conoce. Todas son aplicables: no hay forma de declarar que una no aplica, porque decidirlo es interpretacion normativa y exigiria evidencia autoritativa que hoy no produce nadie.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "status", "authority"],
+        "additionalProperties": false,
+        "properties": {
+
+          "id": {
+            "description": "El id con el que la cita un resultado. Es el de la fuente, no el de una regla.",
+            "type": "string",
+            "pattern": "^[A-Z0-9][A-Z0-9-]*$"
+          },
+
+          "title": { "type": "string" },
+
+          "version": {
+            "description": "La version de la fuente, cuando la tiene. Una fuente que no esta cargada normalmente no la trae, y no se le inventa.",
+            "type": "string"
+          },
+
+          "sourceDate": { "type": "string" },
+
+          "status": {
+            "description": "LOADED es que el harness tiene el contenido autoritativo. DECLARED_EXTERNAL_NOT_LOADED es que un estandar la nombra y el contenido no esta. No hay un tercer estado: 'la conozco un poco' no es un estado, es un permiso para inventar.",
+            "type": "string",
+            "enum": ["LOADED", "DECLARED_EXTERNAL_NOT_LOADED"]
+          },
+
+          "currency": {
+            "description": "Si consta que la fuente sigue vigente. Ausente es UNRESOLVED, y UNRESOLVED es el default a proposito: que el harness tenga cargada una version no le consta que sea la vigente. SUPERSEDED sin `supersededBy` tampoco resuelve nada — saber que algo fue reemplazado sin saber por que cosa no alcanza para aplicar nada.",
+            "type": "string",
+            "enum": ["CURRENT", "SUPERSEDED", "UNRESOLVED"]
+          },
+
+          "supersededBy": {
+            "description": "El id de la fuente que la reemplaza. Tiene que ser una fuente de esta misma linea base: un id que no esta declarado no resuelve la sucesion, la muda.",
+            "type": "string"
+          },
+
+          "authority": {
+            "description": "Quien la dicta. Sin autoridad una fuente normativa es un documento.",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -82,7 +82,24 @@ ESTADO_DESCONOCIDO = "SECURITY_ASSESSMENT_STATE_UNKNOWN"
 # -- C2 ------------------------------------------------------------------------
 
 AMBIENTE_DE_HOMOLOGACION = "QA"
-C2_FUERA_DE_QA = "SECURITY_APPROVAL_OUTSIDE_QA"
+# Dos nombres y no uno: saber que la aprobacion es de OTRO ambiente no es lo mismo que no saber
+# de cual es. Son los mismos que emite `qa-security-approval-evidence`, para que un resultado de
+# C2 no tenga dos vocabularios.
+C2_FUERA_DE_QA = "SECURITY_APPROVAL_NOT_IN_QA"
+C2_AMBIENTE_SIN_RESOLVER = "SECURITY_APPROVAL_ENVIRONMENT_UNRESOLVED"
+AMBIENTES_AJENOS = ("DEV", "HML", "PRD", "OTHER")
+
+# Los diecisiete estados que emite `qa-security-approval-evidence`. Estan aca y no se importan
+# porque `controles/` no llega a un proyecto instalado; `42_es0902_c2/E-56` compara las dos listas
+# para que no se desincronicen. La unidad de trabajo proyecta uno de estos, o ninguno.
+ESTADOS_DEL_CHECK_C2 = (
+    "PASS", "FAIL", "NOT_APPLICABLE", "APPLICABILITY_UNRESOLVED", "SECURITY_APPROVAL_REQUIRED",
+    "SECURITY_APPROVAL_EVIDENCE_UNRESOLVED", "SECURITY_APPROVAL_ENVIRONMENT_UNRESOLVED",
+    "SECURITY_APPROVAL_NOT_IN_QA", "SECURITY_APPROVAL_AUTHORITY_UNRESOLVED",
+    "SECURITY_APPROVAL_SCOPE_UNRESOLVED", "SECURITY_APPROVAL_ARTIFACT_UNRESOLVED",
+    "SECURITY_REASSESSMENT_REQUIRED", "PARTIAL_ASSESSMENT_SCOPE_UNRESOLVED",
+    "ASSESSMENT_AGE_CONTEXT_UNRESOLVED", "ASSESSMENT_TRIGGER_CLASSIFICATION_UNRESOLVED",
+    "SECURITY_APPROVAL_EVIDENCE_CHANGED", "ASSESSMENT_VALIDITY_UNRESOLVED")
 
 # -- G2 ------------------------------------------------------------------------
 
@@ -388,7 +405,8 @@ def regla_c2(r, evidencia, salida):
     salida["reasons"].extend(oficial.get("reasons") or [])
 
     if ambiente != AMBIENTE_DE_HOMOLOGACION:
-        salida["states"].append(C2_FUERA_DE_QA)
+        salida["states"].append(C2_FUERA_DE_QA if ambiente in AMBIENTES_AJENOS
+                                else C2_AMBIENTE_SIN_RESOLVER)
         salida["reasons"].append("la aprobacion de seguridad se evidencia en %s y el ambiente "
                                  "declarado es `%s`" % (AMBIENTE_DE_HOMOLOGACION, ambiente))
         return salida
@@ -397,6 +415,44 @@ def regla_c2(r, evidencia, salida):
                                  "QA no es una aprobacion")
         return salida
     return seguridad._generico(r, evidencia, salida)
+
+
+def c2_para_unidad(aplicabilidad, resultado=None):
+    """El bloque de C2 que viaja en la unidad de trabajo: referencias, no contenido.
+
+    Se proyecta el resultado de `qa-security-approval-evidence`: la aplicabilidad, el estado, la
+    referencia y la huella de la aprobacion, la relacion con el artefacto, la revalidacion y los
+    ids de evidencia. No se copia el registro ni la evidencia: la unidad se lee suelta y viaja, y
+    lo sensible del assessment se referencia donde vive.
+    """
+    r = resultado if isinstance(resultado, dict) else {}
+    # 🔴 Se proyecta un resultado del check de C2 y nada mas: uno que no dice ser de ese control,
+    # o que trae un estado oficial, no se copia. Y si la regla no aplica o no se sabe, el resultado
+    # es ese, venga lo que venga.
+    estado = r.get("state") if r.get("control") == "qa-security-approval-evidence" else None
+    if estado not in ESTADOS_DEL_CHECK_C2:
+        r, estado = {}, None
+    if aplicabilidad != seguridad.APLICABLE:
+        r = {}
+        estado = (seguridad.NO_APLICABLE if aplicabilidad == seguridad.NO_APLICABLE
+                  else seguridad.RESULTADO_SIN_RESOLVER)
+    reev = r.get("reassessment") if isinstance(r.get("reassessment"), dict) else {}
+    # La referencia viaja con sus tres campos de texto y nada mas: un resultado que traiga el
+    # registro adentro no lo mete en la unidad.
+    ref = r.get("approvalEvidenceRef")
+    ref = ({k: ref.get(k) for k in ("approvalId", "evidenceReference", "fingerprint")
+            if isinstance(ref.get(k), str)} if isinstance(ref, dict) else None) or None
+    return {"applicability": aplicabilidad,
+            "result": estado or seguridad.RESULTADO_SIN_RESOLVER,
+            "approvalEvidenceRef": ref,
+            "assessedArtifactRelation": r.get("assessedArtifactRelation") or "UNRESOLVED",
+            "reassessment": {"required": reev.get("required"),
+                             "triggers": list(reev.get("triggers") or [])},
+            "evidence": sorted(e for e in (r.get("evidence") or [])
+                               if isinstance(e, str)) if isinstance(r.get("evidence"), list) else [],
+            "source": {"standard": "ES0902", "version": "6.2", "section": "3", "rule": "C2"},
+            "supportingSource": {"standard": "ES0901", "version": "6.3",
+                                 "section": "Anexo V"}}
 
 
 def regla_g2(r, evidencia, salida):

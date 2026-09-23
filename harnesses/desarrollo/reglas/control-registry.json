@@ -637,6 +637,149 @@
         "section": "7.1",
         "rule": "P1"
       }
+    },
+    {
+      "id": "gcba-it-security-normative-compliance-required",
+      "type": "POLICY",
+      "rule": "O1",
+      "file": "controles/policies/gcba-it-security-normative-compliance-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "3",
+        "rule": "O1"
+      }
+    },
+    {
+      "id": "gcba-it-security-normative-review",
+      "type": "REVIEW",
+      "rule": "O1",
+      "file": "controles/reviews/gcba-it-security-normative-review.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "3",
+        "rule": "O1"
+      }
+    },
+    {
+      "id": "gcba-security-control-authority-required",
+      "type": "POLICY",
+      "rule": "O2",
+      "file": "controles/policies/gcba-security-control-authority-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "3",
+        "rule": "O2"
+      }
+    },
+    {
+      "id": "security-control-authority-evidence",
+      "type": "CHECK",
+      "rule": "O2",
+      "file": "controles/checks/security-control-authority-evidence.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "3",
+        "rule": "O2"
+      }
+    },
+    {
+      "id": "openid-connect-authentication-required",
+      "type": "POLICY",
+      "rule": "C1",
+      "file": "controles/policies/openid-connect-authentication-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "3",
+        "rule": "C1"
+      }
+    },
+    {
+      "id": "dgsei-keycloak-provider-required",
+      "type": "POLICY",
+      "rule": "C1",
+      "file": "controles/policies/dgsei-keycloak-provider-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "3",
+        "rule": "C1"
+      }
+    },
+    {
+      "id": "oidc-keycloak-integration",
+      "type": "CHECK",
+      "rule": "C1",
+      "file": "controles/checks/oidc-keycloak-integration.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "3",
+        "rule": "C1"
+      }
+    },
+    {
+      "id": "qa-security-approval-required",
+      "type": "POLICY",
+      "rule": "C2",
+      "file": "controles/policies/qa-security-approval-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "3",
+        "rule": "C2"
+      }
+    },
+    {
+      "id": "qa-security-approval-evidence",
+      "type": "CHECK",
+      "rule": "C2",
+      "file": "controles/checks/qa-security-approval-evidence.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "3",
+        "rule": "C2"
+      }
+    },
+    {
+      "id": "authentication-abuse-protection-required",
+      "type": "POLICY",
+      "rule": "Vu1",
+      "file": "controles/policies/authentication-abuse-protection-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu1"
+      }
+    },
+    {
+      "id": "authentication-abuse-protection",
+      "type": "CHECK",
+      "rule": "Vu1",
+      "file": "controles/checks/authentication-abuse-protection.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu1"
+      }
     }
   ]
 }

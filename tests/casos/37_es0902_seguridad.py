@@ -367,18 +367,34 @@ def test_e13_la_forma_vieja_sigue_valiendo(t):
     t.igual("E-13 una fuente", 1, len(fuentes))
     t.igual("E-13 y es la que declaro", "D1", fuentes[0]["rule"])
 
-    # 📌 Los 25 controles que no comparten nada siguen con la forma vieja, sin tocar.
+    # 📌 Los 36 controles que no comparten nada siguen con la forma vieja, sin tocar: 25 de
+    # ES0901 y los 11 que instalaron O1, O2, C1, C2 y Vu1, que salen de un solo estandar y no necesitan
+    # la lista.
     sin_migrar = [c for c in REGISTRO["controls"] if "normativeSources" not in c]
-    t.igual("E-13 veinticinco controles siguen con `source` solo", 25, len(sin_migrar))
+    t.igual("E-13 treinta y seis controles siguen con `source` solo", 36, len(sin_migrar))
     for c in sin_migrar:
         t.igual("E-13 `%s` se lee igual" % c["id"], 1, len(c_controles.fuentes_de(c)))
-    t.igual("E-13 y los veinticinco son de ES0901", 25,
+    t.igual("E-13 veinticinco son de ES0901", 25,
             len([c for c in sin_migrar
                  if c_controles.fuentes_de(c)[0]["standard"] == "ES0901"]))
+    t.igual("E-13 y los once de O1, O2, C1, C2 y Vu1 son de ES0902",
+            ["authentication-abuse-protection",
+             "authentication-abuse-protection-required",
+             "dgsei-keycloak-provider-required",
+             "gcba-it-security-normative-compliance-required",
+             "gcba-it-security-normative-review",
+             "gcba-security-control-authority-required",
+             "oidc-keycloak-integration",
+             "openid-connect-authentication-required",
+             "qa-security-approval-evidence",
+             "qa-security-approval-required",
+             "security-control-authority-evidence"],
+            sorted(c["id"] for c in sin_migrar
+                   if c_controles.fuentes_de(c)[0]["standard"] == "ES0902"))
 
     informe = c_controles.validar(REGISTRO)
     t.vacio("E-13 el registro entero valida contra el schema", informe["schemaErrors"])
-    t.igual("E-13 y los 31 controles siguen instalados", 31,
+    t.igual("E-13 y los 42 controles siguen instalados", 42,
             len([e for e in informe["controls"].values() if e == "INSTALLED"]))
 
     # La lista gana cuando esta: no se suman las dos formas.
@@ -392,19 +408,24 @@ def test_e14_un_control_compartido_se_declara_una_vez(t):
     """E-14 (S-04) — no hay un `authentication-delegation` de D2 y otro de C1."""
     ids = [c["id"] for c in REGISTRO["controls"]]
     t.igual("E-14 ningun id repetido", len(ids), len(set(ids)))
-    t.igual("E-14 el registro declara 31 controles", 31, len(ids))
+    t.igual("E-14 el registro declara 42 controles", 42, len(ids))
     for cid in sorted(cruzada.controles_compartidos(MAPA)):
         t.igual("E-14 `%s` aparece una sola vez" % cid, 1, ids.count(cid))
         t.igual("E-14 `%s` lo citan dos estandares" % cid, ["ES0901", "ES0902"],
                 c_controles.estandares_de(cid, REGISTRO))
 
-    # 📌 Y se llega al mismo control por las dos reglas, sin duplicarlo.
+    # 📌 Y se llega al mismo control por las dos reglas, sin duplicarlo. Desde que C1 instalo
+    # sus tres propios, ES0902.C1 alcanza cinco: los dos que comparte con D2 y los suyos.
     por_d2 = [c["id"] for c in c_controles.de_la_regla("D2", REGISTRO)]
     por_c1 = [c["id"] for c in c_controles.de_la_regla("ES0902.C1", REGISTRO)]
-    t.igual("E-14 D2 y ES0902.C1 llegan a los mismos dos", sorted(por_d2), sorted(por_c1))
+    t.igual("E-14 D2 y ES0902.C1 llegan a los mismos dos", sorted(por_d2),
+            sorted(set(por_d2) & set(por_c1)))
     t.igual("E-14 y son los que el mapa nombra",
             ["authentication-delegation", "credential-entry-delegation-required"],
-            sorted(por_c1))
+            sorted(set(por_d2) & set(por_c1)))
+    t.igual("E-14 lo demas de C1 es suyo y no de D2",
+            ["dgsei-keycloak-provider-required", "oidc-keycloak-integration",
+             "openid-connect-authentication-required"], sorted(set(por_c1) - set(por_d2)))
 
 
 def test_e15_el_resultado_no_se_propaga_entre_estandares(t):
@@ -772,13 +793,17 @@ def test_e28_los_doce_estados_y_ninguno_mas(t):
 def test_e29_c2_fuera_de_qa_no_cumple(t):
     """E-29 (S-12) — la aprobacion se evidencia en QA o no cuenta."""
     senales = _todas_las_senales()
-    for ambiente in ("DEV", "HML", "PRD", None, "qa"):
+    # Desde ES0902 C2 son dos nombres, los mismos que emite el check: otro ambiente, o no saberlo.
+    for ambiente, estado in (("DEV", "SECURITY_APPROVAL_NOT_IN_QA"),
+                             ("HML", "SECURITY_APPROVAL_NOT_IN_QA"),
+                             ("PRD", "SECURITY_APPROVAL_NOT_IN_QA"),
+                             (None, "SECURITY_APPROVAL_ENVIRONMENT_UNRESOLVED"),
+                             ("qa", "SECURITY_APPROVAL_ENVIRONMENT_UNRESOLVED")):
         ev = _todos_en_pass("C2", environment=ambiente,
                             officialApproval=_oficial("APPROVED", "GCBA_DGSEI"))
         r = seguridad.resultado("C2", ev, senales, MATRIZ)
         t.verdadero("E-29 en `%r` C2 no cumple" % ambiente, r["result"] != "COMPLIANT")
-        t.contiene("E-29 en `%r` con su estado" % ambiente,
-                   "SECURITY_APPROVAL_OUTSIDE_QA", repr(r["states"]))
+        t.contiene("E-29 en `%r` con su estado" % ambiente, estado, repr(r["states"]))
     t.igual("E-29 el ambiente de homologacion es QA", "QA",
             evaluacion.AMBIENTE_DE_HOMOLOGACION)
 
@@ -1887,7 +1912,7 @@ def test_e69_los_modulos_no_tienen_como_conseguir_un_secreto(t):
 
 
 def test_e70_lo_declarado_no_finge_estar_instalado(t):
-    """E-70 — veinte policies, dieciseis checks y dos reviews declarados y sin construir."""
+    """E-70 — catorce policies, doce checks y una review declarados y sin construir."""
     resolucion = seguridad.resolver(_todas_las_senales())
     t.igual("E-70 con todas las senales aplican las 21", 21, len(resolucion["applicableRules"]))
     t.igual("E-70 veintitres policies declaradas", 23, len(resolucion["declaredPolicies"]))
@@ -1898,13 +1923,13 @@ def test_e70_lo_declarado_no_finge_estar_instalado(t):
     por_estado = {}
     for f in faltan:
         por_estado[f["state"]] = por_estado.get(f["state"], 0) + 1
-    t.igual("E-70 veinte policies no instaladas", 20,
+    t.igual("E-70 catorce policies no instaladas", 14,
             por_estado.get("DECLARED_POLICY_NOT_INSTALLED"))
-    t.igual("E-70 dieciseis checks no instalados", 16,
+    t.igual("E-70 doce checks no instalados", 12,
             por_estado.get("DECLARED_CHECK_NOT_INSTALLED"))
-    t.igual("E-70 dos reviews no instaladas", 2,
+    t.igual("E-70 una review no instalada", 1,
             por_estado.get("DECLARED_REVIEW_NOT_INSTALLED"))
-    t.igual("E-70 treinta y ocho huecos en total", 38, len(faltan))
+    t.igual("E-70 veintisiete huecos en total", 27, len(faltan))
 
     # 🔴 Y eso NO invalida la matriz: es el estado correcto de un harness que clasifico antes
     # de construir. Los seis que si estan instalados son los compartidos con ES0901.
@@ -1913,10 +1938,25 @@ def test_e70_lo_declarado_no_finge_estar_instalado(t):
     instalados = set(c_controles.instalados(REGISTRO)["POLICY"]) \
         | set(c_controles.instalados(REGISTRO)["CHECK"])
     declarados = set(resolucion["declaredPolicies"]) | set(resolucion["declaredChecks"])
-    t.igual("E-70 seis de los declarados por ES0902 ya estan instalados", 6,
+    t.igual("E-70 dieciseis de los declarados por ES0902 ya estan instalados", 16,
             len(declarados & instalados))
-    t.igual("E-70 y son los compartidos",
-            sorted(cruzada.controles_compartidos(MAPA)), sorted(declarados & instalados))
+    # Los seis compartidos con ES0901, mas los diez de O1, O2, C1, C2 y Vu1 que no comparten nada:
+    # salen de ES0902 secciones 3 y 6 y de ningun otro lado. La review de O1 no entra en esta cuenta, que es de
+    # policies y checks.
+    t.igual("E-70 y son los compartidos mas los de O1, O2, C1, C2 y Vu1",
+            sorted(set(cruzada.controles_compartidos(MAPA))
+                   | {"gcba-it-security-normative-compliance-required",
+                      "gcba-security-control-authority-required",
+                      "security-control-authority-evidence",
+                    "openid-connect-authentication-required",
+                    "dgsei-keycloak-provider-required", "oidc-keycloak-integration",
+                    "qa-security-approval-required", "qa-security-approval-evidence",
+                    "authentication-abuse-protection-required",
+                    "authentication-abuse-protection"}),
+            sorted(declarados & instalados))
+    t.verdadero("E-70 la review de O1 tambien esta instalada",
+                "gcba-it-security-normative-review"
+                in c_controles.instalados(REGISTRO)["REVIEW"])
 
 
 def test_e71_un_id_declarado_con_dos_tipos_se_reporta(t):

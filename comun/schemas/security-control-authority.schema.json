@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "security-control-authority/1.0",
+  "title": "SECURITY_CONTROL_AUTHORITY",
+  "description": "Quien responde por el control de seguridad de un alcance, para ES0902 §3 O2. Es del PROYECTO y se instala VACIO — la misma division que `database-environment-access-policy.json` contra `database-profiles.json`: la politica es del harness y el dato del proyecto lo pone el proyecto. Un harness que llegara con una autoridad puesta estaria rellenando el casillero que despues va a leer. 🔴 No declara ejecutores y no va a declararlos: quien escanea, remedia o prepara evidencia NO es quien responde, y que el archivo no tenga donde escribirlo es lo que hace que esa frontera sea una propiedad de la forma y no una costumbre. `additionalProperties: false` en las cuatro capas, y eso no es azucar: es lo que hace que un campo inventado se rechace en vez de viajar con el sello puesto. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["version", "authorities"],
+  "additionalProperties": false,
+  "properties": {
+
+    "version": {
+      "description": "La version del registro, no la de ninguna autoridad.",
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)+$"
+    },
+
+    "authorities": {
+      "description": "Las autoridades de control declaradas por el proyecto. Vacio es el estado de instalacion, y resuelve `SECURITY_CONTROL_AUTHORITY_UNRESOLVED`.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["authorityId", "organization", "responsibilities", "scope", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+
+          "authorityId": {
+            "description": "Identidad estable del registro. Es con lo que un resultado lo cita.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          },
+
+          "projectId": { "type": ["string", "null"] },
+
+          "organization": {
+            "type": "object",
+            "required": ["name", "gcabaMembership"],
+            "additionalProperties": false,
+            "properties": {
+
+              "name": {
+                "description": "El nombre no establece nada: es para que un resultado se pueda leer.",
+                "type": "string"
+              },
+
+              "gcabaMembership": {
+                "description": "🔴 Es una ETIQUETA, no evidencia. `VERIFIED` lo escribe quien edita el archivo, y por si solo no establece la pertenencia: hace falta ademas evidencia de una de las seis clases autoritativas. Sin eso queda `GCABA_MEMBERSHIP_UNRESOLVED` aunque el archivo diga VERIFIED.",
+                "type": "string",
+                "enum": ["VERIFIED", "UNRESOLVED", "NOT_GCABA"]
+              },
+
+              "organizationId": { "type": ["string", "null"] }
+            }
+          },
+
+          "responsibilities": {
+            "description": "Lo que esta organizacion responde. La unica que establece autoridad de control es `SECURITY_CONTROL`, que es lo que la regla nombra. Ejecutar -escanear, remediar, desarrollar, hostear, consultar- no es controlar, y una responsabilidad que el check no reconoce tampoco cuenta.",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+
+          "scope": {
+            "type": "object",
+            "required": ["type", "value"],
+            "additionalProperties": false,
+            "properties": {
+
+              "type": {
+                "description": "🔴 No hay orden entre los seis. `GLOBAL` no contiene a `PROJECT` y `PROJECT` no contiene a `APPLICATION`: la contencion la declara el objetivo en su cadena `within`, y un orden implicito es exactamente como la autoridad de un proyecto termina cubriendo a otro.",
+                "type": "string",
+                "enum": ["GLOBAL", "PROJECT", "SYSTEM", "APPLICATION", "COMPONENT", "ASSESSMENT"]
+              },
+
+              "value": { "type": "string" }
+            }
+          },
+
+          "effectiveFrom": {
+            "description": "`YYYY-MM-DD`. Posterior a la fecha de evaluacion es una autoridad que todavia no rige.",
+            "type": ["string", "null"]
+          },
+
+          "effectiveTo": {
+            "description": "`YYYY-MM-DD`. 🔴 Ausente o nulo NO es `para siempre`: es una autoridad sobre la que nadie dijo hasta cuando, y queda `SECURITY_AUTHORITY_CURRENT_STATUS_UNRESOLVED`. Es lo que impide reusar en silencio una asignacion vieja durante anios.",
+            "type": ["string", "null"]
+          },
+
+          "evidence": {
+            "description": "Lo que sostiene la pertenencia y la responsabilidad. Las seis clases son autoritativas por construccion; un archivo del harness, la afirmacion de un agente, un README o una etiqueta escrita a mano no son ninguna de las seis y por eso no entran.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["sourceType", "reference"],
+              "additionalProperties": false,
+              "properties": {
+
+                "sourceType": {
+                  "type": "string",
+                  "enum": [
+                    "OFFICIAL_GCBA_DOCUMENT",
+                    "OFFICIAL_GCBA_ORGANIZATIONAL_SOURCE",
+                    "OFFICIAL_SECURITY_WORKFLOW",
+                    "PROJECT_CONTRACT_OR_ACTA",
+                    "ASI_DGSEI_PROJECT_EVIDENCE",
+                    "OTHER_AUTHORITATIVE_GCBA_SOURCE"
+                  ]
+                },
+
+                "reference": { "type": "string" },
+
+                "issuer": { "type": ["string", "null"] },
+
+                "date": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

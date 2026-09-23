@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "authentication-surface/1.0",
+  "title": "Authentication Surface Inventory",
+  "description": "Las superficies de autenticacion de un proyecto, para ES0902 C1. Es del PROYECTO y se instala vacio. Los strings de `evidence` y `registrationEvidence` son ids de evidencia del caso que se le pasa al check, no la evidencia misma. `additionalProperties: false` en las dos capas: una clave de mas que se acepta en silencio es un campo que alguien termina leyendo como evidencia.",
+  "type": "object",
+  "required": [
+    "version",
+    "surfaces"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surfaceId",
+          "scope",
+          "audience",
+          "environment",
+          "evidence"
+        ],
+        "properties": {
+          "surfaceId": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "audience": {
+            "enum": [
+              "CITIZEN",
+              "INSTITUTIONAL",
+              "MIXED",
+              "UNRESOLVED"
+            ]
+          },
+          "environment": {
+            "enum": [
+              "DEV",
+              "QA",
+              "HML",
+              "PRD",
+              "OTHER",
+              "UNRESOLVED"
+            ]
+          },
+          "currentProvider": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "intendedProvider": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "protocol": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "flow": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "clientIdReference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registrationEvidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "credentialEntryDelegated": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "applicationRoleOwnership": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

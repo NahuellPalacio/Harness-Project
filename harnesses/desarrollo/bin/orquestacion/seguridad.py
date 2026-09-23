@@ -19,10 +19,20 @@ falta. `APPROVED` exige procedencia externa y esa frontera vive en `evaluacion.p
 tampoco cumple al vacio: cumplir sobre un conjunto vacio de controles es la forma mas barata de
 que un estandar entero salga verde.
 
-🔴 **Las reglas con algoritmo propio son ocho y estan declaradas.** El resultado es generico
+🔴 **Las reglas con algoritmo propio son diez y estan declaradas.** El resultado es generico
 -hallazgo abierto, control en FAIL, control sin evidencia- salvo donde el estandar declara un
-algoritmo: C2, Ve2, Vu4, Vu9, Vu10, G2, G3 y G4. Una novena rama por id seria el estandar
+algoritmo: O1, C2, C3, Ve2, Vu4, Vu9, Vu10, G2, G3 y G4. Una undecima rama por id seria el estandar
 reinterpretandose en el codigo, y `ALGORITMOS` esta para que se vea.
+
+🔴 **C3 tampoco la contesta el camino generico.** Cuatro `controlResults` en PASS la pondrian en
+`COMPLIANT` sin mirar si el catalogo es del Estandar de Desarrollo VIGENTE. Sale de
+`estandar_de_desarrollo.py`, que resuelve esa linea base y agrega C3 de los controles de G1. Este modulo
+no sabe del Anexo II, a proposito.
+
+🔴 **O1 es el que el camino generico no puede contestar.** Sus dos controles declarados son su
+propia policy y su propia review: dos `controlResults` en `PASS` la pondrian en `COMPLIANT` sin
+que nadie mire que normativa de TI del GCABA aplica. Sale de `linea_base.py`, que la resuelve
+contra la linea base normativa y contra los resultados que los dos estandares ya produjeron.
 
 🔴 **La matriz provista no se corrige.** Declara `security-vulnerability-acceptance-threshold`
 como policy y como check bajo la misma regla. Se reporta `SECURITY_CONTROL_ID_TYPE_COLLISION`
@@ -653,10 +663,12 @@ def _delegado(nombre, modulo="evaluacion"):
     return envoltorio
 
 
-# 🔴 Las ocho reglas con algoritmo propio, en un solo lugar. El resto es generico, y una rama
+# 🔴 Las diez reglas con algoritmo propio, en un solo lugar. El resto es generico, y una rama
 # por id que no este aca es el estandar reinterpretandose en el codigo.
 ALGORITMOS = {
+    "O1": _delegado("regla_o1", "linea_base"),
     "C2": _delegado("regla_c2"),
+    "C3": _delegado("regla_c3", "estandar_de_desarrollo"),
     "Ve2": _ve2,
     "Vu4": _vu4,
     "Vu9": _vu9,

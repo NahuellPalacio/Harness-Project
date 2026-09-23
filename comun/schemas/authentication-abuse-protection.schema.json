@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "authentication-abuse-protection/1.0",
+  "title": "Authentication Abuse Protection Evidence",
+  "description": "La evidencia de proteccion contra abuso de cada pagina de autenticacion, para ES0902 Vu1. Es del PROYECTO y se instala vacia. Se ata por el `surfaceId` del inventario de C1: no es un segundo inventario. Los strings de `evidence` son ids del catalogo de evidencia del caso. `additionalProperties: false` en las cuatro capas: una clave de mas -`password`, `token`- no entra.",
+  "type": "object",
+  "required": [
+    "version",
+    "surfaces"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surfaceId",
+          "pageOwnership",
+          "mechanisms",
+          "evidence"
+        ],
+        "properties": {
+          "surfaceId": {
+            "type": "string"
+          },
+          "pageOwnership": {
+            "enum": [
+              "APPLICATION",
+              "IDENTITY_PROVIDER",
+              "UNRESOLVED"
+            ]
+          },
+          "mechanisms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "type",
+                "status",
+                "evidenceMode"
+              ],
+              "properties": {
+                "type": {
+                  "enum": [
+                    "CAPTCHA",
+                    "USER_LOCKOUT_AFTER_FAILED_ATTEMPTS"
+                  ]
+                },
+                "status": {
+                  "enum": [
+                    "ACTIVE",
+                    "INACTIVE",
+                    "UNRESOLVED"
+                  ]
+                },
+                "evidenceMode": {
+                  "enum": [
+                    "PROVIDER_CONFIGURATION",
+                    "APPLICATION_CONFIGURATION",
+                    "OFFICIAL_PROVIDER_EVIDENCE",
+                    "OFFICIAL_ASSESSMENT_EVIDENCE",
+                    "AUTHORIZED_RUNTIME_TEST",
+                    "OTHER_AUTHORITATIVE_EVIDENCE"
+                  ]
+                },
+                "details": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "runtimeTest": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "environment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "dedicatedTestIdentityRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "authorized": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "result": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

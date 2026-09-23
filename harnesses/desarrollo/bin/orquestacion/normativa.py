@@ -81,7 +81,7 @@ def aviso_de_matriz(desde=None):
 
 # -- la clasificacion, que vive en la matriz -----------------------------------
 
-def resolucion(senales, desde=None):
+def resolucion(senales, desde=None, evidencia=None):
     """El bloque normativo de una unidad: que aplica, que no, y que no se sabe.
 
     Las senales entran de dos formas y las dos siguen andando: booleanos explicitos -la forma
@@ -93,6 +93,10 @@ def resolucion(senales, desde=None):
 
     Lo resuelto viaja al lado, en `signals`: quien lee la unidad ve el valor, su estado y de
     donde salio, sin tener que confiar en un booleano que nadie firmo.
+
+    `evidencia` trae resultados ya corridos, por clave compuesta. Hoy la leen dos reglas,
+    `ES0902.C2` y `ES0902.C3`, que ponen su bloque en `standards.ES0902.rules` con referencias y
+    no con contenido. Sin resultado el bloque queda sin resolver.
     """
     from . import matriz
     from . import senales as modulo_senales
@@ -118,6 +122,16 @@ def resolucion(senales, desde=None):
     from . import seguridad
     try:
         bloque["standards"][seguridad.ESTANDAR] = seguridad.resolver(booleanos, None, desde)
+        # `rules` se suma al bloque de ES0902 y no a `seguridad.resolver`, cuya forma es la misma
+        # que la de ES0901 a proposito.
+        from . import evaluacion
+        aplic, _ = seguridad.resolver_regla(seguridad.regla("C2", None, desde), booleanos)
+        bloque["standards"][seguridad.ESTANDAR]["rules"] = {
+            "C2": evaluacion.c2_para_unidad(
+                aplic, (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.C2"))}
+        from . import estandar_de_desarrollo
+        bloque["standards"][seguridad.ESTANDAR]["rules"]["C3"] = estandar_de_desarrollo.c3_para_unidad(
+            (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.C3"), desde)
     except seguridad.SeguridadInvalida as e:
         # Un estandar roto no se lleva puesto al otro. Se dice cual, y ES0901 sigue resolviendo.
         bloque["standards"][seguridad.ESTANDAR] = {

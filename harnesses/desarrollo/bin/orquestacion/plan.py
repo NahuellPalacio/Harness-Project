@@ -306,7 +306,8 @@ def _armar_unidad(propuesta_unidad, task_context, capacidades, politica, dominio
         # senales entran como booleanos explicitos -la forma vieja- o como documentos con su
         # evidencia y su productor; lo que no viene queda sin resolver, nunca en "no aplica".
         # El valor resuelto y su evidencia viajan en `normative.signals`.
-        "normative": normativa.resolucion(propuesta_unidad.get("normativeSignals") or {}),
+        "normative": normativa.resolucion(propuesta_unidad.get("normativeSignals") or {},
+                                          evidencia=propuesta_unidad.get("normativeEvidence")),
         "requiredChecks": [c["name"] for c in roster.checks_para([dominio])],
         "dependencies": list(propuesta_unidad.get("dependencies") or []),
         "modelPolicy": {

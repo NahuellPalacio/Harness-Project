@@ -1,4 +1,4 @@
-# gcba-harness
+# Project-Harness
 
 Andamiaje de trabajo con IA para los proyectos de DGISIS / GCBA.
 
@@ -62,8 +62,8 @@ El paso a paso completo, por PowerShell y por bash, con los problemas frecuentes
 está en **[docs/instalacion.md](docs/instalacion.md)**. La versión corta:
 
 ```powershell
-git clone https://github.com/NahuellPalacio/Harness-Project.git C:\Work\gcba-harness
-cd C:\Work\gcba-harness
+git clone https://github.com/NahuellPalacio/Harness-Project.git C:\Work\Project-Harness
+cd C:\Work\Project-Harness
 
 # 1. Revisar que la máquina esté en condiciones. No escribe nada.
 .\install.ps1 -Doctor

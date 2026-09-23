@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "security-approval-evidence/1.0",
+  "title": "Security Approval Evidence",
+  "description": "Las aprobaciones oficiales de seguridad de un proyecto, para ES0902 C2. Es del PROYECTO y se instala vacio. `provenanceClass` solo admite la autoridad externa del GCABA o UNRESOLVED: un productor interno no tiene como escribirse. `additionalProperties: false` en las tres capas.",
+  "type": "object",
+  "required": [
+    "version",
+    "approvals"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "approvalId",
+          "projectId",
+          "applicationId",
+          "environment",
+          "status",
+          "assessmentDate",
+          "provenanceClass",
+          "authorityEvidence",
+          "scope",
+          "evidenceReference"
+        ],
+        "properties": {
+          "approvalId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "environment": {
+            "enum": [
+              "DEV",
+              "QA",
+              "HML",
+              "PRD",
+              "OTHER",
+              "UNRESOLVED"
+            ]
+          },
+          "status": {
+            "enum": [
+              "APPROVED",
+              "REJECTED",
+              "OFFICIAL_STATUS_UNRESOLVED"
+            ]
+          },
+          "assessmentType": {
+            "enum": [
+              "FULL",
+              "PARTIAL",
+              "UNRESOLVED"
+            ]
+          },
+          "assessmentDate": {
+            "type": "string"
+          },
+          "assessmentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provenanceClass": {
+            "enum": [
+              "EXTERNAL_GCABA_SECURITY_AUTHORITY",
+              "UNRESOLVED"
+            ]
+          },
+          "authorityEvidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "artifact": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "repository": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "commitSha": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "buildId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "artifactDigest": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "imageDigest": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "releaseId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "evidenceReference": {
+            "type": "string"
+          },
+          "evidenceFingerprint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

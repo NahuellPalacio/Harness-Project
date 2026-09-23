@@ -59,9 +59,258 @@ que la aplicación maneja sesiones no prueba que no las maneje: prueba que nadie
 regla que no declara ningún control **no cumple al vacío**: cumplir sobre un conjunto vacío es la
 forma más barata de que un estándar entero salga verde.
 
-La resolución es genérica y hay **ocho** reglas con algoritmo propio, porque el estándar les
-declara uno: C2, Ve2, Vu4, Vu9, Vu10, G2, G3 y G4. Viven juntas en `ALGORITMOS`, en un solo
-lugar, para que una novena no aparezca sin que nadie la vea.
+La resolución es genérica y hay **nueve** reglas con algoritmo propio, porque el estándar les
+declara uno: O1, C2, Ve2, Vu4, Vu9, Vu10, G2, G3 y G4. Viven juntas en `ALGORITMOS`, en un solo
+lugar, para que una décima no aparezca sin que nadie la vea.
+
+## O1 y la normativa de TI del GCABA
+
+O1 es la fila más ancha del estándar —*"Se deben respetar los principios y normativas vigentes de
+TI del GCABA"*— y la única que no se contesta mirando el sistema. Se contesta mirando **qué
+normativa aplica** y **qué se midió contra ella**. Por eso no tiene check: tiene una policy y una
+review.
+
+La línea base vive en `reglas/gcba-it-normative-baseline.json` y es un **registro de apoyo**, no
+una matriz normativa. No declara reglas, no clasifica nada y nadie resuelve aplicabilidad contra
+él. Dice dos cosas de cada fuente, y sólo dos:
+
+```
+ES0901 6.3                  LOADED                        el harness tiene el contenido
+ES0902 6.2                  LOADED
+Resolución 177-ASINF-2013   DECLARED_EXTERNAL_NOT_LOADED  ES0902 la nombra; el contenido no está
+Resolución 239-ASINF/2014   DECLARED_EXTERNAL_NOT_LOADED
+N° 12/ASINF/17              DECLARED_EXTERNAL_NOT_LOADED
+```
+
+🔴 **El contenido de las tres resoluciones no se transcribe, no se resume y no se deduce del texto
+que las cita.** Una resolución inventada se lee igual de autoritativa que una real.
+
+Y la vigencia es un campo aparte —`CURRENT`, `SUPERSEDED`, `UNRESOLVED`— cuyo default es
+`UNRESOLVED`, también para lo que está cargado: que el harness tenga ES0901 6.3 no le consta que
+6.3 sea la versión vigente.
+
+```
+fuente aplicable sin cargar        ->  EXTERNAL_NORMATIVE_CONTEXT_REQUIRED
+vigencia o sucesión desconocida    ->  NORMATIVE_SUPERSESSION_UNRESOLVED
+línea base ausente o ilegible      ->  NORMATIVE_BASELINE_UNRESOLVED
+```
+
+Ninguno de los tres puede terminar en `COMPLIANT`. **Con la línea base como vino, toda corrida real
+de la review de O1 da `REVIEW_INCOMPLETE`**, y ése es el resultado correcto: lo que lo destraba es
+que llegue el contenido autoritativo, no que alguien escriba `LOADED` sin evidencia.
+
+O1 **no reejecuta nada**. Consume los resultados que ES0901 y ES0902 ya produjeron, declarados como
+evidencia. Un resultado aplicable en `NON_COMPLIANT` impide cumplir, y ahí la review titula
+`NON_COMPLIANT` aunque tenga estados sin resolver al lado —al revés que `revisiones.resolver`, y a
+propósito: lo incompleto de O1 es permanente, y si titulara escondería para siempre una falla real
+detrás de un estado que no se mueve—.
+
+La excepción contractual es la misma de ES0902, sin cambios: contrato **y** aprobación de ASI, las
+dos o ninguna. Concedida, el resultado exceptuado no desaparece: queda como observación, con la
+excepción pegada.
+
+Y cumplir O1 no aprueba nada. `COMPLIANT` acá no mueve el estado oficial de la evaluación, que
+sigue exigiendo procedencia externa.
+
+## O2 y quién controla la seguridad
+
+O2 —*"El control de la seguridad informática debe estar a cargo de un organismo perteneciente al
+GCABA"*— no es una regla sobre el código. Es sobre **quién responde**, y la pregunta no es si el
+harness corre controles de seguridad —los corre— sino si la responsabilidad del control está
+asignada a un organismo del que **consta** que es del GCABA.
+
+Un harness con `dev-security`, cuatro skills de seguridad y resultados por regla se parece mucho a
+esa autoridad. No lo es, y O2 es el control que lo deja escrito.
+
+```
+CONTROL AUTHORITY   responde por el control de seguridad del alcance
+EJECUCIÓN           escanea, revisa, remedia, prepara evidencia
+```
+
+🔴 **El check no tiene ningún campo de ejecutor y no lo va a tener.** Así, *"quien ejecuta no puede
+volverse quien responde"* es una propiedad de la forma del archivo y no una costumbre. Un proveedor
+declarado con `SECURITY_SCANNING` no cuenta: la única responsabilidad que establece autoridad es
+`SECURITY_CONTROL`, que es lo que la regla nombra.
+
+El registro es **del proyecto** y se instala vacío, igual que los perfiles de base:
+
+```
+reglas/database-environment-access-policy.json   del HARNESS. Un proyecto no la edita
+reglas/database-profiles.json                    del PROYECTO. Se instala VACIO
+reglas/security-control-authority.json           del PROYECTO. Se instala VACIO
+```
+
+Y hay tres cosas que el check se niega a adivinar:
+
+**La pertenencia al GCABA.** `gcabaMembership: VERIFIED` es una etiqueta que escribe quien edita el
+archivo. Lo que la establece es evidencia de una de las seis clases autoritativas. Ni el nombre del
+organismo, ni el dominio de un correo, ni el namespace del repositorio, ni el README.
+
+**La contención de alcance.** No hay orden entre `GLOBAL`, `PROJECT`, `SYSTEM`, `APPLICATION`,
+`COMPONENT` y `ASSESSMENT`: el objetivo declara su cadena, y una autoridad global cubre a quien la
+nombra y a nadie más. Un orden implícito es cómo la autoridad de un proyecto termina cubriendo a
+otro.
+
+**La vigencia.** Sin `effectiveTo` no hay vigencia. Ausente no es "para siempre": es una autoridad
+sobre la que nadie dijo hasta cuándo, y es la que lleva años sin que nadie mire.
+
+Los nueve estados, y el único que aprueba es el primero:
+
+```
+PASS
+FAIL                                            consta que la controlante es ajena al GCABA
+SECURITY_CONTROL_AUTHORITY_UNRESOLVED           el registro está vacío
+GCABA_MEMBERSHIP_UNRESOLVED                     la etiqueta sin evidencia
+SECURITY_AUTHORITY_SCOPE_UNRESOLVED             ninguna alcanza al objetivo
+SECURITY_AUTHORITY_CURRENT_STATUS_UNRESOLVED    nadie dijo hasta cuándo
+SECURITY_AUTHORITY_EVIDENCE_EXPIRED             venció
+CONFLICTING_SECURITY_AUTHORITY_EVIDENCE         dos organizaciones, ninguna precedencia
+AUTHORITY_EVIDENCE_INSUFFICIENT                 ejecuta, no controla
+```
+
+🔴 **Falta de evidencia nunca es `FAIL`.** `FAIL` tiene un único camino y acusa a un organismo de
+algo: que consta que la controlante es ajena al GCABA y que ningún organismo del GCABA controla ese
+alcance. Todo lo demás que falta tiene su propio estado.
+
+Y `PASS` no aprueba nada más: no es la evaluación de seguridad, no es C2 y no es la homologación de
+DGSEI.
+
+## C1 y el Keycloak de DGSEI
+
+C1 pide que la autenticación hable OpenID Connect con el Keycloak que administra DGSEI, con el
+cliente registrado en el servidor que corresponde, el flujo que corresponde, la política de ASI
+detrás, el ingreso de credenciales delegado y el servicio OpenID anterior migrado. Lo contesta
+`oidc-keycloak-integration`, **superficie por superficie**: un login que cumple no tapa a otro que
+nadie miró, y un frontend ciudadano con un backoffice institucional son dos cosas.
+
+El inventario es **del proyecto** y se instala vacío:
+
+```
+reglas/authentication-surfaces.json      del PROYECTO. Se instala VACIO
+```
+
+Vacío con autenticación presente es `AUTHENTICATION_SURFACE_COVERAGE_UNRESOLVED`, y también lo es
+un inventario que no nombra un flujo que D2 sí vio.
+
+🔴 **Nada se prueba por parecido.** Una dependencia de OIDC no prueba el protocolo; un hostname con
+`keycloak` adentro no prueba la autoridad; un `client_id` no prueba el registro; el default del
+framework no prueba el flujo. Cada dimensión tiene su tabla de clases de fuente, y lo que no está en
+la tabla —README, ejemplo copiado, afirmación de un agente, salida de `dev-openid-connect`— no la
+sostiene.
+
+🔴 **No hay flujo universal ni URL de producción.** El flujo lo declara la superficie y lo sostiene
+una autoridad que nombra ese mismo flujo. El proveedor autorizado es por ambiente: la evidencia de
+producción no autoriza a QA. La única URL del GCBA que el check nombra es la del servicio anterior,
+`https://oauth2-server.apps.buenosaires.gob.ar/`: activo en una superficie es `FAIL` con
+`OIDC_MIGRATION_REQUIRED`; nombrado en un documento viejo es una observación.
+
+🔴 **D2 se consume, no se corre.** `authentication-delegation` se ejecuta una vez y el check de C1
+lee su resultado para el flujo con el id de la superficie.
+
+🔴 **Ciudadano no es institucional, y el harness no elige.** Una superficie institucional con
+evidencia se evalúa contra Keycloak. Cualquier otra, sin una reconciliación autoritativa **para esa
+superficie**, queda `CROSS_STANDARD_INTERPRETATION_REQUIRED`: ni se le fuerza Keycloak ni se la
+saca de C1. Lo que resuelve la evidencia de un proyecto vale para esa superficie de ese proyecto.
+
+Y autenticar no es autorizar: toda superficie informa `authorization.evaluated: false`, los roles
+son de la aplicación, los grupos de AD no se exigen, y la restricción por árbol o grupo de AD sale
+como recomendación. `PASS` de C1 no es C2, ni Vu8, ni D1, ni D8, ni la aprobación oficial.
+
+## C2 y la aprobación de seguridad en QA
+
+C2 —*"Las aplicaciones homologadas deben tener el aprobado a nivel seguridad en el ambiente QA"*— lo
+contesta `qa-security-approval-evidence`, con el Anexo V de ES0901 como contexto operativo: el
+assessment se hace en QA, es obligatorio antes de HML y PRD, y **se repite** ante ciertos cambios.
+
+El registro es **del proyecto** y se instala vacío:
+
+```
+reglas/security-approval-evidence.json   del PROYECTO. Se instala VACIO
+```
+
+🔴 **Nada interno aprueba.** La procedencia de una aprobación sólo admite
+`EXTERNAL_GCABA_SECURITY_AUTHORITY` o `UNRESOLVED`: ni `dev-security`, ni un escáner, ni el CI, ni un
+check del harness tienen cómo escribirse. Y la procedencia se ata a O2: la aprobación tiene que citar
+la autoridad que O2 resolvió para ese alcance. O2 en `PASS` sin aprobación no es C2 en `PASS`.
+
+🔴 **QA, o no.** DEV, HML, PRD u OTHER es `SECURITY_APPROVAL_NOT_IN_QA`; no saberlo es
+`SECURITY_APPROVAL_ENVIRONMENT_UNRESOLVED`. El algoritmo de la regla usa los mismos dos nombres.
+
+🔴 **El artefacto se identifica por lo que no cambia.** Commit, build, digest, imagen, release. La
+rama y el repositorio no deciden. Otro commit necesita un change set completo desde el aprobado.
+
+🔴 **Una aprobación vieja no se reusa a ciegas.** El resolvedor del Anexo V devuelve **todos** los
+motivos con su evidencia —dieciocho tipos—. Los 20 días van con el desarrollo: sin desarrollo no son
+motivo, y sin saber si lo hubo quedan `ASSESSMENT_AGE_CONTEXT_UNRESOLVED`. Un modelo puede sumar un
+motivo, nunca sacarlo.
+
+🔴 **Un parcial no es total.** Hace falta una cobertura oficial que nombre al candidato.
+
+Lo consumido lleva huella `sha256`, y si cambió desde la decisión anterior es
+`SECURITY_APPROVAL_EVIDENCE_CHANGED`. La unidad de trabajo lleva `standards.ES0902.rules.C2` con
+referencias, no con el registro. Y `PASS` es C2 y nada más: no son las Vu, no es G2, no es el
+despliegue a producción.
+
+## C3 y las herramientas del Estándar de Desarrollo
+
+C3 —*respetar las herramientas versionadas y autorizadas del Estándar de Desarrollo*— no trae
+catálogo propio: delega en ES0901. Así que no se construyó un catálogo, ni un inventario, ni un
+comparador de versiones. C3 usa los mismos cuatro controles de G1 y el mismo Anexo II, y lo que
+agrega es una **puerta**:
+
+```
+el ES0901 vigente           gcba-it-normative-baseline.json
+el catálogo instalado       annex-ii-technology-catalog.json, su source y su status
+los controles que lo leen   los checks de G1, escritos para una versión del Anexo II
+```
+
+Los tres tienen que ser de la misma versión, o C3 no pasa:
+`DEVELOPMENT_STANDARD_TECHNOLOGY_BASELINE_MISMATCH`. Es lo que impide que C3 quede congelada en 6.3:
+el día que se cargue otro ES0901, catálogo y comparador se mueven con él.
+
+🔴 **Una ejecución, dos agregaciones.** Los dos checks de G1 corren una vez por tecnología; G1 y C3
+se agregan por separado de esos resultados, y la agregación no recibe el resultado de la otra regla.
+
+🔴 **Las semánticas de G1 no se reescriben.** Deprecada sale deprecada y la regla cumple con
+observaciones; más nueva no es autorizada; la versión que asigna DGSEI no se inventa. Sin
+inventario, C3 queda sin resolver, nunca `NOT_APPLICABLE`.
+
+C3 tiene algoritmo propio —el décimo de `ALGORITMOS`— en `bin/orquestacion/estandar_de_desarrollo.py`,
+porque `seguridad.py` no sabe del Anexo II a propósito. Y conforme en C3 no mueve C2, Vu7, Vu10 ni G2.
+
+## Vu1 y la página de autenticación
+
+Vu1 —*"Toda página de autenticación debe contener captcha o bloqueo de usuarios por intentos de
+sesión, funcionalidad que se encuentra contenida en OpenID"*— lo contesta
+`authentication-abuse-protection`, **página por página**. Es una `o`: captcha activo, bloqueo activo,
+o los dos. Los dos inactivos es `FAIL`.
+
+Las páginas salen del inventario de C1, leído con el mismo cargador: no hay un segundo inventario.
+La señal `authenticationPagePresent` se deriva de ahí, y encenderla es más barato que apagarla. Un
+login delegado a Keycloak **es** una página —la del proveedor—; apagar la regla exige evidencia
+autoritativa de que la superficie no es interactiva. El registro de Vu1 guarda la evidencia de
+protección por `surfaceId`, es **del proyecto** y se instala vacío:
+
+```
+reglas/authentication-abuse-protection.json   del PROYECTO. Se instala VACIO
+```
+
+🔴 **Activo, no soportado.** "Keycloak soporta protección contra fuerza bruta" no es un bloqueo
+activo. Cuenta la evidencia de que el mecanismo está activo, de la clase que el mecanismo declara, que
+nombra la página. La configuración de la aplicación no prueba la página del proveedor, y una sola
+evidencia del proveedor sirve a todas las páginas que nombra: no se duplica en la aplicación.
+
+🔴 **Otros controles no son Vu1.** WAF, límite por IP, throttling, cuotas, huella de dispositivo,
+puntaje de bots, MFA y complejidad de contraseña se informan como sustitutos y no satisfacen nada.
+Una equivalencia de GCABA o ASI evita el `FAIL` y no aprueba.
+
+🔴 **Ningún umbral y ninguna prueba.** El check no tiene números ni ejecuta nada. Lo que la evidencia
+diga de intentos o tiempos sale tal cual con `normative: false`. Una prueba de intentos fallidos
+cuenta sólo si fue autorizada, fuera de `PRD`, en el ambiente de la página y con una identidad de
+prueba dedicada; si no, `AUTH_ABUSE_RUNTIME_TEST_UNSAFE`, que no es `FAIL`.
+
+El registro cierra sus cuatro capas y no se lee si trae un texto con forma de credencial. Y `PASS`
+de Vu1 no es C1, ni al revés: OIDC configurado no protege una página.
 
 ## La frontera que no se cruza
 
@@ -185,10 +434,29 @@ reglas/es0902-cross-standard-map.json          las ocho relaciones con ES0901
 reglas/es0902-security-deliverables.json       E1..E5 y el WAF
 reglas/es0902-security-governance.md           la arquitectura de gobierno, como vino
 reglas/es0902-security-assessment-workflow.md  el flujo, como vino
+reglas/es0902-o1-governance.md                 el gobierno de O1, como vino
+reglas/gcba-it-normative-baseline.json         las cinco fuentes de TI del GCABA y su estado
+reglas/es0902-o2-governance.md                 el gobierno de O2, como vino
+reglas/security-control-authority.json         la autoridad de control. Del PROYECTO, vacío
+reglas/es0902-c1-governance.md                 el gobierno de C1, como vino
+reglas/es0902-c1-cross-standard-identity-resolution.md  la resolución por superficie, como vino
+reglas/authentication-surfaces.json            las superficies de login. Del PROYECTO, vacío
+reglas/es0902-c2-governance.md                 el gobierno de C2, como vino
+reglas/es0902-c2-security-homologation-present-signal.md  la señal, como vino
+reglas/es0902-c2-assessment-validity-resolver.md          el resolvedor del Anexo V, como vino
+reglas/security-approval-evidence.json         las aprobaciones de seguridad. Del PROYECTO, vacío
+reglas/es0902-c3-governance.md                 el gobierno de C3, como vino
+reglas/es0902-c3-control-source-binding.json   la ligadura de C3 con G1, como vino
+reglas/es0902-vu1-governance.md                el gobierno de Vu1, como vino
+reglas/es0902-vu1-authentication-page-present-signal.md   la señal, como vino
+reglas/es0902-vu1-authentication-abuse-protection-check.md  el procedimiento, como vino
+reglas/authentication-abuse-protection.json    la protección de cada página. Del PROYECTO, vacío
 
 bin/orquestacion/seguridad.py    qué regla aplica, y con qué resultado
 bin/orquestacion/evaluacion.py   en qué estado está la evaluación, y quién puede moverla
 bin/orquestacion/cruzada.py      qué relación hay entre una regla de ES0901 y una de ES0902
+bin/orquestacion/linea_base.py   qué normativa de TI del GCABA hay, y qué dice la review de O1
+bin/orquestacion/estandar_de_desarrollo.py  la línea base tecnológica de C3, y su agregación
 ```
 
 El bloque normativo de una unidad expone los dos estándares y **conserva su forma anterior**:
@@ -209,7 +477,8 @@ cambiarle el tipo a un campo que alguien ya lee es romper a distancia.
 
 ## Lo que quedó anotado y no escondido
 
-1. **Treinta y ocho controles declarados y sin construir.** Es el estado correcto de un harness que clasificó antes de construir, y es
+1. **Veintinueve controles declarados y sin construir** —eran treinta y ocho hasta que O1, O2, C1
+   y C2 instalaron los suyos—. Es el estado correcto de un harness que clasificó antes de construir, y es
    también el hueco más grande que tuvo hasta hoy.
 2. **El mapeo de severidades no lo produce nadie todavía.** Sin él, toda corrida real de G2 sale
    `VULNERABILITY_RISK_MAPPING_UNRESOLVED`.
