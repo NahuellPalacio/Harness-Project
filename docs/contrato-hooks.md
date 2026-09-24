@@ -124,9 +124,10 @@ y saltea en silencio el que tire una excepción.
 ## Portabilidad — tres capas, con dos lanzadores
 
 ```
-.claude\settings.json          → "$CLAUDE_PROJECT_DIR/.claude/harness/run-hook.cmd" post-tool-use
-                                  (o run-hook.sh en Linux/macOS/WSL)
-                                  nunca contiene una ruta absoluta
+.claude\settings.json          → "shell": "powershell"
+                                  & "$env:CLAUDE_PROJECT_DIR/.claude/harness/run-hook.cmd" post-tool-use; exit $LASTEXITCODE
+                                  nunca contiene una ruta absoluta; no nombra run-hook.sh,
+                                  así que abierto desde WSL el proyecto no tiene hooks
 .claude\harness\run-hook.cmd   → fija el python.exe REAL de ESTA máquina
 .claude\harness\run-hook.sh    → invoca "python3" del sistema, genérico
                                   único par de artefactos dependiente del equipo

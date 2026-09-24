@@ -368,6 +368,127 @@ exige sólo con evidencia de que es un cierre equivalente. El módulo no nombra 
 🔴 **Vu3 no es Vu4 ni C1.** Un timeout por inactividad no reemplaza el cierre. La unidad de trabajo
 lleva `standards.ES0902.rules.Vu3` con aplicabilidad, resultado, superficies y evidencia por id.
 
+## Vu4 y la sesión inactiva
+
+Vu4 —*"Toda sesión en stand by, tiene que tener un tiempo límite para su utilización. Esto,
+independientemente del límite de tiempo que posee el token de autenticación del OpenID"*— lo contesta
+`session-inactivity-timeout`, **sesión por sesión**. Cada entrada del registro es una sesión, atada a
+una superficie de C1; dos políticas para dos roles son dos entradas. Una superficie con sesión y sin
+entrada deja la cobertura sin resolver, igual que una sesión cuya superficie C1 no inventaría, y la
+señal de Vu3 también cuenta como sesión:
+
+```
+reglas/session-inactivity-timeout.json   del PROYECTO. Se instala VACIO
+```
+
+🔴 **El token no es la sesión.** El vencimiento de la aplicación sale aparte del access token, del
+refresh token y del SSO del proveedor, y ninguno de esos tres, solo, aprueba. Un `valueRef` igual a la
+referencia de un token, o un vencimiento que depende del token, es `TOKEN_TIMEOUT_ONLY`, que es falla.
+Que el SSO del proveedor siga activo no es `FAIL`.
+
+🔴 **Ninguna duración y ninguna actividad se inventan.** El valor se conserva como referencia y no se
+juzga si es corto o largo. Qué reinicia el reloj lo dice una política citada del proyecto; que el
+mouse, el polling o el refresh del token lo reinicien, observado, no lo define.
+
+🔴 **La configuración no es el comportamiento, y la pantalla no es el recurso.** Cuenta la evidencia
+de que la sesión vieja deja de servir después del intervalo. Un recurso protegido que la acepta es
+`INACTIVE_SESSION_REMAINS_USABLE` aunque la pantalla muestre el login.
+
+🔴 **Lo que dice que no pasa por la misma compuerta que lo que dice que sí.** Una falla exige evidencia
+citada y legible, igual que un `PASS`. Una prueba en `PRD`, con una cuenta real, con secretos
+registrados o con el timeout de producción debilitado da `SESSION_INACTIVITY_TIMEOUT_TEST_UNSAFE`, que
+no es `FAIL`, y un solo paso de bloqueo impide tanto el `PASS` como el `NOT_APPLICABLE`.
+
+🔴 **Vu4 no es Vu3 ni C1.** La unidad de trabajo lleva `standards.ES0902.rules.Vu4` con aplicabilidad,
+resultado, sesiones y evidencia por id. `para_seguridad` traduce la salida del check a la evidencia de
+`seguridad.resultado("Vu4", …)`, y de ahí entra al libro por `desde_regla`, como cualquier regla.
+
+## Vu5 y la validación espejada en el servidor
+
+Vu5 —*"Toda validación del lado del cliente, debe estar espejada del lado del servidor"*— lo contesta
+`client-server-validation-parity`, **validación por validación**. Cada cliente del registro trae sus
+validaciones, y cada una se juzga sola: el frontend público en verde no dice nada del backoffice ni
+del móvil. Los clientes que hay que cubrir son las superficies de C1, leídas con su cargador, y los
+que nombra una evidencia autoritativa citada `CLIENT_SURFACE_SCOPE`; un cliente del registro que no
+está en ninguno de los dos se evalúa igual y deja la cobertura sin resolver:
+
+```
+reglas/client-server-validation-parity.json   del PROYECTO. Se instala VACIO
+```
+
+🔴 **Va del cliente al servidor.** Una validación que existe solo en el servidor no viola Vu5, y el
+check no tiene ningún camino que parta de ella.
+
+🔴 **La operación del servidor es una interfaz del contexto de proyecto.** `operationRef` tiene que
+ser un `interface_id` de `interfaces.items[]`. Sin contexto, o con una operación que no está, da
+`CLIENT_SERVER_VALIDATION_MAPPING_UNRESOLVED`. No hay otro inventario de endpoints.
+
+🔴 **El nombre no es la regla.** Que el campo, el DTO o el schema se llamen igual, una librería
+compartida instalada, un `required` de HTML, un tipo de TypeScript o una máscara del cliente, solos,
+no aprueban. Lo sostiene evidencia de enforcement: código de validación del servidor, un test, o una
+prueba directa segura. Un servidor más estricto necesita además un contrato que lo admita.
+
+🔴 **Validar no es autorizar.** Un rechazo por autorización, o un 401 o un 403, no prueba que el
+servidor validó. Ningún otro código de estado ni ningún mensaje deciden.
+
+🔴 **Lo que dice que no pasa por la misma compuerta que lo que dice que sí.** `SERVER_VALIDATION_MISSING`
+y `SERVER_VALIDATION_WEAKER` exigen evidencia citada y legible de enforcement. Una prueba en `PRD`,
+destructiva, con datos privilegiados reales, sin valores sintéticos o con secretos registrados da
+`SERVER_VALIDATION_TEST_UNSAFE`, que no es `FAIL`, y un solo paso de bloqueo impide tanto el `PASS`
+como el `NOT_APPLICABLE`. El módulo no ejecuta nada.
+
+🔴 **Vu5 no es P5, ni Vu6, ni Vu8.** El mapa cruzado sigue en `EQUIVALENCE_REVIEW_REQUIRED` con
+ES0901 P5, que no está construido. Vu5 va por el camino genérico de `seguridad.py`: `para_seguridad`
+traduce la salida del check a `controlResults`, y de ahí entra al libro por `desde_regla`. La unidad
+de trabajo lleva `standards.ES0902.rules.Vu5` con aplicabilidad, resultado, clientes y evidencia por
+id.
+
+## Vu6 y el mensaje de error customizado
+
+Vu6 —*"Todos los mensajes de error deben estar customizados"*— lo contesta
+`custom-error-message-compliance`, **superficie por superficie y escenario por escenario**. Las
+superficies que hay que cubrir son las de C1, leídas con su cargador, y las que nombra una evidencia
+citada `ERROR_SURFACE_SCOPE`, también las interfaces del contexto de proyecto. Cada una se cubre con
+una entrada que trae un escenario `UNEXPECTED_ERROR`, más cada tipo de error que exija un
+`ERROR_PATH_SCOPE` citado, o con una ausencia autoritativa de `USER_FACING_ERROR`. Una superficie del
+registro fuera del alcance se evalúa igual y deja la cobertura sin resolver:
+
+```
+reglas/custom-error-message-evidence.json   del PROYECTO. Se instala VACIO
+```
+
+🔴 **El comportamiento, no el manejador.** Lo que ve el consumidor lo sostiene evidencia de
+comportamiento: un `ERROR_HANDLER_MAPPING` que nombra la superficie y el tipo de error, un test, una
+prueba segura o una observación de la salida. Que haya un manejador central, que el framework sea el
+dueño, el código o la configuración, solos, no. Con evidencia de comportamiento, la salida por defecto
+de un framework customizada por configuración cumple.
+
+🔴 **Ninguna palabra decide, y ningún texto sale.** El check no busca `Exception` ni nada en ningún
+texto: la clasificación sale de lo que establece cada evidencia. La salida, la señal,
+`standards.ES0902.rules.Vu6` y el libro de seguridad llevan ids y estados, nunca el texto de una
+evidencia.
+
+🔴 **El log no es el mensaje.** Un `INTERNAL_LOG` con un stack trace ni enciende la señal ni hace
+`FAIL`. Un `INTERNAL_DIAGNOSTIC_FORWARDED` que llega al consumidor es exposición, diga
+lo que diga su `value`, y nunca sostiene un mensaje customizado.
+
+🔴 **El 200 amable es enmascarar.** Un error inesperado respondido con 2xx o 3xx, evidenciado, es
+`HTTP_ERROR_SEMANTICS_MASKED`, con ES0901 §11 (pág. 22, "Errores HTTP no enmascarados") como fuente
+de apoyo citada. Ningún resultado de ES0901 se lee ni se escribe. Para otro tipo de error hace falta un
+`API_ERROR_CONTRACT` citado, y sin contrato ningún código se juzga. Vu6 no fija el texto, el idioma,
+el componente, el schema ni el código exacto.
+
+🔴 **Lo que dice que no pasa por la misma compuerta que lo que dice que sí.** Una exposición exige
+evidencia citada y legible de comportamiento, y una vez establecida gana diga lo que diga el
+registro. Una prueba sin autorización, en `PRD`, sin datos sintéticos, destructiva, que provoca una
+caída, con datos personales o secretos reales, o con secretos registrados da
+`ERROR_MESSAGE_TEST_UNSAFE`, que no es `FAIL`. El módulo no ejecuta nada.
+
+🔴 **Vu6 no es Vu5, ni Vu7, ni Vu10.** Pueden compartir evidencia y cada una conserva su resultado.
+Vu6 va por el camino genérico de `seguridad.py`: `para_seguridad` traduce la salida del check a
+`controlResults`, y de ahí entra al libro por `desde_regla`. La unidad de trabajo lleva
+`standards.ES0902.rules.Vu6` con aplicabilidad, resultado, superficies y evidencia por id.
+
 ## La frontera que no se cruza
 
 El harness hace las capas 1 y 2; la 3 no es suya.
@@ -515,6 +636,18 @@ reglas/es0902-vu3-governance.md                el gobierno de Vu3, como vino
 reglas/es0902-vu3-browser-session-present-signal.md       la señal, como vino
 reglas/es0902-vu3-browser-close-session-termination-check.md  el procedimiento, como vino
 reglas/browser-session-termination.json        el cierre de sesión de cada superficie. Del PROYECTO, vacío
+reglas/es0902-vu4-governance.md                el gobierno de Vu4, como vino
+reglas/es0902-vu4-session-present-signal.md    la señal, como vino
+reglas/es0902-vu4-session-inactivity-timeout-check.md  el procedimiento, como vino
+reglas/session-inactivity-timeout.json         el vencimiento de cada sesión. Del PROYECTO, vacío
+reglas/es0902-vu5-governance.md                el gobierno de Vu5, como vino
+reglas/es0902-vu5-client-validation-present-signal.md     la señal, como vino
+reglas/es0902-vu5-client-server-validation-parity-check.md  el procedimiento, como vino
+reglas/client-server-validation-parity.json    las validaciones de cada cliente. Del PROYECTO, vacío
+reglas/es0902-vu6-governance.md                el gobierno de Vu6, como vino
+reglas/es0902-vu6-user-facing-error-present-signal.md    la señal, como vino
+reglas/es0902-vu6-custom-error-message-compliance-check.md  el procedimiento, como vino
+reglas/custom-error-message-evidence.json      los escenarios de error de cada superficie. Del PROYECTO, vacío
 
 bin/orquestacion/seguridad.py    qué regla aplica, y con qué resultado
 bin/orquestacion/evaluacion.py   en qué estado está la evaluación, y quién puede moverla
@@ -541,8 +674,8 @@ cambiarle el tipo a un campo que alguien ya lee es romper a distancia.
 
 ## Lo que quedó anotado y no escondido
 
-1. **Veintinueve controles declarados y sin construir** —eran treinta y ocho hasta que O1, O2, C1
-   y C2 instalaron los suyos—. Es el estado correcto de un harness que clasificó antes de construir, y es
+1. **Diecisiete controles declarados y sin construir** —eran treinta y ocho hasta que O1, O2, C1, C2,
+   Vu1, Vu2, Vu3, Vu4, Vu5 y Vu6 instalaron los suyos—. Es el estado correcto de un harness que clasificó antes de construir, y es
    también el hueco más grande que tuvo hasta hoy.
 2. **El mapeo de severidades no lo produce nadie todavía.** Sin él, toda corrida real de G2 sale
    `VULNERABILITY_RISK_MAPPING_UNRESOLVED`.

@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "client-server-validation-parity/1.0",
+  "title": "Client Server Validation Parity Evidence",
+  "description": "La evidencia de que cada validacion del cliente esta espejada en el servidor, para ES0902 Vu5. Es del PROYECTO y se instala vacia. Cada cliente es una superficie del inventario de C1 o de una evidencia citada `CLIENT_SURFACE_SCOPE`, y cada validacion se juzga sola. `serverMapping.operationRef` es un `interface_id` de `interfaces.items[]` del contexto de proyecto. Los strings de `evidence`, `clientEvidenceRef` y `serverEvidenceRef` son ids del catalogo de evidencia del caso. `additionalProperties: false` en todas las capas: una clave de mas -un token, una credencial, un valor real- no entra.",
+  "type": "object",
+  "required": [
+    "version",
+    "clients"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "clients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "clientSurfaceId",
+          "validations",
+          "evidence"
+        ],
+        "properties": {
+          "clientSurfaceId": {
+            "type": "string"
+          },
+          "clientType": {
+            "enum": [
+              "WEB",
+              "BACKOFFICE",
+              "MOBILE",
+              "LEGACY",
+              "OTHER",
+              "UNRESOLVED"
+            ]
+          },
+          "validations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "validationId",
+                "inputRef",
+                "constraint",
+                "serverMapping",
+                "parity",
+                "evidence"
+              ],
+              "properties": {
+                "validationId": {
+                  "type": "string"
+                },
+                "inputRef": {
+                  "type": "string"
+                },
+                "constraint": {
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "description"
+                  ],
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "clientEvidenceRef": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "serverMapping": {
+                  "type": "object",
+                  "required": [
+                    "operationRef",
+                    "enforcementStatus"
+                  ],
+                  "properties": {
+                    "operationRef": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "enforcementStatus": {
+                      "enum": [
+                        "PRESENT",
+                        "MISSING",
+                        "UNRESOLVED"
+                      ]
+                    },
+                    "serverEvidenceRef": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "parity": {
+                  "enum": [
+                    "EQUIVALENT",
+                    "SERVER_STRONGER_COMPATIBLE",
+                    "SERVER_WEAKER",
+                    "UNRESOLVED"
+                  ]
+                },
+                "verificationMode": {
+                  "enum": [
+                    "STATIC",
+                    "UNIT_TEST",
+                    "INTEGRATION_TEST",
+                    "CONTRACT_TEST",
+                    "AUTHORIZED_QA_DIRECT_REQUEST",
+                    "OTHER_AUTHORITATIVE_EVIDENCE",
+                    "NOT_VERIFIED"
+                  ]
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

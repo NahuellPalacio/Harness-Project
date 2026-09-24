@@ -15,6 +15,17 @@ copiarla una tercera:
    `id_token_hint` son credenciales: lo son para Vu3, que gobierna justamente la sesion. Una
    cookie es `NOMBRE=VALOR`, asi que `session:portal`, `cookie:check-1` o `consid=3` son ids. Un
    `code` suelto es siempre un codigo de autorizacion, tambien con un valor de solo digitos.
+   Una contrasena se reconoce por la palabra que la anuncia, como en E-03b del reporte de
+   seguridad: `password`, `passwd`, `pwd`, `pass`, `passphrase`, `contraseña`, `contrasenia` o
+   `clave`, sin letra ni digito pegado antes y sin letra, digito ni `_` pegado despues, seguida de
+   un valor (`clave: x`, `pass=x`, `--password x`; `password_hash=` y `bypass=` no). Para las
+   palabras en castellano y para `pass` un espacio solo no separa: tiene que haber `:`, `=`, `=>`,
+   `:=`, `>` o una comilla, asi "la clave del tramite es obligatoria" y "pass-through" salen
+   enteras (Vu5, refutador, pase 1). `pw` y `pin` cuentan seguidos de `:` o `=`. El texto se
+   compara en NFC, asi que una `ñ` descompuesta tambien cuenta.
+   La regla alcanza tambien a las claves de un diccionario: una clave con forma de credencial sale
+   `[redactado]`, y si dos claves se redactan igual no se funden: la segunda sale
+   `[redactado]-2`, en el orden de las claves originales.
 4. Un id de evidencia que no es texto, o que esta vacio, no es un id: el item es ilegible y no
    se usa como clave de nada.
 
@@ -36,6 +47,15 @@ SECRETOS = tuple(re.compile(p) for p in (
     # `code=` suelto es el codigo de autorizacion de OAuth, con el valor que sea: uno de solo
     # digitos tambien lo es (refutador, pase 3). `status_code=` no, por el `_` de antes.
     r"(?i)(?<![\w-])code\s*[:=]\s*\S",
+    # E-03b del reporte de seguridad: la palabra anuncia la contrasena, y despues viene un valor.
+    # En ingles un espacio alcanza: `--password x`, `set password x`.
+    r"(?i)(?<![A-Za-z0-9])(passphrase|password|passwd|pwd)"
+    r"(?![A-Za-z0-9_])[ \t\"'`:=>\-\\]*[^\s\"'`<,;\\]",
+    # En castellano y con `pass` no: la palabra aparece en prosa. Hace falta un separador de verdad.
+    r"(?i)(?<![A-Za-z0-9])(pass|contrase(ñ|n)a|contrasenia|clave)(?![A-Za-z0-9_])"
+    r"[ \t]*(=>|:=|[:=>\"'`])[ \t\"'`:=>\-\\]*[^\s\"'`<,;\\]",
+    # `pw` y `pin`, solo seguidos de `:` o `=`.
+    r"(?i)(?<![A-Za-z0-9])(pw|pin)(?![A-Za-z0-9_])[ \t]*[:=][ \t\"'`]*[^\s\"'`<,;\\]",
     r"(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}",
     r"://[^/\s:@]+:[^/\s@]+@",
     r"\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.",
@@ -50,14 +70,25 @@ MAL_FORMADA = "malformed-evidence"
 def es_secreto(texto):
     if not isinstance(texto, str):
         return False
-    resto = PREFIJO_DE_GESTOR.sub("", texto)
+    resto = PREFIJO_DE_GESTOR.sub("", unicodedata.normalize("NFC", texto))
     return any(p.search(resto) for p in SECRETOS)
 
 
 def depurar(dato):
     """La regla de salida: todo texto con forma de credencial sale `[redactado]`."""
     if isinstance(dato, dict):
-        return {k: depurar(v) for k, v in dato.items()}
+        # 🔴 Las claves tambien: un id que sale como clave es un id (refutador de Vu4, pase 1). Dos
+        # claves que se redactan igual no se funden: se numeran en el orden de las originales, y
+        # nunca pisan una clave que ya estaba.
+        nombres, usados = {}, {k for k in dato if not es_secreto(k)}
+        for k in sorted((k for k in dato if es_secreto(k)), key=str):
+            nombre, n = REDACTADO, 1
+            while nombre in usados:
+                n += 1
+                nombre = "%s-%d" % (REDACTADO, n)
+            usados.add(nombre)
+            nombres[k] = nombre
+        return {nombres.get(k, k): depurar(v) for k, v in dato.items()}
     if isinstance(dato, list):
         return [depurar(v) for v in dato]
     return REDACTADO if es_secreto(dato) else dato

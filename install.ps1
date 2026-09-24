@@ -635,13 +635,23 @@ function New-SettingsProyecto {
 
     $deny = (Read-TextoUtf8 (Join-Path $script:Repo 'comun\settings\permissions.deny.json')) | ConvertFrom-Json
 
-    # El comando nunca lleva una ruta absoluta: se resuelve contra el proyecto. Va entre
-    # comillas porque $CLAUDE_PROJECT_DIR puede expandirse a una ruta con espacios.
+    # El comando nunca lleva una ruta absoluta: se resuelve contra el proyecto. Cada hook se
+    # registra con "shell": "powershell" (lo pone la plantilla), así que el comando es
+    # sintaxis de PowerShell:
+    #   · `&` porque una cadena entre comillas al principio de la línea es una expresión,
+    #     no una invocación ("Token inesperado": ningún hook corrió nunca así).
+    #   · `$env:CLAUDE_PROJECT_DIR` porque `$CLAUDE_PROJECT_DIR` es una variable de
+    #     PowerShell vacía, y `${CLAUDE_PROJECT_DIR}` pegaría la ruta adentro del código:
+    #     una ruta con `$`, acento grave o apóstrofo se rompería. Con la variable de
+    #     entorno la ruta llega como un valor y PowerShell no la interpreta.
+    #   · entre comillas dobles porque la ruta puede tener espacios.
+    # El `; exit $LASTEXITCODE` lo pone la plantilla: conserva el código de salida del hook.
     #
     # El reemplazo se hace sobre el TEXTO de la plantilla, con las comillas escapadas
     # como JSON. Hacerlo después de serializar mete comillas crudas adentro de un string
-    # y rompe el archivo.
-    $shimEscapado = '\"$CLAUDE_PROJECT_DIR/.claude/harness/run-hook.cmd\"'
+    # y rompe el archivo. Va entre comillas simples de PowerShell para que ni `$env:` ni
+    # nada de lo que sigue se expanda acá, en la máquina de quien instala.
+    $shimEscapado = '& \"$env:CLAUDE_PROJECT_DIR/.claude/harness/run-hook.cmd\"'
     $textoPlantilla = Read-TextoUtf8 (Join-Path $script:Repo 'comun\settings\hooks.plantilla.json')
     $hooks = ($textoPlantilla.Replace('{{SHIM}}', $shimEscapado) | ConvertFrom-Json)
 
@@ -651,7 +661,16 @@ function New-SettingsProyecto {
         hooks         = $hooks.hooks
     }
 
-    Write-TextoUtf8 -Ruta $RutaSettings -Texto (ConvertTo-JsonTexto $settings)
+    # ConvertTo-Json de PS 5.1 escribe `&`, `'`, `<` y `>` como `\u0026`, `\u0027`, `\u003c` y
+    # `\u003e`. Es JSON válido, pero quien abre settings.json para ver qué comando quedó
+    # registrado -UPGRADE.md le dice que lo mire- no encuentra `& "$env:...`. Se devuelven
+    # a su forma literal, salvo que la barra que los precede esté a su vez escapada (`\\u0026`
+    # es una barra y el texto "u0026", no un escape).
+    $texto = ConvertTo-JsonTexto $settings
+    $texto = [regex]::Replace($texto, '(?i)(?<!\\)\\u00(26|27|3c|3e)', {
+        param($m) [string][char][Convert]::ToInt32($m.Groups[1].Value, 16)
+    })
+    Write-TextoUtf8 -Ruta $RutaSettings -Texto $texto
 }
 
 
@@ -772,65 +791,222 @@ function New-IntegracionesProyecto {
 }
 
 
+function Invoke-ComandoDeHook {
+    <#
+    .SYNOPSIS
+        Corre un comando de hook como lo corre Claude Code con "shell": "powershell".
+    .DESCRIPTION
+        powershell.exe -NoProfile -NonInteractive, CLAUDE_PROJECT_DIR en el entorno, el
+        proyecto como directorio de trabajo y el payload por stdin, en UTF-8.
+
+        El comando va con -EncodedCommand y no con -Command: pasado como argumento, las
+        comillas dobles del comando pasan por las reglas de la línea de comandos de
+        Windows y PowerShell 5.1 se come algunas. Codificado llega el texto exacto que
+        quedó registrado, que es lo único que tiene sentido probar.
+
+        La salida se devuelve en bytes, sin decodificar: quien compara byte a byte (E-11)
+        no puede depender de la codepage de nadie.
+    #>
+    param([string] $Comando, [string] $Project, [string] $Json)
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName               = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    $psi.Arguments              = '-NoProfile -NonInteractive -EncodedCommand ' +
+                                  [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($Comando))
+    $psi.WorkingDirectory       = $Project
+    $psi.UseShellExecute        = $false
+    $psi.RedirectStandardInput  = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.StandardErrorEncoding  = New-Object System.Text.UTF8Encoding $false
+    $psi.EnvironmentVariables['CLAUDE_PROJECT_DIR'] = $Project
+
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $errores = $p.StandardError.ReadToEndAsync()
+    $bytesEntrada = (New-Object System.Text.UTF8Encoding $false).GetBytes($Json)
+    $p.StandardInput.BaseStream.Write($bytesEntrada, 0, $bytesEntrada.Length)
+    $p.StandardInput.BaseStream.Flush()
+    $p.StandardInput.Close()
+
+    $memoria = New-Object System.IO.MemoryStream
+    $p.StandardOutput.BaseStream.CopyTo($memoria)
+    $p.WaitForExit()
+
+    $bytes = $memoria.ToArray()
+    return [pscustomobject]@{
+        Codigo  = $p.ExitCode
+        Bytes   = $bytes
+        Salida  = (New-Object System.Text.UTF8Encoding $false).GetString($bytes)
+        Errores = $errores.Result
+    }
+}
+
+
+function Get-DetalleDeError {
+    <#
+    .SYNOPSIS
+        Las dos primeras líneas útiles del stderr de un powershell.exe hijo.
+    .DESCRIPTION
+        Con -EncodedCommand y el stderr redirigido, PowerShell 5.1 escribe los errores en
+        CLIXML. Se sacan los textos, sin las líneas de "+" que señalan la columna.
+    #>
+    param([string] $Errores)
+
+    if (-not $Errores) { return '' }
+    $lineas = @()
+    if ($Errores.TrimStart().StartsWith('#< CLIXML')) {
+        foreach ($m in [regex]::Matches($Errores, '<S S="Error">(.*?)</S>')) {
+            $lineas += [System.Net.WebUtility]::HtmlDecode(($m.Groups[1].Value -replace '_x000D_', '' -replace '_x000A_', ''))
+        }
+    } else {
+        $lineas = @($Errores -split "`r?`n")
+    }
+    $utiles = @($lineas | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('+') })
+    return (($utiles | Select-Object -First 2) -join ' ')
+}
+
+
 function Test-HooksInstalados {
     <#
     .SYNOPSIS
-        Dispara los cuatro hooks instalados con payloads reales y verifica su respuesta.
+        Corre cada comando registrado en el settings.json del proyecto y verifica su respuesta.
     .DESCRIPTION
         Un hook roto es PEOR que ningún hook, porque falla en silencio. Por eso esto no
         es opcional: si algún hook no responde bien, la instalación falla y revierte.
-    #>
-    param([string] $DirHarness)
 
-    $shim = Join-Path $DirHarness 'run-hook.cmd'
-    $casos = @(
-        @{ Hook='session-start';      Payload='session-start.json' },
-        @{ Hook='user-prompt-submit'; Payload='user-prompt-submit.json' },
-        @{ Hook='pre-tool-use';       Payload='pre-tool-use-write.json' },
-        @{ Hook='post-tool-use';      Payload='post-tool-use-write.json' }
-    )
+        Lo que se prueba es el `command` que quedó escrito en settings.json, corrido como
+        lo corre Claude Code (Invoke-ComandoDeHook), y NO el lanzador por su cuenta. Hasta
+        la 0.20 esto lanzaba run-hook.cmd directo: el lanzador andaba, el comando
+        registrado era sintaxis de bash y en PowerShell no corría, y ningún hook corrió
+        nunca en una máquina sin Git Bash. Siete versiones verdes probando otra cosa.
+
+        El payload lleva el cwd de ejemplo y no el del proyecto a propósito: session-start
+        con el cwd del proyecto escribiría la marca de la bienvenida antes de que el
+        instalador registre la instalación, y una instalación nueva no mostraría nada.
+
+        -Doctor corre esta misma verificación. No usa Python: corre lo registrado, y si lo
+        registrado necesita un Python que no está, eso es justo lo que tiene que reportar.
+    #>
+    param([string] $Project)
 
     $problemas = New-Object System.Collections.ArrayList
+    $rutaSettings = Join-Path $Project '.claude\settings.json'
+
+    if (-not (Test-Path -LiteralPath $rutaSettings)) {
+        [void] $problemas.Add('no hay .claude\settings.json: no hay ningún hook registrado')
+        return ,$problemas
+    }
+    try {
+        $settings = Read-TextoUtf8 $rutaSettings | ConvertFrom-Json
+    } catch {
+        [void] $problemas.Add('.claude\settings.json no es JSON válido: Claude Code lo ignora entero')
+        return ,$problemas
+    }
+
+    $casos = @(
+        @{ Evento='SessionStart';     Payload='session-start.json' },
+        @{ Evento='UserPromptSubmit'; Payload='user-prompt-submit.json' },
+        @{ Evento='PreToolUse';       Payload='pre-tool-use-write.json' },
+        @{ Evento='PostToolUse';      Payload='post-tool-use-write.json' }
+    )
 
     foreach ($c in $casos) {
+        $registrados = @()
+        if ($settings.PSObject.Properties['hooks'] -and $settings.hooks -and
+            $settings.hooks.PSObject.Properties[$c.Evento]) {
+            foreach ($grupo in @($settings.hooks.($c.Evento))) {
+                if (-not ($grupo -and $grupo.PSObject.Properties['hooks'])) { continue }
+                foreach ($h in @($grupo.hooks)) {
+                    if ($h -and $h.PSObject.Properties['command']) { $registrados += $h }
+                }
+            }
+        }
+        if ($registrados.Count -eq 0) {
+            [void] $problemas.Add("$($c.Evento): no hay ningún comando registrado")
+            continue
+        }
+
         $rutaPayload = Join-Path $script:Repo ('tests\payloads\' + $c.Payload)
         if (-not (Test-Path $rutaPayload)) { continue }
         $json = Read-TextoUtf8 $rutaPayload
 
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName               = $shim
-        $psi.Arguments              = $c.Hook
-        $psi.UseShellExecute        = $false
-        $psi.RedirectStandardInput  = $true
-        $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError  = $true
-        $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
-        $psi.StandardErrorEncoding  = New-Object System.Text.UTF8Encoding $false
-
-        try {
-            $p = [System.Diagnostics.Process]::Start($psi)
-            $w = New-Object System.IO.StreamWriter($p.StandardInput.BaseStream,
-                                                   (New-Object System.Text.UTF8Encoding $false))
-            $w.Write($json); $w.Flush(); $w.Close()
-            $salida = $p.StandardOutput.ReadToEnd()
-            $p.StandardError.ReadToEnd() | Out-Null
-            $p.WaitForExit()
-
-            if ($p.ExitCode -ne 0) {
-                [void] $problemas.Add("$($c.Hook): salió con código $($p.ExitCode)")
+        foreach ($h in $registrados) {
+            # Se corre con PowerShell porque es el shell que fija la plantilla. Un hook
+            # registrado sin ese shell lo correría Git Bash en una máquina y PowerShell en
+            # otra: esta prueba no diría nada de ninguna de las dos.
+            $shell = ''
+            if ($h.PSObject.Properties['shell']) { $shell = [string]$h.shell }
+            if ($shell -ne 'powershell') {
+                [void] $problemas.Add("$($c.Evento): el hook no fija `"shell`": `"powershell`"")
                 continue
             }
-            if ($salida.Trim()) {
-                try { $salida | ConvertFrom-Json | Out-Null }
-                catch { [void] $problemas.Add("$($c.Hook): la salida no es JSON válido") }
+            try {
+                $r = Invoke-ComandoDeHook -Comando ([string]$h.command) -Project $Project -Json $json
+            } catch {
+                [void] $problemas.Add("$($c.Evento): no se pudo ejecutar — $($_.Exception.Message)")
+                continue
             }
-        }
-        catch {
-            [void] $problemas.Add("$($c.Hook): no se pudo ejecutar — $($_.Exception.Message)")
+            if ($r.Codigo -ne 0) {
+                $detalle = Get-DetalleDeError $r.Errores
+                if ($detalle) { $detalle = ": $detalle" }
+                [void] $problemas.Add("$($c.Evento): el comando registrado salió con código $($r.Codigo)$detalle")
+                continue
+            }
+            # Con código 0 también puede no haber corrido nada. Si `&` no encuentra
+            # run-hook.cmd, PowerShell escribe el error y `exit $LASTEXITCODE` sale con 0:
+            # $LASTEXITCODE sigue en $null porque ningún programa llegó a correr. La salida
+            # queda vacía, y vacía es una respuesta válida de un hook. Lo que lo delata es el
+            # error de PowerShell en stderr: el hook escribe su stderr directo, sin pasar por
+            # PowerShell, así que un registro de error ahí es de PowerShell y no del hook.
+            if ($r.Errores -match '<S S="Error">') {
+                [void] $problemas.Add("$($c.Evento): PowerShell no pudo correr el comando registrado, aunque salió con 0: $(Get-DetalleDeError $r.Errores)")
+                continue
+            }
+            if ($r.Salida.Trim()) {
+                try { $r.Salida | ConvertFrom-Json | Out-Null }
+                catch { [void] $problemas.Add("$($c.Evento): la salida del comando registrado no es JSON válido") }
+            }
         }
     }
 
     return ,$problemas
+}
+
+
+function Register-EstadoInstalacion {
+    <#
+    .SYNOPSIS
+        Escribe .claude\harness.installation.json con bienvenida.py registrar.
+    .DESCRIPTION
+        La lógica vive en un solo lado, el módulo que también usa session-start.py: acá
+        solo se lo invoca, con el Python que ya resolvió la instalación. Nunca tira.
+    #>
+    param([string] $DirHarness, [string] $Python)
+
+    $rutaBienvenida = Join-Path $DirHarness 'hooks\lib\bienvenida.py'
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName               = $Python
+    $psi.Arguments              = '"' + $rutaBienvenida + '" registrar "' + $Project + '"'
+    $psi.UseShellExecute        = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
+    $psi.StandardErrorEncoding  = New-Object System.Text.UTF8Encoding $false
+
+    try {
+        $p = [System.Diagnostics.Process]::Start($psi)
+        $errores = $p.StandardError.ReadToEndAsync()
+        $salida  = $p.StandardOutput.ReadToEnd()
+        $p.WaitForExit()
+        if ($p.ExitCode -eq 0) {
+            EscribirOk "estado de la instalación registrado: $($salida.Trim())"
+            return
+        }
+        $detalle = ($errores.Result -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 1)
+        EscribirAviso "no se pudo registrar el estado de la instalación ($detalle). La próxima sesión muestra la bienvenida completa."
+    } catch {
+        EscribirAviso "no se pudo registrar el estado de la instalación ($($_.Exception.Message)). La próxima sesión muestra la bienvenida completa."
+    }
 }
 
 
@@ -965,6 +1141,22 @@ function Invoke-Doctor {
                     foreach ($x in $derivados) { EscribirPaso $x }
                 } else {
                     EscribirOk 'ningún archivo del harness fue editado a mano'
+                }
+
+                # La misma verificación que hace la instalación: el comando que quedó en
+                # settings.json, corrido como lo corre Claude Code. Un proyecto instalado con
+                # la plantilla vieja tiene un comando de bash que PowerShell no corre.
+                try {
+                    $problemasHooks = Test-HooksInstalados -Project $Project
+                } catch {
+                    $problemasHooks = @("no se pudo verificar: $($_.Exception.Message)")
+                }
+                if ($problemasHooks.Count -gt 0) {
+                    EscribirMal 'los hooks registrados en settings.json no corren. Corré -Update:'
+                    foreach ($x in $problemasHooks) { EscribirPaso $x }
+                    $fallas++
+                } else {
+                    EscribirOk 'los cuatro hooks registrados en settings.json responden'
                 }
             } else {
                 EscribirAviso 'no tiene el harness instalado'
@@ -1104,6 +1296,7 @@ function Invoke-Instalar {
         EscribirPaso ".claude\harness\  (hooks, reglas, checks, manifiestos)"
         EscribirPaso ".claude\skills\ y .claude\agents\"
         EscribirPaso ".claude\harness.lock.json"
+        EscribirPaso ".claude\harness.installation.json  (solo si la instalación termina bien)"
         EscribirPaso ".claude\harness.config.json  (solo si no existe)"
         EscribirPaso "CLAUDE.md  (solo el bloque marcado)"
         EscribirPaso ".gitignore (solo el bloque marcado)"
@@ -1315,8 +1508,8 @@ secrets/
     Write-TextoUtf8 -Ruta (Join-Path $dirClaude 'harness.lock.json') -Texto (ConvertTo-JsonTexto $lock)
     EscribirOk "lockfile con $($inventario.Count) archivo(s) y su SHA256"
 
-    # 8. Verificación. Si los hooks no responden, se revierte.
-    $problemas = Test-HooksInstalados -DirHarness $dirHarness
+    # 8. Verificación. Si los comandos registrados no responden, se revierte.
+    $problemas = Test-HooksInstalados -Project $Project
     if ($problemas.Count -gt 0) {
         Escribir ''
         foreach ($p in $problemas) { EscribirMal $p }
@@ -1325,7 +1518,19 @@ secrets/
         Invoke-Desinstalar -Silencioso
         throw 'instalación revertida'
     }
-    EscribirOk 'los cuatro hooks responden correctamente'
+    EscribirOk 'los cuatro hooks responden correctamente, con el comando que quedó en settings.json'
+
+    # 9. El estado de la instalación, para la bienvenida. Recién acá: una instalación que se
+    # revirtió no deja harness.installation.json. En un -Update el archivo ya existe y
+    # bienvenida.py conserva firstRunShown y anota de qué versión se viene.
+    #
+    # No entra al lockfile: session-start.py lo reescribe en cada sesión, y en el inventario
+    # sería un archivo "editado a mano" para siempre. -Uninstall lo borra por su nombre.
+    #
+    # Si no se pudo escribir se avisa y la instalación sigue: los hooks ya respondieron, y
+    # sin el archivo la sesión siguiente muestra la bienvenida completa, que es lo mismo que
+    # una instalación nueva.
+    Register-EstadoInstalacion -DirHarness $dirHarness -Python $python
 
     Escribir ''
     Write-Host '  Listo.' -ForegroundColor Green
@@ -1487,6 +1692,12 @@ function Invoke-Desinstalar {
         if (Test-Path $ruta) { Remove-Item $ruta -Force -ErrorAction SilentlyContinue; $borrados++ }
     }
     Remove-Item $lock -Force -ErrorAction SilentlyContinue
+
+    # El estado de la instalación no está en el lockfile -lo reescribe session-start.py en
+    # cada sesión- así que se borra por su nombre. Sin harness no hay estado que guardar, y
+    # una instalación revertida tampoco lo deja.
+    $rutaEstado = Join-Path $dirClaude 'harness.installation.json'
+    if (Test-Path -LiteralPath $rutaEstado) { Remove-Item -LiteralPath $rutaEstado -Force -ErrorAction SilentlyContinue }
 
     # Los .nuevo que dejó algún -Update. Existen para que el humano compare contra su
     # versión; sin harness instalado no comparan contra nada.

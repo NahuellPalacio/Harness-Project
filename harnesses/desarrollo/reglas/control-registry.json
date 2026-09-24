@@ -832,6 +832,84 @@
         "section": "6",
         "rule": "Vu3"
       }
+    },
+    {
+      "id": "session-inactivity-timeout-required",
+      "type": "POLICY",
+      "rule": "Vu4",
+      "file": "controles/policies/session-inactivity-timeout-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu4"
+      }
+    },
+    {
+      "id": "session-inactivity-timeout",
+      "type": "CHECK",
+      "rule": "Vu4",
+      "file": "controles/checks/session-inactivity-timeout.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu4"
+      }
+    },
+    {
+      "id": "client-validation-server-mirroring-required",
+      "type": "POLICY",
+      "rule": "Vu5",
+      "file": "controles/policies/client-validation-server-mirroring-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu5"
+      }
+    },
+    {
+      "id": "client-server-validation-parity",
+      "type": "CHECK",
+      "rule": "Vu5",
+      "file": "controles/checks/client-server-validation-parity.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu5"
+      }
+    },
+    {
+      "id": "custom-error-messages-required",
+      "type": "POLICY",
+      "rule": "Vu6",
+      "file": "controles/policies/custom-error-messages-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu6"
+      }
+    },
+    {
+      "id": "custom-error-message-compliance",
+      "type": "CHECK",
+      "rule": "Vu6",
+      "file": "controles/checks/custom-error-message-compliance.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu6"
+      }
     }
   ]
 }

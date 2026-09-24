@@ -12,6 +12,11 @@
 # unico que se lee es lo que alguien decidio dejar anotado.
 #
 # Presupuesto: 12 lineas. Se paga una vez por sesion, pero ocupa ventana todo el rato.
+#
+# Adelante de ese bloque va la bienvenida (lib/bienvenida.py): completa la primera vez, el
+# aviso de una actualizacion una vez, y despues una sola linea. Esa parte se le MUESTRA a la
+# persona como systemMessage, porque el bloque de abajo va al modelo y nadie mas lo lee. El
+# bloque sigue saliendo igual y en el mismo orden, despues de la bienvenida.
 import json
 import os
 import re
@@ -19,7 +24,8 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lib.hook import invoke_hook, avisar, campo               # noqa: E402
+from lib import bienvenida                                    # noqa: E402
+from lib.hook import invoke_hook, avisar_y_mostrar, campo     # noqa: E402
 from lib.reglas import config_proyecto                        # noqa: E402
 from lib.zonas import definicion_zonas, contenido_zona        # noqa: E402
 
@@ -52,12 +58,35 @@ def _git(proyecto, *args):
         return None
 
 
+def _bienvenida(proyecto, config):
+    """(texto, estado) o (None, None). Una bienvenida que no se pudo armar no se lleva puesto el
+    resto del bloque: se calla y la sesion sigue con lo de siempre."""
+    if not bienvenida.hay_harness(proyecto):
+        return None, None
+    try:
+        estado = bienvenida.resolver(proyecto, (config or {}).get("rutaCodebase"))
+        return bienvenida.renderizar(estado), estado
+    except Exception:                    # noqa: BLE001 - la bienvenida no rompe el hook
+        return None, None
+
+
+def _marcar(proyecto, estado):
+    """La marca va DESPUES de mostrar. Si no se pudo escribir, la bienvenida sale de nuevo en
+    la proxima sesion, que es mejor que perderla."""
+    try:
+        bienvenida.marcar_mostrada(estado)
+        bienvenida.escribir_estado(bienvenida.rutas(proyecto)["installation"], estado)
+    except Exception:                    # noqa: BLE001
+        pass
+
+
 def cuerpo(e):
     proyecto = campo(e, "cwd", "")
     if not proyecto or not os.path.isdir(proyecto):
         return
 
     config = config_proyecto(proyecto)
+    texto_bienvenida, estado_bienvenida = _bienvenida(proyecto, config)
     lineas = []
 
     # --- Quien sos y que harness rige aca -----------------------------------------
@@ -179,10 +208,13 @@ def cuerpo(e):
             lineas.append("El indice del codigo no tiene su project-context.json: "
                           "dev-iniciador-code lo escribe en el mismo recorrido.")
 
-    if not lineas:
+    if texto_bienvenida is None and not lineas:
         return
 
-    avisar("SessionStart", "\n".join(lineas))
+    contexto = "\n".join(([texto_bienvenida] if texto_bienvenida else []) + lineas)
+    avisar_y_mostrar("SessionStart", contexto, texto_bienvenida)
+    if estado_bienvenida is not None:
+        _marcar(proyecto, estado_bienvenida)
 
 
 invoke_hook("SessionStart", cuerpo)

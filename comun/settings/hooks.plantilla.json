@@ -1,40 +1,43 @@
 {
   "_comentario": [
-    "Plantilla del registro de hooks. install.ps1 reemplaza {{SHIM}} por la ruta del",
-    "lanzador, siempre relativa a $CLAUDE_PROJECT_DIR: este archivo nunca contiene una",
+    "Plantilla del registro de hooks. install.ps1 reemplaza {{SHIM}} por la invocacion del",
+    "lanzador, siempre relativa a $env:CLAUDE_PROJECT_DIR: este archivo nunca contiene una",
     "ruta absoluta ni nada que dependa de la maquina.",
+    "El shell se fija en powershell: sin eso Claude Code usa Git Bash si lo encuentra y",
+    "PowerShell si no, y el mismo comando no puede estar bien escrito para los dos.",
     "Los matchers son estrictos a proposito. Un matcher '*' en PreToolUse agrega el",
-    "arranque de un proceso a CADA llamada a herramienta."
+    "arranque de un proceso a CADA llamada a herramienta. PowerShell va en los dos: es la",
+    "herramienta que usa Claude Code en Windows para correr comandos."
   ],
   "hooks": {
     "SessionStart": [
       {
         "matcher": "startup|resume|clear",
         "hooks": [
-          { "type": "command", "command": "{{SHIM}} session-start" }
+          { "type": "command", "shell": "powershell", "command": "{{SHIM}} session-start; exit $LASTEXITCODE" }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "{{SHIM}} user-prompt-submit" }
+          { "type": "command", "shell": "powershell", "command": "{{SHIM}} user-prompt-submit; exit $LASTEXITCODE" }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell",
         "hooks": [
-          { "type": "command", "command": "{{SHIM}} pre-tool-use" }
+          { "type": "command", "shell": "powershell", "command": "{{SHIM}} pre-tool-use; exit $LASTEXITCODE" }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell",
         "hooks": [
-          { "type": "command", "command": "{{SHIM}} post-tool-use" }
+          { "type": "command", "shell": "powershell", "command": "{{SHIM}} post-tool-use; exit $LASTEXITCODE" }
         ]
       }
     ]

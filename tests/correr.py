@@ -30,7 +30,24 @@ class Resultados:
         self._add(nombre, bool(condicion), "" if condicion else "es falso")
 
 
+def _salida_robusta():
+    """UTF-8 y errors='replace' en stdout y stderr.
+
+    Invoke-Tests.ps1 lee esta salida por un pipe, y en Windows un pipe sale en la codepage
+    ANSI (cp1252): una fila en rojo con un ✓ o una → en el detalle levantaba
+    UnicodeEncodeError, la suite salia con 1 igual y el detalle -lo unico que dice por que
+    fallo- se perdia. Invoke-Tests.ps1 decodifica como UTF-8, asi que las tildes llegan.
+    """
+    for flujo in (sys.stdout, sys.stderr):
+        if hasattr(flujo, "reconfigure"):
+            try:
+                flujo.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
 def main():
+    _salida_robusta()
     ap = argparse.ArgumentParser()
     ap.add_argument("-k", default="")
     ap.add_argument("--detallado", action="store_true")

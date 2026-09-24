@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session-inactivity-timeout/1.0",
+  "title": "Session Inactivity Timeout Evidence",
+  "description": "La evidencia del vencimiento por inactividad de cada sesion de la aplicacion, para ES0902 Vu4. Es del PROYECTO y se instala vacia. Cada entrada es una sesion, atada por `surfaceRef` a una superficie del inventario de C1. Los strings de `evidence` y `activitySemantics.sourceRef` son ids del catalogo de evidencia del caso. `additionalProperties: false` en todas las capas: una clave de mas -una cookie, un token, un id de sesion real- no entra.",
+  "type": "object",
+  "required": [
+    "version",
+    "sessions"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "sessionModel",
+          "inactivityTimeout",
+          "oidcTimeouts",
+          "activitySemantics",
+          "verification",
+          "evidence"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "surfaceRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "environment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sessionModel": {
+            "enum": [
+              "SERVER_SIDE_SESSION",
+              "TOKEN_BASED_APPLICATION_SESSION",
+              "HYBRID",
+              "OTHER",
+              "UNRESOLVED"
+            ]
+          },
+          "inactivityTimeout": {
+            "type": "object",
+            "required": [
+              "status",
+              "valueRef",
+              "independentFromOidcTokenTimeout"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "CONFIGURED",
+                  "NOT_CONFIGURED",
+                  "UNRESOLVED"
+                ]
+              },
+              "valueRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "independentFromOidcTokenTimeout": {
+                "enum": [
+                  "YES",
+                  "NO",
+                  "UNRESOLVED"
+                ]
+              },
+              "enforcementLayer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "oidcTimeouts": {
+            "type": "object",
+            "properties": {
+              "accessTokenTimeoutRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "refreshTokenTimeoutRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "idpSessionTimeoutRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "activitySemantics": {
+            "type": "object",
+            "required": [
+              "status",
+              "sourceRef"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "DEFINED",
+                  "NOT_REQUIRED",
+                  "UNRESOLVED"
+                ]
+              },
+              "sourceRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "verification": {
+            "type": "object",
+            "required": [
+              "result",
+              "evidenceMode"
+            ],
+            "properties": {
+              "result": {
+                "enum": [
+                  "SESSION_REJECTED",
+                  "REAUTHENTICATION_REQUIRED",
+                  "NEW_SESSION_REQUIRED",
+                  "OLD_INACTIVE_SESSION_STILL_USABLE",
+                  "TOKEN_TIMEOUT_ONLY",
+                  "UNRESOLVED",
+                  "NOT_TESTED"
+                ]
+              },
+              "evidenceMode": {
+                "enum": [
+                  "CONFIGURATION",
+                  "UNIT_TEST",
+                  "INTEGRATION_TEST",
+                  "AUTHORIZED_RUNTIME_TEST",
+                  "OTHER_AUTHORITATIVE_EVIDENCE"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

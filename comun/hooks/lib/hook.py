@@ -69,6 +69,22 @@ def avisar(evento_nombre, texto):
         "hookEventName": evento_nombre, "additionalContext": texto}})
 
 
+def avisar_y_mostrar(evento_nombre, texto, mensaje):
+    """AVISA al modelo con `texto` y le MUESTRA `mensaje` a la persona, en un solo JSON.
+
+    Sigue siendo un aviso: no bloquea ni pregunta. Existe porque `_emitir` corre una sola vez
+    por proceso, y un `avisar` seguido de otra salida perderia la segunda en silencio.
+    """
+    objeto = {}
+    if mensaje and mensaje.strip():
+        objeto["systemMessage"] = mensaje
+    if texto and texto.strip():
+        objeto["hookSpecificOutput"] = {
+            "hookEventName": evento_nombre, "additionalContext": texto}
+    if objeto:
+        _emitir(objeto)
+
+
 def bloquear(evento_nombre, motivo):
     """BLOQUEA. Reservado a la regla de secretos: es lo unico que el harness impide."""
     _emitir({"hookSpecificOutput": {

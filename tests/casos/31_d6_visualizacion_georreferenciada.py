@@ -1111,7 +1111,7 @@ def test_e30_los_controles_dejan_de_ser_un_hueco(t):
     reporte = c_controles.reporte()
     # 📌 Eran dieciseis cuando D6 cerro; D5 sumo dos y D7 sumo seis. El numero va exacto a
     # proposito: una banda floja deja pasar la regla que se instala sin tocar este test.
-    t.igual("E-30 son cuarenta y seis controles", 46, reporte["summary"]["declaredControls"])
+    t.igual("E-30 son cincuenta y dos controles", 52, reporte["summary"]["declaredControls"])
     t.verdadero("E-30 el registro es valido", reporte["result"]["registryValid"])
     t.verdadero("E-30 y no hay archivos sin declarar", reporte["result"]["filesystemClean"])
     t.igual("E-30 ningun archivo suelto", [], reporte["undeclared"])

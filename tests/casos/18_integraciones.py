@@ -59,6 +59,15 @@ def _almacen(raiz, entorno=None):
     return AlmacenSecretos(os.path.join(raiz, ".env"), {} if entorno is None else entorno)
 
 
+def _lock(raiz, harness=("comun", "desarrollo")):
+    """El lockfile que deja install.ps1. Sin el, el resolvedor del estado general dice
+    BLOQUEADO por falta de instalacion, y E-24 no podria distinguir "una integracion caida
+    voltea al harness" de "el harness no esta instalado"."""
+    with open(os.path.join(raiz, ".claude", "harness.lock.json"), "w", encoding="utf-8") as f:
+        f.write(json.dumps({"version": "0.20.0", "harness": list(harness),
+                            "instalado": "2026-09-24 10:00:00", "archivos": []}))
+
+
 def _config(raiz, documento=None):
     ruta = os.path.join(raiz, ".claude", "harness.integraciones.json")
     if documento is not None:
@@ -591,8 +600,14 @@ def test_e23_el_manifiesto_y_el_codigo_declaran_lo_mismo(t):
 # -- E-24 a E-28 — la CLI ------------------------------------------------------
 
 def test_e24_una_integracion_caida_no_voltea_el_harness(t):
-    """E-24 — con Jira caido y GitLab valido: codigo 0, READY, y las de GitLab ENABLED."""
+    """E-24 — con Jira caido y GitLab valido: codigo 0, el harness sigue en pie y las de GitLab
+    ENABLED.
+
+    Hasta bloque-1-bienvenida esto afirmaba "HARNESS READY", una palabra fija. Ahora el estado
+    sale del resolvedor (E-21 de esa spec): con Jira caido es PARCIAL, que es exactamente "no
+    voltea al harness". Lo que sigue prohibido es BLOQUEADO."""
     raiz = _proyecto("JIRA_TOKEN=%s\nGITLAB_TOKEN=%s\n" % (TOKEN, TOKEN))
+    _lock(raiz)
     _config(raiz, {"jira": {"enabled": True, "baseUrl": "https://jira", "usuario": "a@b"},
                    "gitlab": {"enabled": True, "baseUrl": "https://gitlab"}})
     transporte = Transporte({
@@ -604,7 +619,10 @@ def test_e24_una_integracion_caida_no_voltea_el_harness(t):
     })
     codigo, salida, _ = _correr_cli(["estado", "--proyecto", raiz], transporte)
     t.igual("E-24 codigo 0", 0, codigo)
-    t.contiene("E-24 declara READY", "HARNESS READY", salida)
+    t.contiene("E-24 el harness sigue en pie: PARCIAL", "Harness GCBA ◐ PARCIAL", salida)
+    t.no_contiene("E-24 y no BLOQUEADO", "BLOQUEADO", salida)
+    t.contiene("E-24 la linea nombra a Jira caido", "Jira SIN CONEXIÓN", salida)
+    t.contiene("E-24 y a GitLab disponible", "GitLab DISPONIBLE", salida)
     t.contiene("E-24 jira caido", "CONNECTION_FAILED", salida)
 
     documento = json.loads(open(os.path.join(raiz, ".claude", "harness.capacidades.json"),
@@ -618,6 +636,7 @@ def test_e24_una_integracion_caida_no_voltea_el_harness(t):
 def test_e25_con_todo_configurado_el_setup_no_pregunta(t):
     """E-25 — setup con la configuracion completa no lee de stdin: no falla ni se cuelga."""
     raiz = _proyecto("JIRA_TOKEN=%s\nGITLAB_TOKEN=%s\n" % (TOKEN, TOKEN))
+    _lock(raiz)
     _config(raiz, {"jira": {"enabled": True, "baseUrl": "https://jira", "usuario": "a@b"},
                    "gitlab": {"enabled": False, "baseUrl": ""}})
     transporte = Transporte({"jira": (200, "{}"), "search/jql": (200, "{}"),
@@ -629,7 +648,11 @@ def test_e25_con_todo_configurado_el_setup_no_pregunta(t):
     finally:
         sys.stdin = stdin_previo
     t.igual("E-25 codigo 0", 0, codigo)
-    t.contiene("E-25 llego al final", "HARNESS READY", salida)
+    # El final del setup es la seccion Estado, que abre con la linea del estado general
+    # (bloque-1-bienvenida E-21).
+    estado = salida.split("Estado\n" + "-" * 48 + "\n", 1)
+    t.verdadero("E-25 llego al final: la seccion Estado abre con el estado general",
+                len(estado) == 2 and estado[1].startswith("Harness GCBA "))
     t.contiene("E-25 reconoce que ya estaba configurado", "configuracion existente", salida)
 
 

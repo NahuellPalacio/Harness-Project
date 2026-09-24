@@ -6,6 +6,7 @@
     python .claude/harness/bin/desarrollo/dev-harness.py reconfigurar jira|gitlab
     python .claude/harness/bin/desarrollo/dev-harness.py contexto GCBA-1234 [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py seguridad GCBA-1234 [--conocimiento] [--resumen] [--reporte]
+    python .claude/harness/bin/desarrollo/dev-harness.py harness [--json] [--verbose] [--reiniciar-bienvenida]
 
 Los tres primeros son el Bloque 1 y contestan una sola pregunta: que integraciones hay
 configuradas, cuales funcionan y que capacidades se pueden usar.
@@ -30,6 +31,7 @@ Codigos de salida:
 """
 import argparse
 import getpass
+import importlib.util
 import json
 import os
 import re
@@ -37,6 +39,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import rutas as rutas_bin                                         # noqa: E402
 from integraciones import base                                    # noqa: E402
 from integraciones.almacen import AlmacenSecretos, ErrorDeAlmacen  # noqa: E402
 from integraciones.config import ConfigIntegraciones, ConfigIlegible, ClaveProhibida  # noqa: E402
@@ -239,7 +242,107 @@ def correr_bootstrap(config, almacen, timeout, consola, transporte=None):
     return registro
 
 
-def mostrar(consola, documento):
+# -- el estado general del harness ----------------------------------------------
+
+_MODULO_BIENVENIDA = []
+
+
+def bienvenida():
+    """comun/hooks/lib/bienvenida.py, el resolvedor unico del estado general.
+
+    Se carga por ruta y no por import: vive en la lib de los hooks, que en el arbol instalado
+    es .claude/harness/hooks/lib/ y en el repositorio comun/hooks/lib/, y ninguna de las dos
+    esta en sys.path. Tampoco se agrega: `lib` es un nombre que los hooks usan como paquete.
+    """
+    if _MODULO_BIENVENIDA:
+        return _MODULO_BIENVENIDA[0]
+    raiz = rutas_bin.raiz_del_harness(__file__)
+    ruta = os.path.join(raiz, "hooks", "lib", "bienvenida.py") if raiz else None
+    if not ruta or not os.path.isfile(ruta):
+        raise FallaDelHarness(
+            "no se encontro hooks/lib/bienvenida.py al lado del harness instalado. "
+            "Instalá de nuevo con install.ps1.")
+    spec = importlib.util.spec_from_file_location("harness_bienvenida", ruta)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    _MODULO_BIENVENIDA.append(modulo)
+    return modulo
+
+
+def estado_general(proyecto, rutas):
+    """El documento harness-installation/1.0 de ahora. No escribe nada ni hace red."""
+    return bienvenida().resolver(proyecto, _json_o_vacio(rutas["harness_config"]).get("rutaCodebase"))
+
+
+def linea_de_estado(proyecto, rutas):
+    """La linea compacta del resolvedor, la misma que ve la persona al abrir una sesion.
+
+    Si el resolvedor no se pudo cargar no se inventa un estado: se dice que no se sabe.
+    """
+    try:
+        return bienvenida().renderizar_linea(estado_general(proyecto, rutas))
+    except Exception as e:                    # noqa: BLE001 - el bootstrap ya corrio
+        return "Harness GCBA: no se pudo calcular el estado general (%s)" % e
+
+
+def mostrar_harness(args, proyecto, rutas):
+    """`harness`: el estado de ahora, sin red y sin tocar la marca de la bienvenida.
+
+    Con --reiniciar-bienvenida es lo unico que escribe: firstRunShown false, para que la
+    proxima sesion muestre la bienvenida completa.
+    """
+    b = bienvenida()
+    if args.reiniciar_bienvenida:
+        # Sin lockfile ni estado el harness no esta instalado aca: escribir el estado haria
+        # aparecer una bienvenida en un proyecto que no tiene harness.
+        if not b.hay_harness(proyecto):
+            raise FallaDelHarness("el harness no esta instalado en %s: no hay bienvenida que "
+                                  "reiniciar." % proyecto)
+        doc = b.reiniciar_bienvenida(proyecto)
+        destino = sys.stderr if args.json else sys.stdout
+        destino.write("La próxima sesión de Claude Code muestra la bienvenida completa.\n")
+    else:
+        doc = estado_general(proyecto, rutas)
+
+    if args.json:
+        sys.stdout.write(json.dumps(doc, ensure_ascii=False, indent=2) + "\n")
+        return 0
+    if args.reiniciar_bienvenida:
+        return 0
+
+    sys.stdout.write(b.renderizar_bienvenida(doc) + "\n")
+    if args.verbose:
+        sys.stdout.write("\n" + detalle_verbose(b, doc, proyecto, rutas) + "\n")
+    return 0
+
+
+def detalle_verbose(b, doc, proyecto, rutas):
+    """La version, la fecha, cada condicion con su id y de que archivo sale cada dato."""
+    boot = doc["bootstrap"]
+    lineas = ["Detalle",
+              "  Versión instalada   %s" % (doc.get("installedVersion") or "desconocida"),
+              "  Instalado el        %s" % (doc.get("installedAt") or "desconocido"),
+              "  Estado              %s (%s)" % (b.etiqueta(boot["status"]), boot["status"])]
+    for titulo, clave in (("Lo bloquea", "blockingConditions"), ("Pendiente", "pendingConditions")):
+        for c in boot.get(clave) or []:
+            lineas.append("  %-19s %s — %s" % (titulo, c, b.describir(c)))
+    for i in doc.get("integrations") or []:
+        lineas.append("  Integración         %s %s, verificada: %s"
+                      % (i["id"], i["status"], i.get("verifiedAt") or "nunca"))
+    conocimiento = doc.get("knowledge") or {}
+    if conocimiento.get("applies"):
+        lineas.append("  Conocimiento        verificado: %s" % (conocimiento.get("verifiedAt") or "nunca"))
+        for f in conocimiento.get("sources") or []:
+            lineas.append("  Fuente              %s %s" % (f["id"], f["state"]))
+    archivos = b.rutas(proyecto, _json_o_vacio(rutas["harness_config"]).get("rutaCodebase"))
+    lineas.append("Archivos leídos")
+    for clave in ("lock", "installation", "capacidades", "fuentes", "contexto"):
+        ruta = archivos[clave]
+        lineas.append("  %s%s" % (os.path.normpath(ruta), "" if os.path.isfile(ruta) else "  (no existe)"))
+    return "\n".join(lineas)
+
+
+def mostrar(consola, documento, proyecto, rutas):
     ancho = max(len(c.etiqueta) for c in CLASES) + 2
     consola.linea("")
     consola.linea("GCBA Development Harness")
@@ -259,7 +362,8 @@ def mostrar(consola, documento):
     consola.linea("")
     consola.linea("Estado")
     consola.linea("-" * 48)
-    consola.linea("HARNESS READY")
+    # El estado del resolvedor, no una palabra fija: con una integracion caida es PARCIAL.
+    consola.linea(linea_de_estado(proyecto, rutas))
     caidas = [c.etiqueta for c in CLASES
               if documento["integraciones"][c.nombre]["estado"] != base.AVAILABLE]
     if caidas:
@@ -876,6 +980,12 @@ def comando(args, transporte=None, transporte_bytes=None):
         raise FallaDelHarness("el proyecto %s no existe." % proyecto)
 
     rutas = rutas_de(proyecto)
+
+    # Antes de armar la configuracion de las integraciones: `harness` no las necesita, y un
+    # harness.integraciones.json roto no puede impedir ver el estado.
+    if args.comando == "harness":
+        return mostrar_harness(args, proyecto, rutas)
+
     consola = Consola(args.json)
     config = ConfigIntegraciones(rutas["config"])
     almacen = AlmacenSecretos(rutas["env"])
@@ -917,7 +1027,7 @@ def comando(args, transporte=None, transporte_bytes=None):
     if args.json:
         sys.stdout.write(json.dumps(documento, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     else:
-        mostrar(consola, documento)
+        mostrar(consola, documento, proyecto, rutas)
     return 0
 
 
@@ -926,7 +1036,7 @@ def parser():
         prog="dev-harness.py",
         description="Integraciones y contexto de tarea del harness de desarrollo.")
     p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan",
-                                       "contabilidad", "fuentes", "seguridad"))
+                                       "contabilidad", "fuentes", "seguridad", "harness"))
     p.add_argument("argumento", nargs="?",
                    help="la integracion, para reconfigurar; la clave de Jira, para contexto")
     p.add_argument("--archivo", default="",
@@ -962,7 +1072,12 @@ def parser():
     p.add_argument("--proyecto", default=os.getcwd(),
                    help="raiz del proyecto (por defecto, el directorio actual)")
     p.add_argument("--json", action="store_true",
-                   help="el registro de capacidades por stdout, para consumirlo")
+                   help="el registro de capacidades por stdout, para consumirlo; harness: el "
+                        "estado en harness-installation/1.0")
+    p.add_argument("--verbose", action="store_true",
+                   help="harness: la version, la fecha, cada condicion con su id y los archivos leidos")
+    p.add_argument("--reiniciar-bienvenida", action="store_true",
+                   help="harness: la proxima sesion vuelve a mostrar la bienvenida completa")
     p.add_argument("--token", default=None,
                    help=argparse.SUPPRESS)
     return p

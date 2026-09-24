@@ -23,6 +23,30 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.20.0 → 0.21.0
+
+`-Update` alcanza. No hay pasos manuales ni nada que borrar.
+
+🔴 **En Windows sin Git Bash, hasta la 0.20.0 ningún hook corría**, tampoco el bloqueo de secretos:
+el comando que quedaba en `.claude\settings.json` era sintaxis de bash, y los filtros no nombraban la
+herramienta `PowerShell`. `settings.json` se regenera en cada `-Update`, así que el `-Update` deja el
+comando nuevo (`"shell": "powershell"`, `& "$env:CLAUDE_PROJECT_DIR/.claude/harness/run-hook.cmd" …`)
+y su hash al día en `harness.lock.json`, sin tocar nada a mano.
+
+Cómo comprobarlo:
+
+- **Antes de abrir una sesión:** `.\install.ps1 -Doctor -Project C:\Work\GCBA\MiProyecto` corre los
+  comandos registrados como los corre Claude Code y dice `los cuatro hooks registrados en settings.json
+  responden`. Con el `settings.json` viejo dice que no corren.
+- **En la sesión siguiente:** abrí Claude Code en el proyecto y usá cualquier herramienta. En la
+  transcripción de esa sesión (el `.jsonl` de `~\.claude\projects\`) tienen que aparecer entradas
+  `hook_success`; con el comando viejo solo aparecían `hook_non_blocking_error`.
+
+La sesión siguiente al `-Update` también muestra, una sola vez, `Harness GCBA actualizado: 0.20.0 →
+0.21.0 ✓` y la línea de estado. El estado vive en `.claude\harness.installation.json`, que el
+`-Update` conserva y el `-Uninstall` borra. `dev-harness.py harness` lo muestra, y `setup` ya no dice
+`HARNESS READY` fijo: dice el estado de ahora.
+
 ## 0.19.0 → 0.20.0
 
 `-Update` alcanza. No hay pasos manuales ni nada que borrar. El subcomando nuevo,

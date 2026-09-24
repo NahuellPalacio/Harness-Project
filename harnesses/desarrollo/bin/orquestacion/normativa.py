@@ -94,8 +94,8 @@ def resolucion(senales, desde=None, evidencia=None):
     Lo resuelto viaja al lado, en `signals`: quien lee la unidad ve el valor, su estado y de
     donde salio, sin tener que confiar en un booleano que nadie firmo.
 
-    `evidencia` trae resultados ya corridos, por clave compuesta. Hoy la leen dos reglas,
-    `ES0902.C2`, `ES0902.C3` y `ES0902.Vu3`, que ponen su bloque en `standards.ES0902.rules` con referencias y
+    `evidencia` trae resultados ya corridos, por clave compuesta. Hoy la leen
+    `ES0902.C2`, `ES0902.C3`, `ES0902.Vu3`, `ES0902.Vu4`, `ES0902.Vu5` y `ES0902.Vu6`, que ponen su bloque en `standards.ES0902.rules` con referencias y
     no con contenido. Sin resultado el bloque queda sin resolver.
     """
     from . import matriz
@@ -135,6 +135,15 @@ def resolucion(senales, desde=None, evidencia=None):
         aplic_vu3, _ = seguridad.resolver_regla(seguridad.regla("Vu3", None, desde), booleanos)
         bloque["standards"][seguridad.ESTANDAR]["rules"]["Vu3"] = vu3_para_unidad(
             aplic_vu3, (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.Vu3"))
+        aplic_vu4, _ = seguridad.resolver_regla(seguridad.regla("Vu4", None, desde), booleanos)
+        bloque["standards"][seguridad.ESTANDAR]["rules"]["Vu4"] = vu4_para_unidad(
+            aplic_vu4, (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.Vu4"))
+        aplic_vu5, _ = seguridad.resolver_regla(seguridad.regla("Vu5", None, desde), booleanos)
+        bloque["standards"][seguridad.ESTANDAR]["rules"]["Vu5"] = vu5_para_unidad(
+            aplic_vu5, (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.Vu5"))
+        aplic_vu6, _ = seguridad.resolver_regla(seguridad.regla("Vu6", None, desde), booleanos)
+        bloque["standards"][seguridad.ESTANDAR]["rules"]["Vu6"] = vu6_para_unidad(
+            aplic_vu6, (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.Vu6"))
     except seguridad.SeguridadInvalida as e:
         # Un estandar roto no se lleva puesto al otro. Se dice cual, y ES0901 sigue resolviendo.
         bloque["standards"][seguridad.ESTANDAR] = {
@@ -206,6 +215,137 @@ def vu3_para_unidad(aplicabilidad, resultado=None, ruta_de_evidencia=None):
               "surfaces": sorted(str(s.get("surfaceId")) for s in superficies),
               "evidence": sorted(ids),
               "source": {"standard": "ES0902", "version": "6.2", "section": "6", "rule": "Vu3"}}
+    limpieza = _evidencia_de_controles(ruta_de_evidencia)
+    if limpieza is None:
+        bloque["surfaces"], bloque["evidence"] = [], []
+        return bloque
+    return limpieza.depurar(bloque)
+
+
+# Los estados del check de Vu4, por la misma razon.
+ESTADOS_DEL_CHECK_VU4 = ("PASS", "FAIL", "NOT_APPLICABLE", "APPLICABILITY_UNRESOLVED",
+                         "SESSION_COVERAGE_UNRESOLVED", "SESSION_TIMEOUT_POLICY_COVERAGE_UNRESOLVED",
+                         "SESSION_ACTIVITY_SEMANTICS_UNRESOLVED",
+                         "SESSION_INACTIVITY_TIMEOUT_UNRESOLVED", "TOKEN_TIMEOUT_ONLY",
+                         "INACTIVE_SESSION_REMAINS_USABLE", "SESSION_INACTIVITY_TIMEOUT_TEST_UNSAFE",
+                         "TEST_TARGET_UNAVAILABLE")
+
+
+def vu4_para_unidad(aplicabilidad, resultado=None, ruta_de_evidencia=None):
+    """El bloque de Vu4 que viaja en la unidad: ids y estados, nunca contenido.
+
+    🔴 Igual que Vu3: se proyecta solo un resultado que dice ser del check de Vu4, y pasa por la
+    regla de salida de `controles/lib/evidencia.py`. Sin esa lib, el estado viaja y ningun id.
+    """
+    from . import seguridad
+    r = resultado if isinstance(resultado, dict) else {}
+    estado = r.get("state") if r.get("control") == "session-inactivity-timeout" else None
+    if estado not in ESTADOS_DEL_CHECK_VU4:
+        r, estado = {}, None
+    if aplicabilidad != seguridad.APLICABLE:
+        r = {}
+        estado = (seguridad.NO_APLICABLE if aplicabilidad == seguridad.NO_APLICABLE
+                  else seguridad.RESULTADO_SIN_RESOLVER)
+    sesiones = [s for s in r.get("sessions") or [] if isinstance(s, dict)]
+    ids = set()
+    for s in sesiones:
+        usada = s.get("evidenceUsed") if isinstance(s.get("evidenceUsed"), dict) else {}
+        for v in usada.values():
+            ids.update(i for i in (v if isinstance(v, list) else []) if isinstance(i, str))
+    bloque = {"applicability": aplicabilidad,
+              "result": estado or seguridad.RESULTADO_SIN_RESOLVER,
+              "sessions": sorted(str(s.get("sessionId")) for s in sesiones),
+              "evidence": sorted(ids),
+              "source": {"standard": "ES0902", "version": "6.2", "section": "6", "rule": "Vu4"}}
+    limpieza = _evidencia_de_controles(ruta_de_evidencia)
+    if limpieza is None:
+        bloque["sessions"], bloque["evidence"] = [], []
+        return bloque
+    return limpieza.depurar(bloque)
+
+
+# Los estados del check de Vu5, por la misma razon.
+ESTADOS_DEL_CHECK_VU5 = ("PASS", "FAIL", "NOT_APPLICABLE", "APPLICABILITY_UNRESOLVED",
+                         "CLIENT_VALIDATION_COVERAGE_UNRESOLVED",
+                         "CLIENT_SERVER_VALIDATION_MAPPING_UNRESOLVED", "SERVER_VALIDATION_MISSING",
+                         "SERVER_VALIDATION_WEAKER", "VALIDATION_EQUIVALENCE_UNRESOLVED",
+                         "SERVER_VALIDATION_TEST_UNSAFE", "TEST_TARGET_UNAVAILABLE")
+
+
+def vu5_para_unidad(aplicabilidad, resultado=None, ruta_de_evidencia=None):
+    """El bloque de Vu5 que viaja en la unidad: ids y estados, nunca contenido.
+
+    🔴 Igual que Vu4: se proyecta solo un resultado que dice ser del check de Vu5, y pasa por la
+    regla de salida de `controles/lib/evidencia.py`. Sin esa lib, el estado viaja y ningun id.
+    Ni la descripcion de una restriccion ni una operacion del servidor llegan a la unidad.
+    """
+    from . import seguridad
+    r = resultado if isinstance(resultado, dict) else {}
+    estado = r.get("state") if r.get("control") == "client-server-validation-parity" else None
+    if estado not in ESTADOS_DEL_CHECK_VU5:
+        r, estado = {}, None
+    if aplicabilidad != seguridad.APLICABLE:
+        r = {}
+        estado = (seguridad.NO_APLICABLE if aplicabilidad == seguridad.NO_APLICABLE
+                  else seguridad.RESULTADO_SIN_RESOLVER)
+    clientes = [c for c in r.get("clients") or [] if isinstance(c, dict)]
+    ids = set()
+    for c in clientes:
+        for v in c.get("validations") or []:
+            usada = (v.get("evidenceUsed") if isinstance(v, dict)
+                     and isinstance(v.get("evidenceUsed"), dict) else {})
+            for u in usada.values():
+                ids.update(i for i in (u if isinstance(u, list) else []) if isinstance(i, str))
+    bloque = {"applicability": aplicabilidad,
+              "result": estado or seguridad.RESULTADO_SIN_RESOLVER,
+              "clients": sorted(str(c.get("clientSurfaceId")) for c in clientes),
+              "evidence": sorted(ids),
+              "source": {"standard": "ES0902", "version": "6.2", "section": "6", "rule": "Vu5"}}
+    limpieza = _evidencia_de_controles(ruta_de_evidencia)
+    if limpieza is None:
+        bloque["clients"], bloque["evidence"] = [], []
+        return bloque
+    return limpieza.depurar(bloque)
+
+
+
+# Los estados del check de Vu6, por la misma razon.
+ESTADOS_DEL_CHECK_VU6 = ("PASS", "FAIL", "NOT_APPLICABLE", "APPLICABILITY_UNRESOLVED",
+                         "ERROR_SURFACE_COVERAGE_UNRESOLVED", "DEFAULT_ERROR_EXPOSED",
+                         "RAW_TECHNICAL_ERROR_EXPOSED", "INFRASTRUCTURE_DETAIL_EXPOSED",
+                         "ERROR_CUSTOMIZATION_UNRESOLVED", "HTTP_ERROR_SEMANTICS_MASKED",
+                         "ERROR_MESSAGE_TEST_UNSAFE", "TEST_TARGET_UNAVAILABLE")
+
+
+def vu6_para_unidad(aplicabilidad, resultado=None, ruta_de_evidencia=None):
+    """El bloque de Vu6 que viaja en la unidad: ids y estados, nunca contenido.
+
+    🔴 Igual que Vu5: se proyecta solo un resultado que dice ser del check de Vu6, y pasa por la
+    regla de salida de `controles/lib/evidencia.py`. Sin esa lib, el estado viaja y ningun id.
+    Ningun texto de una evidencia -un stack trace, una IP, una ruta- llega a la unidad.
+    """
+    from . import seguridad
+    r = resultado if isinstance(resultado, dict) else {}
+    estado = r.get("state") if r.get("control") == "custom-error-message-compliance" else None
+    if estado not in ESTADOS_DEL_CHECK_VU6:
+        r, estado = {}, None
+    if aplicabilidad != seguridad.APLICABLE:
+        r = {}
+        estado = (seguridad.NO_APLICABLE if aplicabilidad == seguridad.NO_APLICABLE
+                  else seguridad.RESULTADO_SIN_RESOLVER)
+    superficies = [s for s in r.get("surfaces") or [] if isinstance(s, dict)]
+    ids = set()
+    for s in superficies:
+        for x in s.get("scenarios") or []:
+            usada = (x.get("evidenceUsed") if isinstance(x, dict)
+                     and isinstance(x.get("evidenceUsed"), dict) else {})
+            for u in usada.values():
+                ids.update(i for i in (u if isinstance(u, list) else []) if isinstance(i, str))
+    bloque = {"applicability": aplicabilidad,
+              "result": estado or seguridad.RESULTADO_SIN_RESOLVER,
+              "surfaces": sorted(str(s.get("surfaceId")) for s in superficies),
+              "evidence": sorted(ids),
+              "source": {"standard": "ES0902", "version": "6.2", "section": "6", "rule": "Vu6"}}
     limpieza = _evidencia_de_controles(ruta_de_evidencia)
     if limpieza is None:
         bloque["surfaces"], bloque["evidence"] = [], []

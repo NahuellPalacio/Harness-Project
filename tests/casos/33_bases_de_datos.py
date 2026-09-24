@@ -1477,7 +1477,7 @@ def test_e32_la_politica_es_del_harness_y_no_entra_en_la_matriz(t):
 
     # No se toco la matriz ni el registro de controles.
     t.igual("E-32 siguen siendo 24 reglas", 24, len(c_matriz.reglas()))
-    t.igual("E-32 y 46 controles", 46, c_controles.reporte()["summary"]["declaredControls"])
+    t.igual("E-32 y 52 controles", 52, c_controles.reporte()["summary"]["declaredControls"])
     t.igual("E-32 sin archivos de control sin declarar", [],
             c_controles.reporte()["undeclared"])
 

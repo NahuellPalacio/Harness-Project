@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "harness-installation/1.0",
+  "title": "Harness Installation State",
+  "description": "El estado de la instalacion del harness en un proyecto. Vive en .claude/harness.installation.json: lo escribe install.ps1 cuando la instalacion termino bien y lo reescribe session-start.py con el estado recalculado y la marca de la bienvenida, las dos veces con comun/hooks/lib/bienvenida.py. Guarda estados e ids en ingles y nada mas: ni tokens, ni URLs con credenciales, ni el contenido del .env. Es el schema del paquete del Bloque 1 con una sola divergencia, bootstrap.pendingConditions: lo que deja el estado en PARTIAL, con el mismo formato de id que blockingConditions. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "installed",
+    "harnessId",
+    "installedAt",
+    "bootstrap",
+    "welcome"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "harness-installation/1.0"
+      ]
+    },
+    "installed": {
+      "type": "boolean"
+    },
+    "harnessId": {
+      "type": "string"
+    },
+    "installedVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "installedAt": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "detected": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "bootstrap": {
+      "type": "object",
+      "required": [
+        "status",
+        "blockingConditions",
+        "pendingConditions"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "READY",
+            "PARTIAL",
+            "BLOCKED"
+          ]
+        },
+        "blockingConditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pendingConditions": {
+          "description": "Lo que no bloquea pero queda pendiente, por ejemplo INTEGRATION_NOT_CONFIGURED:jira o SOURCE_FRESHNESS_UNVERIFIED:ES0902. Vacio en READY y puede no estarlo en BLOCKED.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "integrations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "knowledge": {
+      "type": "object"
+    },
+    "welcome": {
+      "type": "object",
+      "required": [
+        "firstRunShown",
+        "lastShownAt"
+      ],
+      "properties": {
+        "firstRunShown": {
+          "type": "boolean"
+        },
+        "lastShownAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

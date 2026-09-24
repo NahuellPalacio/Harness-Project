@@ -33,11 +33,13 @@ Capacidades
 
 Estado
 ------------------------------------------------
-HARNESS READY
+Harness GCBA ◐ PARCIAL · Conocimiento VIGENCIA SIN VERIFICAR · Jira DISPONIBLE · GitLab SIN CONFIGURAR
 ```
 
-`HARNESS READY` con una integración caída no es una contradicción: **una integración que
-no anda deshabilita sus capacidades y nada más.** El comando sale con código 0.
+La última sección es el estado general, el mismo que muestra cada sesión al arrancar: no una
+palabra fija. Con una integración caída dice `PARCIAL` y la nombra, y nunca "listo". **Una
+integración que no anda deshabilita sus capacidades y nada más:** el comando sale con código 0.
+`dev-harness.py harness` muestra el mismo estado con el detalle, sin volver a consultar nada.
 
 ## Configurar, la primera vez
 

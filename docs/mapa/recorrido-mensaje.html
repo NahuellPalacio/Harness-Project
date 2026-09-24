@@ -132,9 +132,9 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <div>
     <h1>El recorrido de un mensaje</h1>
   </div>
-  <p class="sub">Qué hace gcba-harness v0.14.0 desde que se instala en un proyecto hasta que Claude contesta.</p>
+  <p class="sub">Qué hace gcba-harness v0.21.0 desde que se instala en un proyecto hasta que Claude contesta.</p>
   <div class="chips">
-    <span class="chip viva">v0.14.0</span>
+    <span class="chip viva">v0.21.0</span>
     <span class="chip">4 hooks</span>
     <span class="chip">1 sola puerta que bloquea</span>
     <span class="chip">1 paso todavía sin escribir</span>
@@ -150,7 +150,7 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
 </div>
 
 <div class="lienzo">
-<svg viewBox="0 0 980 1415" role="img" aria-label="Diagrama de flujo de gcba-harness: la adopción del harness y el primer recorrido del código, y después el recorrido de un mensaje — UserPromptSubmit, la decisión de Claude, la puerta de secretos en PreToolUse, la ejecución de la herramienta, los checks de PostToolUse y el retorno del aviso a Claude">
+<svg viewBox="0 0 980 1415" role="img" aria-label="Diagrama de flujo de gcba-harness: la adopción del harness y el primer recorrido del código, el estado que SessionStart le muestra a la persona, y después el recorrido de un mensaje — UserPromptSubmit, la decisión de Claude, la puerta de secretos en PreToolUse, la ejecución de la herramienta, los checks de PostToolUse y el retorno del aviso a Claude">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
@@ -176,6 +176,19 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <rect class="caja-hueca" x="120" y="24" width="320" height="46" rx="3"/>
   <text class="t-tit" x="136" y="44">SessionStart</text>
   <text class="t-min" x="136" y="60">una vez: harness que rige · git · caché · pendientes</text>
+
+  <path class="l" d="M400,24 L400,6 L478,6 L478,-60 L526,-60" marker-end="url(#a)"/>
+  <rect class="caja-viva" x="530" y="-164" width="400" height="158" rx="3"/>
+  <text class="t-tit acento" x="546" y="-144">systemMessage — lo ve la persona</text>
+  <text class="t-min" x="546" y="-128">1ª sesión tras instalar: la bienvenida entera</text>
+  <text class="t-min" x="546" y="-114">tras actualizar, una vez:</text>
+  <text class="t-min" x="546" y="-100">«Harness GCBA actualizado: &lt;vieja&gt; → &lt;nueva&gt; ✓»</text>
+  <text class="t-min" x="546" y="-86">si no, una línea: «Harness GCBA ◐ PARCIAL · …»</text>
+  <text class="t-min" x="546" y="-72">LISTO · PARCIAL · BLOQUEADO, lo resuelve lib/bienvenida.py</text>
+  <text class="t-min" x="546" y="-58">con 4 archivos locales de .claude/ · sin red, sin modelo</text>
+  <text class="t-min" x="546" y="-44">reescribe .claude/harness.installation.json:</text>
+  <text class="t-min" x="546" y="-30">firstRunShown y lastShownAt</text>
+  <text class="t-min" x="546" y="-16">el mismo texto encabeza el additionalContext de siempre</text>
 
   <line class="l" x1="440" y1="48" x2="526" y2="48" marker-end="url(#a)"/>
   <text class="t-eti" x="452" y="40">la primera vez</text>
@@ -231,8 +244,9 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <text class="t-eti" x="292" y="540">sí</text>
 
   <rect class="caja-deny" x="120" y="556" width="320" height="56" rx="3"/>
-  <text class="t-tit rojo" x="136" y="578">hook PreToolUse</text>
-  <text class="t-min" x="136" y="596">Write · Edit · MultiEdit · NotebookEdit · Bash</text>
+  <text class="t-tit rojo" x="136" y="576">hook PreToolUse</text>
+  <text class="t-min" x="136" y="593">Write · Edit · MultiEdit · NotebookEdit</text>
+  <text class="t-min" x="136" y="606">Bash · PowerShell</text>
 
   <line class="l-punt" x1="440" y1="584" x2="524" y2="584"/>
   <text class="t-min" x="530" y="572">Read, Grep, Glob, WebFetch y el resto no</text>

@@ -3,6 +3,60 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.21.0] — 2026-09-24
+
+**En Windows sin Git Bash, los hooks del harness no corrían nunca: ahora corren, y el instalador
+prueba el comando que registra.** El Portal IGE lo encontró el 24-09-2026. En la 0.20.0, sus
+cuatro sesiones no tenían un solo `hook_success`, y 28 escrituras pasaron sin el bloqueo de
+secretos. El defecto venía de la 0.11. Además, una instalación exitosa deja de ser silenciosa, y
+ES0902 suma tres reglas comprobadas: Vu4, Vu5 y Vu6. Son cinco cambios verificados, todos sin
+ningún escenario contradicho.
+
+### Corregido
+
+- 🔴 **Los hooks se registran para PowerShell.** Cada hook lleva `"shell": "powershell"` y
+  `& "$env:CLAUDE_PROJECT_DIR/.claude/harness/run-hook.cmd" <hook>; exit $LASTEXITCODE`. Los
+  filtros de `PreToolUse` y `PostToolUse` nombran también `PowerShell`, así que los comandos de
+  consola pasan por el bloqueo de secretos. Ver [UPGRADE.md](UPGRADE.md): `-Update` alcanza
+- **El instalador y `-Doctor` prueban el comando registrado en `settings.json`**, como lo corre
+  Claude Code, y ya no solo el lanzador. Un comando que no corre revierte la instalación
+- **`setup` ya no imprime `HARNESS READY` fijo.** Imprime el estado real
+- **El runner de tests ya no se cae** al imprimir un `✓` en una consola cp1252
+
+### Agregado
+
+- **La bienvenida.** La primera sesión después de instalar muestra el estado del harness:
+  - el proyecto;
+  - `LISTO`, `PARCIAL` o `BLOQUEADO`;
+  - las integraciones;
+  - la vigencia del conocimiento;
+  - los comandos para empezar.
+
+  Las sesiones siguientes muestran una sola línea, y una actualización se avisa una vez. Todo sale
+  de archivos locales, sin red ni modelo. El estado vive en `.claude/harness.installation.json`
+- **`dev-harness.py harness [--json] [--verbose] [--reiniciar-bienvenida]`**
+- **ES0902 Vu4**: una sesión inactiva vence sola, aparte del vencimiento del token de OpenID
+- **ES0902 Vu5**: toda validación del cliente está espejada en el servidor, validación por
+  validación y cliente por cliente
+- **ES0902 Vu6**: todo mensaje de error que ve un consumidor está customizado, y un error
+  inesperado no se disfraza de `200`
+
+### Cambiado
+
+- **La redacción de secretos compartida reconoce más contraseñas y tapa menos prosa.** Tapa
+  `contraseña=`, `clave=`, `contrasenia=`, `pw=` y `pin=`. Además redacta las claves de un
+  diccionario. Después de `pass` o de una palabra en castellano, un espacio solo no alcanza como
+  separador, así que "la clave del trámite es obligatoria" sale entera. E-49 de Vu4 se enmendó para
+  esto, por decisión del usuario
+
+### Lo que no se cumplió, sin maquillar
+
+- **No se probó en una sesión real que Claude Code respete `"shell": "powershell"`.** Está
+  documentado. Se comprueba en el Portal IGE después del `-Update`, con el procedimiento de
+  [UPGRADE.md](UPGRADE.md)
+- **Si falta `run-hook.cmd`, el hook falla en silencio en la sesión.** El comando sale con 0, y
+  solo la instalación lo detecta. Está en `Pendientes/Fix-Harness/PENDIENTES-FH.md`
+
 ## [0.20.0] — 2026-09-23
 
 **ES0902 deja de ser un estándar declarado: ocho de sus reglas se comprueban, y el estado de

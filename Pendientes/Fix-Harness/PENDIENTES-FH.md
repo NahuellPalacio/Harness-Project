@@ -824,6 +824,52 @@ bare `=`, and honour escaped quotes. The last two belong in the shared catalogue
 the temp file, removing the package's own freshly created temp name on failure does not reopen
 E-01, but it has to be argued in the spec before it is written.
 
+### ES0902 Vu5 rule 5 lets a block hide a later step's own unresolved state
+
+Found by the refuter's second pass on Vu5, on 2026-09-24, with no scenario naming it. The case is a
+mapped validation with `enforcementStatus: PRESENT` and `parity: UNRESOLVED` declared, whose only
+server evidence is a cited unsafe test (`environment: PRD`). Step 2 finds no support and returns the
+block's state, so the reported state is `SERVER_VALIDATION_TEST_UNSAFE`, and step 3's
+`VALIDATION_EQUIVALENCE_UNRESOLVED` only shows in `states[]`. Rule 5 of the spec says the opposite:
+a block never replaces an earlier-step unresolved, and step 3's unresolved has nothing to do with
+the test. PASS stays impossible, so no verdict moves.
+
+Fix. In `controles/checks/client-server-validation-parity.py`, return the block's state from a step
+without support only when no later step has its own unresolved state. Add the case to E-69.
+
+### Nobody knows since which Claude Code version a hook's `shell` field exists
+
+Found on 2026-09-24 while fixing the hook registration (`docs/cambios/hooks-con-shell-powershell/`).
+Every hook in `settings.json` is now registered with `"shell": "powershell"`, and the three manifests
+still say `requiereClaudeCode: 2.1.0`. A Claude Code that predates the field ignores it and runs the
+PowerShell command in its default shell, Git Bash where it exists, where it fails the other way
+round (the spec's first known risk).
+
+Evidence: the hooks documentation describes `shell` without saying when it appeared; the
+downloadable changelog covers only 2.1.273 to 2.1.281 and does not mention it; the registration was
+proved by hand on 2.1.281 only. `requiereClaudeCode` was left as it is on purpose, because raising it
+to 2.1.281 would lock out every older machine without knowing that it has to.
+
+What is missing is a fact, not a design: the first version with `shell`. It has to come from an
+older changelog or from Anthropic, and until then there is no version to write.
+
+### `evento=harness.listo` is emitted in every state, including PARTIAL and BLOCKED
+
+Found by the refuter's first pass on `bloque-1-bienvenida`, on 2026-09-24. `dev-harness.py` ends
+every `setup`, `estado` and `reconfigurar` run with `evento=harness.listo disponibles=<n>`, whatever
+the resolver says. Since that change the human `Estado` section of `setup` prints the resolver's line
+(`Harness GCBA ◐ PARCIAL · ...`), so a run with Jira down now says PARCIAL in the text and `listo` in
+the event right above it. E-21 excludes `evento=` lines on purpose, because they are the stable
+telemetry of `integraciones-bootstrap` and not text for the person.
+
+Why it matters. Anything that reads the event log (a script, a future bitácora consumer, a person
+grepping) reads "ready" for a harness the resolver calls PARTIAL or BLOCKED.
+
+Fix. It is a change to `integraciones-bootstrap`, not a code tweak: either rename the event (for
+example `harness.bootstrap.fin`) or add the resolver status to it (`estado=PARTIAL`). Both change a
+stable event, so the spec of `integraciones-bootstrap` has to be amended first, with a scenario, and
+`18_integraciones` updated alongside.
+
 ## Installer defects
 
 ### The installer tests fail at random under load, and the python test counts drift
@@ -1153,6 +1199,27 @@ copies of a secret detector drift: Vu1's already differs.
 
 Fix. Migrate both checks to the lib in one change for `harness-staff-engineer`, behaviour frozen
 except for the documented Vu1 E-39 and E-42 fixes, which need their own scenarios.
+
+### A registered hook whose `run-hook.cmd` cannot be found exits 0 and does nothing
+
+Found on 2026-09-24 during the `rojo visto` pass of `hooks-con-shell-powershell` E-04. The command
+the spec fixes is `& "$env:CLAUDE_PROJECT_DIR/.claude/harness/run-hook.cmd" <hook>; exit $LASTEXITCODE`.
+When `&` cannot find the launcher, PowerShell writes a `CommandNotFoundException` to stderr and
+`exit $LASTEXITCODE` exits **0**: `$LASTEXITCODE` is still `$null`, because no program ran. The
+output is empty, and empty is a valid answer from a hook. Measured with `CLAUDE_PROJECT_DIR` set to
+`C:\no\existe`: exit 0, empty stdout, one CLIXML error record in stderr.
+
+The installer's gate catches it since this change: `Test-HooksInstalados` counts a PowerShell error
+record in stderr as a failure even with exit 0, and E-03 and E-04 assert it. That is stricter than
+the spec's text ("otro código que 0 o una salida que no es JSON") and it was the only way for E-04 to
+go red when the path broke. What nothing catches is the session: with `.claude\harness\` gone or
+half restored, Claude Code sees exit 0 and no output, and a missing launcher is silent. The old bash
+command at least left `hook_non_blocking_error` in the transcript. For `pre-tool-use`, silent means a
+secret goes through.
+
+Not fixed here: the command text is fixed by the spec (E-01), so failing when `$?` is false is a spec
+change, and how Claude Code reports a non-zero exit from a `shell: powershell` hook has not been
+observed.
 
 ## Verification that was not done
 

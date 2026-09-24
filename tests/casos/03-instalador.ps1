@@ -70,7 +70,7 @@ try {
         Assert-Verdadero 'registra los cuatro eventos de hook' `
             ($settings.hooks.PSObject.Properties.Name.Count -eq 4)
         Assert-Contiene 'el comando del hook no lleva ruta absoluta' `
-            '$CLAUDE_PROJECT_DIR' $settings.hooks.PostToolUse[0].hooks[0].command
+            '$env:CLAUDE_PROJECT_DIR' $settings.hooks.PostToolUse[0].hooks[0].command
         Assert-Verdadero 'carga las reglas de deny de secretos' `
             ($settings.permissions.deny.Count -gt 0)
     }
@@ -530,6 +530,9 @@ try {
         (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness.lock.json')))
     Assert-Verdadero 'E-27 no deja .claude\harness a medias' `
         (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness')))
+    # bloque-1-bienvenida E-01, la mitad de la instalacion revertida.
+    Assert-Verdadero 'bienvenida E-01 revertida por un hook roto: no deja harness.installation.json' `
+        (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness.installation.json')))
 }
 finally {
     [System.IO.File]::WriteAllBytes($rutaHookRoto, $bytesHookOriginales)
@@ -539,3 +542,506 @@ finally {
 $bytesHookFinales = [System.IO.File]::ReadAllBytes($rutaHookRoto)
 Assert-Igual 'E-27 pre-tool-use.py quedo exactamente igual' `
     ([System.BitConverter]::ToString($bytesHookOriginales)) ([System.BitConverter]::ToString($bytesHookFinales))
+
+
+# ── Los hooks se registran para PowerShell, y la compuerta prueba lo registrado ─────
+#
+# Spec: docs/cambios/hooks-con-shell-powershell/spec.md, E-01..E-11. Y del lado del
+# instalador, docs/cambios/bloque-1-bienvenida/spec.md: E-01, la mitad de E-02, E-18,
+# E-19 (la mitad del borrado) y E-24.
+#
+# Hasta la 0.20 ningún hook corrió en una máquina sin Git Bash: el comando registrado era
+# sintaxis de bash, y la compuerta lanzaba run-hook.cmd directo en vez de probar lo que
+# quedaba escrito en settings.json. Por eso cada comando de acá se corre con
+# Invoke-HpsComando, que vive en este archivo y no en install.ps1: si el test usara la
+# misma función que la compuerta, un error en esa función daría verde de los dos lados.
+
+Set-Grupo 'Instalador - hooks registrados para PowerShell'
+
+$hpsVersion = ([System.IO.File]::ReadAllText((Join-Path $script:Raiz 'VERSION'))).Trim()
+$hpsMatcher = 'Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell'
+$hpsEventos = [ordered]@{
+    SessionStart     = 'session-start'
+    UserPromptSubmit = 'user-prompt-submit'
+    PreToolUse       = 'pre-tool-use'
+    PostToolUse      = 'post-tool-use'
+}
+$hpsPayloads = @{
+    SessionStart     = 'session-start.json'
+    UserPromptSubmit = 'user-prompt-submit.json'
+    PreToolUse       = 'pre-tool-use-write.json'
+    PostToolUse      = 'post-tool-use-write.json'
+}
+$hpsUtf8 = New-Object System.Text.UTF8Encoding $false
+
+
+function Invoke-HpsProceso {
+    <# Un proceso con el payload por stdin y CLAUDE_PROJECT_DIR; la salida en bytes. #>
+    param([string] $Archivo, [string] $Argumentos, [string] $Proyecto, [string] $Json)
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName               = $Archivo
+    $psi.Arguments              = $Argumentos
+    $psi.WorkingDirectory       = $Proyecto
+    $psi.UseShellExecute        = $false
+    $psi.RedirectStandardInput  = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.EnvironmentVariables['CLAUDE_PROJECT_DIR'] = $Proyecto
+
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $err = $p.StandardError.ReadToEndAsync()
+    $entrada = $hpsUtf8.GetBytes($Json)
+    $p.StandardInput.BaseStream.Write($entrada, 0, $entrada.Length)
+    $p.StandardInput.Close()
+    $memoria = New-Object System.IO.MemoryStream
+    $p.StandardOutput.BaseStream.CopyTo($memoria)
+    $p.WaitForExit()
+    $bytes = $memoria.ToArray()
+    return [pscustomobject]@{
+        Codigo = $p.ExitCode; Bytes = $bytes; Salida = $hpsUtf8.GetString($bytes); Errores = $err.Result
+    }
+}
+
+
+function Invoke-HpsComando {
+    <# Un comando registrado, como lo corre Claude Code con "shell": "powershell". El texto
+       va codificado para que llegue exacto: pasado con -Command, PowerShell 5.1 se come
+       comillas dobles de la línea de comandos. #>
+    param([string] $Comando, [string] $Proyecto, [string] $Json)
+    $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    $codificado = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($Comando))
+    return (Invoke-HpsProceso -Archivo $powershell -Argumentos ('-NoProfile -NonInteractive -EncodedCommand ' + $codificado) `
+                              -Proyecto $Proyecto -Json $Json)
+}
+
+
+function Invoke-HpsLanzador {
+    <# run-hook.cmd directo, sin pasar por lo registrado: la referencia de E-11. #>
+    param([string] $Proyecto, [string] $Hook, [string] $Json)
+    return (Invoke-HpsProceso -Archivo (Join-Path $Proyecto '.claude\harness\run-hook.cmd') -Argumentos $Hook `
+                              -Proyecto $Proyecto -Json $Json)
+}
+
+
+function Get-HpsHooks {
+    <# Cada hook registrado en el settings.json del proyecto, con su evento y su filtro. #>
+    param([string] $Proyecto)
+    $s = [System.IO.File]::ReadAllText((Join-Path $Proyecto '.claude\settings.json')) | ConvertFrom-Json
+    $lista = @()
+    foreach ($ev in @($hpsEventos.Keys)) {
+        if (-not $s.hooks.PSObject.Properties[$ev]) { continue }
+        foreach ($g in @($s.hooks.$ev)) {
+            $matcher = $null
+            if ($g.PSObject.Properties['matcher']) { $matcher = $g.matcher }
+            foreach ($h in @($g.hooks)) {
+                $lista += [pscustomobject]@{ Evento = $ev; Matcher = $matcher; Hook = $h }
+            }
+        }
+    }
+    return ,$lista
+}
+
+
+function Get-HpsComandoViejo {
+    param([string] $Evento)
+    return '"$CLAUDE_PROJECT_DIR/.claude/harness/run-hook.cmd" ' + $hpsEventos[$Evento]
+}
+
+
+function Set-HpsSettings {
+    <# Reescribe los comandos del settings.json. -Viejo deja exactamente lo que escribía la
+       plantilla de antes: sin shell, el comando de bash y los filtros sin PowerShell. #>
+    param([string] $Proyecto, [switch] $Viejo, [scriptblock] $Comando)
+    $ruta = Join-Path $Proyecto '.claude\settings.json'
+    $s = [System.IO.File]::ReadAllText($ruta) | ConvertFrom-Json
+    foreach ($ev in @($hpsEventos.Keys)) {
+        foreach ($g in @($s.hooks.$ev)) {
+            if ($Viejo -and $g.PSObject.Properties['matcher'] -and $g.matcher -eq $hpsMatcher) {
+                $g.matcher = 'Write|Edit|MultiEdit|NotebookEdit|Bash'
+            }
+            foreach ($h in @($g.hooks)) {
+                if ($Viejo) {
+                    $h.command = Get-HpsComandoViejo $ev
+                    $h.PSObject.Properties.Remove('shell')
+                } else {
+                    $h.command = (& $Comando $ev)
+                }
+            }
+        }
+    }
+    [System.IO.File]::WriteAllText($ruta, (ConvertTo-Json -InputObject $s -Depth 20), $hpsUtf8)
+}
+
+
+function Test-HpsJsonOVacio {
+    param([string] $Texto)
+    if (-not $Texto.Trim()) { return $true }
+    try { $Texto | ConvertFrom-Json | Out-Null; return $true } catch { return $false }
+}
+
+
+function Get-HpsMensaje {
+    <# El systemMessage de una salida de session-start, o ''. #>
+    param($Resultado)
+    if (-not $Resultado.Salida.Trim()) { return '' }
+    $j = $Resultado.Salida | ConvertFrom-Json
+    if ($j.PSObject.Properties['systemMessage'] -and $j.systemMessage) { return [string]$j.systemMessage }
+    return ''
+}
+
+
+function Invoke-HpsSesion {
+    <# Una sesión que arranca en el proyecto, por el comando registrado de SessionStart. #>
+    param([string] $Proyecto)
+    $cmd = ((Get-HpsHooks $Proyecto) | Where-Object { $_.Evento -eq 'SessionStart' } | Select-Object -First 1).Hook.command
+    $payload = ConvertTo-Json -Compress -InputObject ([ordered]@{
+        session_id = 'hps-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 6)
+        cwd = $Proyecto; hook_event_name = 'SessionStart'; source = 'startup' })
+    return (Invoke-HpsComando -Comando $cmd -Proyecto $Proyecto -Json $payload)
+}
+
+
+function Get-HpsErroresDeSchema {
+    <# Los errores de validar harness.installation.json contra su schema, con el mismo
+       validador que usa el resto de la suite (comun/bin/contexto-armar.py). '[]' si valida. #>
+    param([string] $Proyecto)
+    $py = Join-Path ([System.IO.Path]::GetTempPath()) ('hps-schema-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 6) + '.py')
+    $codigo = @'
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location("armador_hps", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+with open(sys.argv[2], encoding="utf-8") as f:
+    esquema = json.load(f)
+m.controlar_soporte(esquema)
+with open(sys.argv[3], encoding="utf-8") as f:
+    doc = json.load(f)
+sys.stdout.write(json.dumps(m.validar(doc, esquema)))
+'@
+    try {
+        [System.IO.File]::WriteAllText($py, $codigo, $hpsUtf8)
+        $r = Invoke-HpsProceso -Archivo 'python' `
+            -Argumentos ('"' + $py + '" "' + (Join-Path $script:Raiz 'comun\bin\contexto-armar.py') + '" "' +
+                         (Join-Path $script:Raiz 'comun\schemas\harness-installation-state.schema.json') + '" "' +
+                         (Join-Path $Proyecto '.claude\harness.installation.json') + '"') `
+            -Proyecto $Proyecto -Json ''
+        if ($r.Codigo -ne 0) { return "el validador fallo: $($r.Errores)" }
+        return $r.Salida.Trim()
+    } finally {
+        Remove-Item $py -Force -ErrorAction SilentlyContinue
+    }
+}
+
+
+function Get-HpsEstado {
+    param([string] $Proyecto)
+    return ([System.IO.File]::ReadAllText((Join-Path $Proyecto '.claude\harness.installation.json')) | ConvertFrom-Json)
+}
+
+
+$hpsDemo    = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-hps-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+# E-04: espacios, un apostrofo y un $. Con ${CLAUDE_PROJECT_DIR} pegado adentro del texto
+# del comando, PowerShell interpretaria esta ruta como codigo.
+$hpsRaro    = Join-Path ([System.IO.Path]::GetTempPath()) ("harness hps 'o `$x " + [System.Guid]::NewGuid().ToString('N').Substring(0, 6))
+$hpsRevert  = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-hps-rev-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
+$hpsScripts = @()
+# Con tildes a proposito: E-11 compara bytes, y sin un caracter fuera de ASCII en la salida
+# la comparacion no distinguiria UTF-8 de nada.
+$hpsUsuario = 'Íñigo Pérez'
+
+try {
+    New-Item -ItemType Directory -Path $hpsDemo -Force | Out-Null
+    $r = Invoke-Instalador @('-Project', $hpsDemo, '-Harness', 'analisis', '-Usuario', $hpsUsuario)
+    Assert-Igual 'instala el proyecto de los hooks registrados' 0 $r.Codigo
+    Assert-Contiene 'la compuerta dice que probo lo registrado' 'con el comando que quedó en settings.json' $r.Salida
+
+    # ── bloque-1-bienvenida E-01 / E-02: el estado que deja una instalacion buena ──
+    $rutaEstadoHps = Join-Path $hpsDemo '.claude\harness.installation.json'
+    Assert-Verdadero 'bienvenida E-01 deja .claude\harness.installation.json' (Test-Path $rutaEstadoHps)
+    if (Test-Path $rutaEstadoHps) {
+        $estado = Get-HpsEstado $hpsDemo
+        Assert-Igual 'bienvenida E-01 installed: true'                  'True'      ([string]$estado.installed)
+        Assert-Igual 'bienvenida E-01 firstRunShown: false'             'False'     ([string]$estado.welcome.firstRunShown)
+        Assert-Igual 'bienvenida E-01 la version es la de VERSION'      $hpsVersion $estado.installedVersion
+        Assert-Igual 'bienvenida E-02 lo que escribe el instalador valida contra el schema' '[]' (Get-HpsErroresDeSchema $hpsDemo)
+    }
+    $lockHps = [System.IO.File]::ReadAllText((Join-Path $hpsDemo '.claude\harness.lock.json')) | ConvertFrom-Json
+    Assert-Verdadero 'bienvenida E-01 el estado no entra al lockfile (lo reescribe cada sesion)' `
+        (@($lockHps.archivos | Where-Object { $_.ruta -like '*harness.installation.json' }).Count -eq 0)
+
+    # ── E-01 / E-02: lo que queda registrado ────────────────────────────────────
+    $hooks = Get-HpsHooks $hpsDemo
+    Assert-Igual 'E-01 hay un hook por cada uno de los cuatro eventos' 4 $hooks.Count
+    foreach ($h in $hooks) {
+        $cmd = [string]$h.Hook.command
+        $shell = ''
+        if ($h.Hook.PSObject.Properties['shell']) { $shell = [string]$h.Hook.shell }
+        Assert-Igual     "E-01 $($h.Evento) fija shell: powershell" 'powershell' $shell
+        Assert-Verdadero "E-01 $($h.Evento) empieza con & y `$env:CLAUDE_PROJECT_DIR" `
+            ($cmd.StartsWith('& "$env:CLAUDE_PROJECT_DIR/.claude/harness/run-hook.cmd"')) $cmd
+        Assert-Verdadero "E-01 $($h.Evento) termina con ; exit `$LASTEXITCODE" ($cmd.EndsWith('; exit $LASTEXITCODE')) $cmd
+        Assert-Verdadero "E-01 $($h.Evento) no usa `$CLAUDE_PROJECT_DIR sin env:" `
+            ($cmd -notmatch '\$CLAUDE_PROJECT_DIR') $cmd
+        Assert-Verdadero "E-01 $($h.Evento) no usa `${" (-not $cmd.Contains('${')) $cmd
+        Assert-Verdadero "E-01 $($h.Evento) llama a su hook" ($cmd.Contains('run-hook.cmd" ' + $hpsEventos[$h.Evento] + ';')) $cmd
+    }
+    foreach ($ev in @('PreToolUse', 'PostToolUse')) {
+        $m = @($hooks | Where-Object { $_.Evento -eq $ev } | Select-Object -ExpandProperty Matcher)
+        Assert-Igual "E-02 el filtro de $ev nombra PowerShell, exacto" $hpsMatcher ($m -join ' / ')
+    }
+
+    # La invariante de portabilidad: settings.json no lleva ninguna ruta de esta maquina.
+    $textoSettingsHps = [System.IO.File]::ReadAllText((Join-Path $hpsDemo '.claude\settings.json'))
+    $txtCmdHps = [System.IO.File]::ReadAllText((Join-Path $hpsDemo '.claude\harness\run-hook.cmd'))
+    $exeHps = ([regex]::Match($txtCmdHps, '"([^"]+\.exe)"')).Groups[1].Value
+    Assert-Verdadero 'settings.json no lleva la ruta del proyecto' (-not $textoSettingsHps.Contains($hpsDemo))
+    Assert-Verdadero 'settings.json no lleva la ruta de Python'    ($exeHps -and -not $textoSettingsHps.Contains($exeHps))
+    Assert-Verdadero 'settings.json no lleva ninguna ruta con unidad' ($textoSettingsHps -notmatch '[A-Za-z]:(\\\\|/)')
+
+    # ── E-03: cada comando registrado corre ─────────────────────────────────────
+    foreach ($h in $hooks) {
+        $r = Invoke-HpsComando -Comando $h.Hook.command -Proyecto $hpsDemo -Json (Get-Payload $hpsPayloads[$h.Evento])
+        Assert-Igual     "E-03 $($h.Evento) sale con 0" 0 $r.Codigo
+        Assert-Verdadero "E-03 $($h.Evento) responde JSON valido o nada" (Test-HpsJsonOVacio $r.Salida) $r.Salida
+        # Con 0 y la salida vacia tambien sale un comando que no encontro run-hook.cmd:
+        # `exit $LASTEXITCODE` da 0 cuando ningun programa llego a correr. Lo delata el
+        # error de PowerShell en stderr.
+        Assert-Verdadero "E-03 $($h.Evento) PowerShell no reporta ningun error" ($r.Errores -notmatch '<S S="Error">') $r.Errores
+    }
+
+    # ── E-05: el comando viejo, corrido igual, falla ────────────────────────────
+    # Sin esto, E-03 no probaria que la forma de correrlo distingue un comando que anda de
+    # uno que no.
+    foreach ($ev in @($hpsEventos.Keys)) {
+        $r = Invoke-HpsComando -Comando (Get-HpsComandoViejo $ev) -Proyecto $hpsDemo -Json (Get-Payload $hpsPayloads[$ev])
+        Assert-Verdadero "E-05 el comando viejo de $ev falla" ($r.Codigo -ne 0) "codigo $($r.Codigo)"
+    }
+
+    # ── E-10: un secreto en un comando de PowerShell, por el comando registrado ─
+    # El token se arma por partes: un fuente que dispara el detector de secretos no se
+    # puede editar donde el harness esta instalado.
+    $tokenHps = 'glp' + 'at-' + 'Q7w8E9r0T1y2U3i4O5p6A7s8'
+    $cmdPre = ($hooks | Where-Object { $_.Evento -eq 'PreToolUse' } | Select-Object -First 1).Hook.command
+    foreach ($caso in @(@{ Rotulo = 'con el secreto'; Texto = "`$env:GITLAB_TOKEN = '$tokenHps'"; Deny = $true },
+                        @{ Rotulo = 'sin secreto';    Texto = 'Get-ChildItem .';                 Deny = $false })) {
+        $payload = ConvertTo-Json -Compress -Depth 5 -InputObject ([ordered]@{
+            session_id = 'hps-e10'; cwd = $hpsDemo; hook_event_name = 'PreToolUse'
+            tool_name = 'PowerShell'; tool_input = [ordered]@{ command = $caso.Texto } })
+        $r = Invoke-HpsComando -Comando $cmdPre -Proyecto $hpsDemo -Json $payload
+        $decision = ''
+        if ($r.Salida.Trim()) {
+            $j = $r.Salida | ConvertFrom-Json
+            if ($j.PSObject.Properties['hookSpecificOutput'] -and $j.hookSpecificOutput.PSObject.Properties['permissionDecision']) {
+                $decision = [string]$j.hookSpecificOutput.permissionDecision
+            }
+        }
+        Assert-Igual "E-10 PowerShell $($caso.Rotulo): sale con 0" 0 $r.Codigo
+        if ($caso.Deny) {
+            Assert-Igual 'E-10 PowerShell con un secreto de confianza alta sale denegado' 'deny' $decision
+        } else {
+            Assert-Verdadero 'E-10 PowerShell sin secreto no se deniega' ($decision -ne 'deny') $decision
+        }
+    }
+
+    # ── E-11: las tildes llegan igual por lo registrado que por el lanzador ─────
+    # La sesion con el cwd del proyecto escribe la marca de la bienvenida: se restaura el
+    # archivo entre las dos corridas para que las dos vean el mismo estado.
+    $bytesEstadoHps = [System.IO.File]::ReadAllBytes($rutaEstadoHps)
+    $payloadSesion = ConvertTo-Json -Compress -InputObject ([ordered]@{
+        session_id = 'hps-e11'; cwd = $hpsDemo; hook_event_name = 'SessionStart'; source = 'startup' })
+    $cmdSs = ($hooks | Where-Object { $_.Evento -eq 'SessionStart' } | Select-Object -First 1).Hook.command
+    $porRegistro = Invoke-HpsComando -Comando $cmdSs -Proyecto $hpsDemo -Json $payloadSesion
+    [System.IO.File]::WriteAllBytes($rutaEstadoHps, $bytesEstadoHps)
+    $porLanzador = Invoke-HpsLanzador -Proyecto $hpsDemo -Hook 'session-start' -Json $payloadSesion
+    [System.IO.File]::WriteAllBytes($rutaEstadoHps, $bytesEstadoHps)
+    Assert-Igual 'E-11 session-start por lo registrado sale con 0' 0 $porRegistro.Codigo
+    Assert-Contiene 'E-11 la salida trae las tildes, en UTF-8' $hpsUsuario $porRegistro.Salida
+    Assert-Contiene 'E-11 y la marca de la bienvenida' '✓' $porRegistro.Salida
+    Assert-Igual 'E-11 byte a byte igual que por el lanzador directo' `
+        ([System.BitConverter]::ToString($porLanzador.Bytes)) ([System.BitConverter]::ToString($porRegistro.Bytes))
+
+    # ── E-07: la compuerta lee settings.json, no lanza run-hook.cmd ─────────────
+    $hpsCompuerta = Join-Path ([System.IO.Path]::GetTempPath()) ('hps-compuerta-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 6) + '.ps1')
+    $hpsScripts += $hpsCompuerta
+    [System.IO.File]::WriteAllText($hpsCompuerta, @'
+param([string] $Instalador, [string] $Proyecto)
+. $Instalador
+$problemas = Test-HooksInstalados -Project $Proyecto
+[Console]::Out.Write([string]$problemas.Count)
+'@, $hpsUtf8)
+    $rutaSettingsHps = Join-Path $hpsDemo '.claude\settings.json'
+    $rutaShimHps     = Join-Path $hpsDemo '.claude\harness\run-hook.cmd'
+    $bytesSettingsHps = [System.IO.File]::ReadAllBytes($rutaSettingsHps)
+    $bytesShimHps     = [System.IO.File]::ReadAllBytes($rutaShimHps)
+    function Invoke-HpsCompuerta {
+        $s = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $hpsCompuerta `
+                              -Instalador $instalador -Proyecto $hpsDemo 2>&1 | Out-String
+        return $s.Trim()
+    }
+    try {
+        Assert-Igual 'E-07 con lo que instalo, la compuerta no ve problemas' '0' (Invoke-HpsCompuerta)
+
+        # settings.json roto, lanzador sano. El shell se deja: lo unico roto es el comando.
+        Set-HpsSettings -Proyecto $hpsDemo -Comando { param($ev) Get-HpsComandoViejo $ev }
+        $directo = Invoke-HpsLanzador -Proyecto $hpsDemo -Hook 'session-start' -Json (Get-Payload 'session-start.json')
+        Assert-Igual 'E-07 el lanzador directo sigue andando' 0 $directo.Codigo
+        Assert-Igual 'E-07 y aun asi la compuerta falla en los cuatro' '4' (Invoke-HpsCompuerta)
+
+        # Al reves: lanzador roto, y comandos registrados que no lo nombran. Si la compuerta
+        # lanzara run-hook.cmd por su cuenta, esto fallaria.
+        Set-HpsSettings -Proyecto $hpsDemo -Comando { param($ev) "[Console]::Out.Write('{}')" }
+        [System.IO.File]::WriteAllText($rutaShimHps, "@exit /b 7`r`n")
+        $directo = Invoke-HpsLanzador -Proyecto $hpsDemo -Hook 'session-start' -Json (Get-Payload 'session-start.json')
+        Assert-Igual 'E-07 el lanzador directo ahora esta roto' 7 $directo.Codigo
+        Assert-Igual 'E-07 y la compuerta no lo lanza: corre solo lo registrado' '0' (Invoke-HpsCompuerta)
+    } finally {
+        [System.IO.File]::WriteAllBytes($rutaSettingsHps, $bytesSettingsHps)
+        [System.IO.File]::WriteAllBytes($rutaShimHps, $bytesShimHps)
+    }
+
+    # ── bloque-1-bienvenida E-19: borrar el archivo vuelve a mostrar la bienvenida ─
+    $r = Invoke-HpsSesion $hpsDemo
+    Assert-Contiene 'bienvenida E-19 la primera sesion muestra la bienvenida' 'GCBA Development Harness' (Get-HpsMensaje $r)
+    $r = Invoke-HpsSesion $hpsDemo
+    Assert-Verdadero 'bienvenida E-19 la segunda ya no' (-not (Get-HpsMensaje $r).Contains('GCBA Development Harness'))
+    Remove-Item $rutaEstadoHps -Force -ErrorAction SilentlyContinue
+    $r = Invoke-HpsSesion $hpsDemo
+    Assert-Contiene 'bienvenida E-19 borrado el archivo, vuelve la bienvenida' 'GCBA Development Harness' (Get-HpsMensaje $r)
+    Remove-Item $rutaEstadoHps -Force -ErrorAction SilentlyContinue
+    $r = Invoke-Instalador @('-Project', $hpsDemo, '-Update')
+    Assert-Igual 'bienvenida E-19 -Update sin el archivo sale con 0' 0 $r.Codigo
+    Assert-Verdadero 'bienvenida E-19 -Update sin el archivo lo vuelve a escribir' (Test-Path $rutaEstadoHps)
+    if (Test-Path $rutaEstadoHps) {
+        Assert-Igual 'bienvenida E-19 y es una primera vez: firstRunShown false' 'False' `
+            ([string](Get-HpsEstado $hpsDemo).welcome.firstRunShown)
+    }
+    $r = Invoke-HpsSesion $hpsDemo
+    Assert-Contiene 'bienvenida E-19 y la sesion siguiente muestra la bienvenida' 'GCBA Development Harness' (Get-HpsMensaje $r)
+    Assert-Igual 'bienvenida E-19 que deja firstRunShown true' 'True' ([string](Get-HpsEstado $hpsDemo).welcome.firstRunShown)
+
+    # ── E-08 / E-09 / bienvenida E-18: un proyecto de la version anterior ───────
+    # Como lo dejo una instalacion vieja de verdad: el settings.json viejo CON su hash en el
+    # lockfile (si no, -Update lo tomaria por editado a mano y no lo pisaria), la version
+    # anterior en el lockfile y en el estado, y la bienvenida ya vista.
+    Set-HpsSettings -Proyecto $hpsDemo -Viejo
+    $rutaLockHps = Join-Path $hpsDemo '.claude\harness.lock.json'
+    $lockViejo = [System.IO.File]::ReadAllText($rutaLockHps) | ConvertFrom-Json
+    foreach ($a in $lockViejo.archivos) {
+        if ($a.ruta -eq '.claude\settings.json') { $a.sha256 = (Get-FileHash -Path $rutaSettingsHps -Algorithm SHA256).Hash }
+    }
+    $lockViejo.version = '0.19.0'
+    [System.IO.File]::WriteAllText($rutaLockHps, (ConvertTo-Json -InputObject $lockViejo -Depth 20), $hpsUtf8)
+    $estadoViejo = Get-HpsEstado $hpsDemo
+    $estadoViejo.installedVersion = '0.19.0'
+    [System.IO.File]::WriteAllText($rutaEstadoHps, (ConvertTo-Json -InputObject $estadoViejo -Depth 20), $hpsUtf8)
+
+    $r = Invoke-Instalador @('-Doctor', '-Project', $hpsDemo)
+    Assert-Contiene 'E-08 -Doctor con el settings.json viejo informa que los hooks no corren' `
+        'los hooks registrados en settings.json no corren' $r.Salida
+    Assert-Igual 'E-08 y lo cuenta como falla' 1 $r.Codigo
+
+    $r = Invoke-Instalador @('-Project', $hpsDemo, '-Update')
+    Assert-Igual 'E-09 -Update sale con 0' 0 $r.Codigo
+    $hooksNuevos = Get-HpsHooks $hpsDemo
+    Assert-Verdadero 'E-09 -Update deja los comandos nuevos' `
+        (@($hooksNuevos | Where-Object { ([string]$_.Hook.command).StartsWith('& "$env:CLAUDE_PROJECT_DIR/') }).Count -eq 4)
+    Assert-Verdadero 'E-09 y los filtros con PowerShell' `
+        (@($hooksNuevos | Where-Object { $_.Matcher -eq $hpsMatcher }).Count -eq 2)
+    $lockNuevo = [System.IO.File]::ReadAllText($rutaLockHps) | ConvertFrom-Json
+    $shaLock = @($lockNuevo.archivos | Where-Object { $_.ruta -eq '.claude\settings.json' } | Select-Object -ExpandProperty sha256)
+    Assert-Igual 'E-09 el hash de settings.json en el lockfile coincide con el archivo' `
+        (Get-FileHash -Path $rutaSettingsHps -Algorithm SHA256).Hash ($shaLock -join ',')
+
+    $r = Invoke-Instalador @('-Doctor', '-Project', $hpsDemo)
+    Assert-Verdadero 'E-08 -Doctor con el settings.json nuevo no informa nada de los hooks' `
+        (-not $r.Salida.Contains('no corren')) $r.Salida
+    Assert-Contiene 'E-08 y dice que responden' 'los cuatro hooks registrados en settings.json responden' $r.Salida
+
+    $estado = Get-HpsEstado $hpsDemo
+    Assert-Igual 'bienvenida E-18 -Update conserva firstRunShown: true' 'True' ([string]$estado.welcome.firstRunShown)
+    $upgradeFrom = $null
+    if ($estado.welcome.PSObject.Properties['upgradeFrom']) { $upgradeFrom = $estado.welcome.upgradeFrom }
+    Assert-Igual 'bienvenida E-18 y anota de que version viene' '0.19.0' $upgradeFrom
+    Assert-Igual 'bienvenida E-18 con la version nueva' $hpsVersion $estado.installedVersion
+    Assert-Igual 'bienvenida E-02 lo que escribe el -Update valida contra el schema' '[]' (Get-HpsErroresDeSchema $hpsDemo)
+
+    $mensaje = Get-HpsMensaje (Invoke-HpsSesion $hpsDemo)
+    $lineas = @($mensaje -split "`n")
+    Assert-Igual 'bienvenida E-18 la sesion siguiente avisa la actualizacion' `
+        "Harness GCBA actualizado: 0.19.0 → $hpsVersion ✓" $lineas[0]
+    Assert-Igual 'bienvenida E-18 y la linea, nada mas' 2 $lineas.Count
+    Assert-Verdadero 'bienvenida E-18 no repite la bienvenida' (-not $mensaje.Contains('GCBA Development Harness')) $mensaje
+    $mensaje = Get-HpsMensaje (Invoke-HpsSesion $hpsDemo)
+    Assert-Verdadero 'bienvenida E-18 una sola vez' (-not $mensaje.Contains('actualizado')) $mensaje
+
+    # ── bloque-1-bienvenida E-24: -Uninstall lo borra ────────────────────────────
+    $r = Invoke-Instalador @('-Project', $hpsDemo, '-Uninstall')
+    Assert-Igual 'bienvenida E-24 -Uninstall sale con 0' 0 $r.Codigo
+    Assert-Verdadero 'bienvenida E-24 -Uninstall borra harness.installation.json' (-not (Test-Path $rutaEstadoHps))
+    Assert-Verdadero 'bienvenida E-24 y conserva harness.config.json' (Test-Path (Join-Path $hpsDemo '.claude\harness.config.json'))
+
+    # ── E-04: una ruta con espacios, un apostrofo y un $ ─────────────────────────
+    New-Item -ItemType Directory -Path $hpsRaro -Force | Out-Null
+    $r = Invoke-Instalador @('-Project', $hpsRaro, '-Harness', 'analisis', '-Usuario', 'Prueba Rara')
+    Assert-Igual 'E-04 instala en la ruta rara (su compuerta ya corrio lo registrado)' 0 $r.Codigo
+    if (Test-Path (Join-Path $hpsRaro '.claude\settings.json')) {
+        foreach ($h in (Get-HpsHooks $hpsRaro)) {
+            $r = Invoke-HpsComando -Comando $h.Hook.command -Proyecto $hpsRaro -Json (Get-Payload $hpsPayloads[$h.Evento])
+            Assert-Igual     "E-04 $($h.Evento) sale con 0 en la ruta rara" 0 $r.Codigo
+            Assert-Verdadero "E-04 $($h.Evento) responde JSON valido o nada" (Test-HpsJsonOVacio $r.Salida) $r.Salida
+            Assert-Verdadero "E-04 $($h.Evento) PowerShell no reporta ningun error" ($r.Errores -notmatch '<S S="Error">') $r.Errores
+        }
+        Assert-Contiene 'E-04 session-start lee el proyecto de la ruta rara' 'Prueba Rara' (Invoke-HpsSesion $hpsRaro).Salida
+    }
+
+    # ── E-06: un comando registrado que no corre revierte la instalacion ──────────
+    # La costura: install.ps1 cargado con dot-source adentro de una funcion avanzada (sin
+    # eso no hay $PSCmdlet y Invoke-Instalar no arranca), con New-SettingsProyecto
+    # envuelta para que deje el comando viejo. El shell queda: lo unico roto es el comando.
+    New-Item -ItemType Directory -Path $hpsRevert -Force | Out-Null
+    $hpsCostura = Join-Path ([System.IO.Path]::GetTempPath()) ('hps-costura-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 6) + '.ps1')
+    $hpsScripts += $hpsCostura
+    [System.IO.File]::WriteAllText($hpsCostura, @'
+param([string] $Instalador, [string] $Proyecto)
+function Invoke-HpsCostura {
+    [CmdletBinding(SupportsShouldProcess)] param()
+    . $Instalador -Project $Proyecto -Usuario 'Prueba Revertida'
+    $real = ${function:New-SettingsProyecto}
+    function New-SettingsProyecto {
+        param([string] $RutaSettings)
+        & $real -RutaSettings $RutaSettings
+        $s = [System.IO.File]::ReadAllText($RutaSettings) | ConvertFrom-Json
+        foreach ($ev in @($s.hooks.PSObject.Properties)) {
+            foreach ($g in @($ev.Value)) {
+                foreach ($h in @($g.hooks)) {
+                    $h.command = [regex]::Replace([string]$h.command,
+                        '^& "\$env:CLAUDE_PROJECT_DIR(/\.claude/harness/run-hook\.cmd)" (\S+); exit \$LASTEXITCODE$',
+                        '"$$CLAUDE_PROJECT_DIR$1" $2')
+                }
+            }
+        }
+        [System.IO.File]::WriteAllText($RutaSettings, (ConvertTo-Json -InputObject $s -Depth 20))
+    }
+    Invoke-Instalar -Ids analisis | Out-Null
+}
+try { Invoke-HpsCostura; exit 0 } catch { [Console]::Out.WriteLine($_.Exception.Message); exit 1 }
+'@, $hpsUtf8)
+    $salidaRevert = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $hpsCostura `
+                                     -Instalador $instalador -Proyecto $hpsRevert 2>&1 | Out-String
+    $codigoRevert = $LASTEXITCODE
+    Assert-Igual    'E-06 la instalacion sale con codigo de fallo' 1 $codigoRevert
+    Assert-Contiene 'E-06 falla por el comando registrado, no por otra cosa' 'SessionStart: el comando registrado salió con código' $salidaRevert
+    Assert-Contiene 'E-06 y revierte' 'Revirtiendo' $salidaRevert
+    Assert-Verdadero 'E-06 no deja settings.json' (-not (Test-Path (Join-Path $hpsRevert '.claude\settings.json')))
+    Assert-Verdadero 'E-06 no deja el lockfile'   (-not (Test-Path (Join-Path $hpsRevert '.claude\harness.lock.json')))
+    Assert-Verdadero 'E-06 no deja hooks'         (-not (Test-Path (Join-Path $hpsRevert '.claude\harness')))
+    Assert-Verdadero 'bienvenida E-01 revertida: no deja harness.installation.json' `
+        (-not (Test-Path (Join-Path $hpsRevert '.claude\harness.installation.json')))
+}
+finally {
+    foreach ($d in @($hpsDemo, $hpsRaro, $hpsRevert)) {
+        if (Test-Path -LiteralPath $d) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+    foreach ($s in $hpsScripts) { Remove-Item -LiteralPath $s -Force -ErrorAction SilentlyContinue }
+}

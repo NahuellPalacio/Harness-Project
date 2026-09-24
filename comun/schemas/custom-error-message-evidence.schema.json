@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "custom-error-message-evidence/1.0",
+  "title": "Custom Error Message Evidence",
+  "description": "La evidencia de que cada mensaje de error que ve un consumidor esta customizado, para ES0902 Vu6. Es del PROYECTO y se instala vacia. Cada superficie es una del inventario de C1 o de una evidencia citada `ERROR_SURFACE_SCOPE`, y cada escenario se juzga solo. Los strings de `evidence` y `httpStatusRef` son ids del catalogo de evidencia del caso. `additionalProperties: false` en todas las capas: una clave de mas -un token, un stack trace, un valor real- no entra.",
+  "type": "object",
+  "required": [
+    "version",
+    "surfaces"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surfaceId",
+          "consumerType",
+          "scenarios",
+          "evidence"
+        ],
+        "properties": {
+          "surfaceId": {
+            "type": "string"
+          },
+          "consumerType": {
+            "enum": [
+              "WEB_USER",
+              "API_CONSUMER",
+              "MOBILE_USER",
+              "BACKOFFICE_USER",
+              "INTEGRATION_CONSUMER",
+              "OTHER",
+              "UNRESOLVED"
+            ]
+          },
+          "owner": {
+            "enum": [
+              "APPLICATION_CONTROLLED",
+              "FRAMEWORK_DEFAULT",
+              "SERVER_PLATFORM_DEFAULT",
+              "UNRESOLVED"
+            ]
+          },
+          "scenarios": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "scenarioId",
+                "result",
+                "evidence"
+              ],
+              "properties": {
+                "scenarioId": {
+                  "type": "string"
+                },
+                "errorType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "result": {
+                  "enum": [
+                    "CUSTOMIZED_SAFE",
+                    "DEFAULT_ERROR_EXPOSED",
+                    "RAW_TECHNICAL_ERROR_EXPOSED",
+                    "INFRASTRUCTURE_DETAIL_EXPOSED",
+                    "UNRESOLVED"
+                  ]
+                },
+                "httpStatusRef": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "technicalDetailExposure": {
+                  "enum": [
+                    "NONE",
+                    "DETECTED",
+                    "UNRESOLVED"
+                  ]
+                },
+                "verificationMode": {
+                  "enum": [
+                    "STATIC",
+                    "UNIT_TEST",
+                    "INTEGRATION_TEST",
+                    "CONTRACT_TEST",
+                    "AUTHORIZED_QA_RUNTIME_TEST",
+                    "OTHER_AUTHORITATIVE_EVIDENCE",
+                    "NOT_VERIFIED"
+                  ]
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
