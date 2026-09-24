@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Security Summary",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "reportId",
+    "generatedAt",
+    "scope",
+    "systemSecurityState",
+    "assessmentState",
+    "officialApprovalStatus",
+    "normative",
+    "findings",
+    "coverage",
+    "blockingConditions",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "security-summary/1.0"
+      ]
+    },
+    "reportId": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "object"
+    },
+    "systemSecurityState": {
+      "enum": [
+        "READY_FOR_SECURITY_REVIEW",
+        "ACTION_REQUIRED",
+        "REVIEW_INCOMPLETE",
+        "BLOCKED"
+      ]
+    },
+    "assessmentState": {
+      "enum": [
+        "NOT_REQUESTED",
+        "READY_TO_REQUEST",
+        "ASSESSMENT_IN_PROGRESS",
+        "REASSESSMENT_REQUIRED",
+        "READY_TO_RESUBMIT",
+        "G2_THRESHOLD_SATISFIED",
+        "EXTERNAL_APPROVAL_EVIDENCED",
+        "ASSESSMENT_STATE_UNRESOLVED"
+      ]
+    },
+    "officialApprovalStatus": {
+      "enum": [
+        "NOT_AVAILABLE",
+        "UNRESOLVED",
+        "EXTERNAL_APPROVAL_EVIDENCED",
+        "EXTERNAL_APPROVAL_STALE"
+      ]
+    },
+    "knowledge": {
+      "type": "object",
+      "properties": {
+        "standard": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "freshness": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceIntegrity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "normative": {
+      "type": "object",
+      "required": [
+        "rules"
+      ],
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "ruleKey",
+              "result"
+            ],
+            "properties": {
+              "ruleKey": {
+                "type": "string"
+              },
+              "result": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "UNRESOLVED",
+                  "NOT_APPLICABLE",
+                  "NOT_EVALUATED"
+                ]
+              },
+              "blocking": {
+                "type": "boolean"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "applicableRules",
+        "attemptedRules",
+        "resolvedRules",
+        "assessmentCoveragePct",
+        "evidenceResolutionPct"
+      ],
+      "properties": {
+        "applicableRules": {
+          "type": "integer"
+        },
+        "attemptedRules": {
+          "type": "integer"
+        },
+        "resolvedRules": {
+          "type": "integer"
+        },
+        "assessmentCoveragePct": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "evidenceResolutionPct": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "findings": {
+      "type": "object",
+      "required": [
+        "totalsBySeverity",
+        "open",
+        "resolved",
+        "reopened",
+        "unresolved"
+      ],
+      "properties": {
+        "totalsBySeverity": {
+          "type": "object"
+        },
+        "open": {
+          "type": "integer"
+        },
+        "resolved": {
+          "type": "integer"
+        },
+        "reopened": {
+          "type": "integer"
+        },
+        "unresolved": {
+          "type": "integer"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "blockingConditions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "repositoryIntegrity": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": [
+        "verified",
+        "missing",
+        "conflicting",
+        "unsafeTestsSkipped",
+        "unresolved"
+      ],
+      "properties": {
+        "verified": {
+          "type": "integer"
+        },
+        "missing": {
+          "type": "integer"
+        },
+        "conflicting": {
+          "type": "integer"
+        },
+        "unsafeTestsSkipped": {
+          "type": "integer"
+        },
+        "unresolved": {
+          "type": "integer"
+        }
+      }
+    },
+    "block4ExecutionRef": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "snapshotFingerprint": {
+      "type": "string"
+    }
+  }
+}

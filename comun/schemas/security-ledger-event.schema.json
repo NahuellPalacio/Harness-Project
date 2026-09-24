@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Security Ledger Event",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "eventId",
+    "timestamp",
+    "eventType",
+    "taskId",
+    "scope",
+    "result"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "security-ledger-event/1.0"
+      ]
+    },
+    "eventId": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string"
+    },
+    "eventType": {
+      "enum": [
+        "RULE_EVALUATION",
+        "POLICY_EVALUATION",
+        "CHECK_EVALUATION",
+        "REVIEW_EVALUATION",
+        "FINDING_CREATED",
+        "FINDING_UPDATED",
+        "FINDING_RESOLVED",
+        "ASSESSMENT_STATE",
+        "APPROVAL_EVIDENCE",
+        "REPOSITORY_INTEGRITY",
+        "EVIDENCE_STATE",
+        "KNOWLEDGE_STATE"
+      ]
+    },
+    "taskId": {
+      "type": "string"
+    },
+    "executionId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agentId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "project",
+        "environment"
+      ],
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "application": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "environment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "commitSha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "buildId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "releaseId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "artifactDigest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "normative": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "standard": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rule": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "check": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "review": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "result": {
+      "type": "string"
+    },
+    "findingIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "severity": {
+      "enum": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "INFORMATIONAL",
+        "UNRESOLVED",
+        null
+      ]
+    },
+    "confidence": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidenceFingerprints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blocking": {
+      "type": "boolean"
+    },
+    "details": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  }
+}

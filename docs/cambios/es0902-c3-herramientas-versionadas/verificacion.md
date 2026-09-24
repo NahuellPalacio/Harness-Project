@@ -1,6 +1,6 @@
 # Verificación — ES0902 C3: las herramientas versionadas y autorizadas, con los controles de G1 y la línea base viva
 
-**Estado:** cerrado · **Fecha:** 23-09-2026 · **Versión:** sin publicar
+**Estado:** cerrado · **Fecha:** 23-09-2026 · **Versión:** 0.20.0
 
 Este documento es lo que cierra el cambio según
 [ADR-0006](../../adr/0006-sdd-como-metodo-de-los-proyectos.md): el veredicto por escenario de quien

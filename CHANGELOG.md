@@ -3,6 +3,53 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.20.0] — 2026-09-23
+
+**ES0902 deja de ser un estándar declarado: ocho de sus reglas se comprueban, y el estado de
+seguridad de una tarea se puede leer en una página.** 0.19.0 dejaba las 21 reglas de ES0902 en una
+matriz, con 38 controles y ninguno construido. Ahora O1, O2, C1, C2, C3, Vu1, Vu2 y Vu3 tienen sus
+controles, el harness sabe de qué documento sale lo que afirma, y un reporte junta toda esa
+evidencia sin un puntaje que esconda una falla. Son diez cambios verificados: ocho cerraron limpios
+y dos con contradichos a la vista.
+
+### Agregado
+
+- **ES0902 O1, O2, C1, C2, C3 y Vu1**: la línea base normativa, la autoridad de control, OpenID
+  Connect contra el Keycloak de la DGSEI, la aprobación de seguridad en QA, las herramientas
+  versionadas y la protección de la página de autenticación
+- **ES0902 Vu2**: ningún dato sensible viaja en texto plano, salto por salto y con evidencia
+- **ES0902 Vu3**: cerrar la aplicación o el browser no deja viva la sesión anterior. Nada con forma
+  de credencial sale en el resultado: `code=` y `code:` se redactan siempre, y la única excepción
+  es `status_code=`
+- **El conocimiento con procedencia**: un registro de fuentes, el índice inverso de qué sale de
+  cada documento, y la frescura de cada fuente. `dev-harness.py fuentes`
+- **El reporte de seguridad**: `dev-harness.py seguridad <TAREA> --conocimiento --resumen
+  --reporte` deja en `.claude/runtime/security/<TAREA>/` el libro, el resumen, un
+  `security-status.md` y un `security-status.html` que se imprime a PDF.
+  - El estado del sistema, el de la evaluación y la aprobación oficial van separados, y la
+    cobertura son dos números.
+  - No hay puntaje.
+  - La revisión interna nunca se muestra como aprobación de GCBA/DGSEI.
+  - Cómo se lee: [docs/reporte-de-seguridad.md](docs/reporte-de-seguridad.md)
+
+### Para tener en cuenta
+
+- **El reporte va a decir `BLOCKED` en cualquier proyecto real.** ES0902 todavía no tiene hash
+  aceptado, así que su frescura queda sin verificar. Es verdad, no un defecto del reporte
+- **Trece reglas de ES0902 siguen sin check.** El reporte las muestra como `UNRESOLVED` o
+  `NOT_EVALUATED`, y la cobertura va a salir baja
+
+### Lo que no se cumplió, sin maquillar
+
+- **ES0902 Vu1, E-39 y E-42 contradichos.** Una credencial pegada a un `:` o a una `/` sale tal cual
+  en el resultado, y un `surfaceId` que no es ASCII no se encuentra en la evidencia sin citar
+- **ES0902 Vu2, E-08, E-13 y E-43 contradichos.** Los conteos de repetidos no normalizan a NFC:
+  el mismo id escrito en dos normalizaciones no se marca repetido. Dos de los tres fallan abierto
+- **El catálogo compartido de secretos** no reconoce `sk-ant-`, `JSESSIONID=`, un `Bearer` suelto
+  ni el cuerpo de una clave PEM, y el aviso del hook muestra los primeros 12 caracteres del
+  secreto. El libro de seguridad tiene su propia capa de redacción, pero el hook y la contabilidad
+  no. Es el ítem 21 de `Pendientes/Fix-Harness/PENDIENTES-FH.md`
+
 ## [0.19.0] — 2026-09-22
 
 **El harness ya no sólo cita la normativa: la clasifica y la comprueba.** 0.18.0 dejaba las 26

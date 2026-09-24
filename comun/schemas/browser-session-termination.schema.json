@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "browser-session-termination/1.0",
+  "title": "Browser Session Termination Evidence",
+  "description": "La evidencia de cierre de sesion de cada superficie de autenticacion, para ES0902 Vu3. Es del PROYECTO y se instala vacia. Se ata por el `surfaceId` del inventario de C1. Los strings de `evidence` y `explicitLogoutEvidenceRefs` son ids del catalogo de evidencia del caso. `additionalProperties: false` en las cuatro capas: una clave de mas -una cookie, un token- no entra.",
+  "type": "object",
+  "required": [
+    "version",
+    "surfaces"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surfaceId",
+          "sessionModel",
+          "clients",
+          "evidence"
+        ],
+        "properties": {
+          "surfaceId": {
+            "type": "string"
+          },
+          "sessionModel": {
+            "enum": [
+              "SERVER_SIDE_SESSION",
+              "TOKEN_BASED_APPLICATION_SESSION",
+              "HYBRID",
+              "OTHER",
+              "UNRESOLVED"
+            ]
+          },
+          "clients": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "clientId",
+                "closeEvents"
+              ],
+              "properties": {
+                "clientId": {
+                  "type": "string"
+                },
+                "closeEvents": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "event",
+                      "result",
+                      "evidence"
+                    ],
+                    "properties": {
+                      "event": {
+                        "enum": [
+                          "APPLICATION_WINDOW_CLOSE",
+                          "BROWSER_CLOSE",
+                          "TAB_CLOSE"
+                        ]
+                      },
+                      "result": {
+                        "enum": [
+                          "OLD_SESSION_REJECTED",
+                          "NEW_SESSION_ESTABLISHED_AFTER_AUTH",
+                          "OLD_SESSION_STILL_ACTIVE",
+                          "UNRESOLVED",
+                          "NOT_APPLICABLE"
+                        ]
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "explicitLogoutEvidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

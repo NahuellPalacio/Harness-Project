@@ -1,6 +1,6 @@
 # Verificación — ES0902 Vu1: captcha o bloqueo de usuario, en cada página de autenticación y con evidencia
 
-**Estado:** cerrado, con dos contradichos documentados · **Fecha:** 23-09-2026 · **Versión:** sin publicar
+**Estado:** cerrado, con dos contradichos documentados · **Fecha:** 23-09-2026 · **Versión:** 0.20.0
 
 Este documento es lo que cierra el cambio según
 [ADR-0006](../../adr/0006-sdd-como-metodo-de-los-proyectos.md): el veredicto por escenario de quien

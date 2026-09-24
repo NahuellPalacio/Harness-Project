@@ -1222,7 +1222,7 @@ def test_e42_los_controles_dejan_de_ser_un_hueco(t):
     """E-42 (D7-34) — instalados, declarados, veinticuatro, y sin archivos sueltos."""
     reporte = c_controles.reporte()
     # 📌 Eran veinticuatro cuando D7 cerro; D8 sumo dos. Exacto a proposito.
-    t.igual("E-42 son cuarenta y dos controles", 42, reporte["summary"]["declaredControls"])
+    t.igual("E-42 son cuarenta y seis controles", 46, reporte["summary"]["declaredControls"])
     t.verdadero("E-42 el registro es valido", reporte["result"]["registryValid"])
     t.verdadero("E-42 y no hay archivos sin declarar", reporte["result"]["filesystemClean"])
     t.igual("E-42 ningun archivo suelto", [], reporte["undeclared"])

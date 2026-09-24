@@ -83,6 +83,36 @@ try {
     Assert-Igual 'E-39 el output no se conto dos veces' 100 $resumen.tokens.outputTokens
     Assert-Igual 'E-39 y la ventana es una foto' 5210 $resumen.context.contextTokens
 
+    # -- E-56 de docs/cambios/reporte-de-seguridad/spec.md: el reporte llega ------
+
+    $lockSeg = Get-Content (Join-Path $demoCont '.claude\harness.lock.json') -Raw | ConvertFrom-Json
+    $rutasLock = @($lockSeg.archivos | ForEach-Object { $_.ruta })
+    $esperadosSeg = @(
+        '.claude\harness\bin\desarrollo\reporte_seguridad\__init__.py',
+        '.claude\harness\bin\desarrollo\reporte_seguridad\libro.py',
+        '.claude\harness\bin\desarrollo\reporte_seguridad\productores.py',
+        '.claude\harness\bin\desarrollo\reporte_seguridad\resumen.py',
+        '.claude\harness\bin\desarrollo\reporte_seguridad\reporte.py',
+        '.claude\harness\reglas\desarrollo\security-report-domains.json',
+        '.claude\harness\schemas\security-ledger-event.schema.json',
+        '.claude\harness\schemas\security-summary.schema.json',
+        '.claude\harness\schemas\security-report.schema.json')
+    foreach ($esperado in $esperadosSeg) {
+        Assert-Verdadero "E-56 $esperado esta en el lockfile" ($rutasLock -contains $esperado) `
+            "el lockfile no lista $esperado"
+        Assert-Verdadero "E-56 $esperado quedo instalado" `
+            (Test-Path (Join-Path $demoCont $esperado)) "falta $esperado"
+    }
+
+    # Y corre desde el arbol instalado: la matriz, los dominios y los schemas se encuentran ahi.
+    $salida = & python $cli seguridad 'GCBA-1' '--reporte' '--proyecto' $demoCont 2>&1 | Out-String
+    Assert-Igual 'E-56 seguridad corre desde el proyecto instalado' 0 $LASTEXITCODE
+    $dirSeg = Join-Path $demoCont '.claude\runtime\security\GCBA-1'
+    foreach ($archivo in @('security-summary.json', 'security-status.md', 'security-status.html')) {
+        Assert-Verdadero "E-56 se escribio $archivo desde el proyecto instalado" `
+            (Test-Path (Join-Path $dirSeg $archivo)) "falta $archivo"
+    }
+
     # -- E-39: el libro sobrevive a un -Update y a un -Uninstall -------------------
 
     $r = Invoke-InstaladorCont @('-Project', $demoCont, '-Update')

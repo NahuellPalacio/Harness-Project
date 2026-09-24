@@ -95,7 +95,7 @@ def resolucion(senales, desde=None, evidencia=None):
     donde salio, sin tener que confiar en un booleano que nadie firmo.
 
     `evidencia` trae resultados ya corridos, por clave compuesta. Hoy la leen dos reglas,
-    `ES0902.C2` y `ES0902.C3`, que ponen su bloque en `standards.ES0902.rules` con referencias y
+    `ES0902.C2`, `ES0902.C3` y `ES0902.Vu3`, que ponen su bloque en `standards.ES0902.rules` con referencias y
     no con contenido. Sin resultado el bloque queda sin resolver.
     """
     from . import matriz
@@ -132,6 +132,9 @@ def resolucion(senales, desde=None, evidencia=None):
         from . import estandar_de_desarrollo
         bloque["standards"][seguridad.ESTANDAR]["rules"]["C3"] = estandar_de_desarrollo.c3_para_unidad(
             (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.C3"), desde)
+        aplic_vu3, _ = seguridad.resolver_regla(seguridad.regla("Vu3", None, desde), booleanos)
+        bloque["standards"][seguridad.ESTANDAR]["rules"]["Vu3"] = vu3_para_unidad(
+            aplic_vu3, (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.Vu3"))
     except seguridad.SeguridadInvalida as e:
         # Un estandar roto no se lleva puesto al otro. Se dice cual, y ES0901 sigue resolviendo.
         bloque["standards"][seguridad.ESTANDAR] = {
@@ -141,6 +144,73 @@ def resolucion(senales, desde=None, evidencia=None):
             "declaredPolicies": [], "declaredChecks": [], "declaredReviews": [],
             "evidence": {"signals": {}}, "error": str(e)}
     return bloque
+
+
+# Los estados del check de Vu3. Escritos aca porque `bin/` no importa los controles.
+ESTADOS_DEL_CHECK_VU3 = ("PASS", "FAIL", "NOT_APPLICABLE", "APPLICABILITY_UNRESOLVED",
+                         "SUPPORTED_BROWSER_SCOPE_UNRESOLVED", "BROWSER_SESSION_MODEL_UNRESOLVED",
+                         "BROWSER_CLOSE_BEHAVIOR_UNRESOLVED",
+                         "OLD_APPLICATION_SESSION_REMAINS_ACTIVE",
+                         "BROWSER_SESSION_TERMINATION_TEST_UNSAFE", "TEST_TARGET_UNAVAILABLE")
+
+
+def _ruta_de_evidencia():
+    import os
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                        "controles", "lib", "evidencia.py")
+
+
+def _evidencia_de_controles(ruta=None):
+    """`controles/lib/evidencia.py`, por ruta, o `None` si no esta.
+
+    🔴 `bin/` se instala y `controles/` todavia no (ver `PENDIENTES-FH.md`). Sin la regla de salida
+    la unidad no se cae: lleva el estado y ningun id. (Refutador de Vu3, pase 1.)
+    """
+    import importlib.util
+    try:
+        spec = importlib.util.spec_from_file_location("_normativa_evidencia",
+                                                      ruta or _ruta_de_evidencia())
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return modulo
+    except (OSError, ImportError, AttributeError, SyntaxError):
+        return None
+
+
+def vu3_para_unidad(aplicabilidad, resultado=None, ruta_de_evidencia=None):
+    """El bloque de Vu3 que viaja en la unidad: ids y estados, nunca contenido.
+
+    🔴 Se proyecta un resultado que dice ser del check de Vu3 y nada mas, y pasa por la misma regla
+    de salida que el check: ni una cookie ni un token llegan a la unidad, vengan de donde vengan.
+    """
+    from . import seguridad
+    r = resultado if isinstance(resultado, dict) else {}
+    estado = r.get("state") if r.get("control") == "browser-close-session-termination" else None
+    if estado not in ESTADOS_DEL_CHECK_VU3:
+        r, estado = {}, None
+    if aplicabilidad != seguridad.APLICABLE:
+        r = {}
+        estado = (seguridad.NO_APLICABLE if aplicabilidad == seguridad.NO_APLICABLE
+                  else seguridad.RESULTADO_SIN_RESOLVER)
+    superficies = [s for s in r.get("surfaces") or [] if isinstance(s, dict)]
+    ids = set()
+    for s in superficies:
+        usada = s.get("evidenceUsed") if isinstance(s.get("evidenceUsed"), dict) else {}
+        for v in usada.values():
+            ids.update(i for i in (v if isinstance(v, list) else []) if isinstance(i, str))
+        for c in s.get("combinations") or []:
+            if isinstance(c, dict):
+                ids.update(i for i in c.get("evidenceUsed") or [] if isinstance(i, str))
+    bloque = {"applicability": aplicabilidad,
+              "result": estado or seguridad.RESULTADO_SIN_RESOLVER,
+              "surfaces": sorted(str(s.get("surfaceId")) for s in superficies),
+              "evidence": sorted(ids),
+              "source": {"standard": "ES0902", "version": "6.2", "section": "6", "rule": "Vu3"}}
+    limpieza = _evidencia_de_controles(ruta_de_evidencia)
+    if limpieza is None:
+        bloque["surfaces"], bloque["evidence"] = [], []
+        return bloque
+    return limpieza.depurar(bloque)
 
 
 def _sin_senales(bloque):

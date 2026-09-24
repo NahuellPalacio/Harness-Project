@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Security Report Rendering Contract",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "summaryRef",
+    "markdownOutput",
+    "pdfOutput",
+    "dashboard"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "security-report/1.0"
+      ]
+    },
+    "summaryRef": {
+      "type": "string"
+    },
+    "markdownOutput": {
+      "type": "string"
+    },
+    "pdfOutput": {
+      "type": "string"
+    },
+    "dashboard": {
+      "type": "object",
+      "required": [
+        "primaryCards",
+        "showRuleHeatmap",
+        "showFindingsChart",
+        "showCoverage",
+        "showBlockers"
+      ],
+      "properties": {
+        "primaryCards": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "showRuleHeatmap": {
+          "type": "boolean"
+        },
+        "showFindingsChart": {
+          "type": "boolean"
+        },
+        "showCoverage": {
+          "type": "boolean"
+        },
+        "showBlockers": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

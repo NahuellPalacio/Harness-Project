@@ -368,18 +368,20 @@ def test_e13_la_forma_vieja_sigue_valiendo(t):
     t.igual("E-13 y es la que declaro", "D1", fuentes[0]["rule"])
 
     # 📌 Los 36 controles que no comparten nada siguen con la forma vieja, sin tocar: 25 de
-    # ES0901 y los 11 que instalaron O1, O2, C1, C2 y Vu1, que salen de un solo estandar y no necesitan
+    # ES0901 y los 15 que instalaron O1, O2, C1, C2, Vu1, Vu2 y Vu3, que salen de un solo estandar y no necesitan
     # la lista.
     sin_migrar = [c for c in REGISTRO["controls"] if "normativeSources" not in c]
-    t.igual("E-13 treinta y seis controles siguen con `source` solo", 36, len(sin_migrar))
+    t.igual("E-13 cuarenta controles siguen con `source` solo", 40, len(sin_migrar))
     for c in sin_migrar:
         t.igual("E-13 `%s` se lee igual" % c["id"], 1, len(c_controles.fuentes_de(c)))
     t.igual("E-13 veinticinco son de ES0901", 25,
             len([c for c in sin_migrar
                  if c_controles.fuentes_de(c)[0]["standard"] == "ES0901"]))
-    t.igual("E-13 y los once de O1, O2, C1, C2 y Vu1 son de ES0902",
+    t.igual("E-13 y los quince de O1, O2, C1, C2, Vu1, Vu2 y Vu3 son de ES0902",
             ["authentication-abuse-protection",
              "authentication-abuse-protection-required",
+             "browser-close-session-termination",
+             "browser-close-session-termination-required",
              "dgsei-keycloak-provider-required",
              "gcba-it-security-normative-compliance-required",
              "gcba-it-security-normative-review",
@@ -388,13 +390,15 @@ def test_e13_la_forma_vieja_sigue_valiendo(t):
              "openid-connect-authentication-required",
              "qa-security-approval-evidence",
              "qa-security-approval-required",
-             "security-control-authority-evidence"],
+             "security-control-authority-evidence",
+             "sensitive-data-plaintext-transmission-prohibited",
+             "sensitive-data-transport-protection"],
             sorted(c["id"] for c in sin_migrar
                    if c_controles.fuentes_de(c)[0]["standard"] == "ES0902"))
 
     informe = c_controles.validar(REGISTRO)
     t.vacio("E-13 el registro entero valida contra el schema", informe["schemaErrors"])
-    t.igual("E-13 y los 42 controles siguen instalados", 42,
+    t.igual("E-13 y los 46 controles siguen instalados", 46,
             len([e for e in informe["controls"].values() if e == "INSTALLED"]))
 
     # La lista gana cuando esta: no se suman las dos formas.
@@ -408,7 +412,7 @@ def test_e14_un_control_compartido_se_declara_una_vez(t):
     """E-14 (S-04) — no hay un `authentication-delegation` de D2 y otro de C1."""
     ids = [c["id"] for c in REGISTRO["controls"]]
     t.igual("E-14 ningun id repetido", len(ids), len(set(ids)))
-    t.igual("E-14 el registro declara 42 controles", 42, len(ids))
+    t.igual("E-14 el registro declara 46 controles", 46, len(ids))
     for cid in sorted(cruzada.controles_compartidos(MAPA)):
         t.igual("E-14 `%s` aparece una sola vez" % cid, 1, ids.count(cid))
         t.igual("E-14 `%s` lo citan dos estandares" % cid, ["ES0901", "ES0902"],
@@ -1912,7 +1916,7 @@ def test_e69_los_modulos_no_tienen_como_conseguir_un_secreto(t):
 
 
 def test_e70_lo_declarado_no_finge_estar_instalado(t):
-    """E-70 — catorce policies, doce checks y una review declarados y sin construir."""
+    """E-70 — doce policies, diez checks y una review declarados y sin construir."""
     resolucion = seguridad.resolver(_todas_las_senales())
     t.igual("E-70 con todas las senales aplican las 21", 21, len(resolucion["applicableRules"]))
     t.igual("E-70 veintitres policies declaradas", 23, len(resolucion["declaredPolicies"]))
@@ -1923,13 +1927,13 @@ def test_e70_lo_declarado_no_finge_estar_instalado(t):
     por_estado = {}
     for f in faltan:
         por_estado[f["state"]] = por_estado.get(f["state"], 0) + 1
-    t.igual("E-70 catorce policies no instaladas", 14,
+    t.igual("E-70 doce policies no instaladas", 12,
             por_estado.get("DECLARED_POLICY_NOT_INSTALLED"))
-    t.igual("E-70 doce checks no instalados", 12,
+    t.igual("E-70 diez checks no instalados", 10,
             por_estado.get("DECLARED_CHECK_NOT_INSTALLED"))
     t.igual("E-70 una review no instalada", 1,
             por_estado.get("DECLARED_REVIEW_NOT_INSTALLED"))
-    t.igual("E-70 veintisiete huecos en total", 27, len(faltan))
+    t.igual("E-70 veintitres huecos en total", 23, len(faltan))
 
     # 🔴 Y eso NO invalida la matriz: es el estado correcto de un harness que clasifico antes
     # de construir. Los seis que si estan instalados son los compartidos con ES0901.
@@ -1938,12 +1942,12 @@ def test_e70_lo_declarado_no_finge_estar_instalado(t):
     instalados = set(c_controles.instalados(REGISTRO)["POLICY"]) \
         | set(c_controles.instalados(REGISTRO)["CHECK"])
     declarados = set(resolucion["declaredPolicies"]) | set(resolucion["declaredChecks"])
-    t.igual("E-70 dieciseis de los declarados por ES0902 ya estan instalados", 16,
+    t.igual("E-70 veinte de los declarados por ES0902 ya estan instalados", 20,
             len(declarados & instalados))
-    # Los seis compartidos con ES0901, mas los diez de O1, O2, C1, C2 y Vu1 que no comparten nada:
+    # Los seis compartidos con ES0901, mas los catorce de O1, O2, C1, C2, Vu1, Vu2 y Vu3 que no comparten nada:
     # salen de ES0902 secciones 3 y 6 y de ningun otro lado. La review de O1 no entra en esta cuenta, que es de
     # policies y checks.
-    t.igual("E-70 y son los compartidos mas los de O1, O2, C1, C2 y Vu1",
+    t.igual("E-70 y son los compartidos mas los de O1, O2, C1, C2, Vu1, Vu2 y Vu3",
             sorted(set(cruzada.controles_compartidos(MAPA))
                    | {"gcba-it-security-normative-compliance-required",
                       "gcba-security-control-authority-required",
@@ -1952,7 +1956,11 @@ def test_e70_lo_declarado_no_finge_estar_instalado(t):
                     "dgsei-keycloak-provider-required", "oidc-keycloak-integration",
                     "qa-security-approval-required", "qa-security-approval-evidence",
                     "authentication-abuse-protection-required",
-                    "authentication-abuse-protection"}),
+                    "authentication-abuse-protection",
+                    "sensitive-data-plaintext-transmission-prohibited",
+                    "sensitive-data-transport-protection",
+                    "browser-close-session-termination-required",
+                    "browser-close-session-termination"}),
             sorted(declarados & instalados))
     t.verdadero("E-70 la review de O1 tambien esta instalada",
                 "gcba-it-security-normative-review"

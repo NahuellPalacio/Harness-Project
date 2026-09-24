@@ -32,6 +32,7 @@ running order.
 | 18 | Three loadable .md files are in Spanish | ADR-0011 was broken by three files on the day it was written, and nothing measures it |
 | 19 | ES0902 declares 38 controls and none of them is built | The largest declared-not-built gap the harness has had. Whoever reads "ES0902 installed" can easily read "ES0902 complied with" |
 | 20 | Nothing produces the G2 severity mapping | Every real run of the acceptance threshold comes out `VULNERABILITY_RISK_MAPPING_UNRESOLVED`, so the threshold is installed and unusable |
+| 21 | The shared secret catalogue misses five credential forms, and its sample leaks twelve characters | The hook shows 12 of the 20 characters of an AWS key in the transcript, and the security ledger had to grow its own redaction layer to avoid it |
 
 Item 2 is what comes first now: it is the only place where the harness says `HOMOLOGATED` for
 something the ratified rule rejects. 0.19.0 released the backlog of verdict files that had piled up
@@ -779,6 +780,50 @@ slice covers `KNOWLEDGE_PROMOTION_INCOMPLETE`. `NEW_SOURCE` and `RETIRED` need a
 own wherever they land — they are one line each and they are the two that nothing else will pick
 up.
 
+### The shared secret catalogue misses five credential forms, and its sample leaks twelve characters
+
+Found on 2026-09-23 while building `reporte-de-seguridad`, and confirmed by the refuter's probes on
+the same day. `comun/reglas/secretos.patrones.json` does not recognise:
+- an Anthropic key (`sk-ant-…`);
+- a `JSESSIONID=` or `sessionid=` cookie;
+- a `Bearer` token without an `Authorization` header before it;
+- the body of a PEM private key. Only the `BEGIN` line is redacted.
+
+Separately, `comun/hooks/lib/secretos.py::muestra_segura` keeps the first 12 characters of the
+match in the text it writes. For a 20-character AWS key (`AKIA…`), that is 12 of the 20. The sample
+goes into Claude's context and into the transcript. Through `contexto/limpieza` it also reaches
+Block 4's `ledger.jsonl`. Both defects reach the hook, the `OrchestrationPlan` and the accounting
+ledger. `reporte_seguridad/libro.py` covers them for the security ledger only, with a local pattern
+layer and a trimmed sample, so today there are two redaction layers that can diverge.
+
+Fix. Add the five forms to the catalogue at high confidence. Make `muestra_segura` show the
+pattern id and the length, never characters of the value. Then drop the local layer in
+`reporte_seguridad/libro.py`, or reduce it to what the catalogue cannot express. Owner:
+`harness-hook-engineer`, since it changes what `pre-tool-use` reports.
+
+### The security ledger's password rule leaves four forms out, and its temp file can stay behind
+
+Found by the refuter's final pass on `reporte-de-seguridad`, on 2026-09-23. The rule of E-03b
+recognises a password by the keyword and redacts the first value on the same line. By the rule's
+own letter these four still reach `security-ledger.ndjson` raw:
+- `PASSWORD=` with the value on the next line. The second pass redacted it, so this is a
+  regression in behaviour even though it does not break the letter.
+- `password='He said \'x\' value'`. The value ends at the first quote, so only "He" is redacted.
+- `Bearer:value`, with a colon.
+- A PEM body with no `BEGIN` header.
+
+E-03b declares that a syntax outside the rule is a catalogue item, not a contradiction of E-03.
+That narrows what E-03 covered with "una contraseña", and it was left visible on purpose.
+
+Separately, `reporte_seguridad/archivo.escribir_atomico` creates its temp file with
+`tempfile.mkstemp`. If the write fails, the temp file stays in the folder, because the package has
+no verb that deletes. That absence is what E-01 asserts.
+
+Fix. The first two forms belong in the local rule: let the value continue on the next line after a
+bare `=`, and honour escaped quotes. The last two belong in the shared catalogue item above. For
+the temp file, removing the package's own freshly created temp name on failure does not reopen
+E-01, but it has to be argued in the spec before it is written.
+
 ## Installer defects
 
 ### The installer tests fail at random under load, and the python test counts drift
@@ -1071,6 +1116,43 @@ Fix. Walk the strings of the evidence (`_textos`) and compare each one, or each 
 Equivalence. A `MECHANISM_EQUIVALENCE` with `value: SUPPORTED` counts and avoids FAIL; the module
 rejects that value everywhere else as a capability claim. Fix: exclude `VALORES_DE_CAPACIDAD` from
 equivalence values, with a line in `test_e22`.
+
+### ES0902 Vu2 closed with E-08, E-13 and E-43 contradicted: NFC left out of the duplicate counts
+
+Third and final refuter pass, 2026-09-23: 44 upheld, 3 contradicted, documented in
+`docs/cambios/es0902-vu2-datos-sensibles-en-transito/verificacion.md`. In `derivar` of
+`controles/checks/sensitive-data-transport-protection.py`, `ids_clase.count(...)`,
+`ids_camino.count(...)`, `missing` and the hop ids `hids` compare raw text while the classes dict is
+keyed in NFC. Two classes `salúd` (NFC and NFD) are not flagged as duplicated and the second
+overwrites the first by input order: [NFC, NFD] gives APPLICABILITY_UNRESOLVED and [NFD, NFC] PASS;
+with a NOT_SENSITIVE twin the signal goes FALSE in one order.
+
+Fix. Normalize every id to NFC once, when reading the inventory, and count on the normalized ids.
+`controles/lib/evidencia.py` (born with Vu3) already has the helper.
+
+### ES0902 Vu2 E-47 blocks more than it says
+
+Same pass. `sueltas` in `evaluar_camino` blocks the path for any evidence naming it without a
+matching `hop` or with an unknown value, without source filter, without `_lectura`, and for a "yes"
+too: a PROTECTED evidence shared by two paths (hop only in the other one) leaves this one unresolved;
+a `REDIRECT_DOWNGRADE` with `value: NO_EXPOSURE` blocks, so "no downgrade" cannot be declared; a
+README without hop blocks while a README with hop is ignored (which contradicts E-45's "a weak
+source does not count"); an unsafe or target-less test without hop is labelled
+TRANSPORT_PROTECTION_UNRESOLVED instead of its own state. Never FAIL, so it only fails closed.
+
+Fix. Restrict `sueltas` to evidence that says "no" (PLAINTEXT, EXPOSES_PAYLOAD, or an unknown
+value), from `FUENTES_DE_TRANSPORTE`, passed through `_lectura`, and only when the `hop` is missing —
+a hop that exists in another path the evidence also names is not loose.
+
+### ES0902 Vu3 moved the evidence helpers to `controles/lib/evidencia.py`; Vu1 and Vu2 keep copies
+
+Since 2026-09-23 the closed catalog, the NFC id comparison and the single secret output rule live in
+`controles/lib/evidencia.py`, used by Vu3. Vu1 (`authentication-abuse-protection.py`, with its E-39
+regex bug) and Vu2 (`sensitive-data-transport-protection.py`) still carry their own versions. Two
+copies of a secret detector drift: Vu1's already differs.
+
+Fix. Migrate both checks to the lib in one change for `harness-staff-engineer`, behaviour frozen
+except for the documented Vu1 E-39 and E-42 fixes, which need their own scenarios.
 
 ## Verification that was not done
 

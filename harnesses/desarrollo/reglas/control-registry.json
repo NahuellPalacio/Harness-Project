@@ -780,6 +780,58 @@
         "section": "6",
         "rule": "Vu1"
       }
+    },
+    {
+      "id": "sensitive-data-plaintext-transmission-prohibited",
+      "type": "POLICY",
+      "rule": "Vu2",
+      "file": "controles/policies/sensitive-data-plaintext-transmission-prohibited.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu2"
+      }
+    },
+    {
+      "id": "sensitive-data-transport-protection",
+      "type": "CHECK",
+      "rule": "Vu2",
+      "file": "controles/checks/sensitive-data-transport-protection.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu2"
+      }
+    },
+    {
+      "id": "browser-close-session-termination-required",
+      "type": "POLICY",
+      "rule": "Vu3",
+      "file": "controles/policies/browser-close-session-termination-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu3"
+      }
+    },
+    {
+      "id": "browser-close-session-termination",
+      "type": "CHECK",
+      "rule": "Vu3",
+      "file": "controles/checks/browser-close-session-termination.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu3"
+      }
     }
   ]
 }

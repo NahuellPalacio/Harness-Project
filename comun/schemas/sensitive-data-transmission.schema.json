@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sensitive-data-transmission/1.0",
+  "title": "Sensitive Data Transmission Inventory",
+  "description": "Las clases de datos y los caminos de transmision de un proyecto, para ES0902 Vu2. Es del PROYECTO y se instala vacio. Los strings de `classificationEvidence` y `evidence` son ids del catalogo de evidencia del caso. `additionalProperties: false` en las cuatro capas: una clave de mas -un payload, un valor de ejemplo- no entra.",
+  "type": "object",
+  "required": [
+    "version",
+    "dataClasses",
+    "paths"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "dataClasses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "dataClassId",
+          "classification",
+          "classificationEvidence"
+        ],
+        "properties": {
+          "dataClassId": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classification": {
+            "enum": [
+              "SENSITIVE",
+              "NOT_SENSITIVE",
+              "UNRESOLVED"
+            ]
+          },
+          "classificationEvidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "pathId",
+          "dataClassRefs",
+          "hops",
+          "evidence"
+        ],
+        "properties": {
+          "pathId": {
+            "type": "string"
+          },
+          "scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dataClassRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hops": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "from",
+                "to",
+                "transport",
+                "protectionStatus",
+                "evidence"
+              ],
+              "properties": {
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                },
+                "transport": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "protectionStatus": {
+                  "enum": [
+                    "PROTECTED",
+                    "PLAINTEXT",
+                    "UNRESOLVED"
+                  ]
+                },
+                "protectionMechanism": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "certificateValidation": {
+                  "enum": [
+                    "ENABLED",
+                    "DISABLED",
+                    "NOT_APPLICABLE",
+                    "UNRESOLVED"
+                  ]
+                },
+                "hostnameVerification": {
+                  "enum": [
+                    "ENABLED",
+                    "DISABLED",
+                    "NOT_APPLICABLE",
+                    "UNRESOLVED"
+                  ]
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

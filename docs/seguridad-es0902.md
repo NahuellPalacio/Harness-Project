@@ -312,6 +312,62 @@ prueba dedicada; si no, `AUTH_ABUSE_RUNTIME_TEST_UNSAFE`, que no es `FAIL`.
 El registro cierra sus cuatro capas y no se lee si trae un texto con forma de credencial. Y `PASS`
 de Vu1 no es C1, ni al revés: OIDC configurado no protege una página.
 
+## Vu2 y el dato sensible en tránsito
+
+Vu2 —*"Todo dato sensible no puede ser enviado en texto plano"*— lo contesta
+`sensitive-data-transport-protection`, **camino por camino y salto por salto**. El registro es del
+proyecto y se instala vacío:
+
+```
+reglas/sensitive-data-transmission.json   del PROYECTO. Se instala VACIO
+```
+
+🔴 **Sensible lo dice una autoridad.** El estándar no define qué es un dato sensible y el harness no
+inventa una taxonomía: una clase es sensible o no cuando el registro lo declara y una fuente
+autoritativa citada dice lo mismo. Un nombre de campo, un escáner de secretos o un README no
+clasifican: `SENSITIVE_DATA_CLASSIFICATION_UNRESOLVED`. Para apagar la regla hace falta la misma
+autoridad.
+
+🔴 **Salto por salto.** `navegador --HTTPS--> ingreso --HTTP--> backend` es `FAIL`: el borde no tapa
+el salto interno. Cada salto necesita su propia evidencia, y la cadena de saltos tiene que estar
+entera.
+
+🔴 **Codificar no es cifrar.** Base64, URL, hex, compresión, serialización, JWT sólo firmado y
+ofuscación sobre `http` son en claro. Un hash no es cifrar el transporte. `https` con sólo la forma de
+la URL, o con el código fuente como única evidencia, no alcanza; la validación de certificado o de
+hostname apagada impide el `PASS`.
+
+🔴 **Nada criptográfico se inventa y nada se prueba con datos reales.** Ni versión de TLS, ni suites,
+ni tamaños de clave. Una prueba cuenta si fue sintética, autorizada y sin captura del payload; si no,
+`SENSITIVE_DATA_TRANSPORT_TEST_UNSAFE`, que no es `FAIL`. El catálogo de evidencia es cerrado —no hay
+campo donde guardar un payload— y nada con forma de credencial sale en el resultado.
+
+## Vu3 y el cierre de la ventana o del browser
+
+Vu3 —*"Toda aplicación que se cierra a través de las ventanas o en forma directa del browser, no debe
+dejar la sesión activa"*— lo contesta `browser-close-session-termination`, **superficie por
+superficie, cliente por cliente y cierre por cierre**. Las superficies son las de C1; el registro de
+Vu3 es del proyecto y se instala vacío:
+
+```
+reglas/browser-session-termination.json   del PROYECTO. Se instala VACIO
+```
+
+🔴 **Juzga la sesión de la aplicación.** La del proveedor de identidad, el tiempo de vida del token y
+el almacenamiento del browser se informan aparte. Que el SSO del proveedor siga activo no es `FAIL`:
+una sesión nueva creada por un intercambio nuevo no es la sesión vieja.
+
+🔴 **El logout no es el cierre, el hook no es el comportamiento, la pantalla no es la sesión.** Un
+botón de salir que funciona, un `beforeunload` o volver a ver el login no aprueban. Cuenta la
+evidencia de comportamiento: el endpoint protegido que rechaza el artefacto viejo, el almacén de
+sesiones, una prueba autorizada. La API que sigue aceptando la sesión vieja es `FAIL`.
+
+🔴 **Ventana y browser, no cualquier pestaña, y los clientes los dice el proyecto.** La pestaña se
+exige sólo con evidencia de que es un cierre equivalente. El módulo no nombra ningún browser.
+
+🔴 **Vu3 no es Vu4 ni C1.** Un timeout por inactividad no reemplaza el cierre. La unidad de trabajo
+lleva `standards.ES0902.rules.Vu3` con aplicabilidad, resultado, superficies y evidencia por id.
+
 ## La frontera que no se cruza
 
 El harness hace las capas 1 y 2; la 3 no es suya.
@@ -451,6 +507,14 @@ reglas/es0902-vu1-governance.md                el gobierno de Vu1, como vino
 reglas/es0902-vu1-authentication-page-present-signal.md   la señal, como vino
 reglas/es0902-vu1-authentication-abuse-protection-check.md  el procedimiento, como vino
 reglas/authentication-abuse-protection.json    la protección de cada página. Del PROYECTO, vacío
+reglas/es0902-vu2-governance.md                el gobierno de Vu2, como vino
+reglas/es0902-vu2-sensitive-data-transmission-present-signal.md  la señal, como vino
+reglas/es0902-vu2-sensitive-data-transport-protection-check.md   el procedimiento, como vino
+reglas/sensitive-data-transmission.json        las clases de datos y sus caminos. Del PROYECTO, vacío
+reglas/es0902-vu3-governance.md                el gobierno de Vu3, como vino
+reglas/es0902-vu3-browser-session-present-signal.md       la señal, como vino
+reglas/es0902-vu3-browser-close-session-termination-check.md  el procedimiento, como vino
+reglas/browser-session-termination.json        el cierre de sesión de cada superficie. Del PROYECTO, vacío
 
 bin/orquestacion/seguridad.py    qué regla aplica, y con qué resultado
 bin/orquestacion/evaluacion.py   en qué estado está la evaluación, y quién puede moverla

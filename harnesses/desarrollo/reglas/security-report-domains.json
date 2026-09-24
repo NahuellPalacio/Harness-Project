@@ -1,0 +1,15 @@
+{
+  "$comentario": "Agrupacion fija de las 21 reglas de ES0902 para el reporte de seguridad. Es una agrupacion de presentacion y no una fuente normativa: no crea reglas, no cambia ningun resultado y cada regla va en un solo dominio. La lee reporte_seguridad/resumen.py.",
+  "standard": "ES0902",
+  "version": "6.2",
+  "domains": [
+    {"domainId": "governance", "title": "Gobierno", "rules": ["O1", "O2"]},
+    {"domainId": "identity-session", "title": "Identidad y sesión", "rules": ["C1", "Vu1", "Vu3", "Vu4"]},
+    {"domainId": "sensitive-data-public-interfaces", "title": "Datos sensibles e interfaces públicas", "rules": ["Vu2", "Vu7", "Vu9"]},
+    {"domainId": "validation-error-handling", "title": "Validación y manejo de errores", "rules": ["Vu5", "Vu6"]},
+    {"domainId": "authorization-roles", "title": "Autorización y roles", "rules": ["Vu8"]},
+    {"domainId": "owasp-application-security", "title": "OWASP / seguridad de aplicación", "rules": ["Vu10"]},
+    {"domainId": "technology-versions", "title": "Tecnología y versiones", "rules": ["C3", "Ve1", "Ve2"]},
+    {"domainId": "security-assessment", "title": "Evaluación de seguridad", "rules": ["C2", "G1", "G2", "G3", "G4"]}
+  ]
+}

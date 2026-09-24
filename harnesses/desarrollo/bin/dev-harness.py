@@ -5,6 +5,7 @@
     python .claude/harness/bin/desarrollo/dev-harness.py estado [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py reconfigurar jira|gitlab
     python .claude/harness/bin/desarrollo/dev-harness.py contexto GCBA-1234 [--json]
+    python .claude/harness/bin/desarrollo/dev-harness.py seguridad GCBA-1234 [--conocimiento] [--resumen] [--reporte]
 
 Los tres primeros son el Bloque 1 y contestan una sola pregunta: que integraciones hay
 configuradas, cuales funcionan y que capacidades se pueden usar.
@@ -64,6 +65,11 @@ from contabilidad import presupuesto as cont_presupuesto          # noqa: E402
 from contabilidad import reporte as cont_reporte                  # noqa: E402
 from contabilidad.adaptadores import contrato as cont_contrato    # noqa: E402
 from contabilidad.adaptadores import registro as cont_registro    # noqa: E402
+
+from reporte_seguridad import libro as seg_libro                  # noqa: E402
+from reporte_seguridad import productores as seg_productores      # noqa: E402
+from reporte_seguridad import reporte as seg_reporte              # noqa: E402
+from reporte_seguridad import resumen as seg_resumen              # noqa: E402
 
 CLASES = (IntegracionJira, IntegracionGitLab)
 NOMBRES = tuple(c.nombre for c in CLASES)
@@ -793,6 +799,75 @@ def mostrar_contabilidad(consola, resumen, destino):
     consola.linea("Resumen: %s" % destino)
 
 
+# -- el reporte de seguridad ---------------------------------------------------
+
+def reportar_seguridad(args, proyecto, consola):
+    """Del libro de seguridad de una tarea a su resumen y su tablero.
+
+    No corre ningun check y no aprueba nada. `--conocimiento` agrega al libro el estado de
+    ES0902 que dejo `fuentes`; `--resumen` escribe `security-summary.json`; `--reporte` escribe
+    ademas el md y el html. Sin ninguno, muestra el estado sin escribir nada.
+    """
+    tarea = seg_libro.validar_tarea(str(args.argumento or ""))
+    ruta_libro = seg_libro.ruta_de(proyecto, tarea)
+
+    if args.conocimiento:
+        doc = orq_frescura.leer(orq_frescura.ruta_por_defecto(proyecto))
+        if not doc:
+            raise FallaDelHarness(
+                "no hay %s en el proyecto: el estado del conocimiento sale de ahi. Corré "
+                "primero:\n    dev-harness.py fuentes" % orq_frescura.ARCHIVO)
+        alcance = {"project": os.path.basename(os.path.normpath(proyecto)), "environment": None}
+        eventos = seg_productores.desde_frescura(doc, tarea, alcance)
+        escritos, salteados, hallazgos = seg_libro.agregar_varios(ruta_libro, eventos)
+        consola.evento("seguridad.conocimiento", escritos=escritos, repetidos=salteados)
+        for hallazgo in hallazgos:
+            consola.linea("  · " + hallazgo)
+
+    resumen = seg_resumen.generar(proyecto, tarea)
+    destinos = []
+    if args.resumen or args.reporte:
+        destinos.append(seg_resumen.escribir(
+            resumen, seg_libro.ruta_de(proyecto, tarea, seg_libro.RESUMEN)))
+        consola.evento("seguridad.resumen", eventos=resumen["ledger"]["events"],
+                       estado=resumen["systemSecurityState"])
+    if args.reporte:
+        destinos.extend(seg_reporte.escribir(resumen, seg_libro.carpeta_de(proyecto, tarea)))
+        consola.evento("seguridad.reporte", destino=_relativa(
+            proyecto, seg_libro.carpeta_de(proyecto, tarea)))
+
+    if args.json:
+        sys.stdout.write(seg_resumen.como_texto(resumen))
+    else:
+        mostrar_seguridad(consola, resumen, [_relativa(proyecto, d) for d in destinos])
+    return 0
+
+
+def mostrar_seguridad(consola, resumen, destinos):
+    cobertura = resumen["coverage"]
+    consola.linea("")
+    consola.linea("%s — estado de seguridad" % resumen["taskId"])
+    consola.linea("-" * 60)
+    consola.linea("Sistema      %s" % resumen["systemSecurityState"])
+    consola.linea("Bloqueos     %d" % len(resumen["blockingConditions"]))
+    consola.linea("Cobertura    evaluada %s · resuelta %s  (%d aplicables)" % (
+        seg_reporte.porciento(cobertura["assessmentCoveragePct"]),
+        seg_reporte.porciento(cobertura["evidenceResolutionPct"]),
+        cobertura["applicableRules"]))
+    consola.linea("Evaluación   %s" % resumen["assessmentState"])
+    consola.linea("Aprobación   %s" % resumen["officialApprovalStatus"])
+    consola.linea("ES0902       %s · frescura %s" % (
+        seg_reporte.texto(resumen["knowledge"].get("version")),
+        seg_reporte.texto(resumen["knowledge"].get("freshness"))))
+    for bloqueo in resumen["blockingConditions"][:5]:
+        consola.linea("  · %s  %s" % (bloqueo["source"], bloqueo["title"]))
+    if resumen["officialApprovalStatus"] != seg_reporte.EXTERNA:
+        consola.linea("")
+        consola.linea(seg_reporte.AVISO_OFICIAL)
+    for destino in destinos:
+        consola.linea("Escrito: %s" % destino)
+
+
 # -- comandos ------------------------------------------------------------------
 
 def comando(args, transporte=None, transporte_bytes=None):
@@ -811,6 +886,9 @@ def comando(args, transporte=None, transporte_bytes=None):
 
     if args.comando == "contabilidad":
         return contabilizar(args, proyecto, rutas, consola)
+
+    if args.comando == "seguridad":
+        return reportar_seguridad(args, proyecto, consola)
 
     if args.comando == "contexto":
         return resolver_contexto(args, proyecto, rutas, config, almacen, timeout,
@@ -848,7 +926,7 @@ def parser():
         prog="dev-harness.py",
         description="Integraciones y contexto de tarea del harness de desarrollo.")
     p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan",
-                                       "contabilidad", "fuentes"))
+                                       "contabilidad", "fuentes", "seguridad"))
     p.add_argument("argumento", nargs="?",
                    help="la integracion, para reconfigurar; la clave de Jira, para contexto")
     p.add_argument("--archivo", default="",
@@ -872,7 +950,11 @@ def parser():
     p.add_argument("--agente", default="",
                    help="contabilidad: a que agente se atribuye lo ingerido")
     p.add_argument("--reporte", action="store_true",
-                   help="contabilidad: genera execution-cost.md del resumen")
+                   help="contabilidad: genera execution-cost.md; seguridad: el md y el html")
+    p.add_argument("--conocimiento", action="store_true",
+                   help="seguridad: agrega al libro el estado de ES0902 de harness.fuentes.json")
+    p.add_argument("--resumen", action="store_true",
+                   help="seguridad: escribe security-summary.json")
     p.add_argument("--barra", action="store_true",
                    help="contabilidad: muestra la barra de la sesion activa")
     p.add_argument("--sesion", default="",
@@ -913,11 +995,22 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             "Ejemplo: dev-harness.py contexto GCBA-1234\n")
         return 2
 
+    if args.comando == "seguridad":
+        # Antes de tocar el disco: un `..` o una barra sacarian la carpeta de la tarea de
+        # `.claude/runtime/security/`.
+        try:
+            seg_libro.validar_tarea(str(args.argumento or ""))
+        except seg_libro.TareaInvalida as e:
+            sys.stderr.write("harness: %s Ejemplo: dev-harness.py seguridad GCBA-1234\n" % e)
+            return 2
+
     try:
         return comando(args, transporte, transporte_bytes)
     except (FallaDelHarness, ConfigIlegible, ClaveProhibida, ErrorDeAlmacen,
             contexto_ensamblador.ContratoInvalido,
-            cont_presupuesto.PoliticaInvalida, cont_contrato.ContratoInvalido) as e:
+            cont_presupuesto.PoliticaInvalida, cont_contrato.ContratoInvalido,
+            seg_libro.EventoInvalido, seg_libro.TareaInvalida,
+            seg_productores.ProductorInvalido, seg_resumen.ResumenInvalido) as e:
         sys.stderr.write("harness: %s\n" % e)
         return 2
     except KeyboardInterrupt:

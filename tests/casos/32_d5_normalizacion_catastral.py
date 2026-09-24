@@ -1726,7 +1726,7 @@ def test_e36_los_controles_dejan_de_ser_un_hueco(t):
     """E-36 (D5-25, §12) — instalados, declarados, sin archivos sueltos y sin cambiar la matriz."""
     reporte = c_controles.reporte()
     # 📌 Eran dieciocho cuando D5 cerro; D7 sumo seis. Exacto a proposito.
-    t.igual("E-36 son cuarenta y dos controles", 42, reporte["summary"]["declaredControls"])
+    t.igual("E-36 son cuarenta y seis controles", 46, reporte["summary"]["declaredControls"])
     t.verdadero("E-36 el registro es valido", reporte["result"]["registryValid"])
     t.verdadero("E-36 y no hay archivos sin declarar", reporte["result"]["filesystemClean"])
     t.igual("E-36 ningun archivo suelto", [], reporte["undeclared"])

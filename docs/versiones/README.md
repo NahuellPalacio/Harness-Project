@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.20.0](0.20.0.md) | 23-09-2026 | ES0902 regla por regla (O1, O2, C1, C2, C3, Vu1, Vu2 y Vu3), el conocimiento con procedencia y frescura, y el reporte de seguridad del libro al tablero |
 | [0.19.0](0.19.0.md) | 22-09-2026 | La normativa se ejecuta: la matriz de §7.1 clasificada, once reglas de ES0901 con sus controles, ES0902 como segundo estándar, la contabilidad de ejecución, los ambientes de base de datos y la integridad de repositorio |
 | [0.18.0](0.18.0.md) | 16-09-2026 | El núcleo de orquestación: de un `TaskContext` a un `OrchestrationPlan`, con ruteo de modelo por perfiles y compuerta humana; ADR-0011 (el idioma lo decide quién lee) |
 | [0.17.0](0.17.0.md) | 14-09-2026 | Context Resolution: de una clave de Jira a un `TaskContext`, con la Ficha de Proyecto como fuente del conocimiento |

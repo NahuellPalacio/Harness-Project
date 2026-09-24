@@ -23,6 +23,11 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.19.0 → 0.20.0
+
+`-Update` alcanza. No hay pasos manuales ni nada que borrar. El subcomando nuevo,
+`dev-harness.py seguridad`, llega con el `-Update`.
+
 ## 0.18.0 → 0.19.0
 
 `-Update` alcanza para todo lo nuevo, y hay **un paso manual**: borrar las skills que dejaron de

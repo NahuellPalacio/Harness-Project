@@ -1,6 +1,6 @@
 # Verificación — ES0902 O1: la normativa de TI del GCABA como línea base, y la revisión que la mide
 
-**Estado:** cerrado · **Fecha:** 22-09-2026 · **Versión:** sin publicar
+**Estado:** cerrado · **Fecha:** 22-09-2026 · **Versión:** 0.20.0
 
 Este documento es lo que cierra el cambio según
 [ADR-0006](../../adr/0006-sdd-como-metodo-de-los-proyectos.md): el veredicto por escenario de quien
