@@ -1,4 +1,4 @@
-"""Los nueve productores: la salida estructurada de una funcion del harness, como evento del libro.
+"""Los diez productores: la salida estructurada de una funcion del harness, como evento del libro.
 
 Cada productor recibe lo que devuelve una funcion de `orquestacion/` -no texto, no un resumen
 escrito por alguien- y exige su forma. Si la forma no es la de esa funcion, levanta y no hay
@@ -18,6 +18,7 @@ evento. El evento sale con:
     desde_aprobacion   el check de C2                 APPROVAL_EVIDENCE
     desde_integridad   integridad.revisar             REPOSITORY_INTEGRITY
     desde_frescura     el documento de frescura       KNOWLEDGE_STATE
+    desde_refutacion   un veredicto de refutacion     REVIEW_EVALUATION de una regla ES0902
 
 Todos devuelven una LISTA de eventos, aunque casi siempre traiga uno: `desde_check` puede
 agregar el `EVIDENCE_STATE` de lo que el check dejo sin verificar, y una firma uniforme evita
@@ -407,3 +408,48 @@ def desde_frescura(doc, task_id, alcance, cuando=None, agente=None):
                               "sourceIntegrity": integridad_de_fuente(estado),
                               "verifiedAt": marca},
                     blocking=bool(bloquea) or estado is None)]
+
+
+# -- la refutacion atomica -----------------------------------------------------
+
+# Del veredicto del refutador al resultado de una review. `sin-verificar` no es `FAIL`: es lo
+# que falta ver.
+RESULTADO_DE_VEREDICTO = {"cumple": seguridad.PASA, "incumple": seguridad.FALLA,
+                          "sin-verificar": seguridad.RESULTADO_SIN_RESOLVER}
+
+
+def desde_refutacion(veredicto, unidad, task_id, alcance, cuando=None):
+    """Un veredicto validado de una unidad `ES0902.*`, como `REVIEW_EVALUATION`.
+
+    🔴 Review y no `RULE_EVALUATION`: el resumen saca el resultado de una regla solo de ahi, y
+    un veredicto semantico no puede fijarlo. Entra al libro de siempre; no hay otro.
+    """
+    v = veredicto if isinstance(veredicto, dict) else {}
+    u = unidad if isinstance(unidad, dict) else {}
+    norma = u.get("standard") if isinstance(u.get("standard"), dict) else {}
+    _exigir(norma.get("id") == seguridad.ESTANDAR and norma.get("rule") in seguridad.INVENTARIO,
+            "desde_refutacion recibe una unidad de ES0902, y esta es de `%s`"
+            % norma.get("ruleKey"))
+    _exigir(v.get("refutationUnitId") == u.get("refutationUnitId")
+            and v.get("ruleKey") == norma.get("ruleKey"),
+            "desde_refutacion: el veredicto no es de la unidad %s" % u.get("refutationUnitId"))
+    _exigir(v.get("verdict") in RESULTADO_DE_VEREDICTO,
+            "desde_refutacion: `%s` no es un veredicto" % v.get("verdict"))
+    refs = ["%s:%s" % (e.get("path"), e.get("line")) if e.get("line") else str(e.get("path"))
+            for e in v.get("evidence") or [] if isinstance(e, dict)]
+    huellas = [libro.huella(v)]
+    if isinstance(v.get("evidenceFingerprint"), str) and v["evidenceFingerprint"].startswith(
+            "sha256:"):
+        huellas.append(v["evidenceFingerprint"])
+    return [_evento("REVIEW_EVALUATION", v, "desde_refutacion", task_id, alcance,
+                    cuando or v.get("recordedAt"), "dev-refutador",
+                    RESULTADO_DE_VEREDICTO[v["verdict"]],
+                    normativa=_normativa(regla=norma["rule"], review="dev-refutador",
+                                         version=norma.get("version")
+                                         or seguridad.VERSION_ESPERADA),
+                    detalles={"refutationUnitId": u["refutationUnitId"],
+                              "workUnitId": u.get("workUnitId"),
+                              "verdict": v["verdict"],
+                              "resolutionPath": v.get("resolutionPath")},
+                    evidenceRefs=sorted(set(refs)),
+                    evidenceFingerprints=huellas)]

@@ -46,8 +46,8 @@ siempre.
 
 Usalo para:
 
-- **Acotar el alcance.** `architecture.components[]` e `important_paths[]` resuelven un lote de
-  archivos a módulos, así el alcance de tu revisión queda dicho, no implícito.
+- **Ubicar el alcance.** `architecture.components[]` e `important_paths[]` dicen a qué módulo
+  pertenece cada archivo de `evidenceScope.paths`. El alcance lo fija la unidad, no el contrato.
 - **Decidir si una regla aplica.** `technology.languages/frameworks/package_managers` dicen si
   Obelisco es pertinente, si hay frontend, qué gestor de paquetes rige.
 - **Elegir qué skill invocar.** `sources[].type` distingue `openapi` (→ `dev-api`), `config` (→
@@ -57,7 +57,7 @@ Usalo para:
   archivo.
 
 🔴 **Si el archivo no existe, no parsea como JSON, o no describe con claridad lo que necesitás: no
-lo tenés.** Decilo en tu resumen, seguí sin él, y cualquier conclusión que hubiera dependido de un
+lo tenés.** Decilo en tu resumen —el `needed` del veredicto—, seguí sin él, y cualquier conclusión que hubiera dependido de un
 campo del contrato es `sin-verificar` — nunca la completes con lo que "probablemente" es el
 proyecto. Es la misma regla que ya rige para una skill que no cubre un tema: la ausencia se
 declara, no se rellena. El contrato no reemplaza mirar el código: acota dónde mirar, la línea que
@@ -115,47 +115,77 @@ Es a propósito, y el motivo es la asimetría del costo:
 
 Ante la duda, siempre el lado barato.
 
+## Qué recibís: una unidad
+
+<!-- contrato: dev-refutador/2.0 — refutation-unit/1.0 de entrada, refutation-verdict/1.0 de salida -->
+
+Recibís **exactamente una** `refutation-unit/1.0`, validada por el harness
+(`dev-harness.py refute <KEY> --unit REF-001`). Es una afirmación sobre una regla y un alcance
+acotado, y es toda tu revisión. De ella leés solo esto:
+
+- `claim`: la afirmación que verificás. Una sola.
+- `standard.ruleKey`: la regla. Una sola.
+- `skillId`: la skill `dev-*` de la que sale la norma. Invocala a ella.
+- `evidenceScope.paths`: los archivos que podés abrir. Ninguno más.
+- `repoRevision` y `evidenceFingerprint`: los devolvés tal cual.
+- `projectContextRef`, si viene: el contrato que podés leer como evidencia.
+
 ## Presupuesto
 
-- **Una pasada exhaustiva** por lote, y parás. No hay mecanismo de seguir hasta que no
-  aparezca nada nuevo: la pasada completa es toda la revisión.
-- **Una invocación por lote**, no una por archivo. Recibís el conjunto y devolvés el
-  conjunto.
-- Si el lote es tan grande que no podés hacer una pasada completa, **decilo y frená**. Media
-  revisión presentada como completa es peor que ninguna.
+- **Un alcance semántico acotado por unidad**, y parás. La unidad es el límite: no hay
+  mecanismo de seguir hasta que no aparezca nada nuevo.
+- **No leés fuera de `evidenceScope.paths`.** No hagas Glob del repositorio porque un archivo no
+  alcanzó, no busques otro estándar, no agregues una segunda afirmación. Si el alcance no
+  alcanza para decidir, el veredicto es `sin-verificar` con `EVIDENCE_INSUFFICIENT` y qué
+  archivo hubiera hecho falta. **No lo amplíes.**
+- **No descubrís reglas.** La regla viene en la unidad. Lo que otra regla diga del mismo archivo
+  no es tu unidad.
 - **No abras los PDF de la normativa.** No están en el proyecto, y si estuvieran, leerlos
   por afirmación es un presupuesto que ninguna sesión sostiene.
 
 ## Qué devolvés
 
-Una fila por afirmación verificada. Nada más — ni resumen ejecutivo, ni recomendaciones, ni
-propuestas de refactor.
+**Exactamente un objeto JSON** `refutation-verdict/1.0`, y nada más: ni una frase antes, ni
+una después, ni un bloque de código alrededor, ni una tabla. Lo valida, lo guarda, lo agrega y
+lo muestra en español el harness (`refute <KEY> --record`). Vos no escribís ningún archivo.
 
+```json
+{
+  "schema_version": "refutation-verdict/1.0",
+  "refutationUnitId": "REF-001",
+  "workUnitId": "<el de la unidad>",
+  "ruleKey": "<el de la unidad>",
+  "verdict": "cumple | incumple | sin-verificar",
+  "reason": null,
+  "citation": {"skillId": "<el skillId de la unidad>", "locator": "<pág. o sección que cita la regla>"},
+  "evidence": [{"path": "<una ruta de evidenceScope.paths>", "line": 12, "observed": "<lo concreto que viste>"}],
+  "needed": null,
+  "cacheKey": "<el de la unidad>",
+  "evidenceFingerprint": "<el de la unidad>",
+  "repoRevision": "<el de la unidad>"
+}
 ```
-| id | archivo:línea | afirmación verificada | veredicto | norma (skill · pág.) | qué viste | repo_revision |
-```
 
-- `id`: `DEV-001`, correlativo.
-- `norma`: de qué skill salió la regla y qué página del estándar cita. Sin eso el veredicto
-  no es auditable.
-- `qué viste`: para `cumple` e `incumple`, lo concreto del archivo. Para `sin-verificar`,
-  qué hay que abrir o ejecutar para cerrarlo.
-- `repo_revision`: el `meta.repo_revision` de `docs/codebase/project-context.json` si lo usaste
-  para esa fila, o `—` si no había contrato. Sin esto un `cumple` no dice de cuándo es.
+- `cumple` e `incumple`: `citation` con la skill de la unidad y la página o sección, y al menos
+  una `evidence` con ruta del alcance, línea y lo observado. `reason` y `needed` en `null`.
+- `sin-verificar`: `reason` es uno de `RULE_NOT_CITABLE`, `SKILL_DOES_NOT_COVER`,
+  `EVIDENCE_INSUFFICIENT`, `ARTIFACT_MISSING` o `EXECUTION_REQUIRED`, y `needed` dice qué hay que
+  abrir o ejecutar para cerrarlo. `citation` puede ir en `null`.
+- `repoRevision`: el de la unidad, que ya trae el del repositorio. Sin esto un `cumple` no dice
+  de cuándo es.
+- No agregues `resolutionPath`, `cacheHit` ni `recordedAt`: son del harness, y un veredicto que
+  los trae se rechaza.
 
-Y al final, exactamente estas tres cifras:
-
-```
-cumple: N    incumple: N    sin-verificar: N
-```
-
-**Si no encontraste nada que verificar, decilo explícitamente** en vez de no devolver nada.
-Una revisión que no encontró nada es un dato; una revisión que no aparece es una duda.
+Si el alcance no tenía nada que verificar para esa regla, **decilo con `sin-verificar`** en vez
+de no devolver nada. Una revisión que no encontró nada es un dato; una revisión que no aparece
+es una duda.
 
 ## Lo que nunca hacés
 
-- Corregir el código, ni proponer el parche.
+- Corregir el código, ni proponer el parche, ni refactorizar.
 - Citar una norma que no te dio una skill.
 - Reportar como incumplimiento algo que ningún estándar cubre.
 - Ampliar el alcance a archivos que no te dieron.
+- Verificar una regla distinta de la de la unidad, o una segunda afirmación.
+- Escribir un archivo, o devolver algo que no sea el objeto del veredicto.
 - Pedir otra ronda.

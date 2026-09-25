@@ -255,10 +255,33 @@ def _maximo_del_contrato(relleno=RELLENO):
     evento = {}
     for clave, sub in (esquema.get("properties") or {}).items():
         if clave == "metadata":
-            evento[clave] = dict((k, relleno) for k in c_eventos.CLAVES_DE_METADATA)
+            evento[clave] = _metadata_maxima(relleno)
         else:
             evento[clave] = _valor_maximo(sub, relleno)
     return evento
+
+
+def _metadata_maxima(relleno):
+    """Cada clave de `metadata` en el valor mas largo que admite.
+
+    Las de texto libre llevan el relleno. Las cuatro de la refutacion
+    (docs/cambios/refutacion-atomica/spec.md) no son texto libre: llevan su valor admitido mas
+    largo, que es lo maximo que pueden pesar.
+    """
+    salida = {}
+    for k in c_eventos.CLAVES_DE_METADATA:
+        if k in c_eventos.ACOTADAS:
+            salida[k] = max(c_eventos.ACOTADAS[k], key=lambda v: len(str(v)))
+        elif k == "refutationUnitId":
+            salida[k] = "REF-999999"
+        else:
+            salida[k] = relleno
+    return salida
+
+
+def _claves_libres():
+    return [k for k in c_eventos.CLAVES_DE_METADATA
+            if k not in c_eventos.ACOTADAS and k != "refutationUnitId"]
 
 
 def _contenido_de(nodo):
@@ -1661,11 +1684,17 @@ def test_e37_el_libro_no_guarda_ni_prompts_ni_secretos(t):
                         _levanta(lambda e=suelto: c_libro.agregar(ruta, e)))
             t.verdadero("E-37 y la validacion lo dice: %s" % clave,
                         bool(c_eventos.validar_metadata({"metadata": {clave: "x"}})))
+        validas = _metadata_maxima("x")
         for declarada in c_eventos.CLAVES_DE_METADATA:
             t.igual("E-37 pero `metadata.%s` si vale" % declarada, [],
-                    c_eventos.validar_metadata({"metadata": {declarada: "x"}}))
-        t.verdadero("E-37 son pocas claves y estan cerradas",
-                    len(c_eventos.CLAVES_DE_METADATA) <= 8)
+                    c_eventos.validar_metadata({"metadata": {declarada: validas[declarada]}}))
+        # Las de texto libre siguen siendo pocas. Las cuatro de la refutacion se cierran por
+        # valor, no solo por nombre: un texto cualquiera en ellas no entra.
+        t.verdadero("E-37 son pocas claves de texto libre y estan cerradas",
+                    len(_claves_libres()) <= 8)
+        for acotada in sorted(c_eventos.ACOTADAS) + ["refutationUnitId"]:
+            t.verdadero("E-37 y `metadata.%s` no admite texto libre" % acotada,
+                        bool(c_eventos.validar_metadata({"metadata": {acotada: prompt}})))
 
         # 🔴 Y el cierre BAJA: los valores son escalares. Cerrar solo el primer nivel no
         # cerraba nada — `{"reason": {"prompt": ...}}` pasaba limpio, y una lista de veinte
@@ -1757,7 +1786,9 @@ def test_e37_el_libro_no_guarda_ni_prompts_ni_secretos(t):
         # techo medido baja y la banda lo deja pasar — y el numero que publica la spec queda
         # mal. Clavarlo obliga a volver a medir cuando el contrato cambia, igual que la
         # cuenta de 26 campos.
-        t.igual("E-37 el techo medido el 20-09-2026", 9643, techo)
+        # Re-medido el 25-09-2026 con las cuatro claves acotadas de la refutacion:
+        # 9643 + 82 de sus nombres y sus valores mas largos.
+        t.igual("E-37 el techo medido el 25-09-2026", 9725, techo)
         t.verdadero("E-37 y esta debajo de los 10.000 que publica la spec", techo < 10000)
 
         maximo = _maximo_del_contrato()
@@ -1773,10 +1804,10 @@ def test_e37_el_libro_no_guarda_ni_prompts_ni_secretos(t):
                     _todos_acotados(escrito, c_libro.TOPE_DE_TEXTO + 60))
 
         campos = escrito["metadata"]
-        t.igual("E-37 son los siete campos de metadata y nada mas",
+        t.igual("E-37 son los campos de metadata y nada mas",
                 len(c_eventos.CLAVES_DE_METADATA), len(campos))
-        t.verdadero("E-37 y cada uno lleva su marca de recorte",
-                    all(MARCA_DE_RECORTE in v for v in campos.values()))
+        t.verdadero("E-37 y cada uno de texto libre lleva su marca de recorte",
+                    all(MARCA_DE_RECORTE in campos[k] for k in _claves_libres()))
         # Contra los cientos de miles de caracteres de una sesion real. Es el orden lo que
         # hace verdadera la frase, no el numero exacto.
         t.verdadero("E-37 el techo es un orden menor que una conversacion real",

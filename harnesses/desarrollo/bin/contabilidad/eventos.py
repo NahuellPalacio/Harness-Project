@@ -11,6 +11,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -47,10 +48,14 @@ CORRECCION = "ACCOUNTING_CORRECTION"
 # IP de produccion y la clave del admin adentro- sin que la limpieza de secretos pudiera
 # hacer nada, porque un prompt no es un patron de secreto.
 CLAVES_DE_METADATA = (
+    "cacheHit",           # refutacion: siempre false; un acierto de cache no es una llamada
     "correctionMode",     # como se aplica una correccion
+    "phase",              # la fase de la corrida: `refutation`
     "providerAggregate",  # este evento es otra medicion del mismo periodo
     "providerSessionId",  # el id de sesion que declara el proveedor
     "reason",             # por que: el motivo de una correccion o de una decision
+    "refutationUnitId",   # refutacion: la unidad REF-nnn que se refuto
+    "resolutionPath",     # refutacion: SEMANTIC_REFUTATION
     "status",             # el estado de una decision de presupuesto
     "tier",               # el tier de un escalamiento
     "unreadable",         # la linea del libro no se pudo parsear
@@ -62,6 +67,17 @@ CLAVES_DE_METADATA = (
 # nunca. Un anidamiento es donde entra una conversacion. Acá no hay ninguno: siete claves,
 # un valor plano cada una, y ese valor recortado a `libro.TOPE_DE_TEXTO`.
 ESCALARES = (str, int, float, bool, type(None))
+
+# 🔴 Las cuatro de la refutacion no son texto libre: son un valor de una lista corta o un id
+# con forma. No suben el techo de un evento, y `cacheHit` solo admite `false` porque un
+# acierto de cache no es una llamada al modelo: un evento que dijera lo contrario seria una
+# llamada de cero tokens que no existio.
+ACOTADAS = {
+    "phase": ("refutation",),
+    "resolutionPath": ("SEMANTIC_REFUTATION",),
+    "cacheHit": (False,),
+}
+ID_DE_REFUTACION = re.compile(r"^REF-[0-9]{3,6}$")
 
 # 🔴 Y el cierre vale para TODO el evento, no para `metadata`. El interprete de subconjunto
 # no tiene `additionalProperties`, asi que `usage`, `time`, `cost`, `source` y la raiz son
@@ -151,6 +167,15 @@ def validar_metadata(evento):
                 "`metadata` es por donde entra una conversacion, y el cierre de claves no "
                 "baja de nivel." % clave)
         errores.extend(_numero_acotado(metadata[clave], "$.metadata." + clave))
+        valor = metadata[clave]
+        if clave in ACOTADAS and not any(valor is v or (valor == v and type(valor) is type(v))
+                                         for v in ACOTADAS[clave]):
+            errores.append("$.metadata.%s: `%s` no es un valor admitido (%s)."
+                           % (clave, str(valor)[:40], ", ".join(str(v) for v in ACOTADAS[clave])))
+        if clave == "refutationUnitId" and not (isinstance(valor, str)
+                                                and ID_DE_REFUTACION.match(valor)):
+            errores.append("$.metadata.refutationUnitId: `%s` no es un id REF-nnn."
+                           % str(valor)[:40])
     return errores
 
 

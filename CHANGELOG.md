@@ -3,6 +3,43 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.23.0] — 2026-09-25
+
+**`dev-refutador` verifica de a una afirmación, y lo que un check o un veredicto idéntico ya
+resolvieron no vuelve a pasar por el modelo.** Antes hacía una pasada exhaustiva por lote y devolvía
+una tabla que nadie validaba. Ahora el plan se compila en unidades de una regla y un alcance acotado,
+y el refutador devuelve un objeto JSON que el harness valida, guarda y agrega. Es un cambio
+verificado: 61 escenarios sostenidos y ninguno contradicho.
+
+### Agregado
+
+- **`dev-harness.py refute <KEY>`** — `--compile` arma las unidades y resuelve las que cierran un
+  check o la caché. `--unit REF-001` entrega una unidad al refutador, `--record` valida y guarda lo
+  que devolvió, y `--status` y `--summary` lo muestran
+- **El alcance de cada unidad se declara** en `.claude/refutaciones/<KEY>/scope.json`. Sin él, la
+  unidad queda bloqueada: nunca se cae al repositorio entero. Los resultados de checks entran por
+  `checks.json`
+- **Caché exacta.** Un `cumple` o un `incumple` se reusan solo con las mismas huellas: bytes del
+  alcance, revisión, skill, fuente normativa y contrato del refutador. `sin-verificar` no se reusa
+- **Tres schemas:** `refutation-unit/1.0`, `refutation-verdict/1.0` y `refutation-run/1.0`
+- **`contabilidad --ingerir … --refutacion REF-001`** atribuye el consumo de una corrida del
+  refutador a su unidad de trabajo. Un acierto de caché o un check no generan ningún evento
+- **`seguridad <KEY> --refutacion`** lleva los veredictos de ES0902 al libro de seguridad de
+  siempre, como `REVIEW_EVALUATION`
+
+### Cambiado
+
+- 🔴 **`dev-refutador` deja de devolver una tabla.** Recibe una unidad y devuelve un solo objeto
+  `refutation-verdict/1.0`. Si algo leía la tabla, deja de encontrarla. Ver [UPGRADE.md](UPGRADE.md)
+- **`metadata` del Bloque 4 suma cuatro claves cerradas por valor** (`phase`, `refutationUnitId`,
+  `resolutionPath` y `cacheHit`, esta última solo `false`). El techo de un evento pasa de 9643 a
+  9725 caracteres
+
+### Lo que no se midió todavía
+
+- **No hay línea de base de rendimiento.** Los contadores existen, pero nadie midió la refutación
+  por lote contra la atómica. Tampoco se leyó una corrida real del refutador sobre una unidad
+
 ## [0.22.0] — 2026-09-24
 
 **La Context Bar existe, y el harness distingue si está instalada, configurada, activa o

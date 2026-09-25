@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.23.0](0.23.0.md) | 25-09-2026 | La refutación atómica: una regla, un alcance, un veredicto; checks y caché exacta antes que el modelo |
 | [0.22.0](0.22.0.md) | 24-09-2026 | La Context Bar existe y el harness sabe si está activa; ES0902 Vu7 |
 | [0.21.0](0.21.0.md) | 24-09-2026 | Los hooks corren en Windows sin Git Bash; la bienvenida y el estado del harness en cada sesión; ES0902 Vu4, Vu5 y Vu6 |
 | [0.20.0](0.20.0.md) | 23-09-2026 | ES0902 regla por regla (O1, O2, C1, C2, C3, Vu1, Vu2 y Vu3), el conocimiento con procedencia y frescura, y el reporte de seguridad del libro al tablero |

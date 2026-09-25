@@ -51,6 +51,18 @@ which predate the habit of writing one.
 
 ## Missing measurement
 
+### Atomic refutation has counters and no baseline
+
+The package asked to compare before and after: semantic refuter calls, tokens, wall and model time,
+cost, cache hits and check resolutions. As of 2026-09-25 the counters exist. `refute --summary`
+shows `cacheHits`, `checkResolved` and `semanticRuns`, and the Block 4 slice with
+`metadata.phase = refutation`. But no measurement has been taken, neither of the old batch pass nor
+of the atomic one. By the package's own rule, no performance target was set.
+
+Fix. Measure both shapes on the same real plan, with transcripts ingested through
+`contabilidad --ingerir … --refutacion REF-nnn`. Write down the numbers with their date, and only
+then decide whether a target is worth having.
+
 ### The always loaded cost of agents and skills is neither measured nor capped
 
 Measured by hand on 2026-08-14: 15 pieces, around 1540 tokens, average 103 per piece, estimating
@@ -1247,6 +1259,18 @@ change, and how Claude Code reports a non-zero exit from a `shell: powershell` h
 observed.
 
 ## Verification that was not done
+
+### No real `dev-refutador` run over a `refutation-unit/1.0` has been read
+
+Atomic refutation (`docs/cambios/refutacion-atomica/spec.md`, 2026-09-25) proves the boundary
+deterministically: what `refute --unit` hands out and what `refute --record` accepts or rejects.
+It cannot prove what a real run does between the two. A model that opens a file outside
+`evidenceScope.paths`, or globs the repository, and then cites only in-scope paths passes
+`--record`. Nobody has run the evolved agent on a real unit and read the result.
+
+Fix. Run `dev-refutador` on at least five real units of a real plan, then read each run for three
+things: reads outside the scope, a second claim, and prose around the JSON. Record the reading
+through `write-a-lectura`, with a spec whose scenarios carry `· verificación: lectura`.
 
 ### `integridad-de-repositorio` shipped with E-04 and E-41 unsupported
 

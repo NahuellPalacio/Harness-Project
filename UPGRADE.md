@@ -23,6 +23,15 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.22.0 → 0.23.0
+
+`-Update` alcanza. Lo único que cambia de forma es la salida de `dev-refutador`: ya no es una tabla
+Markdown, sino un objeto JSON por unidad (`refutation-verdict/1.0`). Si en el proyecto había algo que
+leía la tabla, tiene que pasar a `dev-harness.py refute <KEY> --summary` o `--status --json`.
+
+Para usar la refutación atómica, escribí `.claude/refutaciones/<KEY>/scope.json` con los archivos de
+cada unidad de trabajo, y después corré `refute <KEY> --compile`.
+
 ## 0.21.0 → 0.22.0
 
 `-Update` alcanza, y después hay que **reiniciar la sesión de Claude Code** para que aparezca la

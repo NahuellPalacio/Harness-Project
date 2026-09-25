@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "refutation-unit/1.0",
+  "title": "REFUTATION_UNIT",
+  "description": "Una afirmacion atomica a refutar: una unidad de trabajo, una regla normativa y un alcance de evidencia acotado. La compila refutacion.py a partir de .claude/planes/<KEY>.json y vive en .claude/refutaciones/<KEY>/units/<REF-ID>.json, que es regenerable y no se versiona. dev-refutador recibe exactamente una y no lee nada fuera de evidenceScope.paths. En $defs van las dos entradas que declara quien ejecuto: el alcance (scope.json) y los resultados de checks (checks.json). Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["schema_version", "refutationUnitId", "taskKey", "planId", "planVersion", "workUnitId",
+               "claim", "standard", "skillId", "skillFingerprint", "normativeSourceFingerprint",
+               "declaredChecks", "declaredReviews", "checkRefs", "verificationMode", "evidenceScope",
+               "scopeState", "repoRevision", "evidenceFingerprint", "projectContextRef",
+               "refuterContract", "cacheKey", "status", "resolutionPath", "failure", "failureDetail"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "enum": ["refutation-unit/1.0"] },
+    "refutationUnitId": { "type": "string", "pattern": "^REF-[0-9]{3,}$" },
+    "taskKey": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$" },
+    "planId": { "type": "string" },
+    "planVersion": { "type": "integer" },
+    "workUnitId": { "type": "string" },
+    "claim": {
+      "description": "La afirmacion canonica. No nombra la tarea ni la unidad de trabajo: es lo que permite reusar un veredicto exacto en otra tarea con los mismos bytes.",
+      "type": "string"
+    },
+    "standard": {
+      "type": "object",
+      "required": ["id", "version", "rule", "ruleKey"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": ["string", "null"] },
+        "rule": { "type": "string" },
+        "ruleKey": { "type": "string", "pattern": "^[A-Za-z0-9]+\\.[A-Za-z0-9]+$" }
+      }
+    },
+    "skillId": { "description": "La skill dev-* de la que sale la norma. null si ninguna esta disponible.", "type": ["string", "null"] },
+    "skillFingerprint": { "type": ["string", "null"] },
+    "normativeSourceFingerprint": { "type": ["string", "null"] },
+    "declaredChecks": { "type": "array", "items": { "type": "string" } },
+    "declaredReviews": { "type": "array", "items": { "type": "string" } },
+    "checkRefs": {
+      "description": "Los resultados de check que se miraron para esta regla, y por que cerraron o no.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["control", "state", "bound", "current", "conclusive"],
+        "additionalProperties": false,
+        "properties": {
+          "control": { "type": "string" },
+          "state": { "type": "string" },
+          "bound": { "type": "boolean" },
+          "current": { "type": "boolean" },
+          "conclusive": { "type": "boolean" }
+        }
+      }
+    },
+    "verificationMode": { "type": "string", "enum": ["INTERPRETATION", "REVIEW"] },
+    "evidenceScope": {
+      "type": "object",
+      "required": ["scopeId", "source", "paths"],
+      "additionalProperties": false,
+      "properties": {
+        "scopeId": { "type": ["string", "null"] },
+        "source": { "enum": ["workUnitFiles", "changedFiles", "projectContext", "executionEvidence", null] },
+        "paths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "scopeState": { "type": "string", "enum": ["RESOLVED", "EVIDENCE_SCOPE_UNRESOLVED"] },
+    "repoRevision": { "type": ["string", "null"] },
+    "evidenceFingerprint": { "type": ["string", "null"] },
+    "projectContextRef": {
+      "type": ["object", "null"],
+      "required": ["path", "repoRevision", "contextHash"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "repoRevision": { "type": ["string", "null"] },
+        "contextHash": { "type": ["string", "null"] }
+      }
+    },
+    "refuterContract": {
+      "type": "object",
+      "required": ["version", "fingerprint"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string" },
+        "fingerprint": { "type": ["string", "null"] }
+      }
+    },
+    "cacheKey": { "type": ["string", "null"] },
+    "status": { "type": "string", "enum": ["PENDING_SEMANTIC", "RESOLVED", "BLOCKED"] },
+    "resolutionPath": { "enum": ["DETERMINISTIC_CHECK", "SEMANTIC_REFUTATION", "CACHE", null] },
+    "failure": {
+      "enum": ["REFUTATION_SCOPE_UNRESOLVED", "REFUTATION_RULE_UNRESOLVED", "REFUTATION_SKILL_UNAVAILABLE",
+               "REFUTATION_REFUTER_UNAVAILABLE", null]
+    },
+    "failureDetail": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "scopeInput": {
+      "description": ".claude/refutaciones/<KEY>/scope.json. Lo escribe quien ejecuto: que archivos corresponden a cada unidad de trabajo. Sin esto no hay alcance, y sin alcance la unidad queda bloqueada.",
+      "type": "object",
+      "required": ["schema_version", "workUnits"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "type": "string", "enum": ["refutation-scope/1.0"] },
+        "workUnits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/scopeEntry" }
+          }
+        }
+      }
+    },
+    "scopeEntry": {
+      "type": "object",
+      "required": ["scopeId", "source", "paths"],
+      "additionalProperties": false,
+      "properties": {
+        "scopeId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+        "source": { "type": "string", "enum": ["workUnitFiles", "changedFiles", "projectContext", "executionEvidence"] },
+        "paths": { "type": "array", "items": { "type": "string" } },
+        "rules": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "checksInput": {
+      "description": ".claude/refutaciones/<KEY>/checks.json. Los resultados de checks que ya corrieron, atados a la huella y a la revision sobre las que corrieron.",
+      "type": "object",
+      "required": ["schema_version", "results"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "type": "string", "enum": ["refutation-checks/1.0"] },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["control", "ruleKey", "state", "repoRevision", "evidenceFingerprint"],
+            "additionalProperties": false,
+            "properties": {
+              "control": { "type": "string" },
+              "ruleKey": { "type": "string" },
+              "workUnitId": { "type": ["string", "null"] },
+              "state": { "type": "string" },
+              "repoRevision": { "type": ["string", "null"] },
+              "evidenceFingerprint": { "type": "string" },
+              "evidence": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

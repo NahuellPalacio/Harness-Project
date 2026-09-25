@@ -5,7 +5,8 @@
     python .claude/harness/bin/desarrollo/dev-harness.py estado [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py reconfigurar jira|gitlab
     python .claude/harness/bin/desarrollo/dev-harness.py contexto GCBA-1234 [--json]
-    python .claude/harness/bin/desarrollo/dev-harness.py seguridad GCBA-1234 [--conocimiento] [--resumen] [--reporte]
+    python .claude/harness/bin/desarrollo/dev-harness.py seguridad GCBA-1234 [--conocimiento] [--resumen] [--reporte] [--refutacion]
+    python .claude/harness/bin/desarrollo/dev-harness.py refute GCBA-1234 --compile|--status|--unit REF-001|--record <v.json>|--summary
     python .claude/harness/bin/desarrollo/dev-harness.py harness [--json] [--verbose] [--reiniciar-bienvenida]
 
 Los tres primeros son el Bloque 1 y contestan una sola pregunta: que integraciones hay
@@ -32,6 +33,7 @@ Codigos de salida:
 import argparse
 import getpass
 import importlib.util
+import io
 import json
 import os
 import re
@@ -59,6 +61,7 @@ from integraciones import fuentes as int_fuentes                # noqa: E402
 
 from orquestacion import frescura as orq_frescura                # noqa: E402
 from orquestacion import plan as orq_plan                         # noqa: E402
+from orquestacion import refutacion as orq_refutacion             # noqa: E402
 from orquestacion import registro_fuentes as orq_fuentes         # noqa: E402
 
 from contabilidad import agregacion as cont_agregacion            # noqa: E402
@@ -80,6 +83,9 @@ NOMBRES = tuple(c.nombre for c in CLASES)
 TIMEOUT_POR_DEFECTO = 5
 
 CLAVE_JIRA = re.compile(r"^[A-Za-z][A-Za-z0-9_]*-[0-9]+$")
+
+# `--refutacion` sin valor: en `seguridad`, todas las unidades de la corrida.
+TODAS_LAS_REFUTACIONES = "*"
 
 # Etiqueta de cada campo que se le pide a la persona. Lo que no esta acá no se
 # pregunta: el token va aparte, por getpass.
@@ -881,9 +887,11 @@ def contabilizar(args, proyecto, rutas, consola):
             registros = cont_registro.leer(args.adaptador, args.ingerir)
         except KeyError as e:
             raise FallaDelHarness(str(e).strip('"'))
+        atribucion = {"workUnitId": args.unidad or None, "agentId": args.agente or None}
+        if args.refutacion:
+            atribucion = _atribucion_de_refutacion(args, proyecto, tarea)
         eventos_nuevos = cont_contrato.a_eventos(
-            registros, tarea, args.adaptador, politica,
-            workUnitId=args.unidad or None, agentId=args.agente or None)
+            registros, tarea, args.adaptador, politica, **atribucion)
         escritos, salteados, hallazgos = cont_libro.agregar_varios(ruta_libro, eventos_nuevos)
         consola.evento("contabilidad.ingesta", adaptador=args.adaptador,
                        escritos=escritos, repetidos=salteados)
@@ -930,6 +938,25 @@ def contabilizar(args, proyecto, rutas, consola):
     else:
         mostrar_contabilidad(consola, resumen, destino)
     return 0
+
+
+def _atribucion_de_refutacion(args, proyecto, tarea):
+    """La atribucion de una corrida de dev-refutador. `--unidad` y `--agente` no la contradicen."""
+    if args.refutacion == TODAS_LAS_REFUTACIONES:
+        raise FallaDelHarness(
+            "contabilidad --refutacion necesita la unidad: una corrida del refutador es de una "
+            "sola. Ejemplo:\n    dev-harness.py contabilidad %s --ingerir <ruta> "
+            "--refutacion REF-001" % tarea)
+    atribucion = orq_refutacion.atribucion(proyecto, tarea, args.refutacion)
+    if args.unidad and args.unidad != atribucion["workUnitId"]:
+        raise FallaDelHarness(
+            "--unidad dice %s y %s es de la unidad de trabajo %s." % (
+                args.unidad, args.refutacion, atribucion["workUnitId"]))
+    if args.agente and args.agente != atribucion["agentId"]:
+        raise FallaDelHarness(
+            "--agente dice %s y una refutacion la corre %s." % (
+                args.agente, atribucion["agentId"]))
+    return atribucion
 
 
 def mostrar_contabilidad(consola, resumen, destino):
@@ -1018,6 +1045,13 @@ def reportar_seguridad(args, proyecto, consola):
         for hallazgo in hallazgos:
             consola.linea("  · " + hallazgo)
 
+    if args.refutacion:
+        eventos = _eventos_de_refutacion(proyecto, tarea)
+        escritos, salteados, hallazgos = seg_libro.agregar_varios(ruta_libro, eventos)
+        consola.evento("seguridad.refutacion", escritos=escritos, repetidos=salteados)
+        for hallazgo in hallazgos:
+            consola.linea("  · " + hallazgo)
+
     resumen = seg_resumen.generar(proyecto, tarea)
     destinos = []
     if args.resumen or args.reporte:
@@ -1035,6 +1069,23 @@ def reportar_seguridad(args, proyecto, consola):
     else:
         mostrar_seguridad(consola, resumen, [_relativa(proyecto, d) for d in destinos])
     return 0
+
+
+def _eventos_de_refutacion(proyecto, tarea):
+    """Los veredictos de las unidades ES0902, como eventos del libro de seguridad de siempre."""
+    _, unidades, veredictos = orq_refutacion.leer(proyecto, tarea)
+    por_id = {v["refutationUnitId"]: v for v in veredictos}
+    eventos = []
+    for u in unidades:
+        v = por_id.get(u["refutationUnitId"])
+        if v is None or u["status"] != orq_refutacion.RESUELTA:
+            continue
+        if u["standard"]["id"] != "ES0902":
+            continue
+        alcance = {"project": os.path.basename(os.path.normpath(proyecto)), "environment": None,
+                   "commitSha": u.get("repoRevision")}
+        eventos.extend(seg_productores.desde_refutacion(v, u, tarea, alcance))
+    return eventos
 
 
 def mostrar_seguridad(consola, resumen, destinos):
@@ -1060,6 +1111,92 @@ def mostrar_seguridad(consola, resumen, destinos):
         consola.linea(seg_reporte.AVISO_OFICIAL)
     for destino in destinos:
         consola.linea("Escrito: %s" % destino)
+
+
+# -- la refutacion atomica -----------------------------------------------------
+
+def refutar(args, proyecto, consola):
+    """Bloque 3: la refutacion atomica. No llama a ningun modelo.
+
+    `--compile` arma las unidades y resuelve lo que un check o la cache ya resuelven;
+    `--unit` entrega una unidad a dev-refutador; `--record` valida y guarda lo que devolvio;
+    `--status` y `--summary` muestran. La sesion corre al refutador; esto no.
+    """
+    clave = args.argumento
+    elegidos = [n for n in ("compile", "status", "unit", "record", "summary")
+                if getattr(args, "refutar_" + n)]
+    if len(elegidos) != 1:
+        raise FallaDelHarness(
+            "refute necesita exactamente una de --compile, --status, --unit, --record o "
+            "--summary. Ejemplo:\n    dev-harness.py refute %s --compile" % clave)
+    accion = elegidos[0]
+
+    if accion == "compile":
+        doc = orq_refutacion.compilar(proyecto, clave)
+        consola.evento("refutacion.compilada", unidades=doc["counts"]["units"],
+                       estado=doc["status"])
+        return _mostrar_refutacion(args, consola, doc, orq_refutacion.texto_de_estado(doc))
+
+    if accion == "unit":
+        entrega = orq_refutacion.para_refutar(proyecto, clave, args.refutar_unit)
+        sys.stdout.write(json.dumps(entrega, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        return 0
+
+    if accion == "record":
+        if not os.path.isfile(args.refutar_record):
+            raise FallaDelHarness("no existe el veredicto %s." % args.refutar_record)
+        with io.open(args.refutar_record, encoding="utf-8-sig") as f:
+            texto = f.read()
+        guardados = orq_refutacion.registrar(proyecto, clave, texto)
+        for v in guardados:
+            consola.evento("refutacion.registrada", unidad=v["refutationUnitId"],
+                           veredicto=v["verdict"])
+        doc, _, _ = orq_refutacion.leer(proyecto, clave)
+        return _mostrar_refutacion(args, consola, doc, orq_refutacion.texto_de_estado(doc))
+
+    doc, _, _ = orq_refutacion.leer(proyecto, clave)
+    if accion == "status":
+        return _mostrar_refutacion(args, consola, doc, orq_refutacion.texto_de_estado(doc))
+
+    bloque4 = _bloque4_de_refutacion(proyecto, clave)
+    if args.json:
+        sys.stdout.write(json.dumps({"taskKey": doc["meta"]["taskKey"], "status": doc["status"],
+                                     "counts": doc["counts"], "block4": bloque4},
+                                    ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        return 0
+    consola.linea(orq_refutacion.texto_de_resumen(doc, bloque4))
+    return 0
+
+
+def _mostrar_refutacion(args, consola, doc, texto):
+    if args.json:
+        sys.stdout.write(json.dumps(doc, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    else:
+        consola.linea(texto)
+    return 0
+
+
+def _bloque4_de_refutacion(proyecto, clave):
+    """Lo que el Bloque 4 tiene de la fase de refutacion, o None si no hay libro.
+
+    Es la medicion de antes y despues: llamadas, tokens, tiempo y costo del refutador. Un
+    acierto de cache o un check no aparecen, porque no son llamadas.
+    """
+    ruta = cont_libro.ruta_de(proyecto, clave)
+    if not os.path.isfile(ruta):
+        return None
+    eventos = orq_refutacion.de_refutacion(cont_libro.leer(ruta))
+    if not eventos:
+        return {"events": 0}
+    resumen = cont_agregacion.resumir(eventos, task_id=clave)
+    return {"events": resumen["events"]["counted"],
+            "inputTokens": resumen["tokens"]["inputTokens"],
+            "outputTokens": resumen["tokens"]["outputTokens"],
+            "wallMs": resumen["time"].get("wallMs"),
+            "modelMs": resumen["time"].get("modelMs"),
+            "actual": resumen["cost"].get("actual"),
+            "apiEquivalentEstimated": resumen["cost"].get("apiEquivalentEstimated"),
+            "currency": resumen["cost"].get("currency")}
 
 
 # -- comandos ------------------------------------------------------------------
@@ -1089,6 +1226,9 @@ def comando(args, transporte=None, transporte_bytes=None):
 
     if args.comando == "seguridad":
         return reportar_seguridad(args, proyecto, consola)
+
+    if args.comando == "refute":
+        return refutar(args, proyecto, consola)
 
     if args.comando == "contexto":
         return resolver_contexto(args, proyecto, rutas, config, almacen, timeout,
@@ -1126,7 +1266,8 @@ def parser():
         prog="dev-harness.py",
         description="Integraciones y contexto de tarea del harness de desarrollo.")
     p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan",
-                                       "contabilidad", "fuentes", "seguridad", "harness"))
+                                       "contabilidad", "fuentes", "seguridad", "harness",
+                                       "refute"))
     p.add_argument("argumento", nargs="?",
                    help="la integracion, para reconfigurar; la clave de Jira, para contexto")
     p.add_argument("--archivo", default="",
@@ -1159,6 +1300,19 @@ def parser():
                    help="contabilidad: muestra la barra de la sesion activa")
     p.add_argument("--sesion", default="",
                    help="contabilidad: que sesion es la activa, para la barra")
+    p.add_argument("--compile", dest="refutar_compile", action="store_true",
+                   help="refute: compila las unidades de refutacion del plan")
+    p.add_argument("--status", dest="refutar_status", action="store_true",
+                   help="refute: muestra cada unidad y como se resolvio")
+    p.add_argument("--unit", dest="refutar_unit", default="",
+                   help="refute: la unidad REF-001 (o un micro-lote REF-001,REF-002) para dev-refutador")
+    p.add_argument("--record", dest="refutar_record", default="",
+                   help="refute: el veredicto que devolvio dev-refutador, para validarlo y guardarlo")
+    p.add_argument("--summary", dest="refutar_summary", action="store_true",
+                   help="refute: el agregado y lo que el Bloque 4 tiene de la refutacion")
+    p.add_argument("--refutacion", default="", nargs="?", const=TODAS_LAS_REFUTACIONES,
+                   help="contabilidad: la unidad REF-001 a la que se atribuye lo ingerido; "
+                        "seguridad: pasa los veredictos de ES0902 al libro de seguridad")
     p.add_argument("--proyecto", default=os.getcwd(),
                    help="raiz del proyecto (por defecto, el directorio actual)")
     p.add_argument("--json", action="store_true",
@@ -1200,6 +1354,12 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             "Ejemplo: dev-harness.py contexto GCBA-1234\n")
         return 2
 
+    if args.comando == "refute" and not CLAVE_JIRA.match(str(args.argumento or "")):
+        sys.stderr.write(
+            "refute necesita una clave de Jira, con la forma PROYECTO-123. "
+            "Ejemplo: dev-harness.py refute GCBA-1234 --compile\n")
+        return 2
+
     if args.comando == "seguridad":
         # Antes de tocar el disco: un `..` o una barra sacarian la carpeta de la tarea de
         # `.claude/runtime/security/`.
@@ -1215,7 +1375,8 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             contexto_ensamblador.ContratoInvalido,
             cont_presupuesto.PoliticaInvalida, cont_contrato.ContratoInvalido,
             seg_libro.EventoInvalido, seg_libro.TareaInvalida,
-            seg_productores.ProductorInvalido, seg_resumen.ResumenInvalido) as e:
+            seg_productores.ProductorInvalido, seg_resumen.ResumenInvalido,
+            orq_refutacion.RefutacionInvalida) as e:
         sys.stderr.write("harness: %s\n" % e)
         return 2
     except KeyboardInterrupt:

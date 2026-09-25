@@ -25,6 +25,10 @@ normativa/fuentes/*
 # corrio el comando, y que se lea como si lo estuviera hoy.
 .claude/harness.*.json
 
+# La refutacion atomica: unidades, veredictos y cache. Se regeneran con `refute --compile`, y
+# un veredicto versionado se leeria como vigente sobre bytes que ya cambiaron.
+.claude/refutaciones/
+
 # Salidas de prueba y trabajo local
 tests/out/
 *.log

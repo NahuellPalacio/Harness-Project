@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "refutation-run/1.0",
+  "title": "REFUTATION_RUN",
+  "description": "La corrida de refutacion de una tarea: que unidades hay, como se resolvio cada una y el agregado. La escribe refutacion.py en .claude/refutaciones/<KEY>/run.json y se regenera con --compile. No lleva fecha: dos compilaciones sobre las mismas entradas dejan el mismo archivo. El agregado no lo decide ningun modelo: cero unidades es NOTHING_TO_VERIFY, un incumple es FAIL, todo cumple es PASS, y cualquier otra cosa es INCOMPLETE. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["meta", "status", "counts", "units", "warnings"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["schema_version", "taskKey", "planId", "planVersion", "planFingerprint", "repoRevision", "refuterContract"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "type": "string", "enum": ["refutation-run/1.0"] },
+        "taskKey": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$" },
+        "planId": { "type": "string" },
+        "planVersion": { "type": "integer" },
+        "planFingerprint": { "type": "string" },
+        "repoRevision": { "type": ["string", "null"] },
+        "refuterContract": {
+          "type": "object",
+          "required": ["version", "fingerprint"],
+          "additionalProperties": false,
+          "properties": {
+            "version": { "type": "string" },
+            "fingerprint": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "status": { "type": "string", "enum": ["PASS", "FAIL", "INCOMPLETE", "NOTHING_TO_VERIFY"] },
+    "counts": {
+      "type": "object",
+      "required": ["units", "cumple", "incumple", "sinVerificar", "cacheHits", "checkResolved", "semanticRuns", "pending", "blocked"],
+      "additionalProperties": false,
+      "properties": {
+        "units": { "type": "integer" },
+        "cumple": { "type": "integer" },
+        "incumple": { "type": "integer" },
+        "sinVerificar": { "type": "integer" },
+        "cacheHits": { "type": "integer" },
+        "checkResolved": { "type": "integer" },
+        "semanticRuns": { "type": "integer" },
+        "pending": { "type": "integer" },
+        "blocked": { "type": "integer" }
+      }
+    },
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["refutationUnitId", "workUnitId", "ruleKey", "scopeId", "status", "resolutionPath", "verdict", "failure"],
+        "additionalProperties": false,
+        "properties": {
+          "refutationUnitId": { "type": "string" },
+          "workUnitId": { "type": "string" },
+          "ruleKey": { "type": "string" },
+          "scopeId": { "type": ["string", "null"] },
+          "status": { "type": "string", "enum": ["PENDING_SEMANTIC", "RESOLVED", "BLOCKED"] },
+          "resolutionPath": { "enum": ["DETERMINISTIC_CHECK", "SEMANTIC_REFUTATION", "CACHE", null] },
+          "verdict": { "enum": ["cumple", "incumple", "sin-verificar", null] },
+          "failure": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "warnings": {
+      "description": "Avisos de maquina, CODIGO:sujeto:... y sin prosa. El texto en espanol lo arma el renderizador.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z_]*(:[A-Za-z0-9._-]+)*$" }
+    }
+  }
+}

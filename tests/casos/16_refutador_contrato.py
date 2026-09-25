@@ -59,16 +59,18 @@ def test_e04_contrato_ausente_o_roto_es_sin_verificar_nunca_inferencia(t):
               "nunca la completes con lo que", TEXTO)
 
 
-def test_e05_la_fila_de_salida_nombra_el_repo_revision(t):
-    """E-05 — el formato de salida suma una columna con el repo_revision del contrato
-    usado, o el valor que corresponde cuando no hubo contrato."""
-    m = re.search(r"^\| id \|.*\|\s*$", TEXTO, re.MULTILINE)
-    t.verdadero("E-05: la tabla de salida existe", m is not None)
+def test_e05_la_salida_nombra_el_repo_revision(t):
+    """E-05 — la salida nombra la revision contra la que se verifico.
+
+    Pisado por docs/cambios/refutacion-atomica/spec.md: la tabla Markdown ya no existe y la
+    salida es un objeto refutation-verdict/1.0. Lo que E-05 protegia -que un `cumple` diga de
+    cuando es- sigue: `repoRevision` es campo obligatorio del objeto y el agente lo explica."""
+    m = re.search(r"```json\n(\{.*?\})\n```", TEXTO, re.DOTALL)
+    t.verdadero("E-05: el objeto de salida esta en el agente", m is not None)
     if m:
-        t.contiene("E-05: la columna repo_revision esta en el encabezado",
-                  "repo_revision", m.group(0))
-    t.contiene("E-05: y se explica que hacer sin contrato",
-              "si no había contrato", TEXTO)
+        t.contiene("E-05: repoRevision es campo del objeto", '"repoRevision"', m.group(1))
+    t.contiene("E-05: y se explica por que importa",
+              "Sin esto un `cumple` no dice\n  de cuándo es.", TEXTO)
 
 
 def test_e06_cumple_sigue_exigiendo_cita_y_linea_sin_excepcion_nueva(t):

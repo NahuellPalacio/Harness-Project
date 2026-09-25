@@ -50,7 +50,7 @@ BASE = (".claude", "runtime", "security")
 # dice de cual salio no entra.
 PRODUCTORES = ("desde_regla", "desde_check", "desde_revision", "desde_hallazgo",
                "desde_evaluacion", "desde_g2", "desde_aprobacion", "desde_integridad",
-               "desde_frescura")
+               "desde_frescura", "desde_refutacion")
 
 # Una clave de `details` que contenga alguno de estos nombres llega con el valor redactado,
 # sea lo que sea. Se compara en minusculas y sin separadores: `session_id`, `Set-Cookie` y

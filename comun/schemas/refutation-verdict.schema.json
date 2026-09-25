@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "refutation-verdict/1.0",
+  "title": "REFUTATION_VERDICT",
+  "description": "El veredicto de una RefutationUnit. dev-refutador devuelve exactamente un objeto con los campos obligatorios y nada mas; resolutionPath, cacheHit, recordedAt y las huellas de abajo los escribe solo el harness, y un veredicto que llega con ellos se rechaza. Vive en .claude/refutaciones/<KEY>/verdicts/<REF-ID>.json. Tres veredictos: cumple e incumple exigen cita de la skill y evidencia concreta dentro del alcance; sin-verificar exige el motivo y que hay que abrir o correr. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["schema_version", "refutationUnitId", "workUnitId", "ruleKey", "verdict", "reason",
+               "citation", "evidence", "needed", "cacheKey", "evidenceFingerprint", "repoRevision"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "enum": ["refutation-verdict/1.0"] },
+    "refutationUnitId": { "type": "string", "pattern": "^REF-[0-9]{3,}$" },
+    "workUnitId": { "type": "string" },
+    "ruleKey": { "type": "string" },
+    "verdict": { "type": "string", "enum": ["cumple", "incumple", "sin-verificar"] },
+    "reason": {
+      "description": "Solo para sin-verificar: por que no se pudo comprobar.",
+      "enum": ["RULE_NOT_CITABLE", "SKILL_DOES_NOT_COVER", "EVIDENCE_INSUFFICIENT", "ARTIFACT_MISSING",
+               "EXECUTION_REQUIRED", null]
+    },
+    "citation": {
+      "description": "De que skill sale la regla y donde: pagina, seccion o encabezado. Sin esto un cumple no es auditable.",
+      "type": ["object", "null"],
+      "required": ["skillId", "locator"],
+      "additionalProperties": false,
+      "properties": {
+        "skillId": { "type": "string" },
+        "locator": { "type": "string" }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "line", "observed"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string" },
+          "line": { "type": ["integer", "null"] },
+          "observed": { "type": "string" }
+        }
+      }
+    },
+    "needed": { "description": "Solo para sin-verificar: que hay que abrir o ejecutar para cerrarlo.", "type": ["string", "null"] },
+    "cacheKey": { "type": "string" },
+    "evidenceFingerprint": { "type": "string" },
+    "repoRevision": { "type": ["string", "null"] },
+    "resolutionPath": { "type": "string", "enum": ["DETERMINISTIC_CHECK", "SEMANTIC_REFUTATION", "CACHE"] },
+    "cacheHit": { "type": "boolean" },
+    "recordedAt": { "type": "string" },
+    "checkEvidenceFingerprint": { "type": ["string", "null"] },
+    "skillFingerprint": { "type": ["string", "null"] },
+    "normativeSourceFingerprint": { "type": ["string", "null"] }
+  }
+}
