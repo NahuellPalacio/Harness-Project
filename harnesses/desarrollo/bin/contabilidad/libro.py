@@ -135,13 +135,17 @@ def _limpio(evento):
     return limpiado, hallazgos + recortes
 
 
-def agregar(ruta, evento):
+def agregar(ruta, evento, conocidos=None):
     """Escribe el evento al final si su `eventId` no esta. Devuelve (escrito, hallazgos).
 
     Un `eventId` repetido NO se agrega: es lo que hace que reingerir la misma fuente sea
     inofensivo. La deduplicacion vive en dos lados a proposito — acá, para que el libro no
     crezca con lo mismo, y en la agregacion, para que un libro que ya trae repetidos por
     cualquier motivo tampoco los sume dos veces.
+
+    `conocidos` es el conjunto de ids del libro, si quien llama ya lo leyo: se usa en vez de
+    releer el libro entero por cada evento, y se le agrega el id de lo que se escribe. Sin
+    el, se lee el libro, como siempre.
     """
     errores = eventos.validar(evento)
     if errores:
@@ -149,7 +153,7 @@ def agregar(ruta, evento):
             "el evento no valida y no se escribe:\n  - %s" % "\n  - ".join(errores[:5]))
 
     eid = str(evento.get("eventId") or "")
-    if eid in ids(ruta):
+    if eid in (ids(ruta) if conocidos is None else conocidos):
         return False, []
 
     limpiado, hallazgos = _limpio(evento)
@@ -157,15 +161,23 @@ def agregar(ruta, evento):
     linea = json.dumps(limpiado, ensure_ascii=False, sort_keys=True) + "\n"
     with io.open(ruta, "a", encoding="utf-8", newline="\n") as f:
         f.write(linea)
+    if conocidos is not None:
+        conocidos.add(eid)
     return True, hallazgos
 
 
 def agregar_varios(ruta, lista):
-    """Devuelve (escritos, salteados, hallazgos). Los salteados ya estaban."""
+    """Devuelve (escritos, salteados, hallazgos). Los salteados ya estaban.
+
+    El libro se lee una vez, no una por evento: con una transcripcion de cientos de mensajes,
+    releerlo por cada uno hacia cuadratica la ingesta. Un repetido dentro de la misma lista
+    se sigue salteando, porque cada id escrito entra al conjunto.
+    """
     escritos = salteados = 0
     hallazgos = []
+    conocidos = ids(ruta)
     for evento in lista:
-        ok, nuevos = agregar(ruta, evento)
+        ok, nuevos = agregar(ruta, evento, conocidos)
         if ok:
             escritos += 1
         else:

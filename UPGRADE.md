@@ -23,6 +23,24 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.21.0 → 0.22.0
+
+`-Update` alcanza, y después hay que **reiniciar la sesión de Claude Code** para que aparezca la
+Context Bar. Hasta que la barra se dibuje por primera vez, la bienvenida y `harness` dicen
+`REQUIERE REINICIO`.
+
+🔴 **El `-Update` registra un `statusLine` en el `.claude/settings.json` del proyecto.** La
+configuración del proyecto le gana a la del usuario, así que si tenías una barra de estado propia
+en `~/.claude/settings.json`, en este proyecto deja de verse. Ese `statusLine` lleva la ruta absoluta
+del proyecto y la de Python: si movés el proyecto de carpeta, corré `-Update` otra vez.
+
+Cómo comprobarlo:
+- `.\install.ps1 -Doctor -Project <proyecto>` muestra el estado de la barra y cuánto tarda en
+  dibujarse.
+- En la sesión siguiente, abajo de la terminal aparece una línea `HARNESS | …`, y
+  `dev-harness.py harness` dice `Context Bar ACTIVA`.
+- La barra es de la terminal de Claude Code. No se promete que aparezca en la extensión de VS Code.
+
 ## 0.20.0 → 0.21.0
 
 `-Update` alcanza. No hay pasos manuales ni nada que borrar.

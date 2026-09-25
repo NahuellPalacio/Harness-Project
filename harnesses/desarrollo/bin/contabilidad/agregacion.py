@@ -107,7 +107,35 @@ def _utiles(libro):
         contables.append(evento)
         conteos["counted"] += 1
 
-    return contables, conteos, agregados
+    return contables, conteos, _el_ultimo_de_cada_medicion(agregados)
+
+
+def _medicion(evento):
+    """Que mide un agregado: quien lo reporto, de que sesion y de que modelo. El de tiempo no
+    tiene modelo. Sale de campos del evento, no de su dedupKey, que es formato del adaptador."""
+    uso = evento.get("usage") or {}
+    return (str((evento.get("source") or {}).get("adapter") or ""),
+            str(evento.get("sessionId") or (evento.get("metadata") or {}).get("providerSessionId")
+                or ""),
+            str(uso.get("provider") or ""), str(uso.get("model") or ""))
+
+
+def _el_ultimo_de_cada_medicion(agregados):
+    """De cada medicion, el ULTIMO agregado del libro.
+
+    🔴 Un agregado del proveedor es un estado ACUMULADO: cada uno incluye a los anteriores de la
+    misma medicion. Sumarlos cuenta la sesion tantas veces como se reporto; quedarse con el
+    primero la congela. El libro es append-only y los guarda a todos; aca entra el ultimo que se
+    escribio, que es el ultimo que se leyo de la fuente. Agregados de mediciones distintas
+    -otra sesion, otro modelo- siguen entrando todos.
+    """
+    ultimo = {}
+    for evento in agregados:
+        clave = _medicion(evento)
+        if clave in ultimo:
+            del ultimo[clave]
+        ultimo[clave] = evento
+    return list(ultimo.values())
 
 
 def _filas(contables, campo):

@@ -156,10 +156,25 @@ def a_evento(reg, task_id, adaptador, politica=None, tipo="MODEL_CALL_COMPLETED"
     return eventos.nuevo(tipo, task_id, adaptador, **campos)
 
 
+def tipo_de(reg):
+    """El tipo de evento que le toca a un registro: un agregado cierra la sesion."""
+    return "SESSION_COMPLETED" if reg.get("kind") == AGREGADO else "MODEL_CALL_COMPLETED"
+
+
+def id_de(reg, adaptador):
+    """El `eventId` que va a tener el evento de este registro, sin armarlo. None si el registro
+    no tiene `dedupKey`: ese id se inventa al armar el evento, y no se puede saber antes.
+
+    Es lo que deja saltear lo que el libro ya tiene sin pagar la conversion y la validacion de
+    cada registro, que es lo caro de reingerir una transcripcion larga.
+    """
+    clave = reg.get("dedupKey")
+    return eventos.id_de(adaptador, tipo_de(reg), clave) if clave else None
+
+
 def a_eventos(registros, task_id, adaptador, politica=None, **atribucion):
     """Todos los registros de una corrida, en orden."""
     salida = []
     for reg in registros:
-        tipo = "SESSION_COMPLETED" if reg.get("kind") == AGREGADO else "MODEL_CALL_COMPLETED"
-        salida.append(a_evento(reg, task_id, adaptador, politica, tipo, **atribucion))
+        salida.append(a_evento(reg, task_id, adaptador, politica, tipo_de(reg), **atribucion))
     return salida

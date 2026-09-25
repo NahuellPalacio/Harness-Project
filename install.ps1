@@ -630,8 +630,18 @@ rem Es el unico archivo del harness que contiene una ruta absoluta de esta maqui
 
 
 function New-SettingsProyecto {
-    <# Combina permisos + registro de hooks en el settings.json del proyecto. #>
-    param([string] $RutaSettings)
+    <#
+    .SYNOPSIS
+        Combina permisos + registro de hooks en el settings.json del proyecto, y la Context
+        Bar como `statusLine` si viene -ComandoBarra (ver Get-ComandoBarra).
+    .DESCRIPTION
+        📌 La invariante de portabilidad tiene una excepción, y es esta: el comando de la barra
+        lleva la ruta absoluta del proyecto y la del intérprete, porque `statusLine` no tiene
+        una variable del proyecto que se pueda usar en Git Bash y en PowerShell a la vez. Los
+        hooks siguen sin ninguna ruta absoluta. settings.json está bajo .claude\, que va
+        gitignoreado y se regenera en cada -Update.
+    #>
+    param([string] $RutaSettings, [string] $ComandoBarra = '')
 
     $deny = (Read-TextoUtf8 (Join-Path $script:Repo 'comun\settings\permissions.deny.json')) | ConvertFrom-Json
 
@@ -659,6 +669,9 @@ function New-SettingsProyecto {
         '$comentario' = "Generado por gcba-harness v$($script:Version). Se regenera en cada -Update."
         permissions   = $deny.permissions
         hooks         = $hooks.hooks
+    }
+    if ($ComandoBarra) {
+        $settings['statusLine'] = [ordered]@{ type = 'command'; command = $ComandoBarra }
     }
 
     # ConvertTo-Json de PS 5.1 escribe `&`, `'`, `<` y `>` como `\u0026`, `\u0027`, `\u003c` y
@@ -973,6 +986,264 @@ function Test-HooksInstalados {
 }
 
 
+function Get-ComandoBarra {
+    <#
+    .SYNOPSIS
+        El comando de la Context Bar que se registra como `statusLine`, o $null.
+    .DESCRIPTION
+        `statusLine` no acepta el campo `shell`: en Windows Claude Code lo corre en Git Bash
+        si lo encuentra, y en PowerShell si no. El comando tiene que ser válido en los dos a
+        la vez, y por eso:
+          · arranca con un ejecutable, nunca con una cadena entre comillas (en PowerShell una
+            cadena al principio es una expresión, no una invocación);
+          · usa barras `/`, que los dos toman;
+          · lleva su argumento entre comillas simples, que los dos toman literal: una ruta con
+            espacios, `$` o acento grave llega tal cual.
+        La ruta del proyecto va absoluta: la documentación no dice que Claude Code exporte
+        CLAUDE_PROJECT_DIR a la barra. Si el proyecto se mueve de carpeta, hace falta -Update.
+
+        El ejecutable es el python.exe que resolvió la instalación, como en run-hook.cmd: con
+        `python` a secas, en una máquina con PyManager cada dibujo paga 260 ms de más. Si su
+        ruta tiene algo que no se puede escribir sin comillas, se prueba la ruta corta 8.3, y
+        si tampoco, `python`: el comando se prueba en los dos shells igual, y lo que no corra
+        queda dicho.
+
+        Una ruta de proyecto con un apóstrofo no se puede poner entre comillas simples de una
+        forma que los dos shells lean igual. Ahí no se registra nada: un comando que se rompe
+        en el shell es un comando que alguien puede terminar ejecutando de otra forma.
+    #>
+    param([string] $Project, [string] $Python)
+
+    if ($Project -match "['\r\n\t]") { return $null }
+    $seguro = '^[A-Za-z]:/[A-Za-z0-9_./~-]+$'
+    $ejecutable = ($Python -replace '\\', '/')
+    if ($ejecutable -notmatch $seguro) {
+        $corta = ''
+        try { $corta = ((New-Object -ComObject Scripting.FileSystemObject).GetFile($Python).ShortPath -replace '\\', '/') } catch { }
+        if ($corta -match $seguro) { $ejecutable = $corta } else { $ejecutable = 'python' }
+    }
+    $renderizador = ($Project -replace '\\', '/').TrimEnd('/') + '/.claude/harness/bin/desarrollo/contabilidad/statusline.py'
+    return "$ejecutable '$renderizador'"
+}
+
+
+function Get-HuellaDeLaBarra {
+    <#
+    .SYNOPSIS
+        La huella del bloque statusLine que quedó en settings.json, calculada por
+        bienvenida.py huella: la misma función con la que después se compara. '' si falla.
+    #>
+    param([string] $DirHarness, [string] $Python, [string] $Project)
+    try {
+        $salida = (& $Python (Join-Path $DirHarness 'hooks\lib\bienvenida.py') huella $Project 2>$null | Out-String).Trim()
+    } catch { return '' }
+    if ($LASTEXITCODE -ne 0 -or $salida -notmatch '^[0-9a-f]{64}$') { return '' }
+    return $salida
+}
+
+
+function Find-GitBash {
+    <#
+    .SYNOPSIS
+        El bash.exe de Git para Windows, o $null. El que busca Claude Code, no cualquier bash.
+    .DESCRIPTION
+        El `bash` del PATH puede ser el de WSL (System32\bash.exe), que no es donde Claude Code
+        corre la barra. Se busca como la busca Claude Code: CLAUDE_CODE_GIT_BASH_PATH, y si no,
+        al lado de git.exe.
+    #>
+    $candidatos = New-Object System.Collections.ArrayList
+    if ($env:CLAUDE_CODE_GIT_BASH_PATH) { [void] $candidatos.Add($env:CLAUDE_CODE_GIT_BASH_PATH) }
+    try {
+        $git = (Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+        $dir = Split-Path -Parent $git
+        for ($i = 0; $i -lt 3 -and $dir; $i++) {
+            [void] $candidatos.Add((Join-Path $dir 'bin\bash.exe'))
+            $dir = Split-Path -Parent $dir
+        }
+    } catch { }
+    foreach ($base in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, (Join-Path $env:LOCALAPPDATA 'Programs'))) {
+        if ($base) { [void] $candidatos.Add((Join-Path $base 'Git\bin\bash.exe')) }
+    }
+    foreach ($c in $candidatos) {
+        if ($c -and (Test-Path -LiteralPath $c -PathType Leaf)) { return $c }
+    }
+    return $null
+}
+
+
+function Invoke-ComandoDeBarra {
+    <#
+    .SYNOPSIS
+        Corre el comando de la Context Bar con `bash -c` o `powershell.exe -NoProfile -Command`,
+        como lo corre Claude Code, con la entrada por stdin.
+    .DESCRIPTION
+        Sin CLAUDE_PROJECT_DIR en el entorno y con el temporal como directorio de trabajo: el
+        comando tiene que andar sin ninguno de los dos, porque la documentación de la barra no
+        promete ninguno. La salida vuelve en UTF-8; la barra escribe ASCII.
+    #>
+    param([string] $Ejecutable, [string[]] $Previos, [string] $Comando, [string] $Json)
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName               = $Ejecutable
+    $psi.Arguments              = (($Previos + @('"' + $Comando + '"')) -join ' ')
+    $psi.WorkingDirectory       = [System.IO.Path]::GetTempPath()
+    $psi.UseShellExecute        = $false
+    $psi.RedirectStandardInput  = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
+    $psi.StandardErrorEncoding  = New-Object System.Text.UTF8Encoding $false
+    if ($psi.EnvironmentVariables.ContainsKey('CLAUDE_PROJECT_DIR')) {
+        $psi.EnvironmentVariables.Remove('CLAUDE_PROJECT_DIR')
+    }
+
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $salida  = $p.StandardOutput.ReadToEndAsync()
+    $errores = $p.StandardError.ReadToEndAsync()
+    $bytes = (New-Object System.Text.UTF8Encoding $false).GetBytes($Json)
+    $p.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
+    $p.StandardInput.Close()
+    if (-not $p.WaitForExit(30000)) {
+        try { $p.Kill() } catch { }
+        return [pscustomobject]@{ Codigo = -1; Salida = ''; Errores = 'no terminó en 30 s' }
+    }
+    return [pscustomobject]@{ Codigo = $p.ExitCode; Salida = $salida.Result; Errores = $errores.Result }
+}
+
+
+function Test-BarraRegistrada {
+    <#
+    .SYNOPSIS
+        Corre el `statusLine` que quedó en settings.json con `bash -c` y con
+        `powershell.exe -NoProfile -Command`, con una sesión de prueba por stdin.
+    .DESCRIPTION
+        Pasa si en cada shell sale con 0 y dibuja UNA línea con lo que el Bloque 4 ingirió de
+        la transcripción de prueba. Que dibuje "sin datos" no alcanza: es justo lo que se ve
+        cuando el stdin no llega o el Bloque 4 no responde.
+
+        Sin Git Bash en la máquina, Claude Code corre la barra en PowerShell, y solo se prueba
+        ahí. PowerShell no es opcional: es el shell que queda cuando no hay otro.
+
+        🔴 La barra no es una compuerta. Lo que no pase queda NOT_CONFIGURED con
+        CONTEXT_BAR_CONFIGURATION_INVALID, y la instalación sigue.
+
+        La prueba escribe como escribe la barra -el libro de su sesión y la señal de vida- y
+        deja todo como estaba: borra el libro de la sesión de prueba y devuelve contextbar.json
+        a lo que tenía, byte a byte, o lo borra si no existía. Una señal de vida de la prueba
+        diría que la barra se dibujó en una sesión que nunca existió.
+    #>
+    param([string] $Project)
+
+    $r = [pscustomobject]@{ Registrada = $false; Probada = $false; Problemas = @(); Shells = @() }
+    $rutaSettings = Join-Path $Project '.claude\settings.json'
+    $comando = $null
+    try {
+        $s = Read-TextoUtf8 $rutaSettings | ConvertFrom-Json
+        if ($s.PSObject.Properties['statusLine'] -and $s.statusLine -and
+            $s.statusLine.PSObject.Properties['command']) { $comando = [string]$s.statusLine.command }
+    } catch { }
+    if (-not $comando) { return $r }
+    $r.Registrada = $true
+
+    $sesion = 'harness-sonda-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8)
+    $modelo = 'sonda-del-instalador'
+    $transcripcion = Join-Path ([System.IO.Path]::GetTempPath()) ($sesion + '.jsonl')
+    $linea = '{"type":"assistant","sessionId":"' + $sesion + '","timestamp":"2026-01-01T00:00:00",' +
+             '"message":{"id":"msg_sonda","model":"' + $modelo + '","usage":{"input_tokens":1,' +
+             '"output_tokens":1,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}'
+    [System.IO.File]::WriteAllText($transcripcion, $linea + "`n", (New-Object System.Text.UTF8Encoding $false))
+    $json = '{"session_id":"' + $sesion + '","transcript_path":"' + ($transcripcion -replace '\\', '/') + '"}'
+
+    $dirRuntime  = Join-Path $Project '.claude\runtime'
+    $dirLibros   = Join-Path $dirRuntime 'accounting'
+    $rutaSenal   = Join-Path $dirRuntime 'contextbar.json'
+    $habiaRuntime = Test-Path -LiteralPath $dirRuntime
+    $habiaLibros  = Test-Path -LiteralPath $dirLibros
+    $senalPrevia  = $null
+    if (Test-Path -LiteralPath $rutaSenal) { $senalPrevia = [System.IO.File]::ReadAllBytes($rutaSenal) }
+
+    $shells = @(@{ Nombre = 'PowerShell'
+                   Exe = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
+                   Previos = @('-NoProfile', '-Command') })
+    $bash = Find-GitBash
+    if ($bash) {
+        $shells = @(@{ Nombre = 'Git Bash'; Exe = $bash; Previos = @('-c') }) + $shells
+    } else {
+        $r.Problemas += 'no se encontró Git Bash: Claude Code corre la barra en PowerShell, y solo se probó ahí'
+    }
+
+    $fallas = 0
+    try {
+        foreach ($sh in $shells) {
+            $r.Shells += $sh.Nombre
+            try {
+                $x = Invoke-ComandoDeBarra -Ejecutable $sh.Exe -Previos $sh.Previos -Comando $comando -Json $json
+            } catch {
+                $r.Problemas += "$($sh.Nombre): no se pudo ejecutar — $($_.Exception.Message)"
+                $fallas++
+                continue
+            }
+            $lineas = @(($x.Salida -split "`r?`n") | Where-Object { $_.Trim() })
+            if ($x.Codigo -ne 0) {
+                $r.Problemas += "$($sh.Nombre): salió con código $($x.Codigo) $(Get-DetalleDeError $x.Errores)"
+                $fallas++
+            } elseif ($lineas.Count -ne 1) {
+                $r.Problemas += "$($sh.Nombre): dibujó $($lineas.Count) líneas y tiene que ser una"
+                $fallas++
+            } elseif (-not $lineas[0].Contains($modelo)) {
+                $r.Problemas += "$($sh.Nombre): corrió, pero no dibujó lo que ingirió el Bloque 4: <$($lineas[0].Trim())>"
+                $fallas++
+            }
+        }
+    } finally {
+        Remove-Item -LiteralPath (Join-Path $dirLibros $sesion) -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $transcripcion -Force -ErrorAction SilentlyContinue
+        if ($null -ne $senalPrevia) {
+            [System.IO.File]::WriteAllBytes($rutaSenal, $senalPrevia)
+        } elseif (Test-Path -LiteralPath $rutaSenal) {
+            Remove-Item -LiteralPath $rutaSenal -Force -ErrorAction SilentlyContinue
+        }
+        if (-not $habiaLibros -and (Test-Path -LiteralPath $dirLibros) -and
+            @(Get-ChildItem -LiteralPath $dirLibros -Force).Count -eq 0) {
+            Remove-Item -LiteralPath $dirLibros -Force -ErrorAction SilentlyContinue
+        }
+        if (-not $habiaRuntime -and (Test-Path -LiteralPath $dirRuntime) -and
+            @(Get-ChildItem -LiteralPath $dirRuntime -Force).Count -eq 0) {
+            Remove-Item -LiteralPath $dirRuntime -Force -ErrorAction SilentlyContinue
+        }
+    }
+    $r.Probada = ($fallas -eq 0)
+    return $r
+}
+
+
+function Get-EstadoDeLaBarra {
+    <#
+    .SYNOPSIS
+        El estado de la Context Bar que quedó en harness.installation.json, o '' si no se
+        puede leer. Sin Python: -Doctor lo usa, y -Doctor corre en la máquina rota.
+    #>
+    param([string] $Project)
+    try {
+        $doc = Read-TextoUtf8 (Join-Path $Project '.claude\harness.installation.json') | ConvertFrom-Json
+        return [string]$doc.runtimeComponents.contextBar.state
+    } catch { return '' }
+}
+
+
+function Get-EtiquetaDeLaBarra {
+    <# El estado de la barra como lo dice la bienvenida. Un id que no está acá sale tal cual. #>
+    param([string] $Estado)
+    $etiquetas = @{
+        'ACTIVE' = 'ACTIVA'; 'CONFIGURED' = 'CONFIGURADA'; 'INSTALLED' = 'INSTALADA'
+        'NOT_CONFIGURED' = 'SIN CONFIGURAR'; 'RELOAD_REQUIRED' = 'REQUIERE REINICIO'
+        'ERROR' = 'ERROR'; 'UNRESOLVED' = 'SIN VERIFICAR'
+    }
+    if ($etiquetas.ContainsKey($Estado)) { return $etiquetas[$Estado] }
+    return $Estado
+}
+
+
 function Register-EstadoInstalacion {
     <#
     .SYNOPSIS
@@ -980,13 +1251,19 @@ function Register-EstadoInstalacion {
     .DESCRIPTION
         La lógica vive en un solo lado, el módulo que también usa session-start.py: acá
         solo se lo invoca, con el Python que ya resolvió la instalación. Nunca tira.
+
+        -Barra es lo que probó Test-BarraRegistrada: '--barra-probada', '--barra-invalida',
+        o vacío si no hay barra que probar. Las huellas no se pasan: las calcula bienvenida.py,
+        con la misma función con la que después las compara, y es quien decide si hace falta
+        reiniciar.
     #>
-    param([string] $DirHarness, [string] $Python)
+    param([string] $DirHarness, [string] $Python, [string] $Barra = '')
 
     $rutaBienvenida = Join-Path $DirHarness 'hooks\lib\bienvenida.py'
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName               = $Python
     $psi.Arguments              = '"' + $rutaBienvenida + '" registrar "' + $Project + '"'
+    if ($Barra) { $psi.Arguments += ' ' + $Barra }
     $psi.UseShellExecute        = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError  = $true
@@ -1083,6 +1360,47 @@ function Measure-LatenciaHook {
 }
 
 
+function Measure-LatenciaBarra {
+    <#
+    .SYNOPSIS
+        La latencia de la Context Bar con una transcripción de 5 MB, con tests\medir_barra.py.
+        Devuelve el objeto que imprime, o $null si no pudo medir.
+    .DESCRIPTION
+        La barra se dibuja después de cada mensaje, y la spec le da 400 ms de p50. Si pasa, se
+        dice acá: el umbral no se mueve y nada lo esconde.
+
+        Mide en un proyecto descartable del temporal, armado con el árbol que copia la
+        instalación: -Doctor no escribe nada en ningún proyecto. Como Measure-LatenciaHook, sin
+        Python devuelve $null y no suma una falla: ya la reportó Test-Entorno. Cuesta unos 4 s.
+    #>
+    $python = Resolve-Python
+    if (-not $python) { return $null }
+    $medidor = Join-Path $script:Repo 'tests\medir_barra.py'
+    if (-not (Test-Path $medidor)) { return $null }
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName               = $python
+    $psi.Arguments              = '"' + $medidor + '" --corridas 5 --mb 5'
+    $psi.UseShellExecute        = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
+    try {
+        $p = [System.Diagnostics.Process]::Start($psi)
+        $salida = $p.StandardOutput.ReadToEndAsync()
+        $p.StandardError.ReadToEndAsync() | Out-Null
+        if (-not $p.WaitForExit(120000)) {
+            try { $p.Kill() } catch { }
+            return $null
+        }
+        if ($p.ExitCode -ne 0) { return $null }
+        return ($salida.Result | ConvertFrom-Json)
+    } catch {
+        return $null
+    }
+}
+
+
 # ── Operaciones ─────────────────────────────────────────────────────────────────
 
 function Invoke-Doctor {
@@ -1107,6 +1425,18 @@ function Invoke-Doctor {
     if ($null -ne $p50) {
         $detalle = "latencia de hook: p50 de $p50 ms sobre 5 corridas de pre-tool-use.py (umbral $umbralLatenciaMs ms)"
         if ($p50 -gt $umbralLatenciaMs) {
+            EscribirAviso $detalle
+        } else {
+            EscribirOk $detalle
+        }
+    }
+
+    # La Context Bar: el mismo criterio. Informa, nunca bloquea, y el umbral no se mueve.
+    $barra = Measure-LatenciaBarra
+    if ($null -ne $barra) {
+        $mb = [math]::Round($barra.bytes / 1MB, 1)
+        $detalle = "latencia de la Context Bar: p50 de $($barra.p50Ms) ms sin mensajes nuevos y de $($barra.conMensajeNuevoP50Ms) ms con uno por dibujo, sobre $($barra.corridas) corridas con una transcripción de $mb MB (umbral $($barra.umbralMs) ms). La primera, que ingiere todo: $($barra.primeraMs) ms."
+        if ([math]::Max($barra.p50Ms, $barra.conMensajeNuevoP50Ms) -gt $barra.umbralMs) {
             EscribirAviso $detalle
         } else {
             EscribirOk $detalle
@@ -1157,6 +1487,22 @@ function Invoke-Doctor {
                     $fallas++
                 } else {
                     EscribirOk 'los cuatro hooks registrados en settings.json responden'
+                }
+
+                # La Context Bar, como la dejó la última instalación o la última sesión. Se lee
+                # el archivo y nada más: probar el comando escribiría la señal de vida, y
+                # -Doctor no escribe. Nunca es una falla: la barra no es una compuerta.
+                if (@($d.harness) -contains 'desarrollo') {
+                    $estadoBarra = Get-EstadoDeLaBarra -Project $Project
+                    if ($estadoBarra -in @('ACTIVE', 'CONFIGURED')) {
+                        EscribirOk "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra)"
+                    } elseif ($estadoBarra -eq 'RELOAD_REQUIRED') {
+                        EscribirAviso 'Context Bar configurada. Reiniciá la sesión de Claude Code para activarla.'
+                    } elseif ($estadoBarra) {
+                        EscribirAviso "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra). Qué hacer: python .claude\harness\bin\desarrollo\dev-harness.py harness"
+                    } else {
+                        EscribirAviso 'Context Bar: no se puede leer .claude\harness.installation.json'
+                    }
                 }
             } else {
                 EscribirAviso 'no tiene el harness instalado'
@@ -1374,8 +1720,30 @@ function Invoke-Instalar {
     [void] $instalados.Add((Join-Path $dirHarness 'run-hook.cmd'))
     [void] $instalados.Add((Join-Path $dirHarness 'run-hook.sh'))
 
+    # La Context Bar es del harness de desarrollo: el Bloque 4 vive ahí.
+    $comandoBarra = ''
+    if ($Ids -contains 'desarrollo') {
+        $comandoBarra = Get-ComandoBarra -Project $Project -Python $python
+        if (-not $comandoBarra) {
+            EscribirAviso "la ruta del proyecto tiene un apóstrofo: el comando de la Context Bar no se puede escribir igual para Git Bash y para PowerShell, y no se registra"
+        }
+    }
+
     $rutaSettings = Join-Path $dirClaude 'settings.json'
-    New-SettingsProyecto -RutaSettings $rutaSettings
+    New-SettingsProyecto -RutaSettings $rutaSettings -ComandoBarra $comandoBarra
+    if ($comandoBarra) {
+        # E-41: el comando lleva su propia huella como último argumento, y la barra la escribe
+        # tal cual en la señal de vida. Así la señal prueba el comando que corrió, no el
+        # settings.json del momento: un comando viejo que sigue corriendo no salda un reinicio.
+        # La huella se calcula sobre el bloque SIN ese argumento (bienvenida.huella_statusline),
+        # así que escribirlo después no la cambia.
+        $huellaBarra = Get-HuellaDeLaBarra -DirHarness $dirHarness -Python $python -Project $Project
+        if ($huellaBarra) {
+            New-SettingsProyecto -RutaSettings $rutaSettings -ComandoBarra ("$comandoBarra '$huellaBarra'")
+        } else {
+            EscribirAviso 'no se pudo calcular la huella de la Context Bar: queda registrada sin ella, y ninguna sesión la va a dar por activa'
+        }
+    }
     [void] $instalados.Add($rutaSettings)
     EscribirOk 'settings.json y lanzador de hooks generados'
 
@@ -1520,6 +1888,24 @@ secrets/
     }
     EscribirOk 'los cuatro hooks responden correctamente, con el comando que quedó en settings.json'
 
+    # 8b. La Context Bar, con el comando que quedó en settings.json. NO es una compuerta: si
+    # no corre en algún shell la barra queda NOT_CONFIGURED con
+    # CONTEXT_BAR_CONFIGURATION_INVALID, y la instalación sigue.
+    $flagBarra = ''
+    if ($Ids -contains 'desarrollo') {
+        $barra = Test-BarraRegistrada -Project $Project
+        if ($barra.Registrada) {
+            if ($barra.Probada) {
+                $flagBarra = '--barra-probada'
+                EscribirOk ("Context Bar: el comando registrado corre y dibuja en " + ($barra.Shells -join ' y '))
+            } else {
+                $flagBarra = '--barra-invalida'
+                EscribirAviso 'Context Bar: el comando registrado no corre en todos los shells. La barra queda sin configurar; la instalación sigue.'
+            }
+            foreach ($p in $barra.Problemas) { EscribirPaso $p }
+        }
+    }
+
     # 9. El estado de la instalación, para la bienvenida. Recién acá: una instalación que se
     # revirtió no deja harness.installation.json. En un -Update el archivo ya existe y
     # bienvenida.py conserva firstRunShown y anota de qué versión se viene.
@@ -1530,7 +1916,19 @@ secrets/
     # Si no se pudo escribir se avisa y la instalación sigue: los hooks ya respondieron, y
     # sin el archivo la sesión siguiente muestra la bienvenida completa, que es lo mismo que
     # una instalación nueva.
-    Register-EstadoInstalacion -DirHarness $dirHarness -Python $python
+    Register-EstadoInstalacion -DirHarness $dirHarness -Python $python -Barra $flagBarra
+
+    # Lo que quedó de la Context Bar, dicho como lo va a decir la bienvenida. Una barra recién
+    # registrada no tiene señal de vida todavía: la documentación no garantiza que Claude Code
+    # la recargue a mitad de sesión, así que se dice que puede hacer falta reiniciar.
+    if ($Ids -contains 'desarrollo') {
+        $estadoBarra = Get-EstadoDeLaBarra -Project $Project
+        if ($estadoBarra -eq 'RELOAD_REQUIRED') {
+            EscribirAviso 'Context Bar configurada. Reiniciá la sesión de Claude Code para activarla.'
+        } elseif ($estadoBarra) {
+            EscribirPaso "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra)"
+        }
+    }
 
     Escribir ''
     Write-Host '  Listo.' -ForegroundColor Green

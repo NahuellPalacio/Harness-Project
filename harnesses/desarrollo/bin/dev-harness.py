@@ -270,7 +270,7 @@ def bienvenida():
 
 
 def estado_general(proyecto, rutas):
-    """El documento harness-installation/1.0 de ahora. No escribe nada ni hace red."""
+    """El documento harness-installation/1.1 de ahora. No escribe nada ni hace red."""
     return bienvenida().resolver(proyecto, _json_o_vacio(rutas["harness_config"]).get("rutaCodebase"))
 
 
@@ -310,10 +310,58 @@ def mostrar_harness(args, proyecto, rutas):
     if args.reiniciar_bienvenida:
         return 0
 
-    sys.stdout.write(b.renderizar_bienvenida(doc) + "\n")
+    # La bienvenida sin su bloque Observabilidad: lo dice, con mas detalle, la seccion de
+    # abajo, y dos veces lo mismo es ruido. El estado general no cambia: sale del documento.
+    sys.stdout.write(b.renderizar_bienvenida(dict(doc, runtimeComponents={})) + "\n")
+    sys.stdout.write(seccion_de_runtime(b, doc, proyecto) + "\n")
     if args.verbose:
         sys.stdout.write("\n" + detalle_verbose(b, doc, proyecto, rutas) + "\n")
     return 0
+
+
+def seccion_de_runtime(b, doc, proyecto):
+    """"Runtime / Observabilidad": los tres componentes, si hace falta reiniciar Claude Code y
+    si la ultima sesion vista cargo la barra.
+
+    `harness` no tiene sesion: la de ahora es la ultima que dejo senal de vida. Por eso una
+    barra ACTIVE dice de que sesion, y nunca queda activa "en esta".
+    """
+    rc = doc.get("runtimeComponents") or {}
+    lineas = ["", "Runtime / Observabilidad"]
+    if not rc or not (doc.get("knowledge") or {}).get("applies"):
+        lineas.append("  sin el harness de desarrollo: no hay Bloque 4, ni Context Bar, ni "
+                      "reporte de seguridad")
+        return "\n".join(lineas)
+
+    ancho = len("Reinicio de Claude Code") + 3
+    acciones = []
+    for clave, nombre, _, _ in b.COMPONENTES:
+        comp = rc.get(clave) or {}
+        marca = "✓ " if comp.get("state") == b.ACTIVE else ""
+        texto = b.etiqueta_de_componente(clave, comp)
+        vista = comp.get("lastSessionId")
+        if comp.get("state") == b.ACTIVE and not comp.get("activeInCurrentSession") and vista:
+            texto += " (última sesión: %s)" % str(vista)[:8]
+        lineas.append("  %s%s%s" % (nombre.ljust(ancho), marca, texto))
+        condicion = b.condicion_de_componente(clave, comp)
+        if condicion:
+            acciones.append(b.describir(condicion))
+
+    barra = rc.get("contextBar") or {}
+    lineas.append("  %s%s" % ("Reinicio de Claude Code".ljust(ancho),
+                              "hace falta" if barra.get("reloadRequired") else "no hace falta"))
+    senal, _ = b.leer_senal_de_vida(proyecto)
+    vista = barra.get("lastSessionId")
+    if vista and senal:
+        lineas.append("  %s%s cargó la Context Bar (último dibujo: %s)"
+                      % ("Última sesión vista".ljust(ancho), str(vista)[:8],
+                         senal.get("lastRenderedAt")))
+    else:
+        lineas.append("  %s%s" % ("Última sesión vista".ljust(ancho),
+                                  "ninguna sesión cargó la Context Bar todavía"))
+    if acciones:
+        lineas += ["", "Acción requerida"] + ["  " + a for a in acciones]
+    return "\n".join(lineas)
 
 
 def detalle_verbose(b, doc, proyecto, rutas):
@@ -334,12 +382,54 @@ def detalle_verbose(b, doc, proyecto, rutas):
         lineas.append("  Conocimiento        verificado: %s" % (conocimiento.get("verifiedAt") or "nunca"))
         for f in conocimiento.get("sources") or []:
             lineas.append("  Fuente              %s %s" % (f["id"], f["state"]))
+    lineas += _detalle_de_runtime(b, doc, proyecto)
     archivos = b.rutas(proyecto, _json_o_vacio(rutas["harness_config"]).get("rutaCodebase"))
     lineas.append("Archivos leídos")
-    for clave in ("lock", "installation", "capacidades", "fuentes", "contexto"):
-        ruta = archivos[clave]
+    leidos = [archivos[c] for c in ("lock", "installation", "capacidades", "fuentes", "contexto")]
+    if (doc.get("knowledge") or {}).get("applies"):
+        leidos += [os.path.join(proyecto, ".claude", "settings.json"), b.ruta_de_la_senal(proyecto)]
+    for ruta in leidos:
         lineas.append("  %s%s" % (os.path.normpath(ruta), "" if os.path.isfile(ruta) else "  (no existe)"))
     return "\n".join(lineas)
+
+
+def _detalle_de_runtime(b, doc, proyecto):
+    """Las huellas, las versiones y las fechas de los componentes de runtime. Son sha256 y
+    fechas: ningun secreto, y ninguna ruta que no se vea ya en "Archivos leídos"."""
+    rc = doc.get("runtimeComponents") or {}
+    if not rc or not (doc.get("knowledge") or {}).get("applies"):
+        return []
+    lineas = []
+    for clave, nombre, _, _ in b.COMPONENTES:
+        comp = rc.get(clave) or {}
+        lineas.append("  %-21s %s%s, versión %s, validado: %s"
+                      % (nombre, comp.get("state"),
+                         " (%s)" % comp["errorCode"] if comp.get("errorCode") else "",
+                         comp.get("version") or "desconocida",
+                         comp.get("lastValidatedAt") or "nunca"))
+    barra = rc.get("contextBar") or {}
+    probada = {True: "sí", False: "no"}.get(barra.get("commandTested"), "sin probar")
+    huellas = barra.get("fingerprints") or {}
+    lineas += ["  %-21s %s" % ("Renderizador", barra.get("renderer") or "ninguno"),
+               "  %-21s %s" % ("Versión de la barra", barra.get("integrationVersion") or "desconocida"),
+               "  %-21s %s" % ("Probada en shells", probada),
+               "  %-21s %s" % ("Huella statusLine", barra.get("configurationFingerprint") or "ninguna")]
+    for nombre, clave in (("renderizador", "renderer"), ("adaptador", "block4Adapter"),
+                          ("session-start", "sessionStart")):
+        lineas.append("  %-21s %s" % ("Huella " + nombre, huellas.get(clave) or "ninguna"))
+    senal, problema = b.leer_senal_de_vida(proyecto)
+    if senal:
+        lineas.append("  %-21s sesión %s, %s, Bloque 4 %s"
+                      % ("Señal de vida", senal["sessionId"], senal["lastRenderedAt"],
+                         senal["block4"]))
+    else:
+        lineas.append("  %-21s %s" % ("Señal de vida",
+                                      "ilegible" if problema == "unreadable" else "no hay"))
+    # El sessionId de la senal llega por stdin a la barra y nadie lo eligio: pasa por el
+    # catalogo de secretos como todo lo que se imprime sin haberlo escrito el harness. El
+    # comando registrado no se imprime nunca: su huella alcanza para saber si cambio.
+    catalogo = limpieza.cargar_catalogo()
+    return [limpieza.redactar(l, catalogo, "harness --verbose")[0] for l in lineas]
 
 
 def mostrar(consola, documento, proyecto, rutas):
@@ -1073,7 +1163,7 @@ def parser():
                    help="raiz del proyecto (por defecto, el directorio actual)")
     p.add_argument("--json", action="store_true",
                    help="el registro de capacidades por stdout, para consumirlo; harness: el "
-                        "estado en harness-installation/1.0")
+                        "estado en harness-installation/1.1")
     p.add_argument("--verbose", action="store_true",
                    help="harness: la version, la fecha, cada condicion con su id y los archivos leidos")
     p.add_argument("--reiniciar-bienvenida", action="store_true",

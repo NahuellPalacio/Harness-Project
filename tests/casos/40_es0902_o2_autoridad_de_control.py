@@ -717,7 +717,7 @@ def test_e27_todo_resultado_conserva_la_traza(t):
 
 
 def test_e28_no_se_crea_ningun_agente_y_los_controles_quedan(t):
-    """E-28 — los mismos diez agentes, las mismas cuatro skills, 52 controles."""
+    """E-28 — los mismos diez agentes, las mismas cuatro skills, 54 controles."""
     registro = c_reg.cargar()
     ids = sorted(a["id"] for a in registro["agents"])
     t.igual("E-28 siguen siendo diez", 10, len(ids))
@@ -728,7 +728,7 @@ def test_e28_no_se_crea_ningun_agente_y_los_controles_quedan(t):
             sorted(s["id"] for s in de_security.get("skills") or []))
 
     reporte = c_controles.reporte()
-    t.igual("E-28 son cincuenta y dos controles", 52, reporte["summary"]["declaredControls"])
+    t.igual("E-28 son cincuenta y cuatro controles", 54, reporte["summary"]["declaredControls"])
     t.verdadero("E-28 el registro es valido", reporte["result"]["registryValid"])
     t.verdadero("E-28 y no hay archivos sin declarar", reporte["result"]["filesystemClean"])
     t.igual("E-28 ningun archivo suelto", [], reporte["undeclared"])
@@ -745,5 +745,5 @@ def test_e28_no_se_crea_ningun_agente_y_los_controles_quedan(t):
     faltan = {f["id"] for f in seguridad.controles_no_instalados(resolucion)}
     for control in (POLICY, CHEQUEO):
         t.verdadero("E-28 %s ya no figura como hueco" % control, control not in faltan)
-    t.igual("E-28 quedan diecisiete huecos", 17,
+    t.igual("E-28 quedan quince huecos", 15,
             len(seguridad.controles_no_instalados(resolucion)))

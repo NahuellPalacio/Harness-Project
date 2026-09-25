@@ -69,16 +69,46 @@ def _json(ruta, datos):
     _escribir(ruta, json.dumps(datos, ensure_ascii=False))
 
 
+# La sesion de Claude Code de las pruebas: la que firma la senal de vida de la Context Bar y
+# la que manda _sesion. Desde bloque-1-context-bar, READY con `desarrollo` es tambien la barra
+# ACTIVE en esta sesion.
+SESION = "s-bv-51"
+
+
+def _arbol_de_runtime(proy):
+    """Lo que install.ps1 deja en .claude/harness para los componentes de runtime, la barra
+    registrada en settings.json y su senal de vida de SESION. Sin esto, desde 1.1 un proyecto
+    con `desarrollo` no es READY: la barra no esta, y eso es una condicion pendiente."""
+    h = proy / ".claude" / "harness"
+    for rel in ("contabilidad/__init__.py", "contabilidad/libro.py", "contabilidad/barra.py",
+                "contabilidad/adaptadores/claude_code.py", "reporte_seguridad/__init__.py",
+                "reporte_seguridad/libro.py", "reporte_seguridad/resumen.py",
+                "reporte_seguridad/reporte.py"):
+        _escribir(h / "bin" / "desarrollo" / rel, "# prueba\n")
+    _escribir(h / "bin" / "desarrollo" / "contabilidad" / "statusline.py",
+              'INTEGRATION_VERSION = "1.0.0"\n')
+    for nombre in B.SCHEMAS_DE_SEGURIDAD:
+        _escribir(h / "schemas" / nombre,
+                  (RAIZ / "comun" / "schemas" / nombre).read_text(encoding="utf-8"))
+    comando = "python '%s/.claude/harness/bin/desarrollo/contabilidad/statusline.py'" % proy.as_posix()
+    _json(proy / ".claude" / "settings.json", {"statusLine": {"type": "command", "command": comando}})
+    B.escribir_senal_de_vida(str(proy), SESION, B.BLOCK4_OK, "1.0.0",
+                             momento="2026-09-24T11:00:00")
+
+
 def _proyecto(harness=("comun", "desarrollo"), version="0.20.0", jira="AVAILABLE",
               gitlab="AVAILABLE", fuentes=None, capacidades=True, fuentes_archivo=True,
-              instalacion=None, nombre=None, lock=True, usuario="Nahue"):
+              instalacion=None, nombre=None, lock=True, usuario="Nahue", runtime=True):
     """Un proyecto como lo deja install.ps1, en READY salvo lo que se pida.
 
     `jira`/`gitlab` en None: la integracion no figura en el registro. `fuentes` es
     {id: state}; por defecto las seis en CURRENT. `instalacion` es un dict o un texto crudo.
+    `runtime` arma el arbol de los componentes de runtime, con la barra activa en SESION.
     """
     proy = Path(tempfile.gettempdir()) / ("harness-bv-" + uuid.uuid4().hex[:8])
     claude = proy / ".claude"
+    if runtime and "desarrollo" in harness:
+        _arbol_de_runtime(proy)
     _json(claude / "harness.config.json", {"usuario": usuario})
     if lock:
         _json(claude / "harness.lock.json",
@@ -137,7 +167,7 @@ def _instalacion_vista(version="0.20.0", upgrade=None):
 
 def _sesion(proy, env=None, hook=HOOK, comando=None):
     """Corre session-start.py como lo invoca Claude Code. (codigo, systemMessage, contexto)."""
-    payload = {"session_id": "s-" + uuid.uuid4().hex[:6], "cwd": str(proy),
+    payload = {"session_id": SESION, "cwd": str(proy),
                "hook_event_name": "SessionStart", "source": "startup"}
     entorno = dict(os.environ)
     entorno.update(env or {})
@@ -314,7 +344,7 @@ def test_e06_no_importa_clientes_de_modelo_ni_integraciones(t):
             prohibido = any(nombre == p or nombre.startswith(p + ".") for p in _PROHIBIDOS)
             t.verdadero("E-06 %s no importa %s" % (ruta.name, nombre), not prohibido)
     t.igual("E-06 bienvenida.py solo usa la biblioteca estandar",
-            ["datetime", "json", "os", "re", "sys"], sorted(set(_importados(LIB))))
+            ["_sha2", "datetime", "hashlib", "json", "os", "re", "sys"], sorted(set(_importados(LIB))))
     _, _, _, datos = _sesion_sin_red(_proyecto())
     cargados = (datos or {}).get("modulos") or []
     t.verdadero("E-06 el hook corrio", bool(cargados))
@@ -443,7 +473,9 @@ def test_e09_el_conocimiento_sale_del_state_de_cada_fuente(t):
     # se calcula (version observada, hashes).
     fuente = LIB.read_text(encoding="utf-8")
     t.verdadero("E-09 no importa frescura", not any("frescura" in n for n in _importados(LIB)))
-    for campo in ("observed_version", "registry_version", "sha256", "observed_sha256",
+    # "sha256" a secas ya no: desde bloque-1-context-bar el modulo calcula la huella del bloque
+    # statusLine. Lo que no lee es la evidencia de frescura, que son estos nombres.
+    for campo in ("observed_version", "registry_version", "observed_sha256", "registry_sha256",
                   "attachmentId", "evidence"):
         t.no_contiene("E-09 no lee %s" % campo, campo, fuente)
 
@@ -585,9 +617,13 @@ def test_e18_la_actualizacion_se_avisa_una_vez(t):
     mensaje = mensaje or ""
     lineas = mensaje.split("\n")
     t.igual("E-18 el aviso", "Harness GCBA actualizado: 0.19.0 → 0.20.0 ✓", lineas[0])
-    t.igual("E-18 y la linea, nada mas", 2, len(lineas))
-    t.verdadero("E-18 la segunda es la linea", len(lineas) > 1
-                and lineas[1].startswith("Harness GCBA ✓ LISTO"))
+    # Desde bloque-1-context-bar (E-28), con `desarrollo` el aviso tiene su segunda linea -la
+    # Context Bar- y despues va la linea compacta.
+    t.igual("E-18 el aviso de dos lineas y la linea, nada mas", 3, len(lineas))
+    t.igual("E-18 la segunda es la de la Context Bar", "Context Bar activa.",
+            lineas[1] if len(lineas) > 1 else None)
+    t.verdadero("E-18 la tercera es la linea", len(lineas) > 2
+                and lineas[2].startswith("Harness GCBA ✓ LISTO"))
     t.no_contiene("E-18 no repite la bienvenida", "GCBA Development Harness", mensaje)
     t.igual("E-18 despues se borra upgradeFrom", None, _estado(proy)["welcome"].get("upgradeFrom"))
     _, mensaje, _, _ = _sesion(proy)
@@ -1070,13 +1106,13 @@ def test_e13_verbose_agrega_el_detalle(t):
 
 
 def test_e14_harness_json_usa_los_ids_en_ingles_y_valida(t):
-    """E-14 — READY, NOT_CONFIGURED y FRESHNESS_UNVERIFIED tal cual, en harness-installation/1.0."""
+    """E-14 — READY, NOT_CONFIGURED y FRESHNESS_UNVERIFIED tal cual, en harness-installation/1.1."""
     fuentes = dict({s: "CURRENT" for s in TODAS}, ES0902="FRESHNESS_UNVERIFIED")
     codigo, salida, _ = _cli(["harness", "--json", "--proyecto",
                               str(_proyecto(jira="NOT_CONFIGURED", fuentes=fuentes))])
     t.igual("E-14 sale 0", 0, codigo)
     doc = json.loads(salida)
-    t.igual("E-14 schema_version", "harness-installation/1.0", doc.get("schema_version"))
+    t.igual("E-14 schema_version", "harness-installation/1.1", doc.get("schema_version"))
     t.igual("E-14 PARTIAL en ingles", "PARTIAL", doc["bootstrap"]["status"])
     t.igual("E-14 NOT_CONFIGURED en ingles", "NOT_CONFIGURED",
             [i["status"] for i in doc["integrations"] if i["id"] == "jira"][0])

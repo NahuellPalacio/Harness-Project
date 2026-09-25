@@ -22,6 +22,12 @@ PROVEEDORES = tuple(sorted(set(
     [m.PROVEEDOR for m in ADAPTADORES.values()] + list(ADAPTADORES))))
 
 
+# El adaptador de la transcripcion que el cliente le pasa por stdin a la barra de estado de
+# la terminal (`transcript_path`). La barra vive en el nucleo y no puede nombrarlo: lo pide
+# aca, que es donde un proveedor es un nombre.
+DE_LA_BARRA = claude_code.NOMBRE
+
+
 def nombres():
     return tuple(sorted(ADAPTADORES))
 

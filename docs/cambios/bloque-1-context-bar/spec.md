@@ -1,6 +1,6 @@
 # Bloque 1 — la Context Bar existe, y el harness sabe si está activa
 
-**Estado:** especificado · **Fecha:** 24-09-2026 · **Bloque:** 1, leyendo al 4
+**Estado:** verificado y cerrado · **Fecha:** 24-09-2026 · **Bloque:** 1, leyendo al 4
 
 ## Qué problema resuelve
 
@@ -129,8 +129,11 @@ UNRESOLVED      la senal de vida o el settings.json no se pueden leer
 
   `ACTIVE` quiere decir que el pipeline está disponible, no que haya aprobación de seguridad.
 
-Un componente que no está `ACTIVE` suma una condición a `pendingConditions`: `CONTEXT_BAR_…`,
-`BLOCK4_…` o `SECURITY_REPORTING_…`. Así el estado general queda `PARTIAL`, nunca `BLOCKED`. La
+Un componente en `RELOAD_REQUIRED`, `ERROR`, `UNRESOLVED`, `INSTALLED` o `NOT_CONFIGURED` con un
+código de falla suma una condición a `pendingConditions`: `CONTEXT_BAR_…`, `BLOCK4_…` o
+`SECURITY_REPORTING_…`. Así el estado general queda `PARTIAL`, nunca `BLOCKED`. `CONFIGURED` no
+suma condición: al arrancar una sesión nueva todavía no hay señal de vida de esa sesión, y un
+`PARCIAL` que sale en cada arranque se deja de leer (precisado el 24-09-2026, en la construcción). La
 observabilidad caída no hace inseguro al harness, así que un `Block 4 ERROR` es `PARCIAL`, no
 `BLOQUEADO` como en el ejemplo del paquete, y la divergencia se declara acá. Ninguno de los tres
 estados usa `AVAILABLE`, que es de las integraciones.
@@ -195,76 +198,86 @@ de Claude Code requerido." o "Context Bar activa.", según corresponda.
 Numerados como el pedido: `E-nn` es `CBV-nn`. Los que agrega esta spec van después del 35.
 
 - **E-01** — Un `harness.installation.json` `1.0` pasa a `1.1` sin perder ningún campo.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-02** — El `1.1` que escriben el instalador, el hook y la CLI valida contra el schema.
-  · rojo visto: no consta
-- **E-03** — Después de instalar, los tres componentes tienen estado. · rojo visto: no consta
+  · rojo visto: si
+- **E-03** — Después de instalar, los tres componentes tienen estado. · rojo visto: si
 - **E-04** — Con el renderizador en disco y el `statusLine` registrado, sin señal de vida, la
-  barra no es `ACTIVE`. · rojo visto: no consta
+  barra no es `ACTIVE`. · rojo visto: si
 - **E-05** — Registrada y probada, sin señal de vida de la sesión actual, es `CONFIGURED`, o
-  `RELOAD_REQUIRED` si el fingerprint cambió. · rojo visto: no consta
+  `RELOAD_REQUIRED` si el fingerprint cambió. · rojo visto: si
 - **E-06** — Con la señal de vida de la sesión actual, el fingerprint registrado y `block4: OK`, es
-  `ACTIVE` y `activeInCurrentSession: true`. · rojo visto: no consta
+  `ACTIVE` y `activeInCurrentSession: true`. · rojo visto: si
 - **E-07** — Un `-Update` que cambia el `statusLine` marca `reloadRequired: true`.
-  · rojo visto: no consta
-- **E-08** — Un `-Update` que no cambia ninguna huella no marca reinicio. · rojo visto: no consta
+  · rojo visto: si
+- **E-08** — Un `-Update` que no cambia ninguna huella no marca reinicio. · rojo visto: si
 - **E-09** — Con `block4: SOURCE_UNAVAILABLE`, la barra no es `ACTIVE`: es `ERROR` con
-  `CONTEXT_BAR_BLOCK4_SOURCE_UNAVAILABLE`. · rojo visto: no consta
+  `CONTEXT_BAR_BLOCK4_SOURCE_UNAVAILABLE`. · rojo visto: si
 - **E-10** — La barra no escribe ningún archivo fuera del libro del Bloque 4 y de
-  `contextbar.json`, y `contextbar.json` no tiene ningún número contable. · rojo visto: no consta
+  `contextbar.json`, y `contextbar.json` no tiene ningún número contable. · rojo visto: si
 - **E-11** — La bienvenida con `desarrollo` muestra "Observabilidad" con los tres componentes.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-12** — `RELOAD_REQUIRED` sale como `REQUIERE REINICIO`, sin `✓`, con la acción requerida.
-  · rojo visto: no consta
-- **E-13** — `ACTIVE` sale como `ACTIVA` o `ACTIVO`, con `✓`. · rojo visto: no consta
+  · rojo visto: si
+- **E-13** — `ACTIVE` sale como `ACTIVA` o `ACTIVO`, con `✓`. · rojo visto: si
 - **E-14** — `ERROR` sale como `ERROR`, sin `✓`, y deja el estado general en `PARTIAL`.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-15** — `session-start.py` sigue sin abrir ninguna conexión, con la barra incluida.
-  · rojo visto: no consta
-- **E-16** — Ni `session-start.py` ni la barra importan un cliente de modelo. · rojo visto: no consta
+  · rojo visto: si
+- **E-16** — Ni `session-start.py` ni la barra importan un cliente de modelo. · rojo visto: si
 - **E-17** — Con la barra `ACTIVE`, la línea compacta no repite tokens, costo ni contexto.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-18** — `harness` muestra los tres componentes, el reinicio pendiente y la última sesión vista.
-  · rojo visto: no consta
-- **E-19** — `harness --json` usa los estados en inglés. · rojo visto: no consta
+  · rojo visto: si
+- **E-19** — `harness --json` usa los estados en inglés. · rojo visto: si
 - **E-20** — `harness --verbose` no imprime ningún secreto con un token cargado.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-21** — Un campo que el Bloque 4 no tiene no aparece en la barra, y un `COST_UNRESOLVED` no sale
-  como `USD 0`. · rojo visto: no consta
+  como `USD 0`. · rojo visto: si
 - **E-22** — Los tokens y el costo que dibuja la barra son los de `barra.de` sobre el libro, y
-  cambiar el costo de stdin no cambia lo que dibuja. · rojo visto: no consta
+  cambiar el costo de stdin no cambia lo que dibuja. · rojo visto: si
 - **E-23** — Agente, tarea y presupuesto salen del estado del Bloque 4, y sin tarea declarada la
-  tarea no aparece. · rojo visto: no consta
+  tarea no aparece. · rojo visto: si
 - **E-24** — `docs/contabilidad.md` dice que la barra es de la terminal de Claude Code.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-25** — Ningún texto del harness afirma una integración nativa con la barra de estado de VS
-  Code. · rojo visto: no consta
+  Code. · rojo visto: si
 - **E-26** — Una instalación nueva con la barra registrada dice que puede hacer falta reiniciar, si
-  no hay señal de vida. · rojo visto: no consta
+  no hay señal de vida. · rojo visto: si
 - **E-27** — El aviso de reinicio desaparece cuando llega la señal de vida con el fingerprint nuevo.
-  · rojo visto: no consta
-- **E-28** — Un `-Update` normal muestra el aviso compacto de dos líneas. · rojo visto: no consta
+  · rojo visto: si
+- **E-28** — Un `-Update` normal muestra el aviso compacto de dos líneas. · rojo visto: si
 - **E-29** — Con el harness `BLOCKED`, nada dice que la barra o el harness estén listos.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-30** — `securityReporting` `ACTIVE` no dice nada de la aprobación de seguridad: C2 y el estado
-  oficial no se mueven. · rojo visto: no consta
+  oficial no se mueven. · rojo visto: si
 - **E-31** — Un cambio en el bloque `statusLine` cambia `configurationFingerprint`.
-  · rojo visto: no consta
-- **E-32** — Un cambio en la versión del renderizador se detecta. · rojo visto: no consta
+  · rojo visto: si
+- **E-32** — Un cambio en la versión del renderizador se detecta. · rojo visto: si
 - **E-33** — Sin cambios, `runtimeComponents` no se reescribe: dos `-Update` iguales dejan el archivo
-  igual byte a byte, salvo `updatedAt`. · rojo visto: no consta
+  igual byte a byte, salvo `updatedAt`. · rojo visto: si
 - **E-34** — `activeInCurrentSession` va aparte de `installed` y `configured`: una barra instalada y
-  configurada de otra sesión no está activa en esta. · rojo visto: no consta
-- **E-35** — Los mismos archivos dan los mismos estados. · rojo visto: no consta
+  configurada de otra sesión no está activa en esta. · rojo visto: si
+- **E-35** — Los mismos archivos dan los mismos estados. · rojo visto: si
 - **E-36** — El comando registrado corre con `bash -c` y con `powershell.exe -NoProfile -Command`,
   sale con 0 y dibuja una línea, también con una ruta de proyecto con espacios.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-37** — Con una transcripción rota, sin libro o sin stdin, la barra sale con 0 y dibuja
-  `HARNESS | sin datos del Bloque 4`. Nunca una línea vacía. · rojo visto: no consta
+  `HARNESS | sin datos del Bloque 4`. Nunca una línea vacía. · rojo visto: si
 - **E-38** — Ingerir la misma transcripción dos veces deja el libro con los mismos eventos.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-39** — La barra no dibuja texto de la transcripción: ni prompts, ni código, ni nada que el
-  catálogo de secretos reconozca. · rojo visto: no consta
+  catálogo de secretos reconozca. · rojo visto: si
+- **E-40** — El costo y el tiempo acumulados de la sesión siguen al último estado que reporta el
+  proveedor. Ingerir de a poco una transcripción con un costo de 0.50 y 60 s, y después uno de 2.75 y
+  600 s, deja el libro y la barra en 2.75 y 10 min, igual que ingerirla de una vez. El libro sigue
+  siendo append-only: el estado nuevo entra como evento nuevo, y el resumen toma el último. (Agregado
+  el 24-09-2026, después del primer pase.) · rojo visto: si
+- **E-41** — La huella de la señal de vida es la del comando que corrió, no la del `settings.json`
+  del momento. El comando registrado le pasa su propia huella a la barra, y la barra la escribe tal
+  cual. Si después de un cambio del `statusLine` corre el comando viejo, `RELOAD_REQUIRED` no se va.
+  Una señal dibujada en el mismo segundo que el registro no cuenta como prueba. (Agregado el
+  24-09-2026, después del primer pase.) · rojo visto: si
 
 ## Cómo se verifica
 

@@ -809,7 +809,7 @@ def test_e38_la_unidad_propaga_sin_senal(t):
 def test_e39_los_controles_dejan_de_ser_un_hueco(t):
     """E-39 (P1-38) — treinta y cinco declarados, once reglas completas, sin sueltos."""
     reporte = c_controles.reporte()
-    t.igual("E-39 son cincuenta y dos controles", 52, reporte["summary"]["declaredControls"])
+    t.igual("E-39 son cincuenta y cuatro controles", 54, reporte["summary"]["declaredControls"])
     t.verdadero("E-39 el registro es valido", reporte["result"]["registryValid"])
     t.verdadero("E-39 y no hay archivos sin declarar", reporte["result"]["filesystemClean"])
     t.igual("E-39 ningun archivo suelto", [], reporte["undeclared"])

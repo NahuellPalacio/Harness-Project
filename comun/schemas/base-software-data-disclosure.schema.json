@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "base-software-data-disclosure/1.0",
+  "title": "Base Software Data Disclosure Evidence",
+  "description": "La evidencia de que el software de base no entrega datos privados, para ES0902 Vu7. Es del PROYECTO, un registro por ambiente, y se instala vacia. La clasificacion, el inventario y el alcance de superficies salen de evidencia autoritativa citada, nunca de un nombre. Los strings de `evidence` son ids del catalogo de evidencia del caso. No hay campo para un valor: `additionalProperties: false` en todas las capas, asi que una clave de mas -un token, una muestra del dato, un valor real- no entra.",
+  "type": "object",
+  "required": [
+    "version",
+    "environment",
+    "components",
+    "dataClasses"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "environment": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "deploymentBinding": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dataClasses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "dataClassId",
+          "classification",
+          "evidence"
+        ],
+        "properties": {
+          "dataClassId": {
+            "type": "string"
+          },
+          "classification": {
+            "enum": [
+              "PRIVATE",
+              "NOT_PRIVATE",
+              "UNRESOLVED"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "componentId",
+          "componentType",
+          "configurationStatus",
+          "surfaces",
+          "evidence"
+        ],
+        "properties": {
+          "componentId": {
+            "type": "string"
+          },
+          "componentType": {
+            "type": "string"
+          },
+          "productRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "configurationStatus": {
+            "enum": [
+              "RESOLVED",
+              "UNRESOLVED"
+            ]
+          },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "surfaceId",
+                "authorizationContext",
+                "result",
+                "evidence"
+              ],
+              "properties": {
+                "surfaceId": {
+                  "type": "string"
+                },
+                "surfaceType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "authorizationContext": {
+                  "enum": [
+                    "AUTHORIZED",
+                    "UNAUTHORIZED",
+                    "PUBLIC",
+                    "UNRESOLVED"
+                  ]
+                },
+                "dataClassRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "result": {
+                  "enum": [
+                    "NO_PRIVATE_DATA_DISCLOSURE",
+                    "AUTHORIZED_PRIVATE_DATA_ACCESS",
+                    "UNAUTHORIZED_PRIVATE_DATA_DISCLOSURE",
+                    "UNRESOLVED"
+                  ]
+                },
+                "verificationMode": {
+                  "enum": [
+                    "STATIC_CONFIGURATION",
+                    "MANIFEST_ANALYSIS",
+                    "AUTHORIZED_QA_RUNTIME_TEST",
+                    "OTHER_AUTHORITATIVE_EVIDENCE",
+                    "NOT_VERIFIED"
+                  ]
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -3,6 +3,48 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.22.0] — 2026-09-24
+
+**La Context Bar existe, y el harness distingue si está instalada, configurada, activa o
+esperando un reinicio.** El Bloque 4 calculaba la barra, pero ningún `statusLine` estaba
+registrado, así que en una sesión no se veía nada. Ahora la barra se dibuja en la terminal de
+Claude Code con lo que resume el Bloque 4, y la bienvenida y `harness` dicen su estado. Además,
+ES0902 suma Vu7. Son dos cambios verificados, sin ningún escenario contradicho.
+
+### Agregado
+
+- **La Context Bar.** Es un `statusLine` que ingiere la transcripción de la sesión con el
+  adaptador del Bloque 4 y dibuja una línea con el contexto, los tokens, el costo, el tiempo y el
+  presupuesto. Un dato que el Bloque 4 no tiene no aparece, y un costo sin resolver nunca sale como
+  `USD 0`. El comando corre igual en Git Bash y en PowerShell, y el instalador lo prueba en los dos
+- **La activación se prueba con la señal de vida** que deja la barra en la sesión actual, no con
+  que el archivo esté en disco. Después de un `-Update` que cambia la barra, dice
+  `REQUIERE REINICIO` hasta que un dibujo lo desmienta
+- **La bienvenida, la línea de cada sesión y `harness`** muestran la Context Bar, la contabilidad
+  del Bloque 4 y el reporte de seguridad. `harness.installation.json` pasa a
+  `harness-installation/1.1`, y los archivos `1.0` se migran solos
+- **ES0902 Vu7.** El software de base no entrega datos privados: se juzga la configuración efectiva
+  de cada ambiente, con la clasificación que da el proyecto
+
+### Corregido
+
+- **El costo y el tiempo del Bloque 4 ya no se congelan en el primer estado** cuando la
+  transcripción se ingiere de a poco
+
+### Cambiado
+
+- 🔴 **`settings.json` registra un `statusLine`, con la ruta absoluta del proyecto y de Python.**
+  Tapa la barra propia que hubiera en la configuración del usuario. Ver [UPGRADE.md](UPGRADE.md)
+
+### Lo que no se cumplió, sin maquillar
+
+- **Nadie vio todavía la barra en una sesión real**, ni comprobó si Claude Code la recarga sola
+  después de un `-Update`, ni si aparece en VS Code
+- **El primer dibujo de una sesión larga tarda de 0,85 a 1,8 s,** porque ingiere la transcripción
+  entera. Los siguientes quedan debajo de los 400 ms. `-Doctor` lo muestra
+- **Siete cabos sueltos de la Context Bar** están en `Pendientes/Fix-Harness/PENDIENTES-FH.md`, entre
+  ellos que `-Uninstall` no borra su señal ni los libros
+
 ## [0.21.0] — 2026-09-24
 
 **En Windows sin Git Bash, los hooks del harness no corrían nunca: ahora corren, y el instalador

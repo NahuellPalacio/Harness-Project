@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "harness-installation/1.0",
+  "$id": "harness-installation/1.1",
   "title": "Harness Installation State",
-  "description": "El estado de la instalacion del harness en un proyecto. Vive en .claude/harness.installation.json: lo escribe install.ps1 cuando la instalacion termino bien y lo reescribe session-start.py con el estado recalculado y la marca de la bienvenida, las dos veces con comun/hooks/lib/bienvenida.py. Guarda estados e ids en ingles y nada mas: ni tokens, ni URLs con credenciales, ni el contenido del .env. Es el schema del paquete del Bloque 1 con una sola divergencia, bootstrap.pendingConditions: lo que deja el estado en PARTIAL, con el mismo formato de id que blockingConditions. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "description": "El estado de la instalacion del harness en un proyecto. Vive en .claude/harness.installation.json: lo escribe install.ps1 cuando la instalacion termino bien y lo reescribe session-start.py con el estado recalculado y la marca de la bienvenida, las dos veces con comun/hooks/lib/bienvenida.py. Guarda estados, ids, fechas y huellas sha256, y nada mas: ni tokens, ni URLs con credenciales, ni el contenido del .env, ni un numero contable. Es el schema 1.1 del paquete del Bloque 1 con estas divergencias: bootstrap.pendingConditions (lo que deja el estado en PARTIAL); welcome.upgradeFrom (de que version se vino, hasta que se muestra el aviso); runtimeComponents.contextBar con sus propiedades aplanadas en un solo objeto, porque el interprete de subconjunto no lee allOf; y en contextBar commandTested, fingerprints y lastSessionId, lo que el -Update compara y la sesion que la CLI muestra como ultima vista. Un archivo harness-installation/1.0 se lee, se migra conservando todos sus campos y se escribe como 1.1. Lo valida el interprete de subconjunto de contexto-armar.py.",
   "type": "object",
   "required": [
     "schema_version",
@@ -10,12 +10,13 @@
     "harnessId",
     "installedAt",
     "bootstrap",
-    "welcome"
+    "welcome",
+    "runtimeComponents"
   ],
   "properties": {
     "schema_version": {
       "enum": [
-        "harness-installation/1.0"
+        "harness-installation/1.1"
       ]
     },
     "installed": {
@@ -32,6 +33,13 @@
     },
     "installedAt": {
       "type": "string"
+    },
+    "updatedAt": {
+      "description": "La ultima vez que se escribio el archivo. Lo unico, junto con welcome.lastShownAt, que cambia entre dos escrituras sin cambios.",
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "project": {
       "type": "object",
@@ -97,6 +105,199 @@
           "type": "boolean"
         },
         "lastShownAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "upgradeFrom": {
+          "type": "string"
+        }
+      }
+    },
+    "runtimeComponents": {
+      "description": "Los componentes de runtime: estados de componente, no de integracion. Ninguno usa AVAILABLE.",
+      "type": "object",
+      "required": [
+        "block4Accounting",
+        "contextBar",
+        "securityReporting"
+      ],
+      "properties": {
+        "block4Accounting": {
+          "$ref": "#/$defs/runtimeComponent"
+        },
+        "contextBar": {
+          "type": "object",
+          "required": [
+            "state",
+            "installed",
+            "configured",
+            "reloadRequired",
+            "activeInCurrentSession"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "INSTALLED",
+                "CONFIGURED",
+                "ACTIVE",
+                "INACTIVE",
+                "NOT_CONFIGURED",
+                "RELOAD_REQUIRED",
+                "ERROR",
+                "UNRESOLVED"
+              ]
+            },
+            "installed": {
+              "type": "boolean"
+            },
+            "configured": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastValidatedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "errorCode": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "renderer": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source": {
+              "enum": [
+                "block4",
+                null
+              ]
+            },
+            "reloadRequired": {
+              "type": "boolean"
+            },
+            "activeInCurrentSession": {
+              "type": "boolean"
+            },
+            "configurationFingerprint": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "integrationVersion": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "commandTested": {
+              "description": "Si el comando registrado corrio con bash -c y con powershell.exe -NoProfile -Command en el ultimo registro. null si no se probo.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "fingerprints": {
+              "description": "Las huellas sha256 que compara un -Update: el bloque statusLine, el renderizador, el adaptador claude_code y session-start.py.",
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "statusLine": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "renderer": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "block4Adapter": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sessionStart": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "lastSessionId": {
+              "description": "El sessionId de la ultima senal de vida de la barra.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "securityReporting": {
+          "$ref": "#/$defs/runtimeComponent"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "runtimeComponent": {
+      "type": "object",
+      "required": [
+        "state",
+        "installed",
+        "configured"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "INSTALLED",
+            "CONFIGURED",
+            "ACTIVE",
+            "INACTIVE",
+            "NOT_CONFIGURED",
+            "RELOAD_REQUIRED",
+            "ERROR",
+            "UNRESOLVED"
+          ]
+        },
+        "installed": {
+          "type": "boolean"
+        },
+        "configured": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastValidatedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "errorCode": {
           "type": [
             "string",
             "null"

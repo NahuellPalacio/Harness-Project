@@ -910,6 +910,32 @@
         "section": "6",
         "rule": "Vu6"
       }
+    },
+    {
+      "id": "base-software-private-data-disclosure-prohibited",
+      "type": "POLICY",
+      "rule": "Vu7",
+      "file": "controles/policies/base-software-private-data-disclosure-prohibited.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu7"
+      }
+    },
+    {
+      "id": "base-software-data-disclosure-configuration",
+      "type": "CHECK",
+      "rule": "Vu7",
+      "file": "controles/checks/base-software-data-disclosure-configuration.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu7"
+      }
     }
   ]
 }

@@ -58,13 +58,16 @@ def _git(proyecto, *args):
         return None
 
 
-def _bienvenida(proyecto, config):
+def _bienvenida(proyecto, config, sesion):
     """(texto, estado) o (None, None). Una bienvenida que no se pudo armar no se lleva puesto el
-    resto del bloque: se calla y la sesion sigue con lo de siempre."""
+    resto del bloque: se calla y la sesion sigue con lo de siempre.
+
+    `sesion` es el session_id del evento: la Context Bar solo esta ACTIVE en esta sesion si su
+    senal de vida es de esta sesion. Sin session_id, "" no coincide con ninguna."""
     if not bienvenida.hay_harness(proyecto):
         return None, None
     try:
-        estado = bienvenida.resolver(proyecto, (config or {}).get("rutaCodebase"))
+        estado = bienvenida.resolver(proyecto, (config or {}).get("rutaCodebase"), sesion=sesion)
         return bienvenida.renderizar(estado), estado
     except Exception:                    # noqa: BLE001 - la bienvenida no rompe el hook
         return None, None
@@ -86,7 +89,9 @@ def cuerpo(e):
         return
 
     config = config_proyecto(proyecto)
-    texto_bienvenida, estado_bienvenida = _bienvenida(proyecto, config)
+    sesion = campo(e, "session_id", "")
+    texto_bienvenida, estado_bienvenida = _bienvenida(
+        proyecto, config, sesion if isinstance(sesion, str) else "")
     lineas = []
 
     # --- Quien sos y que harness rige aca -----------------------------------------

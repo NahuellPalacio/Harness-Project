@@ -870,6 +870,31 @@ example `harness.bootstrap.fin`) or add the resolver status to it (`estado=PARTI
 stable event, so the spec of `integraciones-bootstrap` has to be amended first, with a scenario, and
 `18_integraciones` updated alongside.
 
+### The Context Bar shipped with six loose ends the refuter found outside the letter
+
+Found by the refuter on `bloque-1-context-bar`, on 2026-09-24. None contradicts a scenario, and each
+one is visible to a person using the bar:
+- **Without Git Bash, the bar counts as tested with PowerShell alone.** The spec says the installer
+  runs it under `bash -c` and `powershell.exe`. The schema's description of `commandTested` claims
+  both ran, and in that case it is not true.
+- **The 1.1 schema adds fields the package does not have.** `commandTested`, `fingerprints` and
+  `lastSessionId` are new, and `reloadRequired` and `activeInCurrentSession` are now required.
+  The spec declares only the flattening, `pendingConditions` and `upgradeFrom`.
+- **An empty ledger leaves `block4: OK` and the bar `ACTIVE`,** while the line says "sin datos del
+  Bloque 4". The package asks for `BLOCK4_SOURCE_UNAVAILABLE` when Block 4 is not initialised.
+- **A project path with an apostrophe** leaves the bar `INSTALLED`, because no quoting works in both
+  shells. `describir` recommends `install.ps1 -Update`, which does not fix it.
+- **Hand-edited files.** `install.ps1` registers the bar (around line 1891) before it restores
+  hand-edited files (around 2021). If a new version bumps `INTEGRATION_VERSION` and the person's copy
+  keeps the old one, no heartbeat can ever prove the reload, and `RELOAD_REQUIRED` stays forever.
+  Read from the code, not executed.
+- **`-Uninstall` leaves `.claude/runtime/contextbar.json` and `accounting/` behind.**
+
+Separately, `tests/medir_barra.py`, and therefore `-Doctor`, launches the renderer directly, without
+a shell. Measured by the refuter on 2026-09-24, PowerShell adds about 180 ms on top: 103 ms direct,
+149 ms under bash and 282 ms under PowerShell. That leaves about 370 ms with one message per draw,
+close to the 400 ms budget and out of sight.
+
 ## Installer defects
 
 ### The installer tests fail at random under load, and the python test counts drift

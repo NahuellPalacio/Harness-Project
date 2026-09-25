@@ -489,6 +489,54 @@ Vu6 va por el camino genérico de `seguridad.py`: `para_seguridad` traduce la sa
 `controlResults`, y de ahí entra al libro por `desde_regla`. La unidad de trabajo lleva
 `standards.ES0902.rules.Vu6` con aplicabilidad, resultado, superficies y evidencia por id.
 
+## Vu7 y el software de base que no entrega datos privados
+
+Vu7 —*"Todo el software de base debe estar configurado para no entregar datos privados"*— lo contesta
+`base-software-data-disclosure-configuration`, **componente por componente y superficie por
+superficie**. Es la primera regla `ALWAYS` de ES0902 con check propio: no hay señal que la apague y el
+check nunca dice `NOT_APPLICABLE`. Un registro vacío no quiere decir que no hay software de base: da
+`BASE_SOFTWARE_INVENTORY_UNRESOLVED`.
+
+```
+reglas/base-software-data-disclosure.json   del PROYECTO, uno por ambiente. Se instala VACIO
+```
+
+🔴 **Un registro por ambiente.** Lo que depende de la configuración efectiva lo sostiene solo evidencia
+del `environment` del registro, comparado en NFC: una configuración de `DEV` no prueba nada en `QA`.
+Con el ambiente nulo, toda superficie queda `BASE_SOFTWARE_CONFIGURATION_UNRESOLVED`. Lo único que no
+depende del ambiente es la clasificación de datos, el inventario y el alcance de superficies.
+
+🔴 **El inventario y el alcance salen de evidencia citada.** Un `BASE_SOFTWARE_INVENTORY` autoritativo
+nombra los componentes y un `DISCLOSURE_SURFACE_SCOPE` nombra las superficies de cada uno. Lo que
+falta deja el inventario o la cobertura sin resolver, y lo que sobra se evalúa igual e impide el
+`PASS`: estar afuera nunca hace `FAIL` por sí solo. El check no tiene ninguna lista de productos, de
+tipos de componente ni de superficies.
+
+🔴 **"Privado" lo dice el proyecto.** Una clase cuenta como `PRIVATE` o `NOT_PRIVATE` solo con una
+`DATA_CLASSIFICATION` autoritativa citada con ese mismo valor. Un `dni`, un `cuit` o una extensión no
+clasifican nada, y una superficie que nombra una clase sin resolver da
+`PRIVATE_DATA_CLASSIFICATION_UNRESOLVED`.
+
+🔴 **Lo desplegado, no la intención.** La fuga es `FAIL` con evidencia citada de configuración
+efectiva o de comportamiento del ambiente, una clase `PRIVATE` y un consumidor que no está
+establecido como autorizado. El default del repositorio, el código, el nombre de un endpoint, el
+banner de versión y la documentación del producto no sostienen nada: un `ENVIRONMENT_OVERRIDE` que
+establece la fuga le gana a un default que dice que no la hay, y `/actuator` no falla por su nombre.
+El mismo dato servido a un consumidor `AUTHORIZED`, con `AUTHORIZATION_CONTEXT` citado, cumple.
+
+🔴 **La prueba es segura o no cuenta.** Autorizada, del ambiente del registro y fuera de `PRD`, con
+fixtures sintéticos, no destructiva, sin tocar datos privados reales y sin registrar secretos. Si no,
+`BASE_SOFTWARE_DISCLOSURE_TEST_UNSAFE`, que no es `FAIL`. El módulo no ejecuta nada.
+
+🔴 **Vu7 no es Vu6, ni C3, ni Ve1.** Una respuesta de error del software de base puede ser evidencia
+de Vu6 y de Vu7, y cada una conserva su resultado: el check de Vu7 no lee ni escribe el de Vu6. La
+versión y el banner son de C3 y Ve1. Un veredicto de integridad del repositorio no es el de Vu7. Vu7 va
+por el camino genérico de `seguridad.py`: `para_seguridad` traduce la salida del check a
+`controlResults`, y de ahí entra al libro por `desde_regla`. La unidad de trabajo lleva
+`standards.ES0902.rules.Vu7` con resultado, ambiente, componentes y evidencia por id, sin
+aplicabilidad. La salida, la unidad y el libro llevan ids, clases y estados, nunca el texto de una
+evidencia ni una muestra del dato.
+
 ## La frontera que no se cruza
 
 El harness hace las capas 1 y 2; la 3 no es suya.
@@ -648,6 +696,9 @@ reglas/es0902-vu6-governance.md                el gobierno de Vu6, como vino
 reglas/es0902-vu6-user-facing-error-present-signal.md    la señal, como vino
 reglas/es0902-vu6-custom-error-message-compliance-check.md  el procedimiento, como vino
 reglas/custom-error-message-evidence.json      los escenarios de error de cada superficie. Del PROYECTO, vacío
+reglas/es0902-vu7-governance.md                el gobierno de Vu7, como vino
+reglas/es0902-vu7-base-software-data-disclosure-configuration-check.md  el procedimiento, como vino
+reglas/base-software-data-disclosure.json     el software de base de un ambiente. Del PROYECTO, vacío
 
 bin/orquestacion/seguridad.py    qué regla aplica, y con qué resultado
 bin/orquestacion/evaluacion.py   en qué estado está la evaluación, y quién puede moverla
@@ -674,8 +725,8 @@ cambiarle el tipo a un campo que alguien ya lee es romper a distancia.
 
 ## Lo que quedó anotado y no escondido
 
-1. **Diecisiete controles declarados y sin construir** —eran treinta y ocho hasta que O1, O2, C1, C2,
-   Vu1, Vu2, Vu3, Vu4, Vu5 y Vu6 instalaron los suyos—. Es el estado correcto de un harness que clasificó antes de construir, y es
+1. **Quince controles declarados y sin construir** —eran treinta y ocho hasta que O1, O2, C1, C2,
+   Vu1, Vu2, Vu3, Vu4, Vu5, Vu6 y Vu7 instalaron los suyos—. Es el estado correcto de un harness que clasificó antes de construir, y es
    también el hueco más grande que tuvo hasta hoy.
 2. **El mapeo de severidades no lo produce nadie todavía.** Sin él, toda corrida real de G2 sale
    `VULNERABILITY_RISK_MAPPING_UNRESOLVED`.

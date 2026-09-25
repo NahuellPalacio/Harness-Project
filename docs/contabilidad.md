@@ -32,6 +32,11 @@ dev-harness.py contabilidad GCBA-1234 --barra --sesion <id>
 Reingerir la misma fuente **no duplica nada**: cada evento derivado lleva un id determinista y el
 libro rechaza el que ya tiene.
 
+Lo que el proveedor reporta de la sesión entera —la plata y el tiempo del `cost-state`— es
+**acumulado**. Cada estado nuevo entra al libro como un evento nuevo, y el resumen toma el último
+de cada sesión y modelo: ni los suma, ni se queda con el primero. Ingerir una transcripción de a
+poco o de una vez da lo mismo.
+
 ## Dónde queda todo
 
 ```
@@ -227,6 +232,60 @@ modelo— y **el estado de aviso o de error no se cae nunca**.
 
 Los umbrales salen de `statusBar` en la política. Sin umbrales declarados el nivel es `UNRESOLVED` y
 el número se muestra igual: un verde inventado es peor que un signo de pregunta.
+
+### La Context Bar, en la terminal de Claude Code
+
+La Context Bar es la `statusLine` de Claude Code: una línea al pie de la terminal que se dibuja al
+empezar la sesión y después de cada mensaje. La registra `install.ps1` en `.claude/settings.json`
+cuando está el harness de `desarrollo`, y la dibuja `bin/desarrollo/contabilidad/statusline.py`.
+
+```
+HARNESS | m-grande | Ctx 122k | Tok 1.2M in / 34k out | USD 2.84 eq | 18m 03s | Budget 46%
+```
+
+> 🔴 **Es de la terminal, y nada más.** La extensión de VS Code no tiene una integración nativa con
+> la barra de estado: el harness no la provee. La documentación de `statusLine` no dice si la
+> extensión la muestra, y no se promete. Una barra en VS Code sería otro adaptador de presentación
+> que lea el Bloque 4, y no existe.
+
+Cada vez que Claude Code la invoca, la barra:
+1. lee de stdin el `session_id` y el `transcript_path`, y nada más;
+2. ingiere la transcripción con el adaptador del Bloque 4 al libro de la sesión,
+   `.claude/runtime/accounting/<session_id>/ledger.jsonl`. El libro deduplica por `eventId`, así que
+   dibujar dos veces no suma dos veces;
+3. dibuja lo que resume `barra.de`, en una línea;
+4. escribe su señal de vida, `.claude/runtime/contextbar.json`, que es lo que `harness` y la
+   bienvenida usan para decir si está activa. Lleva la huella que el comando registrado le pasa
+   como último argumento: la del comando que corrió, no la del `settings.json` de ahora;
+5. sale con 0 siempre. Si algo falla dibuja `HARNESS | sin datos del Bloque 4`, nunca una línea vacía.
+
+Lo que dibuja sale del Bloque 4 y de ningún otro lado:
+- **El costo y el contexto que Claude Code manda por stdin no se usan.** Serían una segunda fuente
+  contable.
+- **Un campo que el Bloque 4 no tiene no aparece.** Sin límite de ventana no hay porcentaje de
+  contexto, y sale la ventana en tokens. Sin política de presupuesto no hay plata ni `Budget`. Un
+  costo `COST_UNRESOLVED` no sale como `USD 0`: no sale.
+- **La tarea no aparece** mientras nadie declare una: la barra contabiliza la sesión.
+- **No dibuja texto de la transcripción.** Del libro entran el modelo, la tarea y el agente, y solo
+  si tienen forma de identificador y el catálogo de secretos no reconoce nada en ellos.
+
+La latencia se mide con `install.ps1 -Doctor`, sobre una transcripción de 5 MB. El umbral es 400 ms
+de p50 y no se mueve: si pasa, `-Doctor` lo dice.
+
+`harness` muestra si está activa en la sección "Runtime / Observabilidad":
+
+```
+Runtime / Observabilidad
+  Block 4 Accounting        ✓ ACTIVO
+  Context Bar               ✓ ACTIVA (última sesión: 6ea09e99)
+  Security Reporting        ✓ ACTIVO
+  Reinicio de Claude Code   no hace falta
+  Última sesión vista       6ea09e99 cargó la Context Bar (último dibujo: 2026-09-24T10:00:01)
+```
+
+Después de instalarla o de un `-Update` que la cambia, queda `REQUIERE REINICIO` hasta que se dibuje
+con la configuración nueva. La documentación no garantiza que Claude Code la recargue a mitad de
+sesión.
 
 ## Los adaptadores
 

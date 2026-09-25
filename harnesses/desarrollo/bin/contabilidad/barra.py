@@ -53,9 +53,17 @@ def de(libro, session_id, politica=None, task_id=""):
     fraccion_presupuesto = presupuesto.consumo_relativo(gastado, politica)
     umbrales = (politica or {}).get("statusBar") or {}
 
+    # El agente es el del ultimo evento de la sesion que dice cual. Sin ninguno, None: una
+    # barra no inventa quien trabajo.
+    agente = None
+    for evento in eventos_de_sesion:
+        if evento.get("agentId"):
+            agente = str(evento["agentId"])
+
     return {
         "sessionId": str(session_id or ""),
         "taskId": resumen["taskId"],
+        "agentId": agente,
         "model": foto.get("model"),
         "context": {
             "tokens": foto.get("contextTokens"),
