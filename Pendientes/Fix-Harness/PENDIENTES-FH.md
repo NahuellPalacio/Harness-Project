@@ -27,7 +27,7 @@ running order.
 | 13 | `ES0902.md` did not close as faithful | Predates all of this |
 | 14 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
 | 15 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
-| 16 | Neither Jira nor GitLab was ever called for real | Two adapters shipped verified against a fake transport; the first real call is what can still disprove the endpoints |
+| 16 | GitLab was never called for real, and Jira only once | The first real Jira call disproved the search probe (fixed in `sonda-de-jira-acotada`); GitLab and Jira's `mypermissions` are still unseen |
 | 17 | The Ficha de Proyecto is a supposition | The whole Block 2 rests on a concept nobody has written yet in a real Jira |
 | 18 | Three loadable .md files are in Spanish | ADR-0011 was broken by three files on the day it was written, and nothing measures it |
 | 19 | ES0902 declares 38 controls and none of them is built | The largest declared-not-built gap the harness has had. Whoever reads "ES0902 installed" can easily read "ES0902 complied with" |
@@ -747,50 +747,16 @@ wrong today: the three reviews that exist are declared and report `INSTALLED`.
 Fix. Add the third directory to the walk, with `.md` as its extension, the same way `policies` is
 already handled. It is the same loop; what it needs is the third pair.
 
-### The six managed sources have no accepted hash, so none of them can ever be current
+### `RETIRED` is built and no scenario refutes it
 
-Written on 2026-09-23, when `source-registry.json` shipped with `conocimiento-fuentes-y-frescura`.
-All six entries carry `sha256: null`, because the original PDFs are gitignored —
-`normativa/fuentes/` holds only its `LEEME.md` — and this machine does not have them. Freshness
-resolution is honest about it and fails closed: without an accepted hash there is nothing to
-compare an observed document against, so every source resolves to `FRESHNESS_UNVERIFIED` and none
-can ever reach `CURRENT`. `dev-harness.py fuentes` says so on every run, six times.
+Written on 2026-09-23, from the verdict of `conocimiento-fuentes-y-frescura`, and narrowed on
+2026-09-25. Back then four of the twelve states of `sources-state/1.1` had no scenario.
+`aceptar-fuentes-en-el-proyecto` covered three of them: `ACKNOWLEDGED_PENDING` (E-14), `NEW_SOURCE`
+(E-15) and `KNOWLEDGE_PROMOTION_INCOMPLETE` (E-10, E-12). `RETIRED` is still reachable in
+`frescura._estado_de`, and not one scenario names it.
 
-This is the designed behaviour, not a defect in the resolver. What is open is that nothing closes
-it: there is no command yet that accepts an original and writes its hash into the registry.
-
-Fix. It belongs to the decisions slice — `conocimiento decidir <source> aplicar` — which is what
-turns an observed original into an accepted one. Until that exists, a hash can only be written by
-hand, and writing it by hand without the file in front of you is exactly what the registry exists
-to prevent.
-
-### `normativa/` never reaches an installed project, so every source there declares a missing extract
-
-Written on 2026-09-23. `source-registry.json` points each source at `normativa/extractos/<id>.md`,
-and `normativa/fuentes/LEEME.md` states the folder is the factory's: it is never copied to a
-project and no hook, check or skill opens a PDF at runtime. So inside this repository the six
-extracts resolve, and in an installed project `registro_fuentes.ruta_de_extracto` returns `None`
-for all six, `validar` reports `SOURCE_EXTRACT_MISSING`, and freshness cannot establish the fourth
-condition for any of them.
-
-It is the same class as `controles/` never reaching an installed project, and it deserves the same
-decision: either the knowledge subsystem is factory-only for `norma` sources — and the installed
-harness says so instead of reporting six missing extracts — or the extracts travel with the
-install. Nothing chose yet.
-
-### Four source states and the postponement logic are built and no scenario refutes them
-
-Written on 2026-09-23, from the verdict of `conocimiento-fuentes-y-frescura`. The contract
-`sources-state/1.1` declares twelve states; the spec's scenarios exercise eight. `NEW_SOURCE`,
-`RETIRED`, `ACKNOWLEDGED_PENDING` and `KNOWLEDGE_PROMOTION_INCOMPLETE` are reachable in
-`frescura._estado_de` and `frescura._pospuesta` — which also decides that a postponement never
-covers an integrity alert or a regression — and not one scenario names them. The refuter flagged
-it as a free decision, not as non-compliance: it is code ahead of its scenarios.
-
-Fix. The decisions slice covers `ACKNOWLEDGED_PENDING` and the postponement rules; the promotion
-slice covers `KNOWLEDGE_PROMOTION_INCOMPLETE`. `NEW_SOURCE` and `RETIRED` need a scenario of their
-own wherever they land — they are one line each and they are the two that nothing else will pick
-up.
+Fix. Give `RETIRED` a scenario of its own, a one-liner: an entry with `status: RETIRED` resolves
+`RETIRED`, does not block, and cannot be accepted.
 
 ### The shared secret catalogue misses five credential forms, and its sample leaks twelve characters
 
@@ -1237,6 +1203,49 @@ copies of a secret detector drift: Vu1's already differs.
 Fix. Migrate both checks to the lib in one change for `harness-staff-engineer`, behaviour frozen
 except for the documented Vu1 E-39 and E-42 fixes, which need their own scenarios.
 
+### Vu6 and Vu7 let a cited item with an unreadable `outcome` pass
+
+Found by the refuter on ES0902 Vu8, first pass, on 2026-09-25. In Vu6 and Vu7, `_lectura` treats an
+item with `outcome` `UNAVAILABLE`, `INCONCLUSIVE` or `REFUTED` as not readable, so it sustains
+nothing. But only the runtime test class goes through the blocking step, and the illegible set only
+holds malformed or repeated items. So a cited effective-configuration item that says "there is a
+leak" with `outcome: REFUTED` is silently dropped, and the surface can still reach `PASS` on the rest
+of its evidence. That breaks the rule the six checks share: what cannot be read and names the subject
+prevents `PASS`, cited or not. Vu8 closed it for itself as E-51b.
+
+Fix. Same as Vu8: a cited item whose `_lectura` is false, and an uncited one that states a failure,
+join the illegible set of the surface. One scenario per check, and a `rojo visto` pass on each.
+
+### ES0902 Vu8 does not weigh an item on a mapping the registry does not have
+
+Found by the refuter on Vu8's final pass, on 2026-09-25, and left without a verdict. A legible,
+uncited server item naming a registered surface and a mapping that is not in the registry
+(`mappings: ["m-fantasma"]`, `ALLOWED` on `anular`) leaves the result at `PASS`. The same content
+as an unsafe runtime test gives `ROLE_PROFILE_TEST_UNSAFE`. Cause: the aggregate blocking step looks
+at tests on unregistered mappings, while the illegible set and the uncited check only look at
+registered ones. It is not the dangerous direction —degrading the evidence never enables a `PASS`
+the legible version lacked— but it is the same item weighing differently by class, which rule 8 was
+written to stop.
+
+Fix. Decide in a scenario what an evidenced mapping missing from the registry means. Probably it
+prevents `PASS` as uncovered, like a surface the signal names without an entry (E-53).
+
+### `controles/lib/evidencia.py` does not redact provider-prefixed tokens
+
+Found on 2026-09-25 while building ES0902 Vu8. `evidencia.es_secreto("glpat-" + <20 caracteres>)`
+returns `False`: the lib only knows keyword forms (`token=`, `password:`), `Bearer`/`Basic`, a
+URL with user and password, a JWT and a PEM header. A bare GitLab token (`glpat-…`), a GitHub one
+(`ghp_…`), an Anthropic key (`sk-ant-…`) or an AWS key id (`AKIA…`) put in a free text field —
+Vu8's `testIdentityRef`, Vu7's `deploymentBinding`, any `sourceRef` — reaches the check output,
+`rules.VuN` and the security ledger raw. Vu3 to Vu8 all share this rule of output, so all of them
+inherit the gap. Vu8's E-49 was written with a JWT, which the lib does redact, and says so in its
+fixture.
+
+Fix. Add the prefixed forms to `SECRETOS`, ideally from the same list as
+`comun/reglas/secretos.patrones.json` so the two catalogues stop diverging (see the entry above
+about that catalogue). It changes the shared output rule, so it is refuted alone, and every
+`E-nn` of Vu3 to Vu8 that asserts "nothing secret leaves" has to be re-run.
+
 ### A registered hook whose `run-hook.cmd` cannot be found exits 0 and does nothing
 
 Found on 2026-09-24 during the `rojo visto` pass of `hooks-con-shell-powershell` E-04. The command
@@ -1582,27 +1591,35 @@ Fix. Not code: one real ticket and one real ficha. Run
 and read what comes back. It also settles whether `/rest/api/3/search/jql` is the right endpoint
 there — see the item about Jira and GitLab never being called for real.
 
-### Neither Jira nor GitLab was ever called for real
+### GitLab was never called for real, and Jira only once
 
-0.16.0 shipped two integration adapters, five diagnostic states and a capability registry, and the
-whole thing was verified against an injected fake transport. That was deliberate — the suite must
-not depend on a network, a VPN or a token that expires on demand — but it means **not one line of
-this code has ever spoken to a GCBA server.**
+0.16.0 shipped two integration adapters, five diagnostic states and a capability registry, all
+verified against an injected fake transport. That was deliberate: the suite must not depend on a
+network, a VPN or a token that expires on demand.
 
-What a real run can still disprove, with the reason each one is a real risk:
+**Jira was called for real on 2026-09-25**, against `asi-jira-cloud.atlassian.net`, with a valid
+token and GET only. The run showed:
 
-- `GET /rest/api/3/search/jql` is the current Jira Cloud endpoint; `/rest/api/3/search` is the one
-  it replaced. The adapter falls back from the first to the second on 404/410, and the fallback is
-  tested — against the fake.
-- `GET /api/v4/personal_access_tokens/self` does not exist in older GitLab. There is a probe-based
-  fallback, tested the same way.
-- A corporate proxy or a TLS interception appliance in the middle turns everything into
+- **Disproved: the search fallback.** The probe's unbounded JQL (`order by created DESC`) gets a
+  400 from Jira Cloud, «consultas JQL ilimitadas», and `/rest/api/3/search` gets a 410. The
+  fallback never helped, and `jira.issue.read` was being inferred from the search.
+  `sonda-de-jira-acotada` fixed both: the probe uses a bounded JQL, there is no fallback, each
+  capability is probed on its own, and the reason is shown.
+- **Confirmed: these calls answer 200 with the same token.** `/myself`, `/search/jql` with a bounded
+  JQL (`created >= -30d`, `project = X` and `key = X`), `/attachment/meta` and `/issue/<KEY>`.
+- **Not asked in that run: `GET /rest/api/3/mypermissions?permissions=BROWSE_PROJECTS`.** It is what
+  enables `jira.issue.read` when the search brings back no issue. It is documented in the Cloud v3
+  API, but nobody has seen it answer yet.
+
+What a real run can still disprove:
+
+- **GitLab.** `GET /api/v4/personal_access_tokens/self` does not exist in older GitLab. There is a
+  probe-based fallback, tested only against the fake.
+- **A corporate proxy or a TLS interception appliance.** Either one turns everything into
   `CONNECTION_FAILED`, and the message will say "revisá la red o la VPN" without naming the proxy.
 
-Fix. Not code: run it. `python .claude/harness/bin/desarrollo/dev-harness.py setup` on a real
-project with a real Jira and a real GitLab of the organism, and read what comes back. Whatever it
-finds is the first thing 0.16.1 is for.
-
+Fix. Not code: run it. Run `dev-harness.py setup` against the organism's real GitLab, and `estado`
+against the real Jira after 0.24.0. Then read the `diagnostico` lines and confirm `mypermissions`.
 ### The `desarrollo` skills were never used on a real project
 
 They are verified against the norm, not against the work. That is the test that matters: the

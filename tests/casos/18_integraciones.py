@@ -9,12 +9,14 @@
 # propio servidor local.
 import io
 import json
+import re
 import os
 import socket
 import sys
 import tempfile
 import threading
 import urllib.error
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -477,38 +479,41 @@ def test_e17_lo_que_no_esta_disponible_no_descubre_nada(t):
 
 
 def test_e18_jira_declara_solo_lo_que_contesta(t):
-    """E-18 — con adjuntos en 403 quedan issue.read e issue.search, y nada mas."""
+    """E-18 — con adjuntos en 403 quedan issue.read e issue.search, y nada mas.
+
+    Desde docs/cambios/sonda-de-jira-acotada/spec.md, issue.read se sondea sola: sin issue en
+    la busqueda, por el permiso BROWSE_PROJECTS."""
     raiz = _proyecto()
     transporte = Transporte({
         "myself": (200, "{}"),
         "search/jql": (200, '{"issues":[]}'),
+        "mypermissions": (200, '{"permissions":{"BROWSE_PROJECTS":{"havePermission":true}}}'),
         "attachment/meta": (403, "no"),
     })
     resultado = _jira(raiz, transporte).estado()
     t.igual("E-18", ["jira.issue.read", "jira.issue.search"], resultado["capacidades"])
 
 
-def test_e18b_jira_cae_al_endpoint_viejo_de_busqueda(t):
-    """E-18b — si /search/jql no existe (410), se prueba /search y recien ahi se declara."""
+def test_e18b_sin_caida_al_endpoint_viejo(t):
+    """E-18b — pisado por docs/cambios/sonda-de-jira-acotada/spec.md (E-05).
+
+    La version anterior probaba que con 410 en /search/jql se caia a /search. En Jira Cloud
+    /search contesta 410 igual, y la caida tapaba el codigo verdadero. Ahora no se cae: la
+    busqueda queda deshabilitada con su diagnostico, aunque /search contestara 200."""
     raiz = _proyecto()
     transporte = Transporte({
         "myself": (200, "{}"),
         "search/jql": (410, "gone"),
         "/rest/api/3/search?": (200, '{"issues":[]}'),
+        "mypermissions": (200, '{"permissions":{"BROWSE_PROJECTS":{"havePermission":true}}}'),
         "attachment/meta": (200, '{"enabled":true}'),
     })
     resultado = _jira(raiz, transporte).estado()
-    t.igual("E-18b las tres", ["jira.attachment.read", "jira.issue.read", "jira.issue.search"],
+    t.igual("E-18b sin busqueda, aunque /search contestara", ["jira.attachment.read",
+                                                              "jira.issue.read"],
             resultado["capacidades"])
-
-    sin_busqueda = Transporte({
-        "myself": (200, "{}"),
-        "search/jql": (410, "gone"),
-        "/rest/api/3/search?": (403, "no"),
-        "attachment/meta": (200, "{}"),
-    })
-    t.igual("E-18b sin busqueda queda solo adjuntos", ["jira.attachment.read"],
-            _jira(raiz, sin_busqueda).estado()["capacidades"])
+    t.verdadero("E-18b y /search no se llamo",
+                not any("/rest/api/3/search?" in u for u, _, _ in transporte.llamadas))
 
 
 def test_e19_gitlab_deriva_de_los_scopes(t):
@@ -689,6 +694,7 @@ def test_e26b_el_setup_carga_lo_que_falta(t):
     raiz = _proyecto("# vacio\n")
     transporte = Transporte({
         "myself": (200, "{}"), "search/jql": (200, "{}"), "attachment/meta": (200, "{}"),
+        "mypermissions": (200, '{"permissions":{"BROWSE_PROJECTS":{"havePermission":true}}}'),
         "/user": (200, "{}"),
         "personal_access_tokens/self": (200, '{"scopes":["read_api"]}')})
     codigo, salida, error = _correr_cli(
@@ -736,3 +742,595 @@ def test_e28_config_ilegible_sale_con_2(t):
     t.contiene("E-28 nombra el archivo", "harness.integraciones.json", error)
     t.contiene("E-28 dice que hacer", "corre el setup", error)
     t.no_contiene("E-28 sin traza", "Traceback", error + salida)
+
+
+# -- docs/cambios/sonda-de-jira-acotada/spec.md --------------------------------
+#
+# El transporte de abajo contesta segun la JQL DECODIFICADA, no solo segun el camino: es lo
+# que la version anterior no podia distinguir, y por eso una JQL ilimitada pasaba verde contra
+# el falso y rompia contra Jira Cloud.
+from urllib.parse import parse_qs, urlparse                        # noqa: E402
+
+from integraciones import jira as jira_mod                          # noqa: E402
+
+JQL_ILIMITADA = "Aquí no se permiten las consultas JQL ilimitadas. Añade una restricción de búsqueda a tu consulta."
+PERMISO_SI = '{"permissions":{"BROWSE_PROJECTS":{"havePermission":true}}}'
+PERMISO_NO = '{"permissions":{"BROWSE_PROJECTS":{"havePermission":false}}}'
+ISSUE = '{"issues":[{"key":"APPLICDCON-1"}]}'
+
+
+class TransporteJql(object):
+    """Un Jira Cloud falso que decide por la JQL, como el real."""
+
+    def __init__(self, busqueda_acotada=(200, ISSUE), busqueda_ilimitada=None, viejo=(410, "gone"),
+                 issue=(200, '{"key":"APPLICDCON-1"}'), permisos=(200, PERMISO_SI),
+                 adjuntos=(200, '{"enabled":true}')):
+        self.busqueda_acotada = busqueda_acotada
+        self.busqueda_ilimitada = busqueda_ilimitada or (
+            400, json.dumps({"errorMessages": [JQL_ILIMITADA], "errors": {}}))
+        self.viejo, self.issue, self.permisos, self.adjuntos = viejo, issue, permisos, adjuntos
+        self.llamadas = []
+
+    def __call__(self, url, headers, timeout):
+        self.llamadas.append((url, headers, timeout))
+        partes = urlparse(url)
+        if partes.path.endswith("/myself"):
+            return (200, "{}")
+        if partes.path.endswith("/search/jql"):
+            jql = (parse_qs(partes.query).get("jql") or [""])[0]
+            # Criterio propio, no el del modulo: si el falso usara `jql_acotada`, una rotura
+            # ahi romperia tambien al falso y el test no la veria.
+            antes_del_orden = re.split(r"(?i)\border\s+by\b", jql.strip(), 1)[0]
+            return self.busqueda_acotada if antes_del_orden.strip() else self.busqueda_ilimitada
+        if partes.path.endswith("/rest/api/3/search"):
+            return self.viejo
+        if "/rest/api/3/issue/" in partes.path:
+            return self.issue
+        if partes.path.endswith("/mypermissions"):
+            return self.permisos
+        if partes.path.endswith("/attachment/meta"):
+            return self.adjuntos
+        return (404, "")
+
+    def jqls(self):
+        return [(parse_qs(urlparse(u).query).get("jql") or [""])[0]
+                for u, _, _ in self.llamadas if urlparse(u).path.endswith("/search/jql")]
+
+    def a_search_viejo(self):
+        return [u for u, _, _ in self.llamadas if urlparse(u).path.endswith("/rest/api/3/search")]
+
+
+def test_sonda_e01_la_consulta_de_la_sonda_esta_acotada(t):
+    """E-01 (sonda-de-jira-acotada) — created >= -30d, maxResults=1, y nada ilimitado."""
+    raiz = _proyecto()
+    transporte = TransporteJql()
+    _jira(raiz, transporte).estado()
+    jqls = transporte.jqls()
+    t.igual("E-01 (sonda) una sola busqueda", ["created >= -30d order by created DESC"], jqls)
+    t.verdadero("E-01 (sonda) ninguna ilimitada",
+                all(re.split(r"(?i)\border\s+by\b", j, 1)[0].strip() for j in jqls))
+    t.verdadero("E-01 (sonda) con maxResults=1",
+                any("maxResults=1" in u for u, _, _ in transporte.llamadas if "search/jql" in u))
+
+
+def test_sonda_e02_e03_busqueda_disponible(t):
+    """E-02 y E-03 (sonda-de-jira-acotada) — 400 a la ilimitada, 200 a la acotada; y vacia."""
+    raiz = _proyecto()
+    r = _jira(raiz, TransporteJql()).estado()
+    t.verdadero("E-02 (sonda) con 400 a la ilimitada y 200 a la acotada, hay busqueda",
+                "jira.issue.search" in r["capacidades"])
+    r = _jira(raiz, TransporteJql(busqueda_acotada=(200, '{"issues":[]}'))).estado()
+    t.verdadero("E-03 (sonda) issues vacio sigue siendo busqueda disponible",
+                "jira.issue.search" in r["capacidades"])
+
+
+def test_sonda_e04_un_400_no_cae_y_se_explica(t):
+    """E-04 (sonda-de-jira-acotada) — 400 en search/jql: sin /search, sin busqueda, con motivo."""
+    raiz = _proyecto()
+    transporte = TransporteJql(busqueda_acotada=(400, json.dumps(
+        {"errorMessages": [JQL_ILIMITADA]})))
+    r = _jira(raiz, transporte).estado()
+    t.verdadero("E-04 (sonda) sin busqueda", "jira.issue.search" not in r["capacidades"])
+    t.igual("E-04 (sonda) sin llamada a /search", [], transporte.a_search_viejo())
+    linea = " ".join(x for x in r["diagnostico"] if x.startswith("jira.issue.search"))
+    t.contiene("E-04 (sonda) el diagnostico dice que Jira rechazo la consulta",
+               "Jira Cloud rechazo la busqueda de prueba (400)", linea)
+    t.contiene("E-04 (sonda) con el errorMessages", "consultas JQL ilimitadas", linea)
+
+
+def test_sonda_e05_e06_sin_caida_con_404_o_410(t):
+    """E-05 y E-06 (sonda-de-jira-acotada) — ni la sonda ni buscar caen a /search."""
+    raiz = _proyecto()
+    for codigo in (404, 410):
+        transporte = TransporteJql(busqueda_acotada=(codigo, "no"), viejo=(200, ISSUE))
+        r = _jira(raiz, transporte).estado()
+        t.igual("E-05 (sonda) %d: sin llamada a /search" % codigo, [], transporte.a_search_viejo())
+        t.contiene("E-05 (sonda) %d: el diagnostico nombra el codigo" % codigo,
+                   "contesto %d" % codigo, " ".join(r["diagnostico"]))
+    transporte = TransporteJql(busqueda_acotada=(410, "gone"), viejo=(200, ISSUE))
+    respuesta = _jira(raiz, transporte).buscar('project = "X"')
+    t.igual("E-06 (sonda) buscar devuelve el 410", 410, respuesta.codigo)
+    t.igual("E-06 (sonda) sin llamada a /search", [], transporte.a_search_viejo())
+
+
+def test_sonda_e07_issue_read_por_el_issue(t):
+    """E-07 (sonda-de-jira-acotada) — con un issue en la busqueda, issue.read sale de /issue."""
+    raiz = _proyecto()
+    transporte = TransporteJql()
+    r = _jira(raiz, transporte).estado()
+    t.verdadero("E-07 (sonda) con 200 en /issue hay issue.read", "jira.issue.read" in r["capacidades"])
+    t.verdadero("E-07 (sonda) se pidio el issue de la busqueda",
+                any("/rest/api/3/issue/APPLICDCON-1" in u for u, _, _ in transporte.llamadas))
+    r = _jira(raiz, TransporteJql(issue=(403, "no"), permisos=(200, PERMISO_SI))).estado()
+    t.verdadero("E-07 (sonda) con 403 en /issue no hay issue.read aunque la busqueda ande",
+                "jira.issue.read" not in r["capacidades"] and "jira.issue.search" in r["capacidades"])
+
+
+def test_sonda_e08_e09_issue_read_con_la_busqueda_rota(t):
+    """E-08 y E-09 (sonda-de-jira-acotada) — la busqueda rota no se lleva puesta la lectura."""
+    raiz = _proyecto()
+    rota = (400, json.dumps({"errorMessages": ["otra politica"]}))
+    r = _jira(raiz, TransporteJql(busqueda_acotada=rota)).estado()
+    t.verdadero("E-08 (sonda) issue.read por el permiso", "jira.issue.read" in r["capacidades"])
+    t.verdadero("E-08 (sonda) y sin busqueda", "jira.issue.search" not in r["capacidades"])
+    for nombre, permisos in (("false", (200, PERMISO_NO)), ("403", (403, "no")),
+                             ("sin JSON", (200, "no es json"))):
+        r = _jira(raiz, TransporteJql(busqueda_acotada=rota, permisos=permisos)).estado()
+        t.verdadero("E-09 (sonda) permisos %s: sin issue.read" % nombre,
+                    "jira.issue.read" not in r["capacidades"])
+        t.verdadero("E-09 (sonda) permisos %s: con su linea de diagnostico" % nombre,
+                    any(x.startswith("jira.issue.read") for x in r["diagnostico"]))
+
+
+def test_sonda_e10_el_diagnostico_no_fuga(t):
+    """E-10 (sonda-de-jira-acotada) — token, credencial y usuario redactados; tope; sin JSON."""
+    import base64
+    raiz = _proyecto()
+    usuario = "alguien@buenosaires.gob.ar"
+    credencial = base64.b64encode(("%s:%s" % (usuario, TOKEN)).encode()).decode()
+    traidor = json.dumps({"errorMessages": [
+        "token %s rechazado" % TOKEN, "Basic %s no sirve" % credencial,
+        "el usuario %s no puede" % usuario, "x" * 900]})
+    r = _jira(raiz, TransporteJql(busqueda_acotada=(400, traidor))).estado()
+    todo = json.dumps(r, ensure_ascii=False)
+    for nombre, valor in (("token", TOKEN), ("credencial", credencial), ("usuario", usuario)):
+        t.no_contiene("E-10 (sonda) sin %s" % nombre, valor, todo)
+    linea = [x for x in r["diagnostico"] if x.startswith("jira.issue.search")][0]
+    t.contiene("E-10 (sonda) se ve que se redacto", "[redactado]", linea)
+    t.verdadero("E-10 (sonda) como mucho tres mensajes", "x" * 50 not in linea)
+    for m in linea.split(": ", 2)[-1].split(" | "):
+        t.verdadero("E-10 (sonda) ningun mensaje pasa de 200", len(m) <= 200)
+    # El tope de 200 con el mensaje largo ADENTRO de los tres primeros. Con el largo cuarto, el
+    # tope de tres lo descartaba antes de recortarlo y un tope de un millon pasaba verde (lo
+    # encontro el refutador).
+    largo = json.dumps({"errorMessages": ["y" * 900, "corto"]})
+    r = _jira(raiz, TransporteJql(busqueda_acotada=(400, largo))).estado()
+    linea = [x for x in r["diagnostico"] if x.startswith("jira.issue.search")][0]
+    mensajes = linea.split("(400): ", 1)[1].split(" | ")
+    t.igual("E-10 (sonda) el largo se recorta a 200 exactos", 200, len(mensajes[0]))
+    t.igual("E-10 (sonda) y el corto queda entero", "corto", mensajes[1])
+    r = _jira(raiz, TransporteJql(busqueda_acotada=(400, "<html>no</html>"))).estado()
+    linea = [x for x in r["diagnostico"] if x.startswith("jira.issue.search")][0]
+    t.verdadero("E-10 (sonda) sin JSON queda el texto fijo", linea.endswith("(400)."))
+    t.no_contiene("E-10 (sonda) y nada del cuerpo", "html", linea)
+
+
+def test_sonda_e11_estado_muestra_el_diagnostico(t):
+    """E-11 (sonda-de-jira-acotada) — `estado` dice por que falta cada capacidad."""
+    raiz = _proyecto("JIRA_TOKEN=%s\n" % TOKEN)
+    _lock(raiz)
+    _config(raiz, {"jira": {"enabled": True, "baseUrl": "https://ejemplo.atlassian.net",
+                            "usuario": "a@b.gob.ar"},
+                   "gitlab": {"enabled": False, "baseUrl": ""}})
+    transporte = TransporteJql(busqueda_acotada=(400, json.dumps(
+        {"errorMessages": [JQL_ILIMITADA]})), permisos=(200, PERMISO_NO))
+    codigo, salida, _ = _correr_cli(["estado", "--proyecto", raiz], transporte)
+    t.igual("E-11 (sonda) estado sale 0", 0, codigo)
+    t.contiene("E-11 (sonda) la busqueda, con su motivo",
+               "sin jira.issue.search: Jira Cloud rechazo la busqueda de prueba (400)", salida)
+    t.contiene("E-11 (sonda) la lectura, con el suyo",
+               "sin jira.issue.read: Jira Cloud dice que el token no tiene el permiso", salida)
+    # Abajo de Jira Cloud y antes de GitLab: la posicion es parte del escenario.
+    i_jira, i_gitlab = salida.find("Jira Cloud"), salida.find("GitLab")
+    posiciones = [salida.find("sin jira.issue.search"), salida.find("sin jira.issue.read")]
+    t.verdadero("E-11 (sonda) las lineas van abajo de Jira Cloud y antes de GitLab",
+                i_jira != -1 and i_gitlab != -1
+                and all(i_jira < p < i_gitlab for p in posiciones))
+
+
+def test_sonda_e12_buscar_no_sale_con_una_jql_ilimitada(t):
+    """E-12 (sonda-de-jira-acotada) — sin restriccion no hay llamada, hay JQL_UNBOUNDED."""
+    raiz = _proyecto()
+    for jql in ("order by created DESC", "", "   ", " ORDER BY key", None):
+        transporte = TransporteJql()
+        respuesta = _jira(raiz, transporte).buscar(jql)
+        t.igual("E-12 (sonda) %r: sin llamadas" % (jql,), [], transporte.llamadas)
+        t.igual("E-12 (sonda) %r: JQL_UNBOUNDED" % (jql,), "JQL_UNBOUNDED", respuesta.error)
+        t.verdadero("E-12 (sonda) %r: no es ok" % (jql,), not respuesta.ok)
+
+
+def test_sonda_e13_la_jql_de_la_ficha_esta_acotada(t):
+    """E-13 (sonda-de-jira-acotada) — la unica JQL que arma contexto/ tiene restriccion."""
+    from contexto import comun as c_comun
+    from contexto import proyecto as c_proyecto
+
+    class JiraQueAnota(object):
+        def __init__(self):
+            self.jqls = []
+
+        def buscar(self, jql, maximo=10):
+            self.jqls.append(jql)
+            return httpmin.Respuesta(200, '{"issues":[]}')
+
+    jira = JiraQueAnota()
+    acumulador = c_comun.Acumulador({"jira.issue.search": "ENABLED", "jira.issue.read": "ENABLED"})
+    c_proyecto.resolver(jira, {"project": {"key": "APPLICDCON", "name": "x"}}, {}, {}, acumulador)
+    t.igual("E-13 (sonda) contexto busco una vez", 1, len(jira.jqls))
+    t.verdadero("E-13 (sonda) y la JQL esta acotada",
+                all(re.split(r"(?i)\border\s+by\b", j, 1)[0].strip() for j in jira.jqls))
+    fuentes = [p for p in (BIN / "contexto").glob("*.py")]
+    llamadas = [p.name for p in fuentes if ".buscar(" in p.read_text(encoding="utf-8")]
+    t.igual("E-13 (sonda) proyecto.py es el unico de contexto/ que busca", ["proyecto.py"], llamadas)
+
+
+def test_sonda_e14_la_corrida_real(t):
+    """E-14 (sonda-de-jira-acotada) — la tabla del 25-09-2026: quedan las tres capacidades."""
+    raiz = _proyecto()
+    transporte = TransporteJql(busqueda_acotada=(200, ISSUE), viejo=(410, "gone"),
+                               issue=(200, "{}"), adjuntos=(200, "{}"))
+    r = _jira(raiz, transporte).estado()
+    t.igual("E-14 (sonda) AVAILABLE", "AVAILABLE", r["estado"])
+    t.igual("E-14 (sonda) las tres", ["jira.attachment.read", "jira.issue.read",
+                                      "jira.issue.search"], r["capacidades"])
+    t.igual("E-14 (sonda) sin diagnostico", [], r["diagnostico"])
+
+
+# -- docs/cambios/adjuntos-de-jira-redirigidos/spec.md -------------------------
+#
+# El transporte de bytes de abajo devuelve cabeceras, como el real, y anota los headers de
+# CADA pedido: el escenario central es que la credencial no llegue al segundo.
+CONTENT = "https://ejemplo.atlassian.net/rest/api/3/attachment/content/10001"
+FIRMADA = "https://api.media.atlassian.com/file/abc/binary?token=FIRMA-SECRETA-123&client=x"
+
+
+class BytesConCabeceras(object):
+    """Contesta por URL exacta: (codigo, bytes, cabeceras). Anota url y headers."""
+
+    def __init__(self, por_url, tres=True):
+        self.por_url = por_url
+        self.tres = tres
+        self.llamadas = []
+
+    def __call__(self, url, headers, timeout):
+        self.llamadas.append((url, dict(headers)))
+        codigo, datos, cabeceras = self.por_url.get(url, (404, b"", {}))
+        return (codigo, datos, cabeceras) if self.tres else (codigo, datos)
+
+
+def _jira_bytes(raiz, bytes_):
+    jira = _jira(raiz, Transporte({}))
+    jira.transporte_bytes = bytes_
+    return jira
+
+
+def _redirige(codigo=303, a=FIRMADA, datos=b"%PDF-1.7 original"):
+    return BytesConCabeceras({CONTENT: (codigo, b"", {"Location": a}),
+                              urllib.parse.urljoin(CONTENT, a): (200, datos, {})})
+
+
+def test_adj_e01_e02_sigue_un_salto_sin_credencial(t):
+    """E-01 y E-02 (adjuntos-de-jira-redirigidos) — 301/302/303/307/308 a https."""
+    raiz = _proyecto()
+    for codigo in (303, 301, 302, 307, 308):
+        bytes_ = _redirige(codigo)
+        destino = os.path.join(raiz, "bajado-%d.pdf" % codigo)
+        vuelta = _jira_bytes(raiz, bytes_).bajar_adjunto(CONTENT, destino)
+        ide = "E-01" if codigo == 303 else "E-02"
+        t.igual("%s (adjuntos) %d: ok" % (ide, codigo), True, vuelta[0])
+        t.igual("%s (adjuntos) %d: dos pedidos" % (ide, codigo), 2, len(bytes_.llamadas))
+        t.igual("%s (adjuntos) %d: el segundo va a la URL firmada" % (ide, codigo),
+                FIRMADA, bytes_.llamadas[1][0])
+        t.verdadero("%s (adjuntos) %d: el primero SI lleva Authorization" % (ide, codigo),
+                    "Authorization" in bytes_.llamadas[0][1])
+        t.verdadero("%s (adjuntos) %d: el segundo NO lleva Authorization" % (ide, codigo),
+                    "Authorization" not in bytes_.llamadas[1][1])
+        t.igual("%s (adjuntos) %d: el segundo no lleva ningun header" % (ide, codigo),
+                {}, bytes_.llamadas[1][1])
+        t.no_contiene("%s (adjuntos) %d: ni el token en ningun lado del segundo" % (ide, codigo),
+                      TOKEN, json.dumps(bytes_.llamadas[1]))
+        with open(destino, "rb") as f:
+            t.igual("%s (adjuntos) %d: el archivo son los bytes del segundo" % (ide, codigo),
+                    b"%PDF-1.7 original", f.read())
+
+
+def test_adj_e03_a_http_no(t):
+    """E-03 (adjuntos-de-jira-redirigidos) — 303 a http: ni segundo pedido ni archivo."""
+    raiz = _proyecto()
+    bytes_ = _redirige(a="http://api.media.atlassian.com/file/abc/binary?token=X")
+    destino = os.path.join(raiz, "no.pdf")
+    ok, _, motivo = _jira_bytes(raiz, bytes_).bajar_adjunto(CONTENT, destino)
+    t.igual("E-03 (adjuntos) no ok", False, ok)
+    t.igual("E-03 (adjuntos) un solo pedido", 1, len(bytes_.llamadas))
+    t.verdadero("E-03 (adjuntos) sin archivo", not os.path.exists(destino))
+    t.contiene("E-03 (adjuntos) el motivo dice que no es https", "no es https", motivo)
+
+
+def test_adj_e04_dos_saltos_no(t):
+    """E-04 (adjuntos-de-jira-redirigidos) — el segundo contesta otro 3xx: se corta ahi."""
+    raiz = _proyecto()
+    otra = "https://tercero.example/x"
+    bytes_ = BytesConCabeceras({CONTENT: (303, b"", {"Location": FIRMADA}),
+                                FIRMADA: (302, b"", {"Location": otra}),
+                                otra: (200, b"no deberia", {})})
+    destino = os.path.join(raiz, "no.pdf")
+    ok, _, motivo = _jira_bytes(raiz, bytes_).bajar_adjunto(CONTENT, destino)
+    t.igual("E-04 (adjuntos) no ok", False, ok)
+    t.igual("E-04 (adjuntos) sin tercer pedido", 2, len(bytes_.llamadas))
+    t.contiene("E-04 (adjuntos) el motivo dice mas de una", "mas de una redireccion", motivo)
+    t.verdadero("E-04 (adjuntos) sin archivo", not os.path.exists(destino))
+
+
+def test_adj_e05_sin_location_no(t):
+    """E-05 (adjuntos-de-jira-redirigidos) — sin Location, o de un transporte de dos."""
+    raiz = _proyecto()
+    for nombre, bytes_ in (("sin Location", BytesConCabeceras({CONTENT: (303, b"", {})})),
+                           ("transporte de dos", BytesConCabeceras(
+                               {CONTENT: (303, b"", {"Location": FIRMADA})}, tres=False))):
+        ok, _, motivo = _jira_bytes(raiz, bytes_).bajar_adjunto(
+            CONTENT, os.path.join(raiz, "no.pdf"))
+        t.igual("E-05 (adjuntos) %s: no ok" % nombre, False, ok)
+        t.igual("E-05 (adjuntos) %s: sin segundo pedido" % nombre, 1, len(bytes_.llamadas))
+        t.verdadero("E-05 (adjuntos) %s: con motivo" % nombre, bool(motivo))
+
+
+def test_adj_e06_location_relativo(t):
+    """E-06 (adjuntos-de-jira-redirigidos) — relativo: contra la URL original, sin credencial."""
+    raiz = _proyecto()
+    bytes_ = _redirige(a="/media/firmada?token=Y")
+    ok, _, _ = _jira_bytes(raiz, bytes_).bajar_adjunto(CONTENT, os.path.join(raiz, "r.pdf"))
+    t.igual("E-06 (adjuntos) ok", True, ok)
+    t.igual("E-06 (adjuntos) resuelto contra el host original",
+            "https://ejemplo.atlassian.net/media/firmada?token=Y", bytes_.llamadas[1][0])
+    t.verdadero("E-06 (adjuntos) sin Authorization", "Authorization" not in bytes_.llamadas[1][1])
+
+
+def test_adj_e07_la_api_sigue_sin_redirecciones(t):
+    """E-07 (adjuntos-de-jira-redirigidos) — pedir no sigue: una llamada y CONNECTION_FAILED."""
+    raiz = _proyecto()
+    transporte = Transporte({"myself": (302, "")})
+    resultado = _jira(raiz, transporte).validar_conexion()
+    t.igual("E-07 (adjuntos) CONNECTION_FAILED", "CONNECTION_FAILED", resultado.estado)
+    t.igual("E-07 (adjuntos) una sola llamada", 1, len(transporte.llamadas))
+    manejadores = [type(h) for h in httpmin._abridor().handlers]
+    t.verdadero("E-07 (adjuntos) el abridor real no redirige",
+                httpmin._SinRedirecciones in manejadores)
+
+
+def test_adj_e08_el_tope_vale_para_los_dos(t):
+    """E-08 (adjuntos-de-jira-redirigidos) — de mas, redirigido o directo: falla, nada escrito."""
+    raiz = _proyecto()
+    tope = httpmin.MAXIMO_ADJUNTO
+    grande = b"x" * (tope + 1)
+    for nombre, bytes_ in (("redirigido", _redirige(datos=grande)),
+                           ("directo", BytesConCabeceras({CONTENT: (200, grande, {})}))):
+        destino = os.path.join(raiz, "grande-%s.pdf" % nombre)
+        ok, _, motivo = _jira_bytes(raiz, bytes_).bajar_adjunto(CONTENT, destino)
+        t.igual("E-08 (adjuntos) %s: no ok" % nombre, False, ok)
+        t.verdadero("E-08 (adjuntos) %s: nada escrito, ni truncado" % nombre,
+                    not os.path.exists(destino))
+        t.contiene("E-08 (adjuntos) %s: el motivo es el tope" % nombre, "tope", motivo)
+    justo = BytesConCabeceras({CONTENT: (200, b"y" * tope, {})})
+    t.igual("E-08 (adjuntos) justo el tope si entra", True, _jira_bytes(raiz, justo).bajar_adjunto(
+        CONTENT, os.path.join(raiz, "justo.pdf"))[0])
+
+
+def test_adj_e09_el_motivo_llega_a_fuentes(t):
+    """E-09 (adjuntos-de-jira-redirigidos) — la evidencia de la fuente dice por que."""
+    from integraciones import fuentes as int_fuentes
+    from orquestacion import registro_fuentes as rf
+    raiz = _proyecto()
+    entrada = [e for e in rf.gestionadas(rf.cargar()) if e["id"] == "ES0902"][0]
+    adjunto = {"id": "10001", "filename": "ES0902 - Estandar de Seguridad V6.2.pdf",
+               "size": 10, "created": "2026-09-25T10:00:00.000+0000", "content": CONTENT}
+    bytes_ = _redirige(a="http://api.media.atlassian.com/file/abc/binary?token=FIRMA-SECRETA-123")
+    jira = _jira_bytes(raiz, bytes_)
+    obs = int_fuentes.observar([dict(entrada, sha256="a" * 64)], [adjunto], {}, jira.bajar_adjunto,
+                               os.path.join(raiz, "descargas"))
+    evidencia = " | ".join(obs[0]["evidence"])
+    t.contiene("E-09 (adjuntos) dice que no se pudo bajar, con el motivo",
+               "el documento no se pudo bajar: la redireccion apunta a una URL que no es https",
+               evidencia)
+    t.no_contiene("E-09 (adjuntos) sin la firma", "FIRMA-SECRETA-123", evidencia)
+
+
+def test_adj_e10_el_motivo_llega_al_contexto(t):
+    """E-10 (adjuntos-de-jira-redirigidos) — el faltante del adjunto dice por que."""
+    from contexto import comun as c_comun
+    from contexto import documentos as c_documentos
+    raiz = _proyecto()
+    bytes_ = BytesConCabeceras({CONTENT: (303, b"", {"Location": FIRMADA}),
+                                FIRMADA: (403, b"", {})})
+    jira = _jira_bytes(raiz, bytes_)
+    acumulador = c_comun.Acumulador({"jira.attachment.read": "ENABLED"})
+    campos = {"attachment": [{"id": "10001", "filename": "Ficha.pdf", "size": 10,
+                              "mimeType": "application/pdf", "created": "2026-09-25T10:00:00",
+                              "content": CONTENT}]}
+    from contexto import limpieza as c_limpieza
+    c_documentos.resolver(jira, {}, campos, c_limpieza.cargar_catalogo(), {}, acumulador,
+                          os.path.join(raiz, "docs"), ejecutar=lambda a: (1, ""))
+    faltas = json.dumps(acumulador.__dict__, ensure_ascii=False, default=str)
+    t.contiene("E-10 (adjuntos) dice que no se pudo bajar, con el motivo",
+               "no se pudo bajar el adjunto Ficha.pdf: el servidor contesto 403", faltas)
+    t.contiene("E-10 (adjuntos) con el host del salto", "api.media.atlassian.com", faltas)
+    t.no_contiene("E-10 (adjuntos) sin la firma", "FIRMA-SECRETA-123", faltas)
+
+
+def test_adj_e11_ninguna_url_firmada_en_los_motivos(t):
+    """E-11 (adjuntos-de-jira-redirigidos) — como mucho el host, nunca camino ni query."""
+    raiz = _proyecto()
+    casos = (
+        BytesConCabeceras({CONTENT: (303, b"", {"Location": FIRMADA}), FIRMADA: (500, b"", {})}),
+        BytesConCabeceras({CONTENT: (303, b"", {"Location": FIRMADA}),
+                           FIRMADA: (302, b"", {"Location": FIRMADA + "&otra=1"})}),
+        _redirige(a=FIRMADA.replace("https", "http")),
+        _redirige(datos=b"x" * (httpmin.MAXIMO_ADJUNTO + 1)),
+    )
+    for i, bytes_ in enumerate(casos):
+        _, _, motivo = _jira_bytes(raiz, bytes_).bajar_adjunto(CONTENT, os.path.join(raiz, "n"))
+        for pedazo in ("FIRMA-SECRETA-123", "/file/abc/binary", "token=", "?"):
+            t.no_contiene("E-11 (adjuntos) caso %d: sin %s" % (i, pedazo), pedazo, motivo)
+
+
+class _ManejadorDeBytes(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.startswith("/redirige"):
+            self.send_response(303)
+            self.send_header("Location", "https://api.media.atlassian.com/file/x?token=T")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        cuerpo = b"z" * (httpmin.MAXIMO_ADJUNTO + 10)
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(cuerpo)))
+        self.end_headers()
+        self.wfile.write(cuerpo)
+
+    def log_message(self, *a):
+        pass
+
+
+def test_adj_e12_el_transporte_real(t):
+    """E-12 (adjuntos-de-jira-redirigidos) — urllib no sigue el 303 y trae el Location; y lee
+    un byte de mas que el tope, para que el tope se pueda ver."""
+    viejo = httpmin.MAXIMO_ADJUNTO
+    httpmin.MAXIMO_ADJUNTO = 1000
+    servidor = HTTPServer(("127.0.0.1", 0), _ManejadorDeBytes)
+    hilo = threading.Thread(target=servidor.serve_forever)
+    hilo.daemon = True
+    hilo.start()
+    try:
+        base = "http://127.0.0.1:%d" % servidor.server_address[1]
+        codigo, datos, cabeceras = httpmin.transporte_bytes_urllib(base + "/redirige", {}, 5)
+        t.igual("E-12 (adjuntos) el 303 vuelve como 303", 303, codigo)
+        t.igual("E-12 (adjuntos) con su Location",
+                "https://api.media.atlassian.com/file/x?token=T", cabeceras.get("Location"))
+        codigo, datos, _ = httpmin.transporte_bytes_urllib(base + "/grande", {}, 5)
+        t.igual("E-12 (adjuntos) lee el tope mas uno", 1001, len(datos))
+        r = httpmin.pedir_bytes(base + "/grande", {}, 5)
+        t.igual("E-12 (adjuntos) y pedir_bytes lo rechaza por tope", "ATTACHMENT_TOO_LARGE", r.error)
+    finally:
+        httpmin.MAXIMO_ADJUNTO = viejo
+        servidor.shutdown()
+        servidor.server_close()
+
+
+
+class _ManejadorQueRedirige(BaseHTTPRequestHandler):
+    pedidos = []
+
+    def do_GET(self):
+        _ManejadorQueRedirige.pedidos.append(self.path)
+        if self.path.startswith("/api"):
+            self.send_response(302)
+            self.send_header("Location", "/otro-lado")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header("Content-Length", "2")
+        self.end_headers()
+        self.wfile.write(b"{}")
+
+    def log_message(self, *a):
+        pass
+
+
+def test_adj_e07b_transporte_urllib_no_sigue_de_verdad(t):
+    """E-07 (adjuntos-de-jira-redirigidos) — contra un servidor local que redirige: urllib
+    devuelve el 302 y el servidor ve UN pedido. El abridor sin redirecciones tiene que estar
+    en uso, no solo existir (lo pidio el refutador)."""
+    _ManejadorQueRedirige.pedidos = []
+    servidor = HTTPServer(("127.0.0.1", 0), _ManejadorQueRedirige)
+    hilo = threading.Thread(target=servidor.serve_forever)
+    hilo.daemon = True
+    hilo.start()
+    try:
+        base = "http://127.0.0.1:%d" % servidor.server_address[1]
+        r = httpmin.pedir(base + "/api/myself", {"Authorization": "Basic x"}, 5)
+        t.igual("E-07 (adjuntos) pedir devuelve el 302", 302, r.codigo)
+        t.igual("E-07 (adjuntos) y el servidor vio un solo pedido", ["/api/myself"],
+                _ManejadorQueRedirige.pedidos)
+    finally:
+        servidor.shutdown()
+        servidor.server_close()
+
+
+def test_adj_e11b_nada_escrito_lleva_la_url_firmada(t):
+    """E-11 (adjuntos-de-jira-redirigidos) — lo que se ESCRIBE: el estado de fuentes y la
+    salida del contexto, despues de una descarga fallida (lo pidio el refutador)."""
+    from contexto import comun as c_comun
+    from contexto import documentos as c_documentos
+    from contexto import limpieza as c_limpieza
+    from integraciones import fuentes as int_fuentes
+    from orquestacion import frescura as c_frescura
+    from orquestacion import registro_fuentes as rf
+    raiz = _proyecto()
+    fallas = (
+        BytesConCabeceras({CONTENT: (303, b"", {"Location": FIRMADA}), FIRMADA: (500, b"", {})}),
+        _redirige(a=FIRMADA.replace("https", "http")),
+        BytesConCabeceras({CONTENT: (303, b"", {"Location": FIRMADA}),
+                           FIRMADA: (302, b"", {"Location": FIRMADA + "&otra=1"})}),
+    )
+    entrada = [e for e in rf.gestionadas(rf.cargar()) if e["id"] == "ES0902"][0]
+    adjunto = {"id": "10001", "filename": "ES0902 - Estandar de Seguridad V6.2.pdf",
+               "size": 10, "created": "2026-09-25T10:00:00.000+0000", "content": CONTENT}
+    for i, bytes_ in enumerate(fallas):
+        jira = _jira_bytes(raiz, bytes_)
+        obs = int_fuentes.observar([dict(entrada, sha256="a" * 64)], [adjunto], {},
+                                   jira.bajar_adjunto, os.path.join(raiz, "d%d" % i))
+        doc = c_frescura.documento([dict(entrada, sha256="a" * 64)], obs, {"reachable": True})
+        ruta = os.path.join(raiz, "fuentes-%d.json" % i)
+        c_frescura.escribir(doc, ruta)
+        escrito = open(ruta, encoding="utf-8").read()
+        acumulador = c_comun.Acumulador({"jira.attachment.read": "ENABLED"})
+        campos = {"attachment": [{"id": "10001", "filename": "Ficha.pdf", "size": 10,
+                                  "mimeType": "application/pdf",
+                                  "created": "2026-09-25T10:00:00", "content": CONTENT}]}
+        salida = c_documentos.resolver(jira, {}, campos, c_limpieza.cargar_catalogo(), {},
+                                       acumulador, os.path.join(raiz, "c%d" % i),
+                                       ejecutar=lambda a: (1, ""))
+        contexto = json.dumps([salida, acumulador.__dict__], ensure_ascii=False, default=str)
+        for pedazo in ("FIRMA-SECRETA-123", "/file/abc/binary", "token="):
+            t.no_contiene("E-11 (adjuntos) estado de fuentes %d sin %s" % (i, pedazo), pedazo,
+                          escrito)
+            t.no_contiene("E-11 (adjuntos) contexto %d sin %s" % (i, pedazo), pedazo, contexto)
+
+
+def test_adj_e14_una_url_invalida_no_revienta_ni_fuga(t):
+    """E-14 (adjuntos-de-jira-redirigidos) — un Location con espacio o control: http.client
+    levanta InvalidURL con la URL en el mensaje. Tiene que volver como error, sin traceback y
+    sin la query (lo encontro el refutador)."""
+    raiz = _proyecto()
+    for rara in ("https://media.example/file x?token=SECRETO-DEL-SALTO",
+                 "https://media.example/file\x01?token=SECRETO-DEL-SALTO"):
+        bytes_ = BytesConCabeceras({CONTENT: (303, b"", {"Location": rara})})
+
+        def real_para_el_salto(url, headers, timeout, _b=bytes_):
+            if url == CONTENT:
+                return _b(url, headers, timeout)
+            return httpmin.transporte_bytes_urllib(url, headers, timeout)
+
+        jira = _jira_bytes(raiz, real_para_el_salto)
+        try:
+            ok, _, motivo = jira.bajar_adjunto(CONTENT, os.path.join(raiz, "rara.pdf"))
+            levanto = None
+        except Exception as e:                # noqa: BLE001
+            ok, motivo, levanto = False, "", repr(e)
+        t.igual("E-14 (adjuntos) %r: no levanta" % rara[-20:], None, levanto)
+        t.igual("E-14 (adjuntos) %r: no ok" % rara[-20:], False, ok)
+        t.no_contiene("E-14 (adjuntos) %r: sin el token en el motivo" % rara[-20:],
+                      "SECRETO-DEL-SALTO", motivo)
+        t.contiene("E-14 (adjuntos) %r: dice que la URL no es valida" % rara[-20:],
+                   "no es valida", motivo)
+    r = httpmin.pedir("https://ejemplo/api x?token=SECRETO", {}, 1)
+    t.igual("E-14 (adjuntos) pedir tampoco levanta con una URL invalida", "url", r.error)

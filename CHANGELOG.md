@@ -3,6 +3,51 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.24.0] — 2026-09-25
+
+**Un proyecto instalado ya puede tratar como vigente una fuente oficial, y el harness habla con un
+Jira Cloud real.** La primera corrida en un proyecto real, el 25-09-2026, mostró tres bugs:
+
+- ninguna fuente podía llegar a `CURRENT` fuera del repositorio;
+- la sonda de Jira usaba una JQL que Jira Cloud rechaza;
+- ningún adjunto se podía bajar, porque Jira redirige a una URL firmada.
+
+Los tres quedan cerrados, y ES0902 suma Vu8. Son cuatro cambios verificados, sin ningún escenario
+contradicho.
+
+### Agregado
+
+- **`fuentes --aceptar <ID>`** registra como vigente la identidad observada en esa corrida: versión,
+  SHA-256 del original, adjunto o archivo, canal (`jira:<FICHA>` o `archivo:<dir>`), quién y
+  cuándo. Queda en el estado del proyecto y sobrevive a `-Update`. Deja de valer si cambia el
+  documento
+- **`--regresion`** acepta una versión anterior a la de fábrica, a la vista: la fuente queda
+  `KNOWLEDGE_PROMOTION_INCOMPLETE` y el estado muestra qué versión esperaba el harness
+- **El reporte de seguridad muestra la procedencia** del conocimiento: SHA-256, canal, quién aceptó
+  y cuándo. Con la fuente aceptada, B-001 desaparece
+- **`estado` dice por qué falta cada capacidad de Jira**, con los `errorMessages` de un 400 ya
+  redactados
+- **ES0902 Vu8.** Los perfiles respetan los roles asignados
+
+### Corregido
+
+- **Los extractos normativos se instalan** en `.claude/harness/normativa/extractos/`. Sin ellos,
+  ninguna fuente podía llegar a `CURRENT` en un proyecto
+- **La sonda de Jira usa `created >= -30d order by created DESC`.** La anterior era ilimitada y
+  Jira Cloud la rechazaba con 400. `jira.issue.read` se sondea sola y no se deduce de la búsqueda
+- **Los adjuntos de Jira Cloud se bajan.** Se sigue un solo salto, solo a `https`, y sin ningún
+  header de credencial
+- **Un adjunto más grande que el tope ya no se guarda truncado.** Falla con su motivo
+- **Una URL inválida en una redirección ya no deja un traceback con la query firmada**
+
+### Cambiado
+
+- 🔴 **No hay caída a `/rest/api/3/search`.** En Jira Cloud contesta 410. Un Jira que solo tenga ese
+  endpoint deja de poder buscar, y `estado` lo dice
+- 🔴 **`buscar` no sale a la red con una JQL sin restricción**
+- **`bajar_adjunto` devuelve `(ok, bytes, motivo)`**, y el motivo llega a la evidencia. Nunca lleva
+  la URL firmada
+
 ## [0.23.0] — 2026-09-25
 
 **`dev-refutador` verifica de a una afirmación, y lo que un check o un veredicto idéntico ya

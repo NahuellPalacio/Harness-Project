@@ -64,6 +64,15 @@ ESTADOS = (CURRENT, NUEVA, HAY_ACTUALIZACION, CAMBIO_MISMA_VERSION, ALERTA_DE_IN
 # No bloquean: uno porque esta al dia y el otro porque ya no se sigue. Todo lo demas si.
 NO_BLOQUEAN = (CURRENT, RETIRADA)
 
+# Las dos decisiones que una persona puede tomar sobre una identidad observada.
+APLICAR = "APPLY"
+POSPONER = "POSTPONE"
+
+# Lo que NO se puede aceptar: no hay una identidad completa que aceptar, o lo que hay es una
+# alerta que se averigua, no se firma.
+NO_ACEPTABLES = (FALTA, SIN_VERSION, ALERTA_DE_INTEGRIDAD, CAMBIO_MISMA_VERSION, RETIRADA)
+_HASH = re.compile(r"^[0-9a-f]{64}$")
+
 # -- riesgo --------------------------------------------------------------------
 
 RIESGOS = ("LOW", "MEDIUM", "HIGH", "CRITICAL")
@@ -161,13 +170,21 @@ def resolver_una(entrada, observacion, canal_disponible=True, decision=None,
     sha_registro = entrada.get("sha256")
     sha_observado = obs.get("observed_sha256")
 
+    # 🔴 Una aceptacion vigente cambia CONTRA QUE se compara, no la regla. Version, hash,
+    # extracto y derivados se miran igual; la referencia deja de ser la de fabrica y pasa a
+    # ser la identidad que una persona acepto por el canal del proyecto.
+    aceptacion = aceptacion_vigente(entrada, obs, decision, evidencia) \
+        if canal_disponible else None
+    version_ref = aceptacion["version"] if aceptacion else version_registro
+    sha_ref = aceptacion["sha256"] if aceptacion else sha_registro
+
     uno = procedencia.impacto(sid, ind, desde)
     impacto = procedencia.aplanar(uno)
-    viejos = procedencia.desactualizados(sid, version_registro, ind, desde)
+    viejos = procedencia.desactualizados(sid, version_ref, ind, desde)
 
     estado = _estado_de(entrada, obs, canal_disponible, evidencia,
-                        version_registro, version_observada, sha_registro, sha_observado,
-                        viejos, desde)
+                        version_ref, version_observada, sha_ref, sha_observado,
+                        viejos, desde, aceptada=aceptacion is not None)
     estado = _pospuesta(estado, obs, decision, evidencia)
 
     salida = {
@@ -186,8 +203,118 @@ def resolver_una(entrada, observacion, canal_disponible=True, decision=None,
         "stale_derived": [v["asset"] for v in viejos],
         "blocking": estado not in NO_BLOQUEAN,
         "evidence": evidencia,
+        "acceptance": aceptacion,
     }
     return salida
+
+
+# -- la aceptacion -------------------------------------------------------------
+
+def _identidad(obs):
+    return {"version": obs.get("observed_version"), "sha256": obs.get("observed_sha256"),
+            "attachmentId": obs.get("attachmentId"), "filename": obs.get("filename")}
+
+
+def aceptacion_vigente(entrada, obs, decision, evidencia=None):
+    """La identidad aceptada, si la decision `APPLY` alcanza a lo observado AHORA. Si no, None.
+
+    🔴 Se compara contra lo observado, campo por campo. Otra version, otro hash, otro adjunto u
+    otro archivo, y la aceptacion no alcanza: aceptar una vez no es aceptar lo que venga despues.
+    Sin version o sin hash no hay identidad que aceptar, asi que una decision escrita a mano sin
+    ellos no vale nada.
+
+    🔴 Y no tapa a la fabrica. Si el registro trae un hash para esa misma version y el observado
+    es otro, eso es una alerta de integridad, y una aceptacion no la silencia. Una regresion vale
+    solo mientras la version de fabrica sea la que se piso al aceptarla.
+    """
+    evidencia = evidencia if evidencia is not None else []
+    d = decision if isinstance(decision, dict) else {}
+    if d.get("decision") != APLICAR:
+        return None
+    obs = obs or {}
+    ident = _identidad(obs)
+    motivo = None
+    if not obs.get("found"):
+        motivo = "la fuente no se observo"
+    elif not ident["version"] or not isinstance(ident["sha256"], str) \
+            or not _HASH.match(ident["sha256"]):
+        motivo = "lo observado no tiene version y hash"
+    elif d.get("observed_version") != ident["version"]:
+        motivo = "la version observada no es la aceptada"
+    elif d.get("observed_sha256") != ident["sha256"]:
+        motivo = "el hash observado no es el aceptado"
+    elif d.get("attachmentId") is not None and d.get("attachmentId") != ident["attachmentId"]:
+        motivo = "el adjunto observado no es el aceptado"
+    elif d.get("filename") is not None and d.get("filename") != ident["filename"]:
+        motivo = "el archivo observado no es el aceptado"
+    else:
+        fabrica = entrada.get("version")
+        orden = comparar(ident["version"], fabrica) if fabrica is not None else 1
+        if (entrada.get("sha256") and orden == 0 and entrada["sha256"] != ident["sha256"]):
+            motivo = "la fabrica declara otro hash para esta misma version"
+        elif orden is None:
+            motivo = "la version aceptada no se puede ordenar contra la de fabrica"
+        elif orden < 0 and d.get("overridesRegistryVersion") != fabrica:
+            motivo = ("es una version anterior a la de fabrica (%s) y la aceptacion no dice "
+                      "haber pisado esa" % fabrica)
+    if motivo:
+        evidencia.append("hay una aceptacion, y no alcanza a esta observacion: %s" % motivo)
+        return None
+    evidencia.append("aceptada por %s el %s desde %s" % (d.get("by"), d.get("at"),
+                                                          d.get("channel")))
+    return {"version": ident["version"], "sha256": ident["sha256"],
+            "attachmentId": d.get("attachmentId"), "filename": d.get("filename"),
+            "channel": d.get("channel"), "by": d.get("by"), "at": d.get("at"),
+            "registryVersion": entrada.get("version"),
+            "overridesRegistryVersion": d.get("overridesRegistryVersion")}
+
+
+def aceptable(entrada, obs, canal_disponible, regresion=False):
+    """(None, None) si esta observacion se puede aceptar, o (codigo, motivo) si no.
+
+    Solo se acepta una identidad completa: encontrada, con version y con hash. Lo demas es un
+    hueco, y aceptar un hueco es declarar vigente lo que nadie miro.
+    """
+    obs = obs or {}
+    if not canal_disponible:
+        return SIN_VERIFICAR, "no hay canal: no hay nada observado que aceptar"
+    if entrada.get("status") == registro_fuentes.RETIRADA:
+        return RETIRADA, "la fuente esta retirada"
+    if not obs.get("found"):
+        return FALTA, "la fuente no aparece en el canal"
+    if not obs.get("observed_version"):
+        return SIN_VERSION, "no se pudo resolver la version observada"
+    sha = obs.get("observed_sha256")
+    if not isinstance(sha, str) or not _HASH.match(sha):
+        return SIN_VERIFICAR, "no hay hash del original observado"
+    fabrica = entrada.get("version")
+    orden = comparar(obs["observed_version"], fabrica) if fabrica is not None else 1
+    if orden is None:
+        return SIN_VERSION, "la version observada no se puede ordenar contra la de fabrica"
+    if orden == 0 and entrada.get("sha256") and entrada["sha256"] != sha:
+        return ALERTA_DE_INTEGRIDAD, ("la fabrica declara otro hash para la version %s: eso se "
+                                      "averigua, no se acepta" % fabrica)
+    if orden < 0 and not regresion:
+        return REGRESION, ("la version observada (%s) es anterior a la de fabrica (%s). Si el "
+                           "canal oficial del proyecto la declara vigente, aceptala con "
+                           "--regresion" % (obs["observed_version"], fabrica))
+    return None, None
+
+
+def decision_de_aceptacion(entrada, obs, canal, por, cuando, regresion=False):
+    """La decision `APPLY` que registra la identidad observada, con quien, cuando y el canal."""
+    fabrica = entrada.get("version")
+    orden = comparar(obs.get("observed_version"), fabrica) if fabrica is not None else 1
+    return {"decision": APLICAR,
+            "observed_version": obs.get("observed_version"),
+            "observed_sha256": obs.get("observed_sha256"),
+            "attachmentId": obs.get("attachmentId"),
+            "filename": obs.get("filename"),
+            "channel": canal,
+            "by": por,
+            "at": cuando,
+            "overridesRegistryVersion": fabrica if (regresion and orden is not None
+                                                    and orden < 0) else None}
 
 
 def _pospuesta(estado, obs, decision, evidencia):
@@ -203,7 +330,7 @@ def _pospuesta(estado, obs, decision, evidencia):
     """
     if estado not in (HAY_ACTUALIZACION, NUEVA):
         return estado
-    if not decision or decision.get("decision") != "POSTPONE":
+    if not decision or decision.get("decision") != POSPONER:
         return estado
     if (decision.get("observed_version") != obs.get("observed_version")
             or decision.get("observed_sha256") != obs.get("observed_sha256")):
@@ -216,8 +343,13 @@ def _pospuesta(estado, obs, decision, evidencia):
 
 
 def _estado_de(entrada, obs, canal_disponible, evidencia, version_registro,
-               version_observada, sha_registro, sha_observado, viejos, desde):
-    """El arbol de decision, en el orden en que se mira. Cada rama deja su motivo escrito."""
+               version_observada, sha_registro, sha_observado, viejos, desde, aceptada=False):
+    """El arbol de decision, en el orden en que se mira. Cada rama deja su motivo escrito.
+
+    `version_registro` y `sha_registro` son la REFERENCIA: la de fabrica, o la aceptada si hay
+    una aceptacion vigente. Con una aceptacion, que el extracto o un derivado declaren otra
+    version no es una actualizacion disponible: es conocimiento que falta promover.
+    """
     if entrada.get("status") == registro_fuentes.RETIRADA:
         evidencia.append("la fuente esta retirada: no se sigue")
         return RETIRADA
@@ -277,12 +409,12 @@ def _estado_de(entrada, obs, canal_disponible, evidencia, version_registro,
     if comparar(version_extracto, version_registro) != 0:
         evidencia.append("el extracto activo salio de la version %s y la aceptada es %s"
                          % (version_extracto, version_registro))
-        return HAY_ACTUALIZACION
+        return PROMOCION_INCOMPLETA if aceptada else HAY_ACTUALIZACION
 
     if viejos:
         evidencia.append("hay %d derivados declarando otra version: %s"
                          % (len(viejos), ", ".join(v["asset"] for v in viejos[:3])))
-        return HAY_ACTUALIZACION
+        return PROMOCION_INCOMPLETA if aceptada else HAY_ACTUALIZACION
 
     evidencia.append("version, hash, extracto activo y derivados coinciden con lo aceptado")
     return CURRENT

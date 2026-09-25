@@ -48,6 +48,10 @@
         },
         "reason": {
           "type": "string"
+        },
+        "channel": {
+          "description": "El canal de esta corrida, con la forma que guarda una aceptacion: jira:<FICHA> o archivo:<dir>.",
+          "type": "string"
         }
       }
     },
@@ -187,6 +191,24 @@
             "items": {
               "type": "string"
             }
+          },
+
+          "acceptance": {
+            "description": "La aceptacion vigente del proyecto, si hay una que alcance a lo observado. Es la referencia contra la que se compara en vez de la de fabrica; registry_version sigue diciendo que esperaba la fabrica.",
+            "type": ["object", "null"],
+            "required": ["version", "sha256", "channel", "by", "at", "registryVersion"],
+            "additionalProperties": false,
+            "properties": {
+              "version": { "type": "string" },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "attachmentId": { "type": ["string", "null"] },
+              "filename": { "type": ["string", "null"] },
+              "channel": { "type": ["string", "null"] },
+              "by": { "type": ["string", "null"] },
+              "at": { "type": ["string", "null"] },
+              "registryVersion": { "type": ["string", "null"] },
+              "overridesRegistryVersion": { "type": ["string", "null"] }
+            }
           }
         }
       }
@@ -228,6 +250,26 @@
               "string",
               "null"
             ]
+          },
+          "attachmentId": {
+            "description": "APPLY: el adjunto aceptado. Otro adjunto invalida la aceptacion.",
+            "type": ["string", "null"]
+          },
+          "filename": {
+            "description": "APPLY: el archivo aceptado. Otro archivo invalida la aceptacion.",
+            "type": ["string", "null"]
+          },
+          "channel": {
+            "description": "APPLY: por donde llego el original aceptado. jira:<FICHA> o archivo:<dir>.",
+            "type": ["string", "null"]
+          },
+          "by": {
+            "description": "APPLY: quien acepto. Sin quien, no hay aceptacion.",
+            "type": ["string", "null"]
+          },
+          "overridesRegistryVersion": {
+            "description": "APPLY de una regresion: la version de fabrica que se piso. Si la fabrica cambia, la aceptacion deja de valer.",
+            "type": ["string", "null"]
           }
         }
       }

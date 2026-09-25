@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.24.0](0.24.0.md) | 25-09-2026 | Un proyecto instalado acepta sus fuentes oficiales; la sonda de Jira acotada; los adjuntos de Jira Cloud se bajan; ES0902 Vu8 |
 | [0.23.0](0.23.0.md) | 25-09-2026 | La refutación atómica: una regla, un alcance, un veredicto; checks y caché exacta antes que el modelo |
 | [0.22.0](0.22.0.md) | 24-09-2026 | La Context Bar existe y el harness sabe si está activa; ES0902 Vu7 |
 | [0.21.0](0.21.0.md) | 24-09-2026 | Los hooks corren en Windows sin Git Bash; la bienvenida y el estado del harness en cada sesión; ES0902 Vu4, Vu5 y Vu6 |

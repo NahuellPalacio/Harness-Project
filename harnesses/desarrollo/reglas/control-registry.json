@@ -936,6 +936,32 @@
         "section": "6",
         "rule": "Vu7"
       }
+    },
+    {
+      "id": "user-profile-role-enforcement-required",
+      "type": "POLICY",
+      "rule": "Vu8",
+      "file": "controles/policies/user-profile-role-enforcement-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu8"
+      }
+    },
+    {
+      "id": "role-profile-consistency",
+      "type": "CHECK",
+      "rule": "Vu8",
+      "file": "controles/checks/role-profile-consistency.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu8"
+      }
     }
   ]
 }

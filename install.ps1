@@ -1690,6 +1690,10 @@ function Invoke-Instalar {
     foreach ($x in (Copy-Arbol (Join-Path $origenComun 'bin')    (Join-Path $dirHarness 'bin')))    { [void]$instalados.Add($x) }
     foreach ($x in (Copy-Arbol (Join-Path $origenComun 'skills') (Join-Path $dirClaude 'skills')))  { [void]$instalados.Add($x) }
     foreach ($x in (Copy-Arbol (Join-Path $origenComun 'agents') (Join-Path $dirClaude 'agents')))  { [void]$instalados.Add($x) }
+    # Los extractos normativos: el conocimiento activo de cada fuente, con su version en el
+    # encabezado. Sin ellos, en un proyecto ninguna fuente podia llegar a CURRENT: la cuarta
+    # condicion de frescura mira ese encabezado. Los PDF no: siguen siendo de la fabrica.
+    foreach ($x in (Copy-Arbol (Join-Path $script:Repo 'normativa\extractos') (Join-Path $dirHarness 'normativa\extractos'))) { [void]$instalados.Add($x) }
 
     # cada harness
     foreach ($id in $Ids) {

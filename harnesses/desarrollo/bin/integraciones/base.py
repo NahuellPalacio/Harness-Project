@@ -14,8 +14,15 @@ token nuevo, revisar la red o la VPN, o pedir permisos.
 respuesta. Un servidor puede devolver la credencial que recibio adentro de un mensaje
 de error, y ese texto terminaria en la consola, en el registro y en el contexto del
 modelo. Se pierde detalle de diagnostico; se gana que no haya ruta de fuga.
+
+La unica excepcion es un 400, que es cuando el cuerpo ES la explicacion: Jira Cloud rechaza
+ahi una JQL ilimitada, y sin su `errorMessages` el diagnostico no dice nada. Se leen solo esos
+strings, hasta tres, y cada uno pasa por `mensajes_de_rechazo`: se reemplazan el token exacto,
+la credencial y el usuario configurados, despues el catalogo de secretos del Bloque 2, y se
+recorta a 200 caracteres. Ver docs/cambios/sonda-de-jira-acotada/spec.md.
 """
 import datetime
+import re
 
 from . import http
 
@@ -37,6 +44,63 @@ _MOTIVOS_DE_RED = {
 
 def ahora():
     return datetime.datetime.now().replace(microsecond=0).isoformat()
+
+
+TOPE_DE_MENSAJE = 200
+MENSAJES_COMO_MAXIMO = 3
+REDACTADO = "[redactado]"
+
+
+def mensajes_de_rechazo(respuesta, secretos=()):
+    """Los `errorMessages` de un 400, sin nada de lo que el harness mando. Lista, quiza vacia.
+
+    🔴 Primero lo que se sabe exacto -el token, la credencial, el usuario- y despues el
+    catalogo, que reconoce formas y no valores. Al reves, un token que el catalogo no reconoce
+    pasaria entero.
+    """
+    if getattr(respuesta, "codigo", None) != 400:
+        return []
+    datos = respuesta.datos()
+    crudos = datos.get("errorMessages") if isinstance(datos, dict) else None
+    if not isinstance(crudos, list):
+        return []
+    exactos = sorted((s for s in secretos if isinstance(s, str) and len(s) >= 4),
+                     key=len, reverse=True)
+    catalogo = None
+    try:
+        from contexto import limpieza
+        catalogo = limpieza.cargar_catalogo()
+    except Exception:                     # noqa: BLE001 - sin catalogo, sin mensaje
+        return []
+    if catalogo is None:
+        return []
+    salida = []
+    for texto in [m for m in crudos if isinstance(m, str)][:MENSAJES_COMO_MAXIMO]:
+        for secreto in exactos:
+            texto = texto.replace(secreto, REDACTADO)
+        texto = limpieza.redactar_arbol(texto, catalogo, "$")[0]
+        texto = re.sub(r"\s+", " ", texto).strip()[:TOPE_DE_MENSAJE]
+        if texto:
+            salida.append(texto)
+    return salida
+
+
+def diagnostico_de(capacidad, que, respuesta, etiqueta, secretos=()):
+    """Por que una capacidad no quedo habilitada, en una linea. El texto es fijo salvo el 400."""
+    if respuesta.error:
+        return "%s: %s %s." % (capacidad, que, _MOTIVOS_DE_RED.get(
+            respuesta.error, "no se pudo hacer (%s)" % respuesta.error))
+    if respuesta.codigo == 400:
+        linea = "%s: %s rechazo %s (400)" % (capacidad, etiqueta, que)
+        mensajes = mensajes_de_rechazo(respuesta, secretos)
+        return linea + (": " + " | ".join(mensajes) if mensajes else ".")
+    if respuesta.codigo in (401, 403):
+        return ("%s: %s contesto %d a %s: el token no tiene permiso para esto."
+                % (capacidad, etiqueta, respuesta.codigo, que))
+    if respuesta.codigo in (404, 410):
+        return ("%s: %s contesto %d a %s: el endpoint no existe en esta instancia."
+                % (capacidad, etiqueta, respuesta.codigo, que))
+    return "%s: %s contesto %d a %s." % (capacidad, etiqueta, respuesta.codigo, que)
 
 
 class Resultado(object):
@@ -112,6 +176,10 @@ class Integracion(object):
     def token(self):
         return self.almacen.get(self.clave_token)
 
+    def secretos(self):
+        """Lo que el harness manda y no puede volver en un diagnostico."""
+        return [s for s in (self.token(),) if s]
+
     def esta_configurada(self):
         return self.habilitada and not self.campos_faltantes()
 
@@ -154,6 +222,7 @@ class Integracion(object):
         """Valida y, solo si esta disponible, descubre. Devuelve un dict serializable."""
         resultado = self.validar_conexion()
         capacidades = []
+        self.diagnostico = []
         if resultado.estado == AVAILABLE:
             capacidades = self.descubrir_capacidades()
         return {
@@ -161,4 +230,6 @@ class Integracion(object):
             "motivo": resultado.motivo,
             "verificado_en": ahora(),
             "capacidades": sorted(capacidades),
+            # Por que cada capacidad que falta no quedo habilitada. Vacio es que no falta ninguna.
+            "diagnostico": list(getattr(self, "diagnostico", None) or []),
         }

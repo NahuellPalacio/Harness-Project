@@ -399,14 +399,23 @@ def desde_frescura(doc, task_id, alcance, cuando=None, agente=None):
     if not isinstance(bloquea, bool):
         bloquea = estado not in frescura.NO_BLOQUEAN
     marca = d.get("verified_at") if isinstance(d.get("verified_at"), str) else None
+    # La procedencia de una aceptacion del proyecto, si la fuente la tiene. La version que vale
+    # es la aceptada; la de fabrica va aparte, para que se vea que esperaba el registro.
+    acept = entrada.get("acceptance") if isinstance(entrada.get("acceptance"), dict) else {}
+    if acept.get("version"):
+        version = acept["version"]
+    procedencia_ = {"sha256": acept.get("sha256"), "channel": acept.get("channel"),
+                    "acceptedBy": acept.get("by"), "acceptedAt": acept.get("at"),
+                    "registryVersion": entrada.get("registry_version")}
+    procedencia_ = {k: (v if isinstance(v, str) else None) for k, v in procedencia_.items()}
     return [_evento("KNOWLEDGE_STATE", {"verified_at": marca, "entry": entrada},
                     "desde_frescura", task_id, alcance, cuando or marca, agente,
                     estado or "UNRESOLVED",
                     normativa=_normativa(version=version if isinstance(version, str) else None),
-                    detalles={"version": version if isinstance(version, str) else None,
-                              "freshness": estado,
-                              "sourceIntegrity": integridad_de_fuente(estado),
-                              "verifiedAt": marca},
+                    detalles=dict({"version": version if isinstance(version, str) else None,
+                                   "freshness": estado,
+                                   "sourceIntegrity": integridad_de_fuente(estado),
+                                   "verifiedAt": marca}, **procedencia_),
                     blocking=bool(bloquea) or estado is None)]
 
 

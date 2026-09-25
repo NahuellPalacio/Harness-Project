@@ -170,7 +170,7 @@ def test_e04_o1_no_declara_ni_instala_ningun_check(t):
     # referencia -`{"rule": REGLA}`-, asi que buscar `"rule": "O1"` en el texto no encuentra un
     # check de O1 escrito como se escriben todos los demas.
     archivos = sorted((CONTROLES / "checks").glob("*.py"))
-    t.igual("E-04 hay veintitres checks para barrer", 23, len(archivos))
+    t.igual("E-04 hay veinticuatro checks para barrer", 24, len(archivos))
     por_archivo = {c["file"]: c for c in REGISTRO["controls"]}
     for archivo in archivos:
         literales = {n.value for n in ast.walk(ast.parse(archivo.read_text(encoding="utf-8")))
@@ -766,7 +766,7 @@ def test_e27_no_se_crea_ningun_agente_ni_skill(t):
 def test_e28_los_dos_controles_quedan_instalados(t):
     """E-28 — 40 en el registro, sin archivos sueltos, y el hueco de O1 desaparece."""
     reporte = c_controles.reporte()
-    t.igual("E-28 son cincuenta y cuatro controles", 54, reporte["summary"]["declaredControls"])
+    t.igual("E-28 son cincuenta y seis controles", 56, reporte["summary"]["declaredControls"])
     t.verdadero("E-28 el registro es valido", reporte["result"]["registryValid"])
     t.verdadero("E-28 y no hay archivos sin declarar", reporte["result"]["filesystemClean"])
     t.igual("E-28 ningun archivo suelto", [], reporte["undeclared"])
@@ -778,7 +778,7 @@ def test_e28_los_dos_controles_quedan_instalados(t):
     faltan = {f["id"] for f in seguridad.controles_no_instalados(resolucion)}
     for control in (POLICY, REVIEW):
         t.verdadero("E-28 %s ya no figura como hueco" % control, control not in faltan)
-    t.igual("E-28 quedan quince huecos", 15,
+    t.igual("E-28 quedan trece huecos", 13,
             len(seguridad.controles_no_instalados(resolucion)))
 
     # La tupla normativa de los dos es la de O1, con su seccion.

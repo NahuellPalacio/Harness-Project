@@ -184,5 +184,6 @@ def hallazgos(doc=None, desde=None):
                           % (f.get("id"), f.get("extract")))
         elif estado == SIN_HASH:
             salida.append("la fuente %s no tiene hash aceptado: su integridad no se puede "
-                          "verificar hasta que alguien acepte el original" % f.get("id"))
+                          "verificar hasta que alguien acepte el original (fuentes "
+                          "--archivo <dir> --aceptar %s)" % (f.get("id"), f.get("id")))
     return salida

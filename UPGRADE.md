@@ -23,6 +23,29 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.23.0 → 0.24.0
+
+`-Update` alcanza, y trae los extractos normativos al proyecto. Hay un paso manual por proyecto:
+**aceptar las fuentes oficiales.** Ninguna se acepta sola, porque aceptarla es una decisión de la
+persona responsable, y queda registrado con su nombre.
+
+```powershell
+# con los PDF que entregó el canal oficial del proyecto, en una carpeta:
+python .claude\harness\bin\desarrollo\dev-harness.py fuentes --archivo <carpeta> --aceptar ES0902
+# o directo desde la Ficha de Proyecto en Jira:
+python .claude\harness\bin\desarrollo\dev-harness.py fuentes <TICKET> --aceptar ES0902
+```
+
+- **Quién acepta** sale de `usuario` en `harness.config.json`, o de `--por <persona>`.
+- **Solo se acepta lo que coincide con lo vigente.** Si el canal del proyecto trae una versión
+  anterior a la del harness, la fuente queda en `VERSION_REGRESSION`, y así tiene que quedar hasta
+  que llegue la vigente. `--regresion` existe para el caso en que el proyecto decida lo contrario,
+  y queda a la vista.
+- **Después, el reporte de seguridad:** `seguridad <TAREA> --conocimiento --reporte`. Con ES0902
+  aceptada ya no aparece B-001.
+
+Con Jira Cloud, después del `-Update` conviene correr `estado`: dice por qué falta cada capacidad.
+
 ## 0.22.0 → 0.23.0
 
 `-Update` alcanza. Lo único que cambia de forma es la salida de `dev-refutador`: ya no es una tabla

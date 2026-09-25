@@ -450,6 +450,8 @@ def mostrar(consola, documento, proyecto, rutas):
         consola.linea("%s%s" % (clase.etiqueta.ljust(ancho), datos["estado"]))
         if datos["motivo"]:
             consola.linea("  " + datos["motivo"])
+        for linea in datos.get("diagnostico") or []:
+            consola.linea("  sin " + linea)
     consola.linea("")
     consola.linea("Capacidades")
     consola.linea("-" * 48)
@@ -488,8 +490,7 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
         # tiene que arreglar antes de seguir, y por eso sale 2 y no 0.
         raise FallaDelHarness(str(e))
     entradas = orq_fuentes.gestionadas(registro)
-    for hallazgo in orq_fuentes.hallazgos(registro):
-        consola.linea("  aviso: " + hallazgo)
+    hallazgos = orq_fuentes.hallazgos(registro)
 
     destino = orq_frescura.ruta_por_defecto(proyecto)
     anterior = orq_frescura.leer(destino)
@@ -504,7 +505,8 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
         if not os.path.isdir(directorio):
             raise FallaDelHarness("el directorio %s no existe." % directorio)
         observaciones = int_fuentes.observar_archivos(entradas, directorio)
-        canal = {"reachable": True, "reason": "originales leidos de %s" % directorio}
+        canal = {"reachable": True, "reason": "originales leidos de %s" % directorio,
+                 "channel": "archivo:%s" % directorio}
         consola.evento("fuentes.local", directorio=directorio)
 
     elif args.argumento:
@@ -521,20 +523,80 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
         consola.linea("Sin clave de Jira ni --archivo no hay canal que consultar: cada fuente "
                       "queda sin verificar.")
 
+    aceptadas = []
+    if args.aceptar:
+        # Antes de escribir nada: si una no se puede aceptar, no se acepta ninguna.
+        aceptadas = _aceptar(args, rutas, entradas, observaciones, canal, decisiones)
+
     documento = orq_frescura.documento(entradas, observaciones, canal, decisiones)
     try:
         orq_frescura.escribir(documento, destino)
     except (ValueError, OSError) as e:
         raise FallaDelHarness(str(e))
+    # El aviso de fabrica "no tiene hash aceptado" no se repite para una fuente que el proyecto
+    # ya acepto: la referencia de esa fuente ahora es la aceptacion, y el aviso diria lo contrario.
+    con_aceptacion = [sid for sid, f in documento["sources"].items() if f.get("acceptance")]
+    for hallazgo in hallazgos:
+        if any(("la fuente %s no tiene hash aceptado" % sid) in hallazgo
+               for sid in con_aceptacion):
+            continue
+        consola.linea("  aviso: " + hallazgo)
     consola.evento("fuentes.listo", fuentes=len(documento["sources"]),
                    pendientes=documento["pending_count"])
+
+    for sid in aceptadas:
+        consola.evento("fuentes.aceptada", fuente=sid, estado=documento["sources"][sid]["state"])
 
     if args.json:
         sys.stdout.write(json.dumps(documento, ensure_ascii=False, indent=2,
                                     sort_keys=True) + "\n")
     else:
+        for sid in aceptadas:
+            d = decisiones[sid]
+            consola.linea("")
+            consola.linea("Aceptada %s %s" % (sid, d["observed_version"]))
+            consola.linea("  SHA-256   %s" % d["observed_sha256"])
+            consola.linea("  Canal     %s" % d["channel"])
+            consola.linea("  Aceptó    %s, el %s" % (d["by"], d["at"]))
+            if d.get("overridesRegistryVersion"):
+                consola.linea("  Ojo: es anterior a la %s que trae el harness de fábrica. Queda "
+                              "registrado que se pisó." % d["overridesRegistryVersion"])
+            consola.linea("  Estado    %s" % documento["sources"][sid]["state"])
         mostrar_fuentes(consola, documento, destino)
     return 0
+
+
+def _aceptar(args, rutas, entradas, observaciones, canal, decisiones):
+    """Registra como aceptada la identidad observada EN ESTA CORRIDA de cada fuente pedida.
+
+    🔴 Se acepta lo que se acaba de mirar, nunca un estado guardado: la version, el SHA-256 del
+    original, el adjunto o el archivo, y el canal. Sin quien acepta no hay aceptacion. Si una
+    no se puede aceptar, levanta antes de tocar `decisions`, y no se escribe nada.
+    """
+    por = str(args.por or _config_harness(rutas).get("usuario") or "").strip()
+    if not por:
+        raise FallaDelHarness(
+            "una aceptacion necesita quien la da. Pasá --por <persona>, o configurá `usuario` "
+            "en .claude/harness.config.json.")
+    disponible = bool(canal) and bool(canal.get("reachable", True))
+    por_id = {str(o.get("id")): o for o in observaciones}
+    entradas_por_id = {str(e.get("id")): e for e in entradas}
+    pedidas = [x.strip() for x in str(args.aceptar).split(",") if x.strip()]
+    nuevas = {}
+    for sid in pedidas:
+        entrada = entradas_por_id.get(sid)
+        if entrada is None:
+            raise FallaDelHarness("%s no es una fuente gestionada. Son: %s."
+                                  % (sid, ", ".join(sorted(entradas_por_id))))
+        obs = por_id.get(sid)
+        codigo, motivo = orq_frescura.aceptable(entrada, obs, disponible, args.regresion)
+        if codigo:
+            raise FallaDelHarness("%s no se puede aceptar (%s): %s. No se escribio nada."
+                                  % (sid, codigo, motivo))
+        nuevas[sid] = orq_frescura.decision_de_aceptacion(
+            entrada, obs, canal.get("channel"), por, orq_frescura.ahora(), args.regresion)
+    decisiones.update(nuevas)
+    return sorted(nuevas)
 
 
 def _observar_por_ficha(clave, args, proyecto, rutas, config, almacen, timeout, consola,
@@ -571,7 +633,8 @@ def _observar_por_ficha(clave, args, proyecto, rutas, config, almacen, timeout, 
                                          descargas, texto)
     tipo = str(_config_harness(rutas).get("fichaTipoDeIssue")
                or contexto_proyecto.TIPO_POR_DEFECTO)
-    return {"key": clave_ficha, "issue_type": tipo, "reachable": True}, observaciones
+    return {"key": clave_ficha, "issue_type": tipo, "reachable": True,
+            "channel": "jira:%s" % clave_ficha}, observaciones
 
 
 def mostrar_fuentes(consola, documento, destino):
@@ -1313,6 +1376,14 @@ def parser():
     p.add_argument("--refutacion", default="", nargs="?", const=TODAS_LAS_REFUTACIONES,
                    help="contabilidad: la unidad REF-001 a la que se atribuye lo ingerido; "
                         "seguridad: pasa los veredictos de ES0902 al libro de seguridad")
+    p.add_argument("--aceptar", default="",
+                   help="fuentes: acepta la identidad observada en esta corrida (ES0902 o "
+                        "ES0902,ES0903): version, SHA-256, adjunto y canal")
+    p.add_argument("--por", default="",
+                   help="fuentes --aceptar: quien acepta. Por defecto, el usuario configurado")
+    p.add_argument("--regresion", action="store_true",
+                   help="fuentes --aceptar: admite una version anterior a la de fabrica, y deja "
+                        "registrado cual se piso")
     p.add_argument("--proyecto", default=os.getcwd(),
                    help="raiz del proyecto (por defecto, el directorio actual)")
     p.add_argument("--json", action="store_true",

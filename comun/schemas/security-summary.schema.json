@@ -85,6 +85,20 @@
             "string",
             "null"
           ]
+        },
+        "sha256": {
+          "description": "El SHA-256 del original aceptado en el proyecto, o null si no hay aceptacion.",
+          "type": ["string", "null"]
+        },
+        "channel": {
+          "description": "Por donde llego el original aceptado: jira:<FICHA> o archivo:<dir>.",
+          "type": ["string", "null"]
+        },
+        "acceptedBy": { "type": ["string", "null"] },
+        "acceptedAt": { "type": ["string", "null"] },
+        "registryVersion": {
+          "description": "La version que trae el registro de fabrica. Distinta de `version` cuando el proyecto acepto otra.",
+          "type": ["string", "null"]
         }
       }
     },

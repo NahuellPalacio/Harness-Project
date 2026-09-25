@@ -1206,7 +1206,7 @@ def test_e36_la_unidad_propaga_los_controles_exactos(t):
 def test_e37_los_controles_dejan_de_ser_un_hueco(t):
     """E-37 (D8-30) — instalados, declarados, treinta y cinco, y once reglas completas."""
     reporte = c_controles.reporte()
-    t.igual("E-37 son cincuenta y cuatro controles", 54, reporte["summary"]["declaredControls"])
+    t.igual("E-37 son cincuenta y seis controles", 56, reporte["summary"]["declaredControls"])
     t.verdadero("E-37 el registro es valido", reporte["result"]["registryValid"])
     t.verdadero("E-37 y no hay archivos sin declarar", reporte["result"]["filesystemClean"])
     t.igual("E-37 ningun archivo suelto", [], reporte["undeclared"])

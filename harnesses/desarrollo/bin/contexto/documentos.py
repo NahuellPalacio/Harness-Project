@@ -129,9 +129,12 @@ def _uno(jira, par, catalogo, acumulador, dir_descargas, hay_markitdown, tope, e
         return item
 
     destino = os.path.join(dir_descargas, nombre)
-    ok, _ = jira.bajar_adjunto(url, destino)
+    vuelta = jira.bajar_adjunto(url, destino)
+    ok = bool(vuelta[0])
+    motivo = str(vuelta[2]) if len(vuelta) > 2 and vuelta[2] else ""
     if not ok:
-        acumulador.falta("no se pudo bajar el adjunto %s" % nombre)
+        acumulador.falta("no se pudo bajar el adjunto %s" % nombre
+                         + (": " + motivo if motivo else ""))
         return item
 
     item["local_path"] = destino

@@ -296,13 +296,18 @@ def _cobertura(filas):
 
 def _conocimiento(eventos):
     e = _ultimo(eventos, "KNOWLEDGE_STATE")
+    procedencia_ = ("sha256", "channel", "acceptedBy", "acceptedAt", "registryVersion")
     if e is None:
-        return {"standard": seguridad.ESTANDAR, "version": None, "freshness": None,
-                "sourceIntegrity": None, "blocking": True, "verifiedAt": None}
+        return dict({"standard": seguridad.ESTANDAR, "version": None, "freshness": None,
+                     "sourceIntegrity": None, "blocking": True, "verifiedAt": None},
+                    **{k: None for k in procedencia_})
     estado = _detalle(e, "freshness")
     return {"standard": (e.get("normative") or {}).get("standard") or seguridad.ESTANDAR,
             "version": _detalle(e, "version"), "freshness": estado,
             "sourceIntegrity": _detalle(e, "sourceIntegrity"),
+            "sha256": _detalle(e, "sha256"), "channel": _detalle(e, "channel"),
+            "acceptedBy": _detalle(e, "acceptedBy"), "acceptedAt": _detalle(e, "acceptedAt"),
+            "registryVersion": _detalle(e, "registryVersion"),
             # Falla cerrado: bloquea si el productor lo dijo O si el estado no es de los que no
             # bloquean. Un evento con el flag perdido no se vuelve vigente.
             "blocking": e.get("blocking") is True or estado not in frescura.NO_BLOQUEAN,

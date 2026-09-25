@@ -40,6 +40,7 @@ class RegistroCapacidades(object):
             "motivo": resultado["motivo"],
             "verificado_en": resultado["verificado_en"],
             "capacidades": list(resultado["capacidades"]),
+            "diagnostico": list(resultado.get("diagnostico") or []),
         }
         for capacidad in resultado["capacidades"]:
             self.registrar(capacidad, nombre)

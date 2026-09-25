@@ -367,17 +367,17 @@ def test_e13_la_forma_vieja_sigue_valiendo(t):
     t.igual("E-13 una fuente", 1, len(fuentes))
     t.igual("E-13 y es la que declaro", "D1", fuentes[0]["rule"])
 
-    # 📌 Los 48 controles que no comparten nada siguen con la forma vieja, sin tocar: 25 de
-    # ES0901 y los 23 que instalaron O1, O2, C1, C2, Vu1, Vu2, Vu3, Vu4, Vu5, Vu6 y Vu7, que salen de un solo estandar y no
-    # necesitan la lista.
+    # 📌 Los 50 controles que no comparten nada siguen con la forma vieja, sin tocar: 25 de
+    # ES0901 y los 25 que instalaron O1, O2, C1, C2, Vu1, Vu2, Vu3, Vu4, Vu5, Vu6, Vu7 y Vu8, que salen de un solo
+    # estandar y no necesitan la lista.
     sin_migrar = [c for c in REGISTRO["controls"] if "normativeSources" not in c]
-    t.igual("E-13 cuarenta y ocho controles siguen con `source` solo", 48, len(sin_migrar))
+    t.igual("E-13 cincuenta controles siguen con `source` solo", 50, len(sin_migrar))
     for c in sin_migrar:
         t.igual("E-13 `%s` se lee igual" % c["id"], 1, len(c_controles.fuentes_de(c)))
     t.igual("E-13 veinticinco son de ES0901", 25,
             len([c for c in sin_migrar
                  if c_controles.fuentes_de(c)[0]["standard"] == "ES0901"]))
-    t.igual("E-13 y los veintitres de O1, O2, C1, C2, Vu1, Vu2, Vu3, Vu4, Vu5, Vu6 y Vu7 son de ES0902",
+    t.igual("E-13 y los veinticinco de O1, O2, C1, C2, Vu1, Vu2, Vu3, Vu4, Vu5, Vu6, Vu7 y Vu8 son de ES0902",
             ["authentication-abuse-protection",
              "authentication-abuse-protection-required",
              "base-software-data-disclosure-configuration",
@@ -396,17 +396,19 @@ def test_e13_la_forma_vieja_sigue_valiendo(t):
              "openid-connect-authentication-required",
              "qa-security-approval-evidence",
              "qa-security-approval-required",
+             "role-profile-consistency",
              "security-control-authority-evidence",
              "sensitive-data-plaintext-transmission-prohibited",
              "sensitive-data-transport-protection",
              "session-inactivity-timeout",
-             "session-inactivity-timeout-required"],
+             "session-inactivity-timeout-required",
+             "user-profile-role-enforcement-required"],
             sorted(c["id"] for c in sin_migrar
                    if c_controles.fuentes_de(c)[0]["standard"] == "ES0902"))
 
     informe = c_controles.validar(REGISTRO)
     t.vacio("E-13 el registro entero valida contra el schema", informe["schemaErrors"])
-    t.igual("E-13 y los 54 controles siguen instalados", 54,
+    t.igual("E-13 y los 56 controles siguen instalados", 56,
             len([e for e in informe["controls"].values() if e == "INSTALLED"]))
 
     # La lista gana cuando esta: no se suman las dos formas.
@@ -420,7 +422,7 @@ def test_e14_un_control_compartido_se_declara_una_vez(t):
     """E-14 (S-04) — no hay un `authentication-delegation` de D2 y otro de C1."""
     ids = [c["id"] for c in REGISTRO["controls"]]
     t.igual("E-14 ningun id repetido", len(ids), len(set(ids)))
-    t.igual("E-14 el registro declara 54 controles", 54, len(ids))
+    t.igual("E-14 el registro declara 56 controles", 56, len(ids))
     for cid in sorted(cruzada.controles_compartidos(MAPA)):
         t.igual("E-14 `%s` aparece una sola vez" % cid, 1, ids.count(cid))
         t.igual("E-14 `%s` lo citan dos estandares" % cid, ["ES0901", "ES0902"],
@@ -1924,7 +1926,7 @@ def test_e69_los_modulos_no_tienen_como_conseguir_un_secreto(t):
 
 
 def test_e70_lo_declarado_no_finge_estar_instalado(t):
-    """E-70 — ocho policies, seis checks y una review declarados y sin construir."""
+    """E-70 — siete policies, cinco checks y una review declarados y sin construir."""
     resolucion = seguridad.resolver(_todas_las_senales())
     t.igual("E-70 con todas las senales aplican las 21", 21, len(resolucion["applicableRules"]))
     t.igual("E-70 veintitres policies declaradas", 23, len(resolucion["declaredPolicies"]))
@@ -1935,13 +1937,13 @@ def test_e70_lo_declarado_no_finge_estar_instalado(t):
     por_estado = {}
     for f in faltan:
         por_estado[f["state"]] = por_estado.get(f["state"], 0) + 1
-    t.igual("E-70 ocho policies no instaladas", 8,
+    t.igual("E-70 siete policies no instaladas", 7,
             por_estado.get("DECLARED_POLICY_NOT_INSTALLED"))
-    t.igual("E-70 seis checks no instalados", 6,
+    t.igual("E-70 cinco checks no instalados", 5,
             por_estado.get("DECLARED_CHECK_NOT_INSTALLED"))
     t.igual("E-70 una review no instalada", 1,
             por_estado.get("DECLARED_REVIEW_NOT_INSTALLED"))
-    t.igual("E-70 quince huecos en total", 15, len(faltan))
+    t.igual("E-70 trece huecos en total", 13, len(faltan))
 
     # 🔴 Y eso NO invalida la matriz: es el estado correcto de un harness que clasifico antes
     # de construir. Los seis que si estan instalados son los compartidos con ES0901.
@@ -1950,12 +1952,12 @@ def test_e70_lo_declarado_no_finge_estar_instalado(t):
     instalados = set(c_controles.instalados(REGISTRO)["POLICY"]) \
         | set(c_controles.instalados(REGISTRO)["CHECK"])
     declarados = set(resolucion["declaredPolicies"]) | set(resolucion["declaredChecks"])
-    t.igual("E-70 veintiocho de los declarados por ES0902 ya estan instalados", 28,
+    t.igual("E-70 treinta de los declarados por ES0902 ya estan instalados", 30,
             len(declarados & instalados))
-    # Los seis compartidos con ES0901, mas los veintidos de O1, O2, C1, C2, Vu1, Vu2, Vu3, Vu4, Vu5, Vu6 y Vu7 que no comparten nada:
+    # Los seis compartidos con ES0901, mas los veinticuatro de O1, O2, C1, C2, Vu1, Vu2, Vu3, Vu4, Vu5, Vu6, Vu7 y Vu8 que no comparten nada:
     # salen de ES0902 secciones 3 y 6 y de ningun otro lado. La review de O1 no entra en esta cuenta, que es de
     # policies y checks.
-    t.igual("E-70 y son los compartidos mas los de O1, O2, C1, C2, Vu1, Vu2, Vu3, Vu4, Vu5, Vu6 y Vu7",
+    t.igual("E-70 y son los compartidos mas los de O1, O2, C1, C2, Vu1, Vu2, Vu3, Vu4, Vu5, Vu6, Vu7 y Vu8",
             sorted(set(cruzada.controles_compartidos(MAPA))
                    | {"gcba-it-security-normative-compliance-required",
                       "gcba-security-control-authority-required",
@@ -1976,7 +1978,9 @@ def test_e70_lo_declarado_no_finge_estar_instalado(t):
                     "custom-error-messages-required",
                     "custom-error-message-compliance",
                     "base-software-private-data-disclosure-prohibited",
-                    "base-software-data-disclosure-configuration"}),
+                    "base-software-data-disclosure-configuration",
+                    "user-profile-role-enforcement-required",
+                    "role-profile-consistency"}),
             sorted(declarados & instalados))
     t.verdadero("E-70 la review de O1 tambien esta instalada",
                 "gcba-it-security-normative-review"

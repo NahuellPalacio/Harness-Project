@@ -249,12 +249,17 @@ def _bajar(obs, adjunto, bajar, dir_descargas):
             "integridad de esta fuente queda sin verificar")
         return
     destino = os.path.join(dir_descargas, obs["filename"] or (obs["id"] + ".bin"))
+    motivo = ""
     try:
-        ok, _ = bajar(url, destino)
+        vuelta = bajar(url, destino)
+        ok = bool(vuelta[0])
+        # Quien baja puede decir por que no pudo: el tercer elemento. Un `bajar` de dos
+        # elementos -los dobles de los tests- sigue andando.
+        motivo = str(vuelta[2]) if len(vuelta) > 2 and vuelta[2] else ""
     except OSError:
         ok = False
     if not ok:
-        obs["evidence"].append("el documento no se pudo bajar")
+        obs["evidence"].append("el documento no se pudo bajar" + (": " + motivo if motivo else ""))
         return
     obs["downloaded"] = True
     obs["local_path"] = destino

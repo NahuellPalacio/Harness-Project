@@ -537,6 +537,50 @@ por el camino genérico de `seguridad.py`: `para_seguridad` traduce la salida de
 aplicabilidad. La salida, la unidad y el libro llevan ids, clases y estados, nunca el texto de una
 evidencia ni una muestra del dato.
 
+## Vu8 y los perfiles que respetan los roles asignados
+
+Vu8 —*"Los perfiles de usuarios armados en las aplicaciones deben respetar los roles asignados"*— lo
+contesta `role-profile-consistency`, **superficie por superficie y mapping por mapping**. Un mapping
+es un rol o un conjunto de roles. La regla es condicional: la señal `applicationRolesPresent` se
+enciende con cualquier evidencia legible no débil de que hay roles —una tabla en la base, grupos o
+claims del proveedor, un middleware— y se apaga solo con una evidencia autoritativa de que no hay
+modelo de roles. Que no haya un enum `Role` no apaga nada.
+
+```
+reglas/role-profile-consistency.json   del PROYECTO. Se instala VACIO
+```
+
+🔴 **Lo asignado contra lo efectivo.** La fuente autoritativa de los roles (`ROLE_ASSIGNMENT_SOURCE`)
+dice qué roles hay. El mapeo (`ROLE_PROFILE_MAPPING`) dice qué operaciones y qué alcances de datos le
+tocan a cada mapping. El acceso (`ACCESS`) dice qué permite o niega de verdad la aplicación. Todo sale
+de evidencia citada, y el nombre de un rol no define permisos. El check no tiene ninguna lista de
+roles, frameworks, anotaciones ni claims. Una operación de más es `OVER_PRIVILEGED_PROFILE` y una de
+menos es `UNDER_PRIVILEGED_PROFILE`: las dos fallan, sea cual sea su severidad.
+
+🔴 **El servidor manda.** Un botón escondido no prueba que la API niegue una operación protegida: sin
+evidencia del servidor, queda sin resolver. El cliente negando y el servidor permitiendo es
+`DIRECT_ACCESS_BYPASSES_ROLE`. Una opción de presentación local, que no está en
+`protectedOperationRefs`, se resuelve con la evidencia del cliente sola. Un alcance de datos es
+siempre del servidor.
+
+🔴 **Nada se inventa.** El perfil de un conjunto de roles no se calcula desde los de cada rol: ni se
+suman, ni se intersecan, ni gana el más alto. Necesita su propio mapeo y una semántica de varios roles
+sostenida (`MULTI_ROLE_SEMANTICS`). Tampoco hay un tiempo de propagación: un rol revocado vigente es
+`FAIL` solo si la evidencia dice que sigue vigente más allá de la ventana que el proyecto documenta
+(`ROLE_CHANGE_SEMANTICS`). Sin esa semántica, queda `ROLE_CHANGE_PROPAGATION_UNRESOLVED`.
+
+🔴 **La prueba es segura o no cuenta.** Autorizada, fuera de `PRD`, con identidades sintéticas, no
+destructiva, sin cuenta privilegiada real y sin registrar credenciales. Si no, da
+`ROLE_PROFILE_TEST_UNSAFE`, que no es `FAIL`. No hace falta ninguna prueba en runtime: la configuración
+del servidor y los tests de autorización alcanzan. El módulo no ejecuta nada.
+
+🔴 **Vu8 no es C1 ni Vu5.** Un login exitoso, un claim en el token o una validación de entrada no dicen
+nada de acceso. El check no lee ni escribe el resultado de otra regla. Vu8 va por el camino genérico de
+`seguridad.py`, entra al libro por `desde_regla` en el dominio `authorization-roles`, y la unidad lleva
+`standards.ES0902.rules.Vu8` con aplicabilidad, resultado, superficies y evidencia por id. Para la
+refutación atómica, `para_refutacion` escribe la entrada de `checks.json`: un `PASS` o un `FAIL`
+cierran la unidad sin refutador, y un sin resolver la deja pendiente con su alcance y nada más.
+
 ## La frontera que no se cruza
 
 El harness hace las capas 1 y 2; la 3 no es suya.

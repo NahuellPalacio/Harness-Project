@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "role-profile-consistency/1.0",
+  "title": "Role Profile Consistency Evidence",
+  "description": "La evidencia de que los perfiles efectivos respetan los roles asignados, para ES0902 Vu8. Es del PROYECTO y se instala vacia. La fuente de los roles, el mapeo esperado y el acceso efectivo salen de evidencia citada, nunca de un nombre. Los strings de `evidence` son ids del catalogo de evidencia del caso. No hay campo para una credencial ni un dato personal: `additionalProperties: false` en todas las capas.",
+  "type": "object",
+  "required": [
+    "version",
+    "surfaces"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surfaceId",
+          "roleAssignmentSource",
+          "mappings",
+          "evidence"
+        ],
+        "properties": {
+          "surfaceId": {
+            "type": "string"
+          },
+          "environment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roleAssignmentSource": {
+            "type": "object",
+            "required": [
+              "status",
+              "sourceRef"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "RESOLVED",
+                  "UNRESOLVED"
+                ]
+              },
+              "sourceRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "mappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "mappingId",
+                "assignedRoleRefs",
+                "expectedProfileRef",
+                "result",
+                "evidence"
+              ],
+              "properties": {
+                "mappingId": {
+                  "type": "string"
+                },
+                "assignedRoleRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "expectedProfileRef": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "observedProfileRef": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "protectedOperationRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "dataScopeRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "result": {
+                  "enum": [
+                    "CONSISTENT",
+                    "OVER_PRIVILEGED_PROFILE",
+                    "UNDER_PRIVILEGED_PROFILE",
+                    "DIRECT_ACCESS_BYPASSES_ROLE",
+                    "UNRESOLVED"
+                  ]
+                },
+                "verificationMode": {
+                  "enum": [
+                    "STATIC",
+                    "UNIT_TEST",
+                    "INTEGRATION_TEST",
+                    "API_AUTHORIZATION_TEST",
+                    "AUTHORIZED_QA_ROLE_TEST",
+                    "OTHER_AUTHORITATIVE_EVIDENCE",
+                    "NOT_VERIFIED"
+                  ]
+                },
+                "testIdentityRef": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "multiRoleSemantics": {
+            "enum": [
+              "RESOLVED",
+              "NOT_APPLICABLE",
+              "UNRESOLVED"
+            ]
+          },
+          "roleChangeSemantics": {
+            "enum": [
+              "RESOLVED",
+              "NOT_APPLICABLE",
+              "UNRESOLVED"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
