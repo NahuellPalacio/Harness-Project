@@ -581,6 +581,93 @@ nada de acceso. El check no lee ni escribe el resultado de otra regla. Vu8 va po
 refutación atómica, `para_refutacion` escribe la entrada de `checks.json`: un `PASS` o un `FAIL`
 cierran la unidad sin refutador, y un sin resolver la deja pendiente con su alcance y nada más.
 
+## Vu9 y el control de uso de lo público sin autenticación
+
+Vu9 —*"Las aplicaciones que expongan funcionalidades accesibles sin autenticación a través de
+interfaces públicas (web o API), deberán contemplar mecanismos de control de uso…"*— lo contesta
+`public-interface-abuse-protection`, **superficie por superficie**. La regla es condicional: la señal
+`unauthenticatedPublicInterfacePresent` se enciende con evidencia legible de una funcionalidad pública
+sin autenticación —una búsqueda, un formulario, una operación de API—, también si es de solo lectura.
+Un DNS público, un asset estático o un endpoint de salud no la encienden, y apagarla pide una evidencia
+autoritativa de que no hay nada público.
+
+```
+reglas/public-interface-abuse-protection.json   del PROYECTO. Se instala VACIO
+```
+
+🔴 **La superficie entera.** El `PASS` exige un inventario entero de lo público
+(`PUBLIC_SURFACE_INVENTORY: COMPLETE`) y una entrada por cada superficie que nombra. Una superficie
+entra al alcance sola; sacarla —no es pública, pide autenticación— cuesta una evidencia citada.
+
+🔴 **Nada se inventa.** Vu9 no pide rate limiting, CAPTCHA, WAF, gateway, un número de pedidos, una
+cuota ni un SLA, y el módulo no tiene ninguna lista de mecanismos. Un control cuenta si una evidencia
+del servidor o la infraestructura dice que existe (`USE_CONTROL`), si una evidencia del camino dice que
+la ruta pública lo atraviesa (`PATH_BINDING: BOUND`), y si constan sus tres dimensiones: consumo
+excesivo, consumo automatizado y estabilidad. Una dimensión sin sostener queda sin resolver, nunca es
+una falla. Un informe de performance sostiene la estabilidad y nada más.
+
+🔴 **La configuración no es el camino.** Un control configurado sin evidencia de camino no cubre la
+superficie. Un origen alcanzable por detrás es `ABUSE_CONTROL_BYPASS_PRESENT`, y falla aunque otro
+control siga en el camino. Lo que corre en el navegador —un botón deshabilitado, un temporizador— nunca
+es un control. `ABUSE_CONTROL_MISSING` es una falla solo si la superficie declara `controls: []`, si una
+evidencia citada del servidor dice que no hay control, o si ningún control declarado está en el camino.
+
+🔴 **El ambiente cuenta.** El registro dice qué ambiente se evalúa, y la evidencia de otro ambiente no lo
+sostiene: DEV no prueba PRD. Las huellas de despliegue de lo que sostiene cada control
+(`routeVersion`, `configFingerprint`, `buildId`, `imageDigest`) salen en la salida.
+
+🔴 **La prueba es segura o no cuenta.** Autorizada, acotada, con condiciones de corte, fuera de `PRD`,
+con datos sintéticos y no destructiva. Si no, `PUBLIC_ABUSE_TEST_UNSAFE`, que no es `FAIL`. El módulo no
+genera ni ejecuta un solo pedido, y el catálogo no tiene dónde guardar un script ni un payload.
+
+🔴 **Vu9 no es Vu1, Vu10 ni performance.** El check no lee ni escribe el resultado de otra regla.
+`seguridad.py` ya tenía un algoritmo para Vu9 con la forma vieja (`abuseControls`); cuando llega el
+resultado del check sin esa forma, le cede la palabra y va por el genérico. Vu9 entra al libro por
+`desde_regla` en el dominio `sensitive-data-public-interfaces`, y la unidad lleva
+`standards.ES0902.rules.Vu9`. Para la refutación atómica, `para_refutacion` escribe la entrada de
+`checks.json`: un `PASS` o un `FAIL` cierran la unidad sin refutador, y un sin resolver la deja
+pendiente con su alcance y nada más.
+
+## Vu10 y la guía OWASP que aplica
+
+Vu10 —*"se debe tener en cuenta la información suministrada en los siguientes links: OWASP Top 10,
+OWASP API Security, OWASP Mobile Top 10"*— es una **review**: la fila no tiene checks y así queda. La
+resuelve `bin/orquestacion/guia_owasp.py`, en código y sin modelo, como `linea_base.py` resuelve la de
+O1. Un modelo puede llenar el registro —disposiciones, razones, evidencia—; nunca decide el estado.
+
+```
+reglas/owasp-security-guidance-review.json   del PROYECTO. Se instala como vino, sin familias
+```
+
+🔴 **Las familias salen de los activos.** La señal `owaspApplicableAssetPresent` se enciende con un
+activo web, API o mobile sostenido por evidencia, interno o no, autenticado o no. Un activo web con su
+API aporta dos familias, y la review necesita las dos: omitir una familia aplicable en una review hecha
+es el único `FAIL`.
+
+🔴 **Nada de memoria.** Cada familia se ata a una foto autoritativa de su fuente
+(`AUTHORITATIVE_SOURCE_SNAPSHOT`), con edición, referencia, fecha y huella, y los puntos de la review son
+los de esa foto: el módulo no tiene ninguna lista de puntos ni ids de OWASP. La vigencia la dice el
+mecanismo de fuentes confiables: `guia_owasp.evidencia_de_frescura` traduce una entrada de
+`.claude/harness.fuentes.json` a evidencia `SOURCE_FRESHNESS`, y sin `CURRENT` no hay `PASS`. Un
+`UPDATE_AVAILABLE` le quita el `CURRENT` a la foto vieja. El registro de fuentes todavía no admite las
+páginas de OWASP, así que casi todo proyecto real va a quedar en `OWASP_GUIDANCE_FRESHNESS_UNRESOLVED`.
+
+🔴 **Cada punto, una disposición que vale.** `REVIEWED_NO_FINDING` con evidencia, `FINDING_PRESENT` con
+su hallazgo, `NOT_APPLICABLE_WITH_RATIONALE` con razón y evidencia. La evidencia de Vu5, Vu8 o Vu9
+sostiene un punto; el resultado final de otra regla (`RULE_RESULT`), no.
+
+🔴 **Un hallazgo no es la cobertura.** `FINDING_PRESENT` no hace `FAIL`, y diez hallazgos siguen en
+`PASS`. La severidad y la confianza viajan en el hallazgo, por `desde_hallazgo`, al libro de siempre;
+uno que ya está en el libro no se vuelve a crear. Si un hallazgo bloquea la entrega lo dicen las reglas
+de evaluación de seguridad, no Vu10. Tampoco pide ASVS, MASVS, SAMM, un scanner ni un umbral.
+
+🔴 **La refutación atómica apoya y no reemplaza.** Un veredicto `cumple` resuelve su unidad y no toca la
+review. `guia_owasp.alcance_de_punto` arma el alcance de un punto de un activo y rechaza el repositorio
+entero. `seguridad.py` tenía un `_vu10` de la línea base con `assetTypes` y `owaspGuidance`; cuando llega
+el resultado de la review sin esa forma, le cede la palabra. Vu10 entra al libro por `desde_regla` en
+`owasp-application-security`, y la unidad lleva `standards.ES0902.rules.Vu10` con familias y evidencia
+por id.
+
 ## La frontera que no se cruza
 
 El harness hace las capas 1 y 2; la 3 no es suya.

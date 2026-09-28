@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "owasp-security-guidance-review/1.0",
+  "title": "OWASP Security Guidance Review Evidence",
+  "description": "El registro de la review de ES0902 Vu10: activos, familias OWASP aplicables, la fuente de cada familia y la disposicion de cada punto. Es del PROYECTO y se instala como vino, sin familias ni puntos. Los strings de `evidence` y `evidenceRefs` son ids del catalogo de evidencia del caso. No hay campo para una credencial, un payload ni un exploit: `additionalProperties: false` en todas las capas.",
+  "type": "object",
+  "required": [
+    "version",
+    "evaluatedAt",
+    "assets",
+    "families",
+    "overall"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "evaluatedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "assetTypes",
+          "evidence"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "assetTypes": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "WEB",
+                "API_OR_WEB_SERVICE",
+                "MOBILE"
+              ]
+            }
+          },
+          "componentRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "environment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revisionRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "families": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "family",
+          "source",
+          "items",
+          "result"
+        ],
+        "properties": {
+          "family": {
+            "enum": [
+              "WEB",
+              "API_OR_WEB_SERVICE",
+              "MOBILE"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "required": [
+              "edition",
+              "sourceRef",
+              "freshness"
+            ],
+            "properties": {
+              "edition": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sourceRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "resolvedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sourceFingerprint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "freshness": {
+                "enum": [
+                  "CURRENT",
+                  "UPDATE_AVAILABLE",
+                  "ACKNOWLEDGED_PENDING",
+                  "FRESHNESS_UNVERIFIED",
+                  "SOURCE_UNAVAILABLE"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "itemId",
+                "title",
+                "disposition",
+                "evidenceRefs",
+                "findingIds"
+              ],
+              "properties": {
+                "itemId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "disposition": {
+                  "enum": [
+                    "REVIEWED_NO_FINDING",
+                    "FINDING_PRESENT",
+                    "NOT_APPLICABLE_WITH_RATIONALE",
+                    "UNRESOLVED"
+                  ]
+                },
+                "rationale": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "evidenceRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "findingIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "result": {
+            "enum": [
+              "REVIEW_COMPLETE",
+              "REVIEW_INCOMPLETE",
+              "SOURCE_UNAVAILABLE",
+              "FRESHNESS_UNRESOLVED"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "overall": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT_APPLICABLE",
+        "APPLICABILITY_UNRESOLVED",
+        "OWASP_ASSET_COVERAGE_UNRESOLVED",
+        "OWASP_GUIDANCE_SOURCE_UNAVAILABLE",
+        "OWASP_GUIDANCE_FRESHNESS_UNRESOLVED",
+        "OWASP_GUIDANCE_COVERAGE_INCOMPLETE",
+        "OWASP_GUIDANCE_ITEM_UNRESOLVED",
+        "REVIEW_INCOMPLETE"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

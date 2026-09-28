@@ -962,6 +962,58 @@
         "section": "6",
         "rule": "Vu8"
       }
+    },
+    {
+      "id": "public-interface-abuse-control-required",
+      "type": "POLICY",
+      "rule": "Vu9",
+      "file": "controles/policies/public-interface-abuse-control-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu9"
+      }
+    },
+    {
+      "id": "public-interface-abuse-protection",
+      "type": "CHECK",
+      "rule": "Vu9",
+      "file": "controles/checks/public-interface-abuse-protection.py",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu9"
+      }
+    },
+    {
+      "id": "owasp-security-guidance-required",
+      "type": "POLICY",
+      "rule": "Vu10",
+      "file": "controles/policies/owasp-security-guidance-required.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu10"
+      }
+    },
+    {
+      "id": "owasp-security-guidance-review",
+      "type": "REVIEW",
+      "rule": "Vu10",
+      "file": "controles/reviews/owasp-security-guidance-review.md",
+      "status": "INSTALLED",
+      "source": {
+        "standard": "ES0902",
+        "version": "6.2",
+        "section": "6",
+        "rule": "Vu10"
+      }
     }
   ]
 }

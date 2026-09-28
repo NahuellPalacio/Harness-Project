@@ -209,7 +209,7 @@ def test_e04_nada_nuevo(t):
     t.igual("E-04 cero reviews", [], seguridad.regla("Vu2", MATRIZ)["reviews"])
     t.igual("E-04 las mismas reviews en disco",
             ["gcba-it-security-normative-review.md", "object-oriented-design-review.md",
-             "technology-practice-review.md"],
+             "owasp-security-guidance-review.md", "technology-practice-review.md"],
             sorted(p.name for p in (CONTROLES / "reviews").iterdir() if p.is_file()))
 
 

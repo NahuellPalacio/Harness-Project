@@ -95,7 +95,7 @@ def resolucion(senales, desde=None, evidencia=None):
     donde salio, sin tener que confiar en un booleano que nadie firmo.
 
     `evidencia` trae resultados ya corridos, por clave compuesta. Hoy la leen
-    `ES0902.C2`, `ES0902.C3`, `ES0902.Vu3`, `ES0902.Vu4`, `ES0902.Vu5`, `ES0902.Vu6`, `ES0902.Vu7` y `ES0902.Vu8`, que ponen su bloque en `standards.ES0902.rules` con referencias y
+    `ES0902.C2`, `ES0902.C3`, `ES0902.Vu3`, `ES0902.Vu4`, `ES0902.Vu5`, `ES0902.Vu6`, `ES0902.Vu7`, `ES0902.Vu8`, `ES0902.Vu9` y `ES0902.Vu10`, que ponen su bloque en `standards.ES0902.rules` con referencias y
     no con contenido. Sin resultado el bloque queda sin resolver.
     """
     from . import matriz
@@ -150,6 +150,12 @@ def resolucion(senales, desde=None, evidencia=None):
         aplic_vu8, _ = seguridad.resolver_regla(seguridad.regla("Vu8", None, desde), booleanos)
         bloque["standards"][seguridad.ESTANDAR]["rules"]["Vu8"] = vu8_para_unidad(
             aplic_vu8, (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.Vu8"))
+        aplic_vu9, _ = seguridad.resolver_regla(seguridad.regla("Vu9", None, desde), booleanos)
+        bloque["standards"][seguridad.ESTANDAR]["rules"]["Vu9"] = vu9_para_unidad(
+            aplic_vu9, (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.Vu9"))
+        aplic_vu10, _ = seguridad.resolver_regla(seguridad.regla("Vu10", None, desde), booleanos)
+        bloque["standards"][seguridad.ESTANDAR]["rules"]["Vu10"] = vu10_para_unidad(
+            aplic_vu10, (evidencia if isinstance(evidencia, dict) else {}).get("ES0902.Vu10"))
     except seguridad.SeguridadInvalida as e:
         # Un estandar roto no se lleva puesto al otro. Se dice cual, y ES0901 sigue resolviendo.
         bloque["standards"][seguridad.ESTANDAR] = {
@@ -452,6 +458,85 @@ def vu8_para_unidad(aplicabilidad, resultado=None, ruta_de_evidencia=None):
     limpieza = _evidencia_de_controles(ruta_de_evidencia)
     if limpieza is None:
         bloque["surfaces"], bloque["evidence"] = [], []
+        return bloque
+    return limpieza.depurar(bloque)
+
+
+# Los estados del check de Vu9, por la misma razon.
+ESTADOS_DEL_CHECK_VU9 = ("PASS", "FAIL", "NOT_APPLICABLE", "APPLICABILITY_UNRESOLVED",
+                         "PUBLIC_UNAUTHENTICATED_SURFACE_COVERAGE_UNRESOLVED",
+                         "PUBLIC_USE_CONTROL_COVERAGE_UNRESOLVED", "ABUSE_CONTROL_MISSING",
+                         "ABUSE_CONTROL_BYPASS_PRESENT", "EXCESSIVE_CONSUMPTION_MITIGATION_UNRESOLVED",
+                         "AUTOMATED_CONSUMPTION_MITIGATION_UNRESOLVED",
+                         "SERVICE_STABILITY_EVIDENCE_UNRESOLVED", "PUBLIC_ABUSE_TEST_UNSAFE",
+                         "TEST_TARGET_UNAVAILABLE")
+
+
+def vu9_para_unidad(aplicabilidad, resultado=None, ruta_de_evidencia=None):
+    """El bloque de Vu9 que viaja en la unidad: ids y estados, nunca contenido.
+
+    🔴 Igual que Vu8: se proyecta solo un resultado que dice ser del check de Vu9, y pasa por la regla
+    de salida de `controles/lib/evidencia.py`. Sin esa lib, el estado viaja y ningun id. Ni un payload
+    ni el texto de una evidencia llegan a la unidad.
+    """
+    from . import seguridad
+    r = resultado if isinstance(resultado, dict) else {}
+    estado = r.get("state") if r.get("control") == "public-interface-abuse-protection" else None
+    if estado not in ESTADOS_DEL_CHECK_VU9:
+        r, estado = {}, None
+    if aplicabilidad != seguridad.APLICABLE:
+        r = {}
+        estado = (seguridad.NO_APLICABLE if aplicabilidad == seguridad.NO_APLICABLE
+                  else seguridad.RESULTADO_SIN_RESOLVER)
+    superficies = [s for s in r.get("surfaces") or [] if isinstance(s, dict)]
+    ids = set()
+    for s in superficies:
+        usada = s.get("evidenceUsed")
+        ids.update(i for i in (usada if isinstance(usada, list) else []) if isinstance(i, str))
+    bloque = {"applicability": aplicabilidad,
+              "result": estado or seguridad.RESULTADO_SIN_RESOLVER,
+              "surfaces": sorted(str(s.get("surfaceId")) for s in superficies),
+              "evidence": sorted(ids),
+              "source": {"standard": "ES0902", "version": "6.2", "section": "6", "rule": "Vu9"}}
+    limpieza = _evidencia_de_controles(ruta_de_evidencia)
+    if limpieza is None:
+        bloque["surfaces"], bloque["evidence"] = [], []
+        return bloque
+    return limpieza.depurar(bloque)
+
+
+# Los estados de la review de Vu10, por la misma razon.
+ESTADOS_DE_LA_REVIEW_VU10 = ("PASS", "FAIL", "NOT_APPLICABLE", "APPLICABILITY_UNRESOLVED",
+                             "OWASP_ASSET_COVERAGE_UNRESOLVED", "OWASP_GUIDANCE_SOURCE_UNAVAILABLE",
+                             "OWASP_GUIDANCE_FRESHNESS_UNRESOLVED", "OWASP_GUIDANCE_COVERAGE_INCOMPLETE",
+                             "OWASP_GUIDANCE_ITEM_UNRESOLVED", "REVIEW_INCOMPLETE")
+
+
+def vu10_para_unidad(aplicabilidad, resultado=None, ruta_de_evidencia=None):
+    """El bloque de Vu10 que viaja en la unidad: familias, ids y estados, nunca contenido.
+
+    🔴 Igual que Vu9: se proyecta solo un resultado que dice ser de la review de Vu10, y pasa por la
+    regla de salida de `controles/lib/evidencia.py`. Ni una razon ni el texto de un punto llegan a la
+    unidad.
+    """
+    from . import seguridad
+    r = resultado if isinstance(resultado, dict) else {}
+    estado = r.get("state") if r.get("review") == "owasp-security-guidance-review" else None
+    if estado not in ESTADOS_DE_LA_REVIEW_VU10:
+        r, estado = {}, None
+    if aplicabilidad != seguridad.APLICABLE:
+        r = {}
+        estado = (seguridad.NO_APLICABLE if aplicabilidad == seguridad.NO_APLICABLE
+                  else seguridad.RESULTADO_SIN_RESOLVER)
+    from . import guia_owasp
+    bloque = {"applicability": aplicabilidad,
+              "result": estado or seguridad.RESULTADO_SIN_RESOLVER,
+              "families": sorted(str(f) for f in r.get("applicableFamilies") or [] if isinstance(f, str)),
+              "evidence": guia_owasp.evidencia_usada(r),
+              "source": {"standard": "ES0902", "version": "6.2", "section": "6", "rule": "Vu10"}}
+    limpieza = _evidencia_de_controles(ruta_de_evidencia)
+    if limpieza is None:
+        bloque["families"], bloque["evidence"] = [], []
         return bloque
     return limpieza.depurar(bloque)
 

@@ -352,7 +352,7 @@ def test_e04_nada_nuevo(t):
             len([d for d in SKILLS.iterdir() if d.is_dir()]))
     t.igual("E-04 las mismas reviews en disco",
             ["gcba-it-security-normative-review.md", "object-oriented-design-review.md",
-             "technology-practice-review.md"],
+             "owasp-security-guidance-review.md", "technology-practice-review.md"],
             sorted(p.name for p in (CONTROLES / "reviews").iterdir() if p.is_file()))
     t.igual("E-04 ALGORITMOS sigue en diez", 10, len(seguridad.ALGORITMOS))
     t.verdadero("E-04 y Vu8 no tiene algoritmo propio", "Vu8" not in seguridad.ALGORITMOS)

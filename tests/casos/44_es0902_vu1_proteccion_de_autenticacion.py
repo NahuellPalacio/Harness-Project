@@ -220,7 +220,7 @@ def test_e04_no_se_inventa_nada(t):
     t.igual("E-04 cero reviews en la fila", [], seguridad.regla("Vu1", MATRIZ)["reviews"])
     t.igual("E-04 ninguna review nueva en disco",
             ["gcba-it-security-normative-review.md", "object-oriented-design-review.md",
-             "technology-practice-review.md"],
+             "owasp-security-guidance-review.md", "technology-practice-review.md"],
             sorted(p.name for p in (CONTROLES / "reviews").iterdir() if p.is_file()))
 
 

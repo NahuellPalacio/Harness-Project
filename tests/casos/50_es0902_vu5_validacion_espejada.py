@@ -299,7 +299,7 @@ def test_e03_nada_nuevo(t):
     t.igual("E-03 cero reviews", [], seguridad.regla("Vu5", MATRIZ)["reviews"])
     t.igual("E-03 las mismas reviews en disco",
             ["gcba-it-security-normative-review.md", "object-oriented-design-review.md",
-             "technology-practice-review.md"],
+             "owasp-security-guidance-review.md", "technology-practice-review.md"],
             sorted(p.name for p in (CONTROLES / "reviews").iterdir() if p.is_file()))
     t.igual("E-03 ALGORITMOS sigue en diez", 10, len(seguridad.ALGORITMOS))
     t.verdadero("E-03 y Vu5 no tiene algoritmo propio", "Vu5" not in seguridad.ALGORITMOS)

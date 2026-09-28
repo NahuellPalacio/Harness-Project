@@ -23,6 +23,11 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.24.0 → 0.25.0
+
+`-Update` alcanza. Trae dos registros nuevos del proyecto en `reglas/`, uno para Vu9 y otro para Vu10,
+que se instalan sin contenido. Llenarlos no es parte de la actualización.
+
 ## 0.23.0 → 0.24.0
 
 `-Update` alcanza, y trae los extractos normativos al proyecto. Hay un paso manual por proyecto:

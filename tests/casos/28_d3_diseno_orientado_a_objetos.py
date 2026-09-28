@@ -234,7 +234,7 @@ def test_e09_la_review_reusa_la_infraestructura_de_g2(t):
     hay = c_controles.instalados()
     t.igual("E-09 las reviews estan en el mismo registro",
             ["gcba-it-security-normative-review", "object-oriented-design-review",
-             "technology-practice-review"],
+             "owasp-security-guidance-review", "technology-practice-review"],
             sorted(hay["REVIEW"]))
 
     # Un solo contrato de review para las dos.
@@ -242,8 +242,12 @@ def test_e09_la_review_reusa_la_infraestructura_de_g2(t):
             "; ".join(c_rev.validar_schema(_revision())))
     t.vacio("E-09 y la de G2 sigue validando",
             "; ".join(c_rev.validar_schema(_revision_g2())))
-    t.igual("E-09 no hay un segundo schema de review", 1,
-            len(list((RAIZ / "comun" / "schemas").glob("*review*.json"))))
+    # 📌 D3 no agrega un schema de review: reusa el de G2. El otro que hay es el registro de evidencia
+    # de la review de ES0902 Vu10, que su paquete exige con su nombre y no es un contrato de review
+    # normativa como `normative-review.schema.json`.
+    t.igual("E-09 D3 no agrega un segundo schema de review",
+            ["normative-review.schema.json", "owasp-security-guidance-review.schema.json"],
+            sorted(p.name for p in (RAIZ / "comun" / "schemas").glob("*review*.json")))
 
 
 # -- lo que no alcanza, y lo que si --------------------------------------------

@@ -21,6 +21,25 @@ Status. Open, accepted or rejected, with the reason.
 
 ## Open
 
+### Let the source registry hold the OWASP project pages
+
+Allow `reglas/source-registry.json` to declare an external web source —an OWASP Top 10, API Security
+or Mobile Top 10 edition— with its URL, edition, retrieval date and sha256, and give `frescura.py` a
+channel that can observe it.
+
+Problem it solves. ES0902 Vu10 (installed on 2026-09-27) binds each OWASP family to a snapshot and
+requires `CURRENT` freshness from the trusted-source mechanism, but the registry schema has no `url`
+or edition field, `kind` only admits `norma`, `proceso` and `tecnologia`, and the only channels are Jira
+attachments and a local folder. So no OWASP page can ever be `CURRENT`, and every real project stays in
+`OWASP_GUIDANCE_FRESHNESS_UNRESOLVED`. Vu10 reads freshness as evidence translated with
+`guia_owasp.evidencia_de_frescura`, so it will pick the new states up without changes.
+
+Cost. Medium: the `source-registry/1.1` schema, `frescura.py`'s version comparison (editions like
+`2025` already order numerically), an HTTP or file-drop channel, and `57_aceptar_fuentes.py`. It
+touches the trusted-knowledge block, so it is specified and refuted on its own.
+
+Status. Open.
+
 ### The workflow of each harness cannot be drawn
 
 Stated by Nahue on 2026-08-17, and it is the sharpest description of the problem so far: *if you

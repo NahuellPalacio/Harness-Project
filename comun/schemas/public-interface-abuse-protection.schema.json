@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "public-interface-abuse-protection/1.0",
+  "title": "Public Interface Abuse Protection Evidence",
+  "description": "La evidencia del control de uso de la funcionalidad publica sin autenticacion, para ES0902 Vu9. Es del PROYECTO y se instala vacia. El control, su camino y sus tres dimensiones salen de evidencia citada. Los strings de `evidence` son ids del catalogo de evidencia del caso. No hay campo para un payload, un script, una credencial ni un dato personal: `additionalProperties: false` en todas las capas.",
+  "type": "object",
+  "required": [
+    "version",
+    "environment",
+    "surfaces"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "environment": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surfaceId",
+          "interfaceType",
+          "publiclyReachable",
+          "authenticationRequired",
+          "controls",
+          "result",
+          "evidence"
+        ],
+        "properties": {
+          "surfaceId": {
+            "type": "string"
+          },
+          "interfaceType": {
+            "enum": [
+              "WEB",
+              "API",
+              "OTHER",
+              "UNRESOLVED"
+            ]
+          },
+          "operationRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publiclyReachable": {
+            "enum": [
+              "YES",
+              "NO",
+              "UNRESOLVED"
+            ]
+          },
+          "authenticationRequired": {
+            "enum": [
+              "YES",
+              "NO",
+              "UNRESOLVED"
+            ]
+          },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "controlId",
+                "controlType",
+                "enforcementLayer",
+                "pathBinding",
+                "excessiveConsumptionMitigation",
+                "automatedConsumptionMitigation",
+                "stabilityEvidence",
+                "evidence"
+              ],
+              "properties": {
+                "controlId": {
+                  "type": "string"
+                },
+                "controlType": {
+                  "type": "string"
+                },
+                "enforcementLayer": {
+                  "enum": [
+                    "APPLICATION",
+                    "API_GATEWAY",
+                    "REVERSE_PROXY",
+                    "WAF",
+                    "OPENSHIFT_ROUTER",
+                    "OTHER",
+                    "UNRESOLVED"
+                  ]
+                },
+                "pathBinding": {
+                  "enum": [
+                    "BOUND",
+                    "BYPASS_PRESENT",
+                    "UNRESOLVED"
+                  ]
+                },
+                "excessiveConsumptionMitigation": {
+                  "enum": [
+                    "EVIDENCED",
+                    "NOT_EVIDENCED",
+                    "UNRESOLVED"
+                  ]
+                },
+                "automatedConsumptionMitigation": {
+                  "enum": [
+                    "EVIDENCED",
+                    "NOT_EVIDENCED",
+                    "UNRESOLVED"
+                  ]
+                },
+                "stabilityEvidence": {
+                  "enum": [
+                    "EVIDENCED",
+                    "NOT_EVIDENCED",
+                    "UNRESOLVED"
+                  ]
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "verificationMode": {
+            "enum": [
+              "STATIC_CONFIGURATION",
+              "UNIT_TEST",
+              "INTEGRATION_TEST",
+              "AUTHORIZED_QA_BOUNDED_TEST",
+              "OTHER_AUTHORITATIVE_EVIDENCE",
+              "NOT_VERIFIED"
+            ]
+          },
+          "result": {
+            "enum": [
+              "PROTECTED",
+              "ABUSE_CONTROL_MISSING",
+              "ABUSE_CONTROL_BYPASS_PRESENT",
+              "EXCESSIVE_CONSUMPTION_MITIGATION_UNRESOLVED",
+              "AUTOMATED_CONSUMPTION_MITIGATION_UNRESOLVED",
+              "SERVICE_STABILITY_EVIDENCE_UNRESOLVED",
+              "UNRESOLVED"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

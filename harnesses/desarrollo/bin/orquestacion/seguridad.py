@@ -589,7 +589,14 @@ def _vu4(r, evidencia, salida):
 
 def _vu9(r, evidencia, salida):
     """Mitigar el consumo excesivo. Cualquier mecanismo con evidencia, ninguno obligatorio."""
-    declarados = [m for m in _evidencias(evidencia.get("abuseControls"))
+    # 🔴 El check de la fila ya decidio control, camino y dimensiones, superficie por superficie. Si su
+    # resultado viene y la forma vieja (`abuseControls`) no, manda el check, por el generico: un sin
+    # resolver del check no se vuelve NON_COMPLIANT por no traer una lista de mecanismos.
+    resultados = evidencia.get("controlResults")
+    if ("abuseControls" not in evidencia and isinstance(resultados, dict)
+            and any(c in resultados for c in r.get("checks") or [])):
+        return _generico(r, evidencia, salida)
+    declarados =[m for m in _evidencias(evidencia.get("abuseControls"))
                   if m.get("mechanism") in MECANISMOS_DE_ABUSO and m.get("evidence")]
     if not declarados:
         salida["result"] = NO_CUMPLE
@@ -608,6 +615,13 @@ def _vu9(r, evidencia, salida):
 
 def _vu10(r, evidencia, salida):
     """La guia OWASP se resuelve por tipo de activo, con referencia, version y fecha."""
+    # 🔴 La review de la fila (`guia_owasp.py`) ya resolvio familias, fuentes, frescura y puntos. Si su
+    # resultado viene y la forma vieja (`assetTypes`, `owaspGuidance`) no, manda la review, por el
+    # generico: un sin resolver de la review no se vuelve otra cosa por no traer la forma vieja.
+    resultados = evidencia.get("controlResults")
+    if ("assetTypes" not in evidencia and "owaspGuidance" not in evidencia and isinstance(resultados, dict)
+            and any(c in resultados for c in r.get("reviews") or [])):
+        return _generico(r, evidencia, salida)
     tipos = [t for t in (evidencia.get("assetTypes") or []) if isinstance(t, str)]
     sin_mapeo = [t for t in tipos if t not in GUIA_OWASP]
     esperadas = sorted({GUIA_OWASP[t] for t in tipos if t in GUIA_OWASP})

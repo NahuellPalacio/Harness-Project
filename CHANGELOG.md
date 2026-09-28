@@ -3,6 +3,35 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.25.0] — 2026-09-28
+
+**ES0902 suma Vu9 y Vu10, y con eso queda instalada la parte Vu, de Vu1 a Vu10.** Vu9 revisa, superficie
+por superficie, que lo público sin autenticación tenga un control de uso en el camino. Vu10 revisa la
+guía OWASP que corresponde a cada activo, contra una fuente vigente. Son dos cambios verificados, con
+62 escenarios sostenidos cada uno y ninguno contradicho. Lo declarado de ES0902 sin construir baja de 13
+controles a 9.
+
+### Agregado
+
+- **ES0902 Vu9, el control de uso de lo público sin autenticación.** Lo evalúa el check
+  `public-interface-abuse-protection` con el registro del proyecto
+  `reglas/public-interface-abuse-protection.json`, que se instala vacío. No exige ningún mecanismo en
+  particular: un control cuenta si una evidencia dice que existe, que el camino público lo atraviesa y
+  que cubre el consumo excesivo, el automatizado y la estabilidad. La evidencia de DEV no sostiene PRD
+- **ES0902 Vu10, la guía OWASP que aplica.** Es la review `owasp-security-guidance-review`, resuelta en
+  código y sin modelo. Cada familia (web, API, mobile) sale de un activo con evidencia, se ata a una foto
+  de su fuente y tiene que estar vigente. Un hallazgo no es `FAIL`: viaja al libro de seguridad con su
+  severidad
+- **`docs/seguridad-es0902.md`** explica Vu9 y Vu10
+
+### Lo que un proyecto real va a ver
+
+- 🔴 **Vu10 va a quedar casi siempre en `OWASP_GUIDANCE_FRESHNESS_UNRESOLVED`.** El registro de fuentes
+  todavía no admite las páginas de OWASP, así que ninguna puede llegar a `CURRENT`. Es lo que
+  corresponde: sin fuente vigente no hay `PASS`
+- **Vu9 va a quedar sin resolver hasta que el proyecto llene su registro**: el inventario entero de lo
+  público y la evidencia del camino de cada superficie
+
 ## [0.24.0] — 2026-09-25
 
 **Un proyecto instalado ya puede tratar como vigente una fuente oficial, y el harness habla con un

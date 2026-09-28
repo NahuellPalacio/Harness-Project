@@ -13,37 +13,39 @@ running order.
 | | What | Why now |
 |---|---|---|
 | 1 | Two installer tests break versioned files | It can leave `pre-tool-use.py` — the only blocking rule of the harness — broken in the tree, and four agents were killed by a watchdog during 0.13.0 |
-| 2 | G1 reads a leading zero or a non-ASCII digit as a canonical version | `php 08.2.30` and an Arabic-Indic `8` come out `HOMOLOGATED`. The only fail-open result in six refuter passes, and a one-line fix |
-| 3 | `controles/` never reaches an installed project | Thirty-one normative controls declare `INSTALLED` and the installer never copies them: outside this repository every one of them is `CONTROL_FILE_MISSING`. Each rule installed makes this worse; D7 added six at once, D8 two and P1 five |
-| 4 | `19_contexto / E-29` is not deterministic | It fired once and never again. It asserts determinism, so the one time it fires nobody can tell the finding from the flake |
-| 5 | Close `integridad-de-repositorio` and `tool-builder` | They shipped in 0.19.0 with their verdict `EN CURSO`: two `sin sustento` in the first, eleven in the second |
-| 6 | Review the four contract fixes on their own diff | They rode inside a port that promised not to change behaviour. Until somebody reads them alone, the promise is unverified |
-| 7 | The IGE stayed on v0.9.0 | It is now four versions behind, and 0.13.0 breaks the check contract: any `.ps1` check written there stops running |
-| 8 | What the checks witness never exercised | 25 branches with no test and no implementation left to compare against |
-| 9 | The always loaded cost of agents and skills | The repo went from 53 to 449 tokens per turn during 0.13.0 and nothing caps it |
-| 10 | The budget has to measure the session | Same blind spot, one level up |
-| 11 | The four minor port divergences | None changes a verdict. Cheap to close while touching the files anyway |
-| 12 | Skill routing in `UserPromptSubmit` is mute | A capability that was never built, not a defect |
-| 13 | `ES0902.md` did not close as faithful | Predates all of this |
-| 14 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
-| 15 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
-| 16 | GitLab was never called for real, and Jira only once | The first real Jira call disproved the search probe (fixed in `sonda-de-jira-acotada`); GitLab and Jira's `mypermissions` are still unseen |
-| 17 | The Ficha de Proyecto is a supposition | The whole Block 2 rests on a concept nobody has written yet in a real Jira |
-| 18 | Three loadable .md files are in Spanish | ADR-0011 was broken by three files on the day it was written, and nothing measures it |
-| 19 | ES0902 declares 38 controls and none of them is built | The largest declared-not-built gap the harness has had. Whoever reads "ES0902 installed" can easily read "ES0902 complied with" |
-| 20 | Nothing produces the G2 severity mapping | Every real run of the acceptance threshold comes out `VULNERABILITY_RISK_MAPPING_UNRESOLVED`, so the threshold is installed and unusable |
-| 21 | The shared secret catalogue misses five credential forms, and its sample leaks twelve characters | The hook shows 12 of the 20 characters of an AWS key in the transcript, and the security ledger had to grow its own redaction layer to avoid it |
+| 2 | The installer misses `-NonInteractive` when stdin is a console | The gate is red for whoever runs it from their own terminal — it was, on 2026-09-28, for the person who owns the harness. A gate that is red for a reason nobody fixed teaches people to stop reading it. One `try` around `Read-Host` |
+| 3 | G1 reads a leading zero or a non-ASCII digit as a canonical version | `php 08.2.30` and an Arabic-Indic `8` come out `HOMOLOGATED`. The only fail-open result in six refuter passes, and a one-line fix |
+| 4 | `controles/` never reaches an installed project | Thirty-one normative controls declare `INSTALLED` and the installer never copies them: outside this repository every one of them is `CONTROL_FILE_MISSING`. Each rule installed makes this worse; D7 added six at once, D8 two and P1 five |
+| 5 | `19_contexto / E-29` is not deterministic | It fired once and never again. It asserts determinism, so the one time it fires nobody can tell the finding from the flake |
+| 6 | Close `integridad-de-repositorio` and `tool-builder` | They shipped in 0.19.0 with their verdict `EN CURSO`: two `sin sustento` in the first, eleven in the second |
+| 7 | Review the four contract fixes on their own diff | They rode inside a port that promised not to change behaviour. Until somebody reads them alone, the promise is unverified |
+| 8 | The IGE stayed on v0.9.0 | It is now four versions behind, and 0.13.0 breaks the check contract: any `.ps1` check written there stops running |
+| 9 | What the checks witness never exercised | 25 branches with no test and no implementation left to compare against |
+| 10 | The always loaded cost of agents and skills | The repo went from 53 to 449 tokens per turn during 0.13.0 and nothing caps it |
+| 11 | The budget has to measure the session | Same blind spot, one level up |
+| 12 | The four minor port divergences | None changes a verdict. Cheap to close while touching the files anyway |
+| 13 | Skill routing in `UserPromptSubmit` is mute | A capability that was never built, not a defect |
+| 14 | `ES0902.md` did not close as faithful | Predates all of this |
+| 15 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
+| 16 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
+| 17 | GitLab was never called for real, and Jira only once | The first real Jira call disproved the search probe (fixed in `sonda-de-jira-acotada`); GitLab and Jira's `mypermissions` are still unseen |
+| 18 | The Ficha de Proyecto is a supposition | The whole Block 2 rests on a concept nobody has written yet in a real Jira |
+| 19 | Three loadable .md files are in Spanish | ADR-0011 was broken by three files on the day it was written, and nothing measures it |
+| 20 | ES0902 still declares nine controls that are not built | Down from thirteen with Vu9 and Vu10 in 0.25.0. Whoever reads "ES0902 installed" can easily read "ES0902 complied with" |
+| 21 | Nothing produces the G2 severity mapping | Every real run of the acceptance threshold comes out `VULNERABILITY_RISK_MAPPING_UNRESOLVED`, so the threshold is installed and unusable |
+| 22 | The shared secret catalogue misses five credential forms, and its sample leaks twelve characters | The hook shows 12 of the 20 characters of an AWS key in the transcript, and the security ledger had to grow its own redaction layer to avoid it |
 
-Item 2 is what comes first now: it is the only place where the harness says `HOMOLOGATED` for
-something the ratified rule rejects. 0.19.0 released the backlog of verdict files that had piled up
-since 0.18.0; two of those changes shipped open (item 5) and G1 shipped with E-17 contradicted and
-in plain sight.
+Item 2 is the cheapest and the most visible: until it is fixed, the gate cannot be read from a
+console. Item 3 is the most serious in what it says: it is the only place where the harness says
+`HOMOLOGATED` for something the ratified rule rejects. 0.19.0 released the backlog of verdict files
+that had piled up since 0.18.0; two of those changes shipped open (item 6) and G1 shipped with E-17
+contradicted and in plain sight.
 
 🔴 Recount it, do not copy the number: `docs/cambios/*/verificacion.md` that `git ls-files` does
 not know are the unreleased ones.
 
 Item 1 is what makes a killed run dangerous, and it stays at the top
-for that reason. Item 7 is not code: it is running `-Update` on a real project, and it is what tells
+for that reason. Item 8 is not code: it is running `-Update` on a real project, and it is what tells
 whether any of this works outside this repo.
 
 📌 Two changes still have a `spec.md` and no verdict: `sdd-capacidad` and `mapa-en-la-bitacora`,
@@ -875,6 +877,39 @@ close to the 400 ms budget and out of sight.
 
 ## Installer defects
 
+### The installer misses `-NonInteractive` when stdin is a console, and the gate goes red
+
+Found on 2026-09-28, closing 0.25.0. The owner ran `.\tests\Invoke-Tests.ps1` from their own
+PowerShell terminal and got `465/467` on the PowerShell engine; the same tree, run with stdin
+redirected, gave `36881/36881`. One of the two failures is this one:
+
+```
+[Instalador — ciclo completo] y el error dice como resolverlo
+    no contiene <-Usuario>; obtenido <... El harness te va a tratar por tu nombre.
+    Windows PowerShell se encuentra en modo no interactivo. Las funciones de lectura y
+    confirmación no están disponibles.
+```
+
+`Get-Usuario` in `install.ps1` (around line 721) decides there is nobody to ask only through
+`[Console]::IsInputRedirected`. The test launches `powershell.exe -NoProfile -NonInteractive -File
+install.ps1` without `-Usuario`; from a real console the child inherits the console as stdin, so
+`IsInputRedirected` is false, the installer reaches `Read-Host`, and `-NonInteractive` makes it throw
+its own message. The install still aborts with exit 1 and leaves nothing half written — only the
+message is wrong, and it does not tell the person to pass `-Usuario`. The same happens to anyone who
+runs the installer with `-NonInteractive` by hand or from a script, not only to the test.
+
+The second failure of the same run was environmental too, and belongs to the same family of "the
+gate depends on where it runs": `06-composicion` E-17 scans every `*.py` under the repository root,
+tracked or not, and found a copy of `comun\hooks\lib\zonas.py` under a folder
+`..Harness-release-024` inside the tree. The folder was gone by the time it was looked at, so what
+created it is not recorded.
+
+Fix. In `Get-Usuario`, put `Read-Host` inside a `try` and, on failure, throw the same `falta -Usuario`
+message the redirected branch throws. Checking `[Environment]::GetCommandLineArgs()` for
+`-NonInteractive` would also work, but misses the other hosts where `Read-Host` cannot run. For E-17,
+limit the scan to `git ls-files`, which is what "the definition lives in one place" means for the
+factory.
+
 ### The installer tests fail at random under load, and the python test counts drift
 
 Found on 2026-09-22 while installing the repository-integrity capability. Right after a mutation
@@ -1121,7 +1156,10 @@ never touches, or an exclusion list in `install.ps1`; either one touches `roster
 which is how the four checks find their file, and needs an installer case.
 
 Since 2026-09-23 there is a fourth: `reglas/authentication-abuse-protection.json`, installed empty
-by ES0902 Vu1, with the same exposure.
+by ES0902 Vu1, with the same exposure. 0.25.0 adds two more on 2026-09-28:
+`reglas/public-interface-abuse-protection.json` (Vu9, installed empty) and
+`reglas/owasp-security-guidance-review.json` (Vu10, installed without families). A project that
+fills its Vu9 surface inventory or its Vu10 review loses it on the next `-Update` the same way.
 
 ### ES0902 Vu1 has no field for "expected side effects known" on a runtime test
 
@@ -1229,6 +1267,46 @@ written to stop.
 
 Fix. Decide in a scenario what an evidenced mapping missing from the registry means. Probably it
 prevents `PASS` as uncovered, like a surface the signal names without an entry (E-53).
+
+### ES0902 Vu9 can name the wrong open state when an unreadable test explains part of a gap
+
+Found by the refuter on Vu9's final pass, on 2026-09-27, and left without a verdict: 62/62 upheld.
+In `public-interface-abuse-protection.py`, `_faltaba` reports `PUBLIC_ABUSE_TEST_UNSAFE` (or
+`TEST_TARGET_UNAVAILABLE`) in place of a step's open state when a cited unreadable test speaks about
+what is missing. Three cases pick the wrong open state:
+
+1. `_paso_dimensiones` only looks at the first open dimension. If the excessive mitigation rests on an
+   unsafe test and the automated one is simply missing, it says `UNSAFE`; by the spec's list,
+   `AUTOMATED_CONSUMPTION_MITIGATION_UNRESOLVED` should win.
+2. `_faltaba` only asks whether the test is cited, not whether it names this surface and control.
+   A cited unsafe test about another surface's path turns a missing path into `UNSAFE`.
+3. With several controls, a test that explains one control's gap is enough, even if another control's
+   gap has no test behind it.
+
+None of them turns an open state into `PASS` or `FAIL`: they only change which open state is shown.
+
+Fix. Simplest: drop the substitution. An unreadable test then only blocks through `_bloquear`, the
+one blocking step, and E-43 to E-45 put the unsafe test beside complete evidence instead of in place
+of the path. That also makes the spec's rule 5 literal again.
+
+### ES0902 Vu10 leaves three edges of its two rules without a scenario
+
+Found by the refuter on Vu10's final pass, on 2026-09-27, and left without a verdict: 62/62 upheld.
+In `bin/orquestacion/guia_owasp.py`:
+
+1. **Rule 1 is not applied to the signal.** An `OWASP_APPLICABLE_ASSET: PRESENT` from `RULE_RESULT` or
+   `AUTHORITATIVE_SOURCE_SNAPSHOT` turns the signal on. The safe side —it switches the rule on, never
+   approves it— but the spec says `RULE_RESULT` sustains nothing.
+2. **A newer snapshot does not touch freshness.** A readable snapshot of the same reference with edition
+   `2029`, beside the `2025` one and a `CURRENT 2025` from the source registry, still gives `PASS`. Only
+   `SOURCE_FRESHNESS` speaks about freshness, so the package's §12 ("do not keep claiming CURRENT when a
+   newer edition is detected") depends on the trusted-source mechanism translating it.
+3. **An unreadable point evidence nobody cites does not weigh.** A `GUIDANCE_ITEM_EVIDENCE` with an
+   unreadable `outcome` and `items: ["W1"]`, uncited, leaves `PASS`. Rule 2 says "a point that is cited",
+   so it is ambiguous rather than wrong.
+
+Fix. One scenario each. The second is the one that matters: a readable snapshot with a later edition
+of the same reference should remove `CURRENT`, the same way `UPDATE_AVAILABLE` does.
 
 ### `controles/lib/evidencia.py` does not redact provider-prefixed tokens
 
@@ -1753,10 +1831,11 @@ None of them changes a verdict. They are here so they are not rediscovered as su
 - `_correr` and `_correr_proceso` live duplicated as local functions in each case file. It is a
   pre-existing pattern; if a third variant appears, that is when it earns a shared module.
 
-### ES0902 declares thirty-eight controls and not one of them is built
+### ES0902 still declares nine controls that are not built
 
-Twenty policies, sixteen checks and two reviews. Six more are already installed because ES0901 G1
-and D2 share them, which is why the number is not forty-four.
+Five policies and four checks, as of 0.25.0 (2026-09-28). It started at thirty-eight: twenty
+policies, sixteen checks and two reviews, plus six that ES0901 G1 and D2 already shared. O1 to Vu10
+built the rest, rule by rule; Vu10 installed the last declared review.
 
 This is the correct state of a harness that classified before building — the same decision ES0901
 took for its own twenty-four rows — but it is the biggest instance of it so far, and the risk is
