@@ -2,7 +2,7 @@
 """La CLI del harness de desarrollo: las integraciones y el contexto de una tarea.
 
     python .claude/harness/bin/desarrollo/dev-harness.py setup
-    python .claude/harness/bin/desarrollo/dev-harness.py estado [--json]
+    python .claude/harness/bin/desarrollo/dev-harness.py estado [--json] [--resumen]
     python .claude/harness/bin/desarrollo/dev-harness.py reconfigurar jira|gitlab
     python .claude/harness/bin/desarrollo/dev-harness.py contexto GCBA-1234 [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py seguridad GCBA-1234 [--conocimiento] [--resumen] [--reporte] [--refutacion]
@@ -10,7 +10,9 @@
     python .claude/harness/bin/desarrollo/dev-harness.py harness [--json] [--verbose] [--reiniciar-bienvenida]
 
 Los tres primeros son el Bloque 1 y contestan una sola pregunta: que integraciones hay
-configuradas, cuales funcionan y que capacidades se pueden usar.
+configuradas, cuales funcionan y que capacidades se pueden usar. La configuracion sale del
+`.env` local y de nada mas (docs/cambios/entorno-primero/spec.md): ninguno de los tres pregunta,
+y `setup` y `reconfigurar` dicen que variables faltan, por nombre y sin mostrar un valor.
 
 `contexto` es el Bloque 2 y contesta otra: que hay que hacer en esta tarea, por que, a que
 proyecto pertenece y cual es su estado tecnico. Consume el registro que dejo el bootstrap
@@ -22,8 +24,8 @@ posible de fuga de un token.
 
 🔴 El token no entra nunca por la linea de comandos. Un argumento queda en el
 historial del shell, en la lista de procesos, en la transcripcion de una sesion de
-Claude Code y en el texto que inspecciona el hook de PreToolUse. Se pide por getpass,
-que no hace eco.
+Claude Code y en el texto que inspecciona el hook de PreToolUse. Va en el `.env` local,
+que Claude no puede leer, o en el entorno del proceso.
 
 Codigos de salida:
 
@@ -31,7 +33,6 @@ Codigos de salida:
     2  falla del harness que la persona tiene que arreglar antes de seguir
 """
 import argparse
-import getpass
 import importlib.util
 import io
 import json
@@ -43,8 +44,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import rutas as rutas_bin                                         # noqa: E402
 from integraciones import base                                    # noqa: E402
+from integraciones import entorno                                 # noqa: E402
 from integraciones.almacen import AlmacenSecretos, ErrorDeAlmacen  # noqa: E402
-from integraciones.config import ConfigIntegraciones, ConfigIlegible, ClaveProhibida  # noqa: E402
+from integraciones.config import ConfigIlegible, ClaveProhibida      # noqa: E402
 from integraciones.gitlab import IntegracionGitLab                # noqa: E402
 from integraciones.jira import IntegracionJira                    # noqa: E402
 from integraciones.registro import RegistroCapacidades            # noqa: E402
@@ -87,14 +89,6 @@ CLAVE_JIRA = re.compile(r"^[A-Za-z][A-Za-z0-9_]*-[0-9]+$")
 # `--refutacion` sin valor: en `seguridad`, todas las unidades de la corrida.
 TODAS_LAS_REFUTACIONES = "*"
 
-# Etiqueta de cada campo que se le pide a la persona. Lo que no esta acá no se
-# pregunta: el token va aparte, por getpass.
-ETIQUETAS = {
-    "baseUrl": "Base URL",
-    "usuario": "Usuario / email",
-}
-
-
 class FallaDelHarness(Exception):
     """Sale con codigo 2. Nunca lleva un secreto adentro."""
 
@@ -104,14 +98,17 @@ class FallaDelHarness(Exception):
 class Consola(object):
     """Con --json el stdout queda para el documento y todo lo demas va a stderr."""
 
-    def __init__(self, como_json):
+    def __init__(self, como_json, eventos=True):
         self.destino = sys.stderr if como_json else sys.stdout
+        self.eventos = eventos
 
     def linea(self, texto=""):
         self.destino.write(texto + "\n")
         self.destino.flush()
 
     def evento(self, nombre, **datos):
+        if not self.eventos:
+            return
         partes = ["evento=%s" % nombre]
         partes += ["%s=%s" % (k, datos[k]) for k in sorted(datos)]
         self.linea("  " + " ".join(partes))
@@ -157,84 +154,85 @@ def version_de(rutas):
 
 
 def armar(clase, config, almacen, timeout, transporte=None):
-    return clase(config.de(clase.nombre), almacen, timeout, transporte)
+    """El adapter, con la configuracion publica y los nombres de variable del contrato.
+
+    `config` es la Resolucion del `.env` (tiene `variables_de`) o, en la suite, un
+    ConfigIntegraciones a mano. El token no viaja aca: el adapter lo pide al almacen.
+    """
+    variables = config.variables_de(clase.nombre) if hasattr(config, "variables_de") else None
+    return clase(config.de(clase.nombre), almacen, timeout, transporte, variables=variables)
 
 
-# -- preguntas -----------------------------------------------------------------
+# -- la configuracion desde el .env ------------------------------------------------
 
-def _exigir_terminal():
-    if not sys.stdin.isatty():
-        raise FallaDelHarness(
-            "el setup necesita una terminal interactiva para pedir las credenciales, y la "
-            "entrada esta redirigida. Corrélo a mano en tu consola.")
+ADAPTADORES = dict((c.nombre, c) for c in CLASES)
 
 
-def _preguntar(texto, valor_actual=""):
-    sufijo = " [%s]" % valor_actual if valor_actual else ""
-    while True:
-        respuesta = input("%s%s: " % (texto, sufijo)).strip()
-        if respuesta:
-            return respuesta
-        if valor_actual:
-            return valor_actual
+def resolver_configuracion(rutas):
+    """Contrato -> .env -> proyeccion sanitizada. Devuelve la Resolucion.
+
+    Es lo primero de cada comando que toca integraciones. La proyeccion se regenera cada vez
+    que cambio, y una vieja no le gana nunca al `.env`: el `.env` se lee siempre.
+    """
+    contrato = entorno.cargar_contrato(adaptadores=ADAPTADORES)
+    resolucion = entorno.resolver(contrato, rutas["env"], rutas["config"])
+    entorno.escribir_proyeccion(rutas["config"], resolucion.proyeccion())
+    return resolucion
 
 
-def _preguntar_si(texto):
-    respuesta = input("%s [S/n]: " % texto).strip().lower()
-    return respuesta in ("", "s", "si", "sí", "y", "yes")
-
-
-def configurar(clase, config, almacen, consola):
-    """Pide lo que falta de una integracion y lo guarda. El token va al almacen."""
-    _exigir_terminal()
-    bloque = dict(config.de(clase.nombre))
-    consola.linea("")
-    consola.linea(clase.etiqueta)
-
-    if not _preguntar_si("  ¿Configurar %s?" % clase.etiqueta):
-        bloque["enabled"] = False
-        config.guardar(clase.nombre, bloque)
-        consola.evento("integracion.deshabilitada", integracion=clase.nombre)
-        return
-
-    for campo in clase.campos:
-        etiqueta = ETIQUETAS.get(campo, campo)
-        bloque[campo] = _preguntar("  " + etiqueta, str(bloque.get(campo, "") or ""))
-    bloque["enabled"] = True
-    config.guardar(clase.nombre, bloque)
-
-    if almacen.exists(clase.clave_token):
-        if not _preguntar_si("  Ya hay un token cargado. ¿Reemplazarlo?"):
-            consola.evento("integracion.configurada", integracion=clase.nombre)
-            return
-
-    token = getpass.getpass("  API Token (no se muestra): ").strip()
-    if not token:
-        raise FallaDelHarness("no se cargo ningun token para %s: el setup no puede seguir."
-                              % clase.etiqueta)
-    almacen.set(clase.clave_token, token)
-    del token
-    consola.evento("integracion.configurada", integracion=clase.nombre)
-
-
-def hay_que_preguntar(clase, config, almacen):
-    """Primera corrida o configuracion incompleta. Un `false` explicito es una decision."""
-    bloque = config.de(clase.nombre)
-    if bloque.get("enabled") is None:
-        return True
-    if not bloque.get("enabled"):
-        return False
-    return bool(armar(clase, config, almacen, 1).campos_faltantes())
+def mostrar_configuracion(consola, resolucion, solo=None):
+    """Que variables hay, de que capa y cuales faltan. Nombres y capas, nunca valores."""
+    consola.linea("Modo de configuración: %s" % entorno.MODO)
+    consola.linea("Archivo: %s (%s)" % (resolucion.ruta_env,
+                                        "presente" if resolucion.env_presente else "no existe"))
+    ancho = max(len(v) for v in entorno.variables_del_contrato(resolucion.contrato)) + 2
+    for clase in CLASES:
+        if solo and clase.nombre != solo:
+            continue
+        integ = resolucion.integracion(clase.nombre)
+        consola.linea("")
+        consola.linea(clase.etiqueta)
+        for v in integ.variables:
+            fuente = "" if v.fuente == entorno.NOT_CONFIGURED else v.fuente
+            if v.presente and not v.valida:
+                fuente += "  (valor invalido)"
+            estado = "presente" if v.presente else "ausente"
+            consola.linea(("  %s%s %s" % (v.nombre.ljust(ancho), estado.ljust(9), fuente)).rstrip())
+        if integ.codigo and integ.codigo != entorno.ENV_REQUIRED_VARIABLE_MISSING:
+            consola.linea("  " + integ.motivo(clase.etiqueta))
+        legado = integ.de_legado()
+        if legado:
+            consola.linea("  Migración: %s sale del harness.integraciones.json viejo. Pasalo al "
+                          ".env para terminar de migrar." % ", ".join(legado))
+    nuevas = resolucion.variables_nuevas()
+    if nuevas:
+        consola.linea("")
+        consola.linea("Variables nuevas del contrato: %s (ver .env.example)." % ", ".join(nuevas))
 
 
 # -- el bootstrap --------------------------------------------------------------
 
+def _sin_validar(motivo):
+    """El resultado de una integracion que el resolvedor ya descarto: sin red."""
+    return {"estado": base.NOT_CONFIGURED, "motivo": motivo, "verificado_en": base.ahora(),
+            "capacidades": [], "diagnostico": []}
+
+
 def correr_bootstrap(config, almacen, timeout, consola, transporte=None):
-    registro = RegistroCapacidades({c.nombre: c.CAPACIDADES for c in CLASES})
+    registro = RegistroCapacidades({c.nombre: c.CAPACIDADES for c in CLASES},
+                                   modo=entorno.MODO if hasattr(config, "integracion") else None)
     for clase in CLASES:
         integracion = armar(clase, config, almacen, timeout, transporte)
         consola.evento("validacion.inicio", integracion=clase.nombre)
-        resultado = integracion.estado()
+        resuelta = config.integracion(clase.nombre) if hasattr(config, "integracion") else None
+        codigo = resuelta.codigo if resuelta else ""
+        if codigo and codigo != entorno.ENV_REQUIRED_VARIABLE_MISSING:
+            # Una bandera invalida, un conflicto o un valor rechazado: el adapter no sale a la
+            # red con una configuracion que el resolvedor ya dijo que no sirve.
+            resultado = _sin_validar(resuelta.motivo(clase.etiqueta))
+        else:
+            resultado = integracion.estado()
+        resultado["faltan"] = list(resuelta.faltan) if resuelta else []
         if resultado["estado"] == base.AVAILABLE:
             consola.evento("validacion.ok", integracion=clase.nombre,
                            capacidades=len(resultado["capacidades"]))
@@ -438,16 +436,60 @@ def _detalle_de_runtime(b, doc, proyecto):
     return [limpieza.redactar(l, catalogo, "harness --verbose")[0] for l in lineas]
 
 
+def acceso_del_modelo(proyecto):
+    """BLOQUEADO si permissions.deny le niega el .env a Claude, LEGIBLE si no, o SIN VERIFICAR."""
+    try:
+        legible = bienvenida().acceso_al_env(proyecto)
+    except Exception:                         # noqa: BLE001 - la tabla no se cae por esto
+        legible = None
+    if legible is None:
+        return "SIN VERIFICAR"
+    return "LEGIBLE" if legible else "BLOQUEADO"
+
+
+def mostrar_resumen(documento, resolucion):
+    """`estado --resumen`: una linea por integracion. Es lo que dice el instalador al terminar."""
+    sys.stdout.write("Configuración: %s (.env local)\n" % entorno.MODO)
+    ancho = max(len(c.etiqueta) for c in CLASES) + 4
+    for clase in CLASES:
+        datos = documento["integraciones"][clase.nombre]
+        resuelta = resolucion.integracion(clase.nombre)
+        if datos["estado"] == base.AVAILABLE:
+            texto = "OK"
+        elif datos.get("faltan"):
+            texto = "falta " + ", ".join(datos["faltan"])
+        elif not resuelta.habilitada and not resuelta.codigo:
+            texto = "deshabilitada (%s)" % resuelta.bandera
+        else:
+            texto = datos["estado"] + (" (%s)" % resuelta.codigo if resuelta.codigo else "")
+        sys.stdout.write("  %s%s\n" % (clase.etiqueta.ljust(ancho), texto))
+        legado = resuelta.de_legado()
+        if legado:
+            sys.stdout.write("  %sen migración: falta pasar %s al .env\n"
+                             % (" " * ancho, ", ".join(legado)))
+    nuevas = resolucion.variables_nuevas()
+    if nuevas:
+        sys.stdout.write("Variables nuevas del contrato: %s (ver .env.example)\n"
+                         % ", ".join(nuevas))
+
+
 def mostrar(consola, documento, proyecto, rutas):
-    ancho = max(len(c.etiqueta) for c in CLASES) + 2
+    ancho = len("Acceso del modelo") + 3
     consola.linea("")
     consola.linea("GCBA Development Harness")
+    consola.linea("")
+    consola.linea("Configuración")
+    consola.linea("-" * 48)
+    consola.linea("%s%s" % ("Fuente".ljust(ancho), ".env local"))
+    consola.linea("%s%s" % ("Acceso del modelo".ljust(ancho), acceso_del_modelo(proyecto)))
     consola.linea("")
     consola.linea("Integraciones")
     consola.linea("-" * 48)
     for clase in CLASES:
         datos = documento["integraciones"][clase.nombre]
         consola.linea("%s%s" % (clase.etiqueta.ljust(ancho), datos["estado"]))
+        if datos.get("faltan"):
+            consola.linea("  Faltan: " + ", ".join(datos["faltan"]))
         if datos["motivo"]:
             consola.linea("  " + datos["motivo"])
         for linea in datos.get("diagnostico") or []:
@@ -467,7 +509,8 @@ def mostrar(consola, documento, proyecto, rutas):
     if caidas:
         consola.linea("Sin: %s. Sus capacidades quedan deshabilitadas; el resto del harness "
                       "funciona." % ", ".join(caidas))
-        consola.linea("Para reconfigurar: dev-harness.py reconfigurar <%s>" % "|".join(NOMBRES))
+        consola.linea("Para ver que falta: dev-harness.py reconfigurar <%s>. Se completa en el "
+                      ".env local." % "|".join(NOMBRES))
 
 
 # -- contexto de tarea ---------------------------------------------------------
@@ -1276,8 +1319,7 @@ def comando(args, transporte=None, transporte_bytes=None):
     if args.comando == "harness":
         return mostrar_harness(args, proyecto, rutas)
 
-    consola = Consola(args.json)
-    config = ConfigIntegraciones(rutas["config"])
+    consola = Consola(args.json, eventos=not (args.comando == "estado" and args.resumen))
     almacen = AlmacenSecretos(rutas["env"])
     timeout = timeout_de(rutas)
 
@@ -1293,6 +1335,9 @@ def comando(args, transporte=None, transporte_bytes=None):
     if args.comando == "refute":
         return refutar(args, proyecto, consola)
 
+    # Todo lo que sigue toca integraciones: primero el .env, despues el resto.
+    config = resolver_configuracion(rutas)
+
     if args.comando == "contexto":
         return resolver_contexto(args, proyecto, rutas, config, almacen, timeout,
                                  consola, transporte, transporte_bytes)
@@ -1301,22 +1346,29 @@ def comando(args, transporte=None, transporte_bytes=None):
         return resolver_fuentes(args, proyecto, rutas, config, almacen, timeout,
                                 consola, transporte, transporte_bytes)
 
-    if args.comando == "reconfigurar":
-        configurar(dict((c.nombre, c) for c in CLASES)[args.argumento],
-                   config, almacen, consola)
-    elif args.comando == "setup":
-        primera = not os.path.isfile(rutas["config"])
-        consola.linea("GCBA Development Harness — %s" % (
-            "configuracion inicial" if primera else "configuracion existente"))
-        for clase in CLASES:
-            if hay_que_preguntar(clase, config, almacen):
-                configurar(clase, config, almacen, consola)
+    if args.comando in ("setup", "reconfigurar"):
+        # Muestra, no pregunta: la configuracion se completa en el .env.
+        consola.linea("GCBA Development Harness — configuración")
+        consola.linea("")
+        mostrar_configuracion(consola, config,
+                              args.argumento if args.comando == "reconfigurar" else None)
+        consola.linea("")
+        consola.linea("Para cambiar algo, editá %s (Claude no puede leerlo) y volvé a correr "
+                      "`dev-harness.py %s`: se revalida." % (
+                          rutas["env"], "reconfigurar " + args.argumento
+                          if args.comando == "reconfigurar" else "setup"))
+    elif not args.json and not args.resumen:
+        consola.linea("Modo de configuración: %s" % entorno.MODO)
 
-    consola.linea("")
+    if consola.eventos:
+        consola.linea("")
     registro = correr_bootstrap(config, almacen, timeout, consola, transporte)
     documento = registro.escribir(rutas["capacidades"], version_de(rutas))
     consola.evento("harness.listo", disponibles=len(registro.disponibles()))
 
+    if args.comando == "estado" and args.resumen and not args.json:
+        mostrar_resumen(documento, config)
+        return 0
     if args.json:
         sys.stdout.write(json.dumps(documento, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     else:
@@ -1358,7 +1410,8 @@ def parser():
     p.add_argument("--conocimiento", action="store_true",
                    help="seguridad: agrega al libro el estado de ES0902 de harness.fuentes.json")
     p.add_argument("--resumen", action="store_true",
-                   help="seguridad: escribe security-summary.json")
+                   help="seguridad: escribe security-summary.json; estado: una linea por "
+                        "integracion, sin eventos")
     p.add_argument("--barra", action="store_true",
                    help="contabilidad: muestra la barra de la sesion activa")
     p.add_argument("--sesion", default="",
@@ -1411,8 +1464,8 @@ def main(argv=None, transporte=None, transporte_bytes=None):
     if args.token is not None:
         sys.stderr.write(
             "El token no se pasa por la linea de comandos: queda en el historial del shell, en "
-            "la lista de procesos y en la transcripcion de la sesion. Corre `setup` y cargalo "
-            "cuando te lo pida, o dejalo en la variable de entorno correspondiente.\n")
+            "la lista de procesos y en la transcripcion de la sesion. Ponelo en el .env local "
+            "(JIRA_TOKEN, GITLAB_TOKEN) o en la variable de entorno correspondiente.\n")
         return 2
 
     if args.comando == "reconfigurar" and args.argumento not in NOMBRES:
@@ -1443,6 +1496,7 @@ def main(argv=None, transporte=None, transporte_bytes=None):
     try:
         return comando(args, transporte, transporte_bytes)
     except (FallaDelHarness, ConfigIlegible, ClaveProhibida, ErrorDeAlmacen,
+            entorno.ErrorDeEntorno,
             contexto_ensamblador.ContratoInvalido,
             cont_presupuesto.PoliticaInvalida, cont_contrato.ContratoInvalido,
             seg_libro.EventoInvalido, seg_libro.TareaInvalida,
@@ -1451,7 +1505,7 @@ def main(argv=None, transporte=None, transporte_bytes=None):
         sys.stderr.write("harness: %s\n" % e)
         return 2
     except KeyboardInterrupt:
-        sys.stderr.write("\nharness: cancelado. No se guardo nada de lo que faltaba.\n")
+        sys.stderr.write("\nharness: cancelado.\n")
         return 2
 
 

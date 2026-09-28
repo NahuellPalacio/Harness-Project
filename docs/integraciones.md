@@ -1,7 +1,7 @@
 # Las integraciones externas
 
 Jira Cloud y GitLab, hoy. El harness las configura, las valida y declara qué se puede
-hacer con ellas. Todavía nadie las consume: eso es el bloque siguiente.
+hacer con ellas. Quien las consume es el Bloque 2: el contexto de una tarea.
 
 ## La pregunta que contestan
 
@@ -14,21 +14,22 @@ python .claude\harness\bin\desarrollo\dev-harness.py estado
 ```
 GCBA Development Harness
 
+Configuración
+------------------------------------------------
+Fuente              .env local
+Acceso del modelo   BLOQUEADO
+
 Integraciones
 ------------------------------------------------
-Jira Cloud    AVAILABLE
-GitLab        AUTHENTICATION_FAILED
-  El token de GitLab no fue aceptado (401). Puede estar vencido o mal copiado: generá
-  uno nuevo y volvé a configurarlo.
+Jira Cloud          AVAILABLE
+GitLab              NOT_CONFIGURED
+  Faltan: GITLAB_BASE_URL, GITLAB_TOKEN
+  Falta configurar GitLab: GITLAB_BASE_URL, GITLAB_TOKEN. Completá las variables faltantes en el .env local.
 
 Capacidades
 ------------------------------------------------
   DISABLED  gitlab.branch.read
-  DISABLED  gitlab.merge_request.read
-  DISABLED  gitlab.project.read
-  DISABLED  gitlab.repository.read
-  ENABLED   jira.attachment.read
-  ENABLED   jira.issue.read
+  ...
   ENABLED   jira.issue.search
 
 Estado
@@ -36,31 +37,55 @@ Estado
 Harness GCBA ◐ PARCIAL · Conocimiento VIGENCIA SIN VERIFICAR · Jira DISPONIBLE · GitLab SIN CONFIGURAR
 ```
 
-La última sección es el estado general, el mismo que muestra cada sesión al arrancar: no una
-palabra fija. Con una integración caída dice `PARCIAL` y la nombra, y nunca "listo". **Una
-integración que no anda deshabilita sus capacidades y nada más:** el comando sale con código 0.
+La última sección es el estado general, el mismo que muestra cada sesión al arrancar. Con una
+integración caída dice `PARCIAL` y la nombra, y nunca "listo". **Una integración que no anda
+deshabilita sus capacidades y nada más:** el comando sale con código 0.
 `dev-harness.py harness` muestra el mismo estado con el detalle, sin volver a consultar nada.
 
-## Configurar, la primera vez
+`estado --resumen` es la versión de una línea por integración que muestra el instalador al
+terminar.
+
+## Configurar: el `.env` local, y nada más
+
+Desde [entorno-primero](cambios/entorno-primero/spec.md) hay **un solo archivo que se completa**,
+el `.env` de la raíz del proyecto. El instalador lo crea una vez, con la plantilla de
+`.env.example`, y después no lo vuelve a tocar:
+
+```dotenv
+HARNESS_JIRA_ENABLED=true
+JIRA_BASE_URL=https://tu-organizacion.atlassian.net
+JIRA_USER=tu.email@buenosaires.gob.ar
+JIRA_TOKEN=<tu-api-token-de-jira>
+
+HARNESS_GITLAB_ENABLED=true
+GITLAB_BASE_URL=https://gitlab.tu-organizacion.gob.ar
+GITLAB_PROJECT=grupo/proyecto
+GITLAB_TOKEN=<tu-personal-access-token-de-gitlab>
+```
+
+Para ver qué falta, sin que nada te pregunte:
 
 ```powershell
 python .claude\harness\bin\desarrollo\dev-harness.py setup
-```
-
-Pregunta solo lo que falta. La base URL y el usuario se escriben en
-`.claude/harness.integraciones.json`; el token se pide sin eco y se guarda en el `.env`.
-
-Para cambiar uno solo, después:
-
-```powershell
 python .claude\harness\bin\desarrollo\dev-harness.py reconfigurar gitlab
 ```
+
+Los dos muestran cada variable como `presente` o `ausente`, con la capa de donde sale, y
+revalidan. Ninguno muestra un valor.
+
+| Regla | Qué significa |
+|---|---|
+| Precedencia | `PROCESS_ENV > DOTENV > LEGACY > SAFE_DEFAULT`. El entorno del proceso le gana al `.env`, y eso no es un conflicto |
+| `HARNESS_*_ENABLED` | `true/false`, `1/0`, `yes/no`, `on/off`, sin importar mayúsculas. Otra cosa es `ENV_ENABLED_FLAG_INVALID` |
+| Vacío o `<...>` | Es que no está cargado |
+| Deshabilitada | No pide variables ni sale a la red |
+| Habilitada e incompleta | `NOT_CONFIGURED`, con los nombres de lo que falta |
 
 Qué tokens hacen falta:
 
 | Integración | Dónde se saca el token | Qué alcanza |
 |---|---|---|
-| Jira Cloud | `id.atlassian.com` → Security → API tokens | El token va con tu email: el harness arma el Basic |
+| Jira Cloud | `id.atlassian.com` → Security → API tokens | El token va con tu email (`JIRA_USER`): el harness arma el Basic |
 | GitLab | Preferences → Access Tokens | Scope `read_api`. Con `read_repository` solo queda `gitlab.repository.read` |
 
 > 🔴 **El token no se pasa por la línea de comandos.** `--token` existe para rechazarlo:
@@ -71,17 +96,24 @@ Qué tokens hacen falta:
 
 | Archivo | Qué lleva | Quién lo toca |
 |---|---|---|
-| `.claude/harness.integraciones.json` | `enabled`, `baseUrl`, `usuario` | El setup, y vos a mano si querés |
-| `.env` | Solo los `*_TOKEN` | El setup, por el almacén de secretos |
-| `.claude/harness.capacidades.json` | El resultado de la última corrida | Se reescribe en cada corrida |
+| `.env` | Todo: banderas, URLs, usuario y tokens | Vos, y nadie más |
+| `.env.example` | La plantilla, entre `# >>> gcba-harness: integraciones >>>` y su cierre | El instalador reescribe el bloque; lo demás es del proyecto |
+| `.claude/harness/reglas/desarrollo/integration-environment-contract.json` | Qué variables hay y cuáles son `SECRET` | El instalador, en cada `-Update` |
+| `.claude/harness.integraciones.json` | La proyección sanitizada: `enabled`, `baseUrl`, `usuario`, `gitlabProyecto` | Se regenera en cada `setup`, `estado` o `reconfigurar` |
+| `.claude/harness.capacidades.json` | El resultado de la última corrida, con `faltan` por integración | Se reescribe en cada corrida |
 
-**La configuración no es secreta y el agente la puede leer; el `.env` no.**
-`permissions.deny` le tapa a Claude `.env` y `.env.*`, el `.gitignore` lo excluye del
-repositorio, y el hook de `PreToolUse` impide escribir un token literal en cualquier
-archivo. Ver [secretos.md](secretos.md).
+**El `.env` es sensible entero**, aunque también lleve valores públicos: `permissions.deny` le
+tapa a Claude `.env` y `.env.*`, el `.gitignore` lo excluye del repositorio, y el hook de
+`PreToolUse` impide escribir un token literal en cualquier archivo. Ver [secretos.md](secretos.md).
+Lo que el agente sí puede leer es la proyección, que no lleva ningún campo `SECRET`: el
+resolvedor no los copia, y una clave con forma de secreto se rechaza igual.
 
-`enabled: null` en la configuración significa *todavía nadie decidió*: es lo que hace que
-el setup pregunte la primera vez y no vuelva a preguntar después.
+### Si venís de una versión anterior
+
+El `harness.integraciones.json` que completabas a mano se sigue leyendo, **por debajo del
+`.env`**, para que el `-Update` no te deje sin integraciones. En la primera corrida sus valores
+públicos pasan al bloque `legado` de la proyección, y `setup` dice qué variables faltan pasar al
+`.env` para terminar. Cada una sale de `legado` cuando aparece en el `.env`, y no vuelve.
 
 ## Los cinco estados
 
@@ -90,14 +122,19 @@ formas distintas.
 
 | Estado | Qué pasó | Qué hacer |
 |---|---|---|
-| `NOT_CONFIGURED` | Falta la base URL, el token, o nadie la configuró | `setup` |
-| `AUTHENTICATION_FAILED` | 401: el token no fue aceptado | Generar uno nuevo y `reconfigurar` |
+| `NOT_CONFIGURED` | Deshabilitada, o le falta una variable, o el `.env` tiene un valor inválido | Completar el `.env` |
+| `AUTHENTICATION_FAILED` | 401: el token no fue aceptado | Generar uno nuevo y cargarlo en el `.env` |
 | `PERMISSION_DENIED` | 403: el token sirve, los permisos no alcanzan | Pedir los permisos de lectura que falten |
 | `CONNECTION_FAILED` | Timeout, DNS, TLS, 5xx o una URL que redirige | Revisar la red, la VPN o la `baseUrl` |
 | `AVAILABLE` | Contestó | Nada |
 
-El mensaje sale de un diccionario fijo del código y **nunca** del cuerpo de la respuesta:
-un servidor puede devolver la credencial que recibió adentro de un mensaje de error.
+Antes de salir a la red, el resolvedor puede frenar una integración con `ENV_ENABLED_FLAG_INVALID`,
+`ENV_CONFIGURATION_CONFLICT` (una variable definida dos veces en el `.env` con valores distintos),
+`ENV_PUBLIC_PROJECTION_REJECTED_SECRET` o `ENV_VALUE_INVALID`. Un `.env` que no se puede leer es
+`ENV_FILE_UNREADABLE` y un contrato roto es `ENV_CONTRACT_INVALID`: los dos salen con código 2.
+
+El mensaje sale de un diccionario fijo del código y **nunca** del cuerpo de la respuesta ni del
+`.env`: un servidor puede devolver la credencial que recibió adentro de un mensaje de error.
 
 ## Soportada no es lo mismo que disponible
 
@@ -134,16 +171,15 @@ class IntegracionSonarQube(Integracion):
 ```
 
 Después: sumarla a `CLASES` en `dev-harness.py`, sus capacidades a
-`capacidadesSoportadas` del manifiesto —hay un test que compara las dos listas—, su
-variable al `.env.example` y su bloque a `integraciones.plantilla.json`.
-
-`OPENSHIFT_TOKEN` sigue en el `.env` sin adapter a propósito: es la prueba de que sumar
-el tercero no obliga a tocar el núcleo.
+`capacidadesSoportadas` del manifiesto —hay un test que compara las dos listas—, su bloque al
+contrato `integration-environment-contract.json` con cada campo clasificado `PUBLIC_CONFIG` o
+`SECRET`, y sus variables al `.env.example`. Un contrato y un código que no nombran las mismas
+integraciones son `ENV_CONTRACT_INVALID`.
 
 ## Lo que este bloque no hace
 
 - **No escribe nada en ningún sistema externo.** Todas las capacidades son de lectura.
-- **No resuelve tickets, ni arma contexto, ni le entrega tools a un agente.** El registro
-  de capacidades es el insumo de eso, no eso.
+- **No escribe el `.env`.** Ni para agregar una variable nueva: la nombra y la tenés que
+  copiar de `.env.example`.
 - **No cachea la validación.** Cada corrida vuelve a preguntar, porque un token que venció
   a la mañana no tiene por qué seguir figurando disponible a la tarde.

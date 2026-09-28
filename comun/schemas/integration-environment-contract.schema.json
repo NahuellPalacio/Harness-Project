@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Integration Environment Contract",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "integrations"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "integration-environment-contract/1.0"
+      ]
+    },
+    "integrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "enabled",
+          "fields"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "object",
+            "required": [
+              "env",
+              "default"
+            ],
+            "properties": {
+              "env": {
+                "type": "string"
+              },
+              "default": {
+                "type": "boolean"
+              }
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "env",
+                "classification",
+                "requiredWhenEnabled"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "env": {
+                  "type": "string"
+                },
+                "classification": {
+                  "enum": [
+                    "PUBLIC_CONFIG",
+                    "SECRET"
+                  ]
+                },
+                "requiredWhenEnabled": {
+                  "type": "boolean"
+                },
+                "legacyConfigKey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "format": {
+                  "enum": [
+                    "url",
+                    "text"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$id": "integration-environment-contract/1.0",
+  "description": "El contrato de las variables de entorno de las integraciones del Bloque 1. Lo lee harnesses/desarrollo/bin/integraciones/entorno.py, que lo valida a mano con esta misma forma. Cada campo se clasifica PUBLIC_CONFIG o SECRET: un SECRET no se proyecta nunca. Divergencia con el paquete: `format` opcional en un campo (url), para validar la base URL."
+}

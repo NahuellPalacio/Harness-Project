@@ -1,5 +1,8 @@
 # E-01 a E-06 de docs/cambios/env-credenciales-externas/spec.md.
 #
+# Pisados por docs/cambios/entorno-primero/spec.md: la plantilla va en un bloque marcado de
+# .env.example (E-01, E-03), y OPENSHIFT_TOKEN ya no se reparte (E-04).
+#
 # Va aparte de 03-instalador.ps1 por el mismo motivo que 11-codebase-instalador.ps1 y
 # 14-contexto-instalador.ps1: ese caso rompe archivos versionados a proposito para
 # probar el -Update, con un finally que no sobrevive a que maten el proceso. Aca no se
@@ -13,6 +16,16 @@ Set-Grupo 'Instalador - las credenciales externas'
 $instalador = Join-Path $script:Raiz 'install.ps1'
 $origenEnvExample = Join-Path $script:Raiz 'harnesses\desarrollo\.env.example'
 $textoOrigen = [System.IO.File]::ReadAllText($origenEnvExample)
+$marcaIni = '# >>> gcba-harness: integraciones >>>'
+$marcaFin = '# <<< gcba-harness: integraciones <<<'
+
+function Get-BloqueDelHarness {
+    param([string] $Texto)
+    $i = $Texto.IndexOf($marcaIni)
+    $f = $Texto.IndexOf($marcaFin)
+    if ($i -lt 0 -or $f -le $i) { return $null }
+    return $Texto.Substring($i + $marcaIni.Length, $f - $i - $marcaIni.Length).Trim()
+}
 
 function Invoke-InstaladorEnv {
     param([string[]] $Argumentos)
@@ -42,8 +55,8 @@ try {
 
     Assert-Verdadero 'E-01 .env.example existe' (Test-Path $rutaEnvExample) '.env.example no se instalo'
     if (Test-Path $rutaEnvExample) {
-        Assert-Igual 'E-01 .env.example es identico byte a byte a la plantilla' `
-            $textoOrigen ([System.IO.File]::ReadAllText($rutaEnvExample))
+        Assert-Igual 'E-01 el bloque del harness en .env.example es la plantilla' `
+            $textoOrigen.Trim() (Get-BloqueDelHarness ([System.IO.File]::ReadAllText($rutaEnvExample)))
     }
 
     Assert-Verdadero 'E-04 .env existe' (Test-Path $rutaEnv) '.env no se creo'
@@ -52,7 +65,8 @@ try {
         Assert-Igual 'E-04 .env nace con las mismas variables que .env.example' $textoOrigen $textoEnv
         Assert-Contiene 'E-04 JIRA_TOKEN queda con placeholder, no vacio a ciegas' 'JIRA_TOKEN=<' $textoEnv
         Assert-Contiene 'E-04 GITLAB_TOKEN idem' 'GITLAB_TOKEN=<' $textoEnv
-        Assert-Contiene 'E-04 OPENSHIFT_TOKEN idem' 'OPENSHIFT_TOKEN=<' $textoEnv
+        Assert-Verdadero 'E-04 sin OPENSHIFT_TOKEN: no hay adaptador' `
+            (-not $textoEnv.Contains('OPENSHIFT')) ".env trae una variable de OpenShift"
     }
 
     # -- E-03, E-05: -Update pisa .env.example y nunca toca .env --------------------
@@ -66,8 +80,11 @@ try {
     $r = Invoke-InstaladorEnv @('-Project', $demo, '-Update')
     Assert-Igual '-Update sale con codigo 0' 0 $r.Codigo
 
-    Assert-Igual 'E-03 -Update pisa .env.example con la plantilla actual' `
-        $textoOrigen ([System.IO.File]::ReadAllText($rutaEnvExample))
+    $textoExample = [System.IO.File]::ReadAllText($rutaEnvExample)
+    Assert-Igual 'E-03 -Update deja en .env.example el bloque con la plantilla actual' `
+        $textoOrigen.Trim() (Get-BloqueDelHarness $textoExample)
+    Assert-Contiene 'E-03 y lo que el proyecto tenia fuera del bloque sigue' `
+        '# version vieja, para ver que -Update la pisa' $textoExample
 
     Assert-Igual 'E-05 -Update no toca .env: sigue con la marca del desarrollador' `
         $textoEnvConMarca ([System.IO.File]::ReadAllText($rutaEnv))

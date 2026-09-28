@@ -1,5 +1,9 @@
 """La configuracion de las integraciones. Lo que NO es secreto.
 
+Desde docs/cambios/entorno-primero/spec.md este archivo es una PROYECCION: lo genera
+`integraciones/entorno.py` desde el `.env` local, y la persona ya no lo completa. Esta clase
+lo sigue leyendo, y `guardar` sigue rechazando una clave con forma de secreto.
+
     .claude/harness.integraciones.json
 
     {
@@ -32,8 +36,8 @@ class ConfigIlegible(Exception):
     """
 
 
-QUE_HACER = ("Corregilo a mano, o borralo y corre el setup del harness: se vuelve a "
-             "crear vacio y no lleva ningun secreto adentro.")
+QUE_HACER = ("Corregilo a mano, o borralo: el harness lo vuelve a generar desde el .env "
+             "local, y no lleva ningun secreto adentro.")
 
 
 class ClaveProhibida(Exception):

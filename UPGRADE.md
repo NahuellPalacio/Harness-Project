@@ -23,6 +23,30 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.25.0 → 0.26.0
+
+`-Update` alcanza para que nada deje de andar: la URL y el usuario del `harness.integraciones.json`
+viejo se siguen leyendo como capa de migración. Hay un paso manual por desarrollador, que se puede
+hacer cuando convenga: **pasar la configuración al `.env`.** Se copian del bloque nuevo de
+`.env.example` las variables que falten y se completan:
+
+```dotenv
+HARNESS_JIRA_ENABLED=true
+JIRA_BASE_URL=https://tu-organizacion.atlassian.net
+JIRA_USER=tu.email@buenosaires.gob.ar
+HARNESS_GITLAB_ENABLED=true
+GITLAB_BASE_URL=https://gitlab.tu-organizacion.gob.ar
+```
+
+Después, `setup` confirma que no falta nada:
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py setup
+```
+
+🔴 **Un script que le respondía a las preguntas de `setup` deja de funcionar**: `setup` ya no lee de
+stdin. Los valores tienen que venir del `.env` o del entorno del proceso.
+
 ## 0.24.0 → 0.25.0
 
 `-Update` alcanza. Trae dos registros nuevos del proyecto en `reglas/`, uno para Vu9 y otro para Vu10,

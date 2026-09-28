@@ -765,18 +765,34 @@ function New-ConfigProyecto {
 function New-EnvProyecto {
     <#
     .SYNOPSIS
-        .env.example se pisa siempre, con la plantilla del harness. .env se crea UNA
-        SOLA VEZ si no existe, sembrado con el mismo contenido, y no se vuelve a tocar.
+        La plantilla del harness va en un bloque marcado de .env.example, que se reescribe
+        en cada instalación. .env se crea UNA SOLA VEZ si no existe, con la plantilla, y no
+        se vuelve a tocar.
     .DESCRIPTION
-        Las credenciales van por desarrollador y nunca se generan acá: .env sale
-        siempre vacío, con el mismo placeholder instructivo de .env.example. Completarlo
-        con un token real es tarea de cada quien, en su propia máquina — Claude Code ya
-        tiene vedada la lectura de .env* por permissions.deny.
+        docs/cambios/entorno-primero/spec.md: el .env es el único archivo que la persona
+        completa, y es suyo. Nunca se reescribe, ni para agregarle una variable nueva: el
+        bootstrap dice qué variables faltan, por nombre.
+
+        .env.example puede ser del proyecto. Sin archivo, se crea con el bloque; con el
+        bloque, se reemplaza solo el bloque; con la copia entera que dejaba el harness
+        antes de esta versión -sin marcas, con su cabecera-, se reemplaza entera; con un
+        .env.example propio, el bloque se agrega al final y lo demás no se mueve.
+
+        Las credenciales nunca se generan acá: los tokens salen con el placeholder
+        instructivo, que el harness lee como ausente. Claude Code tiene vedada la lectura
+        de .env* por permissions.deny.
     #>
     param([string] $RutaEnvExample, [string] $RutaEnv, [string] $RutaOrigen)
 
     $textoOrigen = Read-TextoUtf8 $RutaOrigen
-    Write-TextoUtf8 -Ruta $RutaEnvExample -Texto $textoOrigen
+    $cabeceraVieja = '# Tokens de las integraciones externas, por desarrollador.'
+    if ((Test-Path $RutaEnvExample) -and
+        (Read-TextoUtf8 $RutaEnvExample).TrimStart([char]0xFEFF).StartsWith($cabeceraVieja)) {
+        Remove-Item $RutaEnvExample -Force
+    }
+    [void](Set-BloqueMarcado -Ruta $RutaEnvExample `
+        -MarcaIni '# >>> gcba-harness: integraciones >>>' `
+        -MarcaFin '# <<< gcba-harness: integraciones <<<' -Contenido $textoOrigen)
 
     if (Test-Path $RutaEnv) { return $false }
     Write-TextoUtf8 -Ruta $RutaEnv -Texto $textoOrigen
@@ -784,23 +800,49 @@ function New-EnvProyecto {
 }
 
 
-function New-IntegracionesProyecto {
+function Invoke-ResumenDeIntegraciones {
     <#
     .SYNOPSIS
-        harness.integraciones.json se crea UNA SOLA VEZ y no se vuelve a tocar.
+        Corre `dev-harness.py estado --resumen`: regenera la proyección desde el .env,
+        revalida las integraciones y muestra qué falta. Nunca tira.
     .DESCRIPTION
-        Es la configuración de las integraciones externas —base URL, usuario, si están
-        habilitadas— y no lleva ni un secreto: los tokens viven en .env. Se siembra con
-        `enabled: null`, que es lo que el setup lee como "todavía nadie decidió".
-
-        Misma regla que harness.config.json y que .env: lo completa la persona, así que
-        pisarlo en un -Update le borraría lo que cargó.
+        Es el paso de docs/cambios/entorno-primero/spec.md que hace que un -Update diga
+        "Jira Cloud OK / GitLab falta GITLAB_BASE_URL" y las variables nuevas del contrato.
+        Si falla -sin red, un .env ilegible- se avisa con la última línea de stderr, que
+        la CLI escribe sin valores, y la instalación sigue.
     #>
-    param([string] $Ruta, [string] $RutaOrigen)
+    param([string] $Python, [string] $Project)
 
-    if (Test-Path $Ruta) { return $false }
-    Write-TextoUtf8 -Ruta $Ruta -Texto (Read-TextoUtf8 $RutaOrigen)
-    return $true
+    $cli = Join-Path $Project '.claude\harness\bin\desarrollo\dev-harness.py'
+    if (-not (Test-Path $cli)) { return }
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName               = $Python
+    $psi.Arguments              = '"' + $cli + '" estado --resumen --proyecto "' + $Project + '"'
+    $psi.WorkingDirectory       = $Project
+    $psi.UseShellExecute        = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.RedirectStandardInput  = $true
+    # Sin bytecode en .claude\harness\bin: el bin instalado es copia exacta del origen, y lo
+    # que el instalador corre para revalidar no lo tiene que ensuciar (E-33 de integraciones).
+    $psi.EnvironmentVariables['PYTHONDONTWRITEBYTECODE'] = '1'
+    $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
+    $psi.StandardErrorEncoding  = New-Object System.Text.UTF8Encoding $false
+    try {
+        $p = [System.Diagnostics.Process]::Start($psi)
+        $p.StandardInput.Close()
+        $errores = $p.StandardError.ReadToEndAsync()
+        $salida  = $p.StandardOutput.ReadToEnd()
+        $p.WaitForExit()
+        if ($p.ExitCode -eq 0) {
+            foreach ($l in ($salida -split "`r?`n" | Where-Object { $_.Trim() })) { EscribirPaso $l }
+            return
+        }
+        $detalle = ($errores.Result -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 1)
+        EscribirAviso "no se pudo revalidar las integraciones ($detalle). Corré dev-harness.py setup cuando esté resuelto."
+    } catch {
+        EscribirAviso "no se pudo revalidar las integraciones ($($_.Exception.Message)). La instalación sigue."
+    }
 }
 
 
@@ -1777,17 +1819,8 @@ function Invoke-Instalar {
         } else {
             EscribirOk '.env.example actualizado; .env ya existía y no se tocó'
         }
-
-        # La configuración de las integraciones sí vive adentro de .claude, porque no
-        # es secreta y el agente la puede leer. Tampoco entra al lockfile: la completa
-        # la persona, igual que harness.config.json.
-        $rutaIntegraciones = Join-Path $dirClaude 'harness.integraciones.json'
-        $rutaIntegOrigen   = Join-Path $script:Repo 'harnesses\desarrollo\integraciones.plantilla.json'
-        if (New-IntegracionesProyecto -Ruta $rutaIntegraciones -RutaOrigen $rutaIntegOrigen) {
-            EscribirOk 'harness.integraciones.json creado (no se vuelve a tocar nunca)'
-        } else {
-            EscribirOk 'harness.integraciones.json ya existía: no se toca'
-        }
+        # harness.integraciones.json ya no se siembra: es la proyección que genera el
+        # bootstrap desde el .env (paso 8c). Tampoco entra al lockfile.
     }
 
     # 6. Bloques en archivos del humano.
@@ -1910,6 +1943,14 @@ secrets/
         }
     }
 
+    # 8c. La configuración de las integraciones, desde el .env. Antes del estado: así la
+    # bienvenida ya sabe qué integración quedó disponible y qué variable falta.
+    if ($Ids -contains 'desarrollo') {
+        Escribir ''
+        EscribirPaso 'Integraciones (desde el .env local):'
+        Invoke-ResumenDeIntegraciones -Python $python -Project $Project
+    }
+
     # 9. El estado de la instalación, para la bienvenida. Recién acá: una instalación que se
     # revirtió no deja harness.installation.json. En un -Update el archivo ya existe y
     # bienvenida.py conserva firstRunShown y anota de qué versión se viene.
@@ -1938,7 +1979,7 @@ secrets/
     Write-Host '  Listo.' -ForegroundColor Green
     if ($Ids -contains 'desarrollo') {
         Escribir ''
-        Escribir '  Para conectar Jira y GitLab, en una consola tuya:'
+        Escribir '  Para conectar Jira y GitLab, completá el .env local (ver .env.example) y mirá qué falta con:'
         Escribir '    python .claude\harness\bin\desarrollo\dev-harness.py setup'
     }
     Escribir ''

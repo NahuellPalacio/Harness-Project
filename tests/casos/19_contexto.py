@@ -507,13 +507,15 @@ def test_e16_sin_referencia_no_se_busca_nada(t):
         CLAVE, {}, ficha, acumulador2, _proyecto_temporal())
     t.igual("E-16 la URL de la ficha alcanza", "42", seccion2["project"]["id"])
 
-    # La clave vive adentro del bloque `gitlab`, al lado de su baseUrl: es donde la
-    # escribe la plantilla que reparte el instalador.
-    bloque = json.loads(io.open(
-        str(RAIZ / "harnesses" / "desarrollo" / "integraciones.plantilla.json"),
-        encoding="utf-8").read())["gitlab"]
-    t.verdadero("E-16 la plantilla declara gitlabProyecto en el bloque gitlab",
-                "gitlabProyecto" in bloque)
+    # La clave vive adentro del bloque `gitlab`, al lado de su baseUrl. Desde
+    # docs/cambios/entorno-primero/spec.md la declara el contrato de entorno (GITLAB_PROJECT),
+    # no la plantilla que sembraba el instalador.
+    contrato = json.loads(io.open(
+        str(RAIZ / "harnesses" / "desarrollo" / "reglas" / "integration-environment-contract.json"),
+        encoding="utf-8").read())
+    gitlab = [i for i in contrato["integrations"] if i["id"] == "gitlab"][0]
+    t.verdadero("E-16 el contrato declara gitlabProyecto en el bloque gitlab",
+                "gitlabProyecto" in [c["name"] for c in gitlab["fields"]])
     referencia, _ = c_repositorio.referencia_de_proyecto(
         {"baseUrl": "https://gitlab", "gitlabProyecto": "grupo/proy"}, None)
     t.igual("E-16 y se lee de ahi", "grupo/proy", referencia)

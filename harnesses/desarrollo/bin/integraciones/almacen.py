@@ -44,6 +44,40 @@ class ErrorDeAlmacen(Exception):
     """Algo no se pudo leer o escribir. Nunca lleva el valor adentro."""
 
 
+def leer_lineas(ruta):
+    """Las lineas del `.env`, o [] si no existe. Levanta ErrorDeAlmacen si no se puede leer.
+
+    🔴 Un `.env` que no es UTF-8 levanta sin el `UnicodeDecodeError` adentro: su texto trae el
+    byte que fallo y su posicion, y eso es un pedazo del archivo.
+    """
+    if not os.path.exists(ruta):
+        return []
+    if not os.path.isfile(ruta):
+        raise ErrorDeAlmacen("no se pudo leer %s (no es un archivo)" % ruta)
+    try:
+        with open(ruta, "r", encoding="utf-8-sig") as f:
+            return f.read().splitlines()
+    except UnicodeDecodeError:
+        raise ErrorDeAlmacen("no se pudo leer %s (no esta en UTF-8)" % ruta)
+    except OSError as e:
+        raise ErrorDeAlmacen("no se pudo leer %s (%s)" % (ruta, e.strerror))
+
+
+def asignaciones(lineas):
+    """Las asignaciones del `.env`, en orden: [(nombre, valor sin comillas)].
+
+    Es el unico parser del `.env` del harness. Lo usan `get` y el resolvedor de
+    `entorno.py`: dos parsers con reglas parecidas terminan leyendo valores distintos.
+    Una variable repetida aparece las dos veces; `get` se queda con la primera.
+    """
+    salida = []
+    for linea in lineas:
+        m = _LINEA.match(linea)
+        if m:
+            salida.append((m.group(1), _sin_comillas(m.group(2))))
+    return salida
+
+
 class AlmacenSecretos(object):
     def __init__(self, ruta_env, entorno=None):
         self.ruta = ruta_env
@@ -52,19 +86,12 @@ class AlmacenSecretos(object):
     # -- lectura ---------------------------------------------------------------
 
     def _lineas(self):
-        if not os.path.isfile(self.ruta):
-            return []
-        try:
-            with open(self.ruta, "r", encoding="utf-8-sig") as f:
-                return f.read().splitlines()
-        except OSError as e:
-            raise ErrorDeAlmacen("no se pudo leer %s (%s)" % (self.ruta, e.strerror))
+        return leer_lineas(self.ruta)
 
     def _del_archivo(self, nombre):
-        for linea in self._lineas():
-            m = _LINEA.match(linea)
-            if m and m.group(1) == nombre:
-                return _sin_comillas(m.group(2))
+        for clave, valor in asignaciones(self._lineas()):
+            if clave == nombre:
+                return valor
         return None
 
     def get(self, nombre):

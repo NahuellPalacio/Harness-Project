@@ -160,17 +160,16 @@ Para migrar entre versiones con cambios que rompen, mirá [UPGRADE.md](../UPGRAD
 
 ## 7. Conectar Jira y GitLab
 
-Solo si instalaste el harness `desarrollo`, y solo una vez:
+Solo si instalaste el harness `desarrollo`. Se completa **un solo archivo**, el `.env` de la raíz,
+que el instalador creó con la plantilla de `.env.example`, que el `.gitignore` excluye y que Claude
+no puede leer: `HARNESS_JIRA_ENABLED`, `JIRA_BASE_URL`, `JIRA_USER`, `JIRA_TOKEN`, y lo mismo para
+GitLab. Nada te pregunta nada. Para ver qué falta, por nombre y sin mostrar ningún valor:
 
 ```powershell
 python .claude\harness\bin\desarrollo\dev-harness.py setup
 ```
 
-Pregunta la base URL y el usuario de cada uno, y el token sin mostrarlo por pantalla. La URL y el
-usuario van a `.claude\harness.integraciones.json`; el token, al `.env` de la raíz, que el
-`.gitignore` excluye y que Claude no puede leer.
-
-Después valida las dos y te dice qué quedó disponible. Que una no ande no rompe nada: el harness
+Valida las dos y te dice qué quedó disponible. El detalle está en [integraciones.md](integraciones.md). Que una no ande no rompe nada: el harness
 arranca igual y deshabilita solo las capacidades de esa.
 
 ```powershell

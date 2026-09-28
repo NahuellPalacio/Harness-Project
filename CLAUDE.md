@@ -73,9 +73,11 @@ git checkout -- comun/hooks/pre-tool-use.py comun/hooks/lib/zonas.py
 | Skill | When |
 |---|---|
 | `write-a-spec` | Starting a change, before writing code |
+| `write-a-lectura` | A scenario marked `· verificación: lectura` has no `lectura.md` or no signature yet |
 | `write-a-verdict` | The refuter ruled and the verdict has to be recorded |
 | `close-a-version` | The change closed and the version has to be released |
 | `note-a-pending` | Something appears that will not be done now |
+| `concise-replies` | Every reply, always |
 
 ## Language
 

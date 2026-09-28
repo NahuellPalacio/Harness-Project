@@ -25,9 +25,13 @@ VERSION_DOCUMENTO = "integraciones/1.0"
 
 
 class RegistroCapacidades(object):
-    def __init__(self, soportadas):
-        """soportadas: {"jira": ("jira.issue.read", ...), "gitlab": (...)}"""
+    def __init__(self, soportadas, modo=None):
+        """soportadas: {"jira": ("jira.issue.read", ...), "gitlab": (...)}
+
+        modo: de donde salio la configuracion (ENVIRONMENT_FIRST). Va al documento tal cual.
+        """
         self._soportadas = {k: tuple(v) for k, v in soportadas.items()}
+        self._modo = modo
         self._habilitadas = {}
         self._integraciones = {}
 
@@ -41,6 +45,9 @@ class RegistroCapacidades(object):
             "verificado_en": resultado["verificado_en"],
             "capacidades": list(resultado["capacidades"]),
             "diagnostico": list(resultado.get("diagnostico") or []),
+            # Los nombres de variable del .env que faltan. Nombres, nunca valores: lo lee la
+            # bienvenida para decir que completar.
+            "faltan": [str(v) for v in (resultado.get("faltan") or [])],
         }
         for capacidad in resultado["capacidades"]:
             self.registrar(capacidad, nombre)
@@ -76,12 +83,15 @@ class RegistroCapacidades(object):
         capacidades = {}
         for capacidad in self.soportadas():
             capacidades[capacidad] = ENABLED if self.esta_disponible(capacidad) else DISABLED
-        return {
+        documento = {
             "schema_version": VERSION_DOCUMENTO,
             "version_harness": version_harness,
             "integraciones": self._integraciones,
             "capacidades": capacidades,
         }
+        if self._modo:
+            documento["configurationMode"] = self._modo
+        return documento
 
     def escribir(self, ruta, version_harness=""):
         documento = self.como_documento(version_harness)

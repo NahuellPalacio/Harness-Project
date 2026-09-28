@@ -306,7 +306,9 @@ def test_e28b_config_ilegible_levanta(t):
     except ConfigIlegible as e:
         levanto = str(e)
     t.contiene("E-28 nombra el archivo", "harness.integraciones.json", levanto)
-    t.contiene("E-28 y dice que hacer con el", "corre el setup", levanto)
+    # Pisado por docs/cambios/entorno-primero/spec.md: el archivo es una proyeccion del .env,
+    # y lo que se hace con uno roto es borrarlo para que se genere de nuevo.
+    t.contiene("E-28 y dice que hacer con el", "lo vuelve a generar desde el .env", levanto)
 
     # ConfigIlegible tiene tres variantes y los tests recorrian una sola. Lo que las
     # ata hoy es que comparten la constante QUE_HACER, y una constante compartida es
@@ -318,7 +320,8 @@ def test_e28b_config_ilegible_levanta(t):
         ConfigIntegraciones(ruta).leer()
     except ConfigIlegible as e:
         levanto = str(e)
-    t.contiene("E-28 un JSON que no es objeto tambien dice que hacer", "corre el setup", levanto)
+    t.contiene("E-28 un JSON que no es objeto tambien dice que hacer",
+               "lo vuelve a generar desde el .env", levanto)
 
 
 # -- E-10 y E-11 — el cliente HTTP ---------------------------------------------
@@ -658,59 +661,62 @@ def test_e25_con_todo_configurado_el_setup_no_pregunta(t):
     estado = salida.split("Estado\n" + "-" * 48 + "\n", 1)
     t.verdadero("E-25 llego al final: la seccion Estado abre con el estado general",
                 len(estado) == 2 and estado[1].startswith("Harness GCBA "))
-    t.contiene("E-25 reconoce que ya estaba configurado", "configuracion existente", salida)
+    # Pisado por docs/cambios/entorno-primero/spec.md: ya no hay primera vez ni configuracion
+    # existente. El setup dice de donde sale la configuracion.
+    t.contiene("E-25 dice el modo", "Modo de configuración: ENVIRONMENT_FIRST", salida)
 
 
 def test_e26_reconfigurar_uno_no_toca_al_otro(t):
-    """E-26 — reconfigurar gitlab deja la configuracion y el token de Jira como estaban."""
-    raiz = _proyecto("JIRA_TOKEN=%s\nGITLAB_TOKEN=el-viejo-de-gitlab\n" % TOKEN)
-    config = _config(raiz, {"jira": {"enabled": True, "baseUrl": "https://jira",
-                                     "usuario": "a@b"},
-                            "gitlab": {"enabled": True, "baseUrl": "https://viejo"}})
+    """E-26 — reconfigurar gitlab deja la configuracion y el token de Jira como estaban.
+
+    Pisado por docs/cambios/entorno-primero/spec.md: reconfigurar ya no pregunta ni escribe el
+    .env. Lo que sigue valiendo es que no toca nada de la otra integracion.
+    """
+    env = ("HARNESS_JIRA_ENABLED=true\nJIRA_BASE_URL=https://jira\nJIRA_USER=a@b\n"
+           "JIRA_TOKEN=%s\nHARNESS_GITLAB_ENABLED=true\nGITLAB_BASE_URL=https://gitlab\n"
+           "GITLAB_TOKEN=el-de-gitlab-que-no-se-imprime\n" % TOKEN)
+    raiz = _proyecto(env)
     transporte = Transporte({"jira": (200, "{}"), "search/jql": (200, "{}"),
                              "attachment/meta": (200, "{}"),
                              "/user": (200, "{}"),
                              "personal_access_tokens/self": (200, '{"scopes":["read_api"]}')})
-    codigo, salida, _ = _correr_cli(
-        ["reconfigurar", "gitlab", "--proyecto", raiz], transporte,
-        respuestas=["s", "https://nuevo", "s"], tokens=["el-nuevo-de-gitlab"])
+    codigo, salida, error = _correr_cli(["reconfigurar", "gitlab", "--proyecto", raiz],
+                                        transporte)
 
-    almacen = _almacen(raiz)
+    config = ConfigIntegraciones(os.path.join(raiz, ".claude", "harness.integraciones.json"))
     t.igual("E-26 codigo 0", 0, codigo)
     t.igual("E-26 jira baseUrl intacta", "https://jira", config.de("jira")["baseUrl"])
     t.igual("E-26 jira usuario intacto", "a@b", config.de("jira")["usuario"])
-    t.igual("E-26 el token de jira intacto", TOKEN, almacen.get("JIRA_TOKEN"))
-    t.igual("E-26 gitlab se reconfiguro", "https://nuevo", config.de("gitlab")["baseUrl"])
-    t.igual("E-26 el token de gitlab cambio", "el-nuevo-de-gitlab", almacen.get("GITLAB_TOKEN"))
-    t.no_contiene("E-26 el token nuevo no se imprime", "el-nuevo-de-gitlab", salida)
+    t.igual("E-26 el .env no se toco", env, open(os.path.join(raiz, ".env"), encoding="utf-8").read())
+    t.contiene("E-26 muestra las variables de gitlab", "GITLAB_BASE_URL", salida)
+    t.no_contiene("E-26 y no las de jira", "JIRA_USER ", salida.split("Integraciones")[0])
+    t.no_contiene("E-26 el token no se imprime", "el-de-gitlab-que-no-se-imprime", salida + error)
 
 
 def test_e26b_el_setup_carga_lo_que_falta(t):
-    """E-26b — una primera corrida real: se responden las preguntas y queda todo cargado.
+    """E-26b — una primera corrida real, con el .env completo: valida y descubre todo.
 
-    Es el unico test que recorre el camino entero del asistente: pregunta, guarda la
-    configuracion, guarda el token por el almacen, valida y descubre.
+    Pisado por docs/cambios/entorno-primero/spec.md: la configuracion no se responde, se lee
+    del .env. Es el unico test que recorre el camino entero: .env, proyeccion, validacion y
+    descubrimiento de las dos integraciones.
     """
-    raiz = _proyecto("# vacio\n")
+    raiz = _proyecto("HARNESS_JIRA_ENABLED=true\nJIRA_BASE_URL=https://jira.ejemplo\n"
+                     "JIRA_USER=yo@buenosaires.gob.ar\nJIRA_TOKEN=token-de-jira-cargado\n"
+                     "HARNESS_GITLAB_ENABLED=yes\nGITLAB_BASE_URL=https://gitlab.ejemplo\n"
+                     "GITLAB_TOKEN=token-de-gitlab-cargado\n")
     transporte = Transporte({
         "myself": (200, "{}"), "search/jql": (200, "{}"), "attachment/meta": (200, "{}"),
         "mypermissions": (200, '{"permissions":{"BROWSE_PROJECTS":{"havePermission":true}}}'),
         "/user": (200, "{}"),
         "personal_access_tokens/self": (200, '{"scopes":["read_api"]}')})
-    codigo, salida, error = _correr_cli(
-        ["setup", "--proyecto", raiz], transporte,
-        respuestas=["s", "https://jira.ejemplo", "yo@buenosaires.gob.ar",
-                    "s", "https://gitlab.ejemplo"],
-        tokens=["token-de-jira-cargado", "token-de-gitlab-cargado"])
+    codigo, salida, error = _correr_cli(["setup", "--proyecto", raiz], transporte)
 
     config = ConfigIntegraciones(os.path.join(raiz, ".claude", "harness.integraciones.json"))
-    almacen = _almacen(raiz)
     t.igual("E-26b codigo 0", 0, codigo)
-    t.contiene("E-26b dice que es la primera vez", "configuracion inicial", salida)
+    t.contiene("E-26b dice de donde sale", "ENVIRONMENT_FIRST", salida)
     t.igual("E-26b jira baseUrl", "https://jira.ejemplo", config.de("jira")["baseUrl"])
     t.igual("E-26b jira usuario", "yo@buenosaires.gob.ar", config.de("jira")["usuario"])
     t.igual("E-26b gitlab baseUrl", "https://gitlab.ejemplo", config.de("gitlab")["baseUrl"])
-    t.igual("E-26b el token quedo en el .env", "token-de-jira-cargado", almacen.get("JIRA_TOKEN"))
     t.no_contiene("E-26b el token no se imprime", "token-de-jira-cargado", salida + error)
     t.no_contiene("E-26b la config no guarda el token", "token-de-jira-cargado",
                   open(config.ruta, encoding="utf-8").read())
@@ -740,7 +746,7 @@ def test_e28_config_ilegible_sale_con_2(t):
     codigo, salida, error = _correr_cli(["estado", "--proyecto", raiz], Transporte({}))
     t.igual("E-28 codigo 2", 2, codigo)
     t.contiene("E-28 nombra el archivo", "harness.integraciones.json", error)
-    t.contiene("E-28 dice que hacer", "corre el setup", error)
+    t.contiene("E-28 dice que hacer", "lo vuelve a generar desde el .env", error)
     t.no_contiene("E-28 sin traza", "Traceback", error + salida)
 
 

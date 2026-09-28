@@ -19,6 +19,11 @@ import uuid
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
+
+# Las reglas de permissions.deny que dejan el .env fuera del modelo. Un settings.json real las
+# trae siempre; sin ellas, desde docs/cambios/entorno-primero/spec.md el estado queda PARCIAL por
+# ENV_MODEL_READABLE, y los fixtures que esperan LISTO tienen que parecerse a una instalacion.
+_DENY_ENV = {"deny": ["Read(./.env)", "Read(./.env.*)"]}
 HOOK = RAIZ / "comun" / "hooks" / "session-start.py"
 LIB = RAIZ / "comun" / "hooks" / "lib" / "bienvenida.py"
 SCHEMA = RAIZ / "comun" / "schemas" / "harness-installation-state.schema.json"
@@ -104,7 +109,7 @@ def _proyecto(harness=("comun", "desarrollo"), version="0.22.0", fuentes=None, r
             _escribir(h / "schemas" / n, (RAIZ / "comun" / "schemas" / n).read_text(encoding="utf-8"))
     _escribir(h / "hooks" / "session-start.py", "# el hook\n")
     if registrada:
-        _json(claude / "settings.json", {"statusLine": {"type": "command", "command": _comando(proy)}})
+        _json(claude / "settings.json", {"permissions": _DENY_ENV, "statusLine": {"type": "command", "command": _comando(proy)}})
     if instalacion is not None:
         ruta = claude / "harness.installation.json"
         if isinstance(instalacion, str):
@@ -131,7 +136,7 @@ def _senal(proy, sesion=SESION, block4=B.BLOCK4_OK, version=VERSION_BARRA,
 
 def _cambiar_statusline(proy, sufijo=" '--otro'"):
     _json(proy / ".claude" / "settings.json",
-          {"statusLine": {"type": "command", "command": _comando(proy) + sufijo}})
+          {"permissions": _DENY_ENV, "statusLine": {"type": "command", "command": _comando(proy) + sufijo}})
 
 
 def _estado(proy):
@@ -722,7 +727,7 @@ def test_la_tabla_de_estados_de_la_barra(t):
     t.igual("tabla: sin statusLine ni renderizador: NOT_CONFIGURED",
             ("NOT_CONFIGURED", "CONTEXT_BAR_NOT_INSTALLED"), (_barra(doc)["state"], _barra(doc)["errorCode"]))
     proy = _proyecto()
-    _json(proy / ".claude" / "settings.json", {"statusLine": {"type": "command", "command": "npx ccstatusline"}})
+    _json(proy / ".claude" / "settings.json", {"permissions": _DENY_ENV, "statusLine": {"type": "command", "command": "npx ccstatusline"}})
     t.igual("tabla: un statusLine de otra herramienta no es la barra", "INSTALLED",
             _barra(B.resolver(str(proy)))["state"])
     proy = _proyecto()
@@ -805,7 +810,7 @@ def _instalado():
         atexit.register(shutil.rmtree, str(base), True)
         proy = base / "proyecto con espacios"
         renderizador = Path(MEDIDOR.armar(str(proy)))
-        _json(proy / ".claude" / "settings.json", {"statusLine": {
+        _json(proy / ".claude" / "settings.json", {"permissions": _DENY_ENV, "statusLine": {
             "type": "command", "command": "python '%s'" % renderizador.as_posix()}})
         _INSTALADO.append((proy, renderizador, base))
     return _INSTALADO[0][:2]
@@ -1422,7 +1427,7 @@ def test_e20_harness_verbose_no_imprime_secretos(t):
 
     # Un comando registrado con un token adentro -alguien lo edito a mano- tampoco sale.
     _json(proy / ".claude" / "settings.json",
-          {"statusLine": {"type": "command", "command": _comando(proy) + " '--token=%s'" % TOKEN}})
+          {"permissions": _DENY_ENV, "statusLine": {"type": "command", "command": _comando(proy) + " '--token=%s'" % TOKEN}})
     codigo, salida, error = _cli(["harness", "--verbose", "--proyecto", str(proy)], env=env)
     t.igual("E-20 con el token en el comando: sale 0", 0, codigo)
     t.no_contiene("E-20 con el token en el comando: no sale", TOKEN, salida + error)
@@ -1589,7 +1594,7 @@ def test_e41_la_huella_de_la_senal_es_la_del_comando_que_corrio(t):
     def registrar(comando, momento=None):
         huella = B.huella_statusline({"type": "command", "command": comando})
         _json(proy / ".claude" / "settings.json",
-              {"statusLine": {"type": "command", "command": "%s '%s'" % (comando, huella)}})
+              {"permissions": _DENY_ENV, "statusLine": {"type": "command", "command": "%s '%s'" % (comando, huella)}})
         B.registrar_instalacion(str(proy), barra_probada=True, momento=momento)
         return huella
 

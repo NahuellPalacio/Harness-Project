@@ -1,0 +1,67 @@
+{
+  "schema_version": "integration-environment-contract/1.0",
+  "integrations": [
+    {
+      "id": "jira",
+      "enabled": {
+        "env": "HARNESS_JIRA_ENABLED",
+        "default": false
+      },
+      "fields": [
+        {
+          "name": "baseUrl",
+          "env": "JIRA_BASE_URL",
+          "classification": "PUBLIC_CONFIG",
+          "requiredWhenEnabled": true,
+          "legacyConfigKey": "baseUrl",
+          "format": "url"
+        },
+        {
+          "name": "usuario",
+          "env": "JIRA_USER",
+          "classification": "PUBLIC_CONFIG",
+          "requiredWhenEnabled": true,
+          "legacyConfigKey": "usuario"
+        },
+        {
+          "name": "token",
+          "env": "JIRA_TOKEN",
+          "classification": "SECRET",
+          "requiredWhenEnabled": true,
+          "legacyConfigKey": null
+        }
+      ]
+    },
+    {
+      "id": "gitlab",
+      "enabled": {
+        "env": "HARNESS_GITLAB_ENABLED",
+        "default": false
+      },
+      "fields": [
+        {
+          "name": "baseUrl",
+          "env": "GITLAB_BASE_URL",
+          "classification": "PUBLIC_CONFIG",
+          "requiredWhenEnabled": true,
+          "legacyConfigKey": "baseUrl",
+          "format": "url"
+        },
+        {
+          "name": "gitlabProyecto",
+          "env": "GITLAB_PROJECT",
+          "classification": "PUBLIC_CONFIG",
+          "requiredWhenEnabled": false,
+          "legacyConfigKey": "gitlabProyecto"
+        },
+        {
+          "name": "token",
+          "env": "GITLAB_TOKEN",
+          "classification": "SECRET",
+          "requiredWhenEnabled": true,
+          "legacyConfigKey": null
+        }
+      ]
+    }
+  ]
+}

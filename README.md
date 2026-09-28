@@ -93,8 +93,9 @@ Después:
 `-Update` **nunca pisa un archivo que hayas editado a mano**: escribe la versión nueva al
 lado, con extensión `.nuevo`, y te avisa al final. `harness.config.json` no se toca jamás.
 
-Con el harness `desarrollo` instalado, queda un paso más — conectar Jira y GitLab. Se corre una
-sola vez, en tu consola, y pide los tokens sin mostrarlos:
+Con el harness `desarrollo` instalado, queda un paso más — conectar Jira y GitLab: completar el
+`.env` local, que el instalador crea con la plantilla de `.env.example` y que Claude no puede leer.
+`setup` no pregunta nada: dice qué variable falta, por nombre, y valida.
 
 ```powershell
 python .claude\harness\bin\desarrollo\dev-harness.py setup

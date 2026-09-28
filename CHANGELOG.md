@@ -3,6 +3,44 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.26.0] — 2026-09-28
+
+**Jira y GitLab se configuran en un solo archivo, el `.env` local, y nada pregunta por consola.**
+Hasta 0.25.0 la URL y el usuario iban en `.claude/harness.integraciones.json`, el token iba al `.env`,
+y `setup` los pedía de forma interactiva. Ahora el harness lee todo del `.env` (o del entorno del
+proceso) con un contrato que marca cada campo como público o secreto, y genera el JSON sin secretos.
+Es un cambio verificado, con 71 escenarios sostenidos y ninguno contradicho.
+
+### Agregado
+
+- **El contrato de variables** `reglas/desarrollo/integration-environment-contract.json`: qué variables
+  hay por integración y cuáles son `SECRET`. Se pisa en cada `-Update`
+- **`HARNESS_JIRA_ENABLED`, `JIRA_BASE_URL`, `JIRA_USER`, `HARNESS_GITLAB_ENABLED`, `GITLAB_BASE_URL`
+  y `GITLAB_PROJECT`** en el `.env`, junto a los tokens. Las banderas aceptan `true/false`, `1/0`,
+  `yes/no`, `on/off`
+- **`estado --resumen`**, una línea por integración. El instalador lo muestra al terminar
+- **La bienvenida y `estado` dicen de dónde sale la configuración** y si el modelo puede leer el
+  `.env`. Si puede, queda pendiente `ENV_MODEL_READABLE`
+- **Lo que falta se nombra por variable**: `Faltan: GITLAB_BASE_URL, GITLAB_TOKEN`, también en
+  `harness.capacidades.json`
+
+### Cambiado
+
+- 🔴 **`setup` y `reconfigurar` ya no preguntan.** Muestran cada variable como `presente` o `ausente`,
+  con la capa de donde sale, y validan. Se completa el `.env` a mano, copiando de `.env.example` — ver
+  [UPGRADE.md](UPGRADE.md)
+- **`.claude/harness.integraciones.json` pasa a ser una proyección generada.** El instalador ya no lo
+  siembra, y editarlo a mano no sirve: se regenera en cada `setup`, `estado` o `reconfigurar`
+- **`.env.example` lleva la plantilla del harness entre marcas** `# >>> gcba-harness: integraciones >>>`.
+  Lo que el proyecto tenga afuera del bloque no se toca. El `.env` existente tampoco
+- **`OPENSHIFT_TOKEN` sale de la plantilla**, porque no hay integración. Un `.env` que la tenga no se
+  toca
+
+### Lo que un proyecto que ya estaba instalado va a ver
+
+- **Sigue andando.** El JSON viejo se lee por debajo del `.env`, como capa de migración, y `setup` dice
+  qué variables faltan pasar al `.env`. Cada valor deja de leerse del JSON cuando aparece en el `.env`
+
 ## [0.25.0] — 2026-09-28
 
 **ES0902 suma Vu9 y Vu10, y con eso queda instalada la parte Vu, de Vu1 a Vu10.** Vu9 revisa, superficie

@@ -34,6 +34,10 @@ AVAILABLE = "AVAILABLE"
 
 ESTADOS = (NOT_CONFIGURED, AUTHENTICATION_FAILED, CONNECTION_FAILED, PERMISSION_DENIED, AVAILABLE)
 
+# Lo que se hace cuando falta configuracion: el .env local es el unico archivo que se completa
+# (docs/cambios/entorno-primero/spec.md). Solo nombres de variable, nunca un valor.
+QUE_HACER = "Completá las variables faltantes en el .env local."
+
 _MOTIVOS_DE_RED = {
     http.ERROR_TIMEOUT: "no respondio a tiempo. Revisa la red, la VPN o subi timeoutIntegraciones",
     http.ERROR_DNS: "no se pudo resolver el nombre del servidor. Revisa la baseUrl",
@@ -122,7 +126,7 @@ def estado_de_respuesta(respuesta, etiqueta):
     if respuesta.codigo == 401:
         return Resultado(AUTHENTICATION_FAILED,
                          "El token de %s no fue aceptado (401). Puede estar vencido o mal copiado: "
-                         "genera uno nuevo y volve a configurarlo." % etiqueta)
+                         "genera uno nuevo y cargalo en el .env local." % etiqueta)
     if respuesta.codigo == 403:
         return Resultado(PERMISSION_DENIED,
                          "El token de %s es valido pero no tiene permisos para esta operacion (403). "
@@ -146,8 +150,11 @@ class Integracion(object):
     CAPACIDADES = ()
 
     def __init__(self, configuracion, almacen, timeout=http.TIMEOUT_POR_DEFECTO,
-                 transporte=None, transporte_bytes=None):
+                 transporte=None, transporte_bytes=None, variables=None):
         self.configuracion = dict(configuracion or {})
+        # {campo: variable del .env}, del contrato de entorno. Sin el, lo que falta se nombra
+        # por su campo: es lo que pasa cuando alguien arma el adapter a mano, como la suite.
+        self.variables = dict(variables or {})
         self.almacen = almacen
         self.timeout = timeout
         self.transporte = transporte
@@ -168,7 +175,8 @@ class Integracion(object):
         return bool(self.configuracion.get("enabled", False))
 
     def campos_faltantes(self):
-        faltan = [c for c in self.campos if not str(self.configuracion.get(c, "") or "").strip()]
+        faltan = [self.variables.get(c, c) for c in self.campos
+                  if not str(self.configuracion.get(c, "") or "").strip()]
         if not self.token():
             faltan.append(self.clave_token)
         return faltan
@@ -199,16 +207,15 @@ class Integracion(object):
         """El estado de la integracion. No sale a la red si no esta configurada."""
         if not self.decidida:
             return Resultado(NOT_CONFIGURED,
-                             "%s todavia no se configuro. Corre el setup del harness."
-                             % self.etiqueta)
+                             "%s todavia no se configuro. %s" % (self.etiqueta, QUE_HACER))
         if not self.habilitada:
             return Resultado(NOT_CONFIGURED,
                              "%s esta deshabilitada en la configuracion." % self.etiqueta)
         faltan = self.campos_faltantes()
         if faltan:
             return Resultado(NOT_CONFIGURED,
-                             "Falta configurar %s: %s. Corre el setup del harness."
-                             % (self.etiqueta, ", ".join(faltan)))
+                             "Falta configurar %s: %s. %s"
+                             % (self.etiqueta, ", ".join(faltan), QUE_HACER))
         return estado_de_respuesta(self.pedir(self.camino_de_validacion), self.etiqueta)
 
     camino_de_validacion = "/"

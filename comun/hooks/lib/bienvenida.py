@@ -11,7 +11,10 @@ Lee archivos locales y nada mas:
     .claude/harness.installation.json   el estado de la instalacion y la marca de la bienvenida
     .claude/harness.capacidades.json    el `estado` por integracion que dejo el ultimo `setup`
     .claude/harness.fuentes.json        el `state` por fuente que dejo el ultimo `fuentes`
-    .claude/settings.json               el bloque `statusLine`, y nada mas de ese archivo
+    .claude/settings.json               el bloque `statusLine` y las reglas del .env en
+                                        permissions.deny, y nada mas de ese archivo
+    .claude/harness.integraciones.json  solo si lleva la marca de proyeccion (sin valores)
+    .env                                si EXISTE, nada mas: nunca se abre
     .claude/runtime/contextbar.json     la senal de vida de la Context Bar (ver abajo)
     .claude/runtime/accounting/         si la carpeta del libro del Bloque 4 se puede usar
     y lo que hay en disco del harness: contabilidad/, reporte_seguridad/ y sus schemas.
@@ -61,6 +64,13 @@ BLOCKED = "BLOCKED"
 INTEGRACIONES = (("jira", "Jira Cloud", "Jira"), ("gitlab", "GitLab", "GitLab"))
 
 AVAILABLE = "AVAILABLE"
+
+# De donde sale la configuracion de las integraciones (docs/cambios/entorno-primero/spec.md).
+MODO_DE_CONFIGURACION = "ENVIRONMENT_FIRST"
+VERSION_PROYECCION = "integration-projection/1.0"
+# Las dos reglas de permissions.deny que dejan el .env del lado de la persona.
+REGLAS_DEL_ENV = ("Read(./.env)", "Read(./.env.*)")
+_NOMBRE_DE_VARIABLE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 # Una integracion que ningun `setup` verifico. Es el UNRESOLVED del paquete del Bloque 1.
 NUNCA_VERIFICADA = "UNRESOLVED"
 
@@ -229,6 +239,9 @@ def rutas(proyecto, ruta_codebase=None):
         "capacidades": os.path.join(claude, "harness.capacidades.json"),
         "fuentes": os.path.join(claude, "harness.fuentes.json"),
         "contexto": os.path.join(proyecto, ruta_codebase, "project-context.json"),
+        "env": os.path.join(proyecto, ".env"),
+        "proyeccion": os.path.join(claude, "harness.integraciones.json"),
+        "settings": os.path.join(claude, "settings.json"),
     }
 
 
@@ -467,11 +480,49 @@ def _integraciones(r, pendientes):
         if not isinstance(estado, str) or not estado:
             estado = NUNCA_VERIFICADA
         verificado = datos.get("verificado_en") if isinstance(datos, dict) else None
+        # Nombres de variable y nada mas: lo que no tiene forma de nombre no se copia.
+        faltan = datos.get("faltan") if isinstance(datos, dict) else None
+        faltan = [f for f in faltan if isinstance(f, str) and _NOMBRE_DE_VARIABLE.match(f)] \
+            if isinstance(faltan, list) else []
         salida.append({"id": nombre, "status": estado,
-                       "verifiedAt": verificado if isinstance(verificado, str) else None})
+                       "verifiedAt": verificado if isinstance(verificado, str) else None,
+                       "missing": faltan})
         if estado != AVAILABLE:
             pendientes.append("INTEGRATION_%s:%s" % (estado, nombre))
     return salida
+
+
+def acceso_al_env(proyecto):
+    """True si el modelo puede leer el .env, False si permissions.deny se lo niega, None si no
+    se sabe (sin settings.json, o ilegible). No abre el .env."""
+    settings, problema = _leer(os.path.join(proyecto, ".claude", "settings.json"))
+    if problema:
+        return None
+    deny = (settings.get("permissions") or {}).get("deny") \
+        if isinstance(settings.get("permissions"), dict) else None
+    if not isinstance(deny, list):
+        return True
+    return not all(regla in deny for regla in REGLAS_DEL_ENV)
+
+
+def _configuracion(proyecto, r, pendientes):
+    """De donde sale la configuracion, sin un solo valor. El .env se mira, no se abre."""
+    legible = acceso_al_env(proyecto)
+    if legible:
+        pendientes.append("ENV_MODEL_READABLE")
+    proyeccion, problema = _leer(r["proyeccion"])
+    if problema == _FALTA:
+        estado = "MISSING"
+    elif problema == _ROTO:
+        estado = "UNREADABLE"
+    elif proyeccion.get("schema_version") == VERSION_PROYECCION:
+        estado = "CURRENT"
+    else:
+        estado = "LEGACY"
+    return {"configurationMode": MODO_DE_CONFIGURACION,
+            "envFilePresent": os.path.isfile(r["env"]),
+            "envModelReadable": legible,
+            "projection": {"path": ".claude/harness.integraciones.json", "state": estado}}
 
 
 # Los estados de fuente que ya empiezan con SOURCE_ y no se prefijan otra vez. Cualquier otro,
@@ -946,6 +997,7 @@ def _resolver(proyecto, ruta_codebase, momento, sesion, guardado):
 
     desarrollo = "desarrollo" in ids
     integraciones = _integraciones(r, pendientes) if desarrollo else []
+    configuracion = _configuracion(proyecto, r, pendientes) if desarrollo else None
     if desarrollo:
         conocimiento = _conocimiento(r, bloqueos, pendientes)
     else:
@@ -987,6 +1039,8 @@ def _resolver(proyecto, ruta_codebase, momento, sesion, guardado):
         "welcome": bienvenida,
         "runtimeComponents": componentes,
     }
+    if configuracion is not None:
+        doc["integrationConfiguration"] = configuracion
     # Un campo del archivo anterior que este modulo no calcula se conserva: migrar de 1.0 a 1.1
     # no pierde ninguno, y un 1.1 tampoco los pierde en la escritura siguiente.
     for clave, valor in previo.items():
@@ -1139,6 +1193,9 @@ def describir(condicion):
         return "harness.installation.json estaba roto: se reescribe con el estado de ahora"
     if base == "CAPABILITIES_STATE_UNREADABLE":
         return "no se puede leer .claude/harness.capacidades.json: corré `dev-harness.py setup`"
+    if base == "ENV_MODEL_READABLE":
+        return ("el modelo puede leer el .env: faltan Read(./.env) y Read(./.env.*) en "
+                "permissions.deny de .claude/settings.json. Corré install.ps1 -Update")
     if base == "SOURCES_STATE_MISSING":
         return "no hay estado del conocimiento todavía: corré `dev-harness.py fuentes`"
     if base == "SOURCES_STATE_UNREADABLE":
@@ -1294,6 +1351,15 @@ def renderizar_bienvenida(doc):
     for texto in _pendientes_agrupados(b.get("pendingConditions") or []):
         lineas.append("  Pendiente: " + texto)
 
+    configuracion = doc.get("integrationConfiguration")
+    if isinstance(configuracion, dict):
+        acceso = {True: "LEGIBLE", False: "BLOQUEADO"}.get(configuracion.get("envModelReadable"),
+                                                             "SIN VERIFICAR")
+        fuente = ".env local" if configuracion.get("envFilePresent") else ".env local (no existe)"
+        lineas += ["", "Configuración",
+                   "  %s%s" % ("Fuente".ljust(21), fuente),
+                   "  %s%s" % ("Acceso del modelo".ljust(21), acceso)]
+
     integraciones = doc.get("integrations") or []
     if integraciones:
         ancho = max(len(largo) for _, largo, _ in INTEGRACIONES) + 3
@@ -1301,6 +1367,8 @@ def renderizar_bienvenida(doc):
         for i in integraciones:
             largo, _ = _nombre_de(i["id"])
             lineas.append("  %s%s" % (largo.ljust(ancho), _con_marca(i["status"])))
+            if i.get("missing"):
+                lineas.append("    Faltan: " + ", ".join(i["missing"]))
 
     conocimiento = doc.get("knowledge") or {}
     if conocimiento.get("applies"):

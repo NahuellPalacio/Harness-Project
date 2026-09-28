@@ -899,10 +899,12 @@ message is wrong, and it does not tell the person to pass `-Usuario`. The same h
 runs the installer with `-NonInteractive` by hand or from a script, not only to the test.
 
 The second failure of the same run was environmental too, and belongs to the same family of "the
-gate depends on where it runs": `06-composicion` E-17 scans every `*.py` under the repository root,
+gate depends on where it runs": E-17 (in `03-instalador.ps1`, group `Composicion - …`) scans every `*.py` under the repository root,
 tracked or not, and found a copy of `comun\hooks\lib\zonas.py` under a folder
 `..Harness-release-024` inside the tree. The folder was gone by the time it was looked at, so what
 created it is not recorded.
+
+Specified on 2026-09-28 in `docs/cambios/instalador-sin-consola/spec.md`, not built yet.
 
 Fix. In `Get-Usuario`, put `Read-Host` inside a `try` and, on failure, throw the same `falta -Usuario`
 message the redirected branch throws. Checking `[Environment]::GetCommandLineArgs()` for

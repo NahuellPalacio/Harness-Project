@@ -88,7 +88,75 @@
     "integrations": {
       "type": "array",
       "items": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "verifiedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "missing": {
+            "description": "Los nombres de variable del .env que faltan. Nombres, nunca valores.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z_][A-Z0-9_]*$"
+            }
+          }
+        }
+      }
+    },
+    "integrationConfiguration": {
+      "description": "De donde sale la configuracion de las integraciones (docs/cambios/entorno-primero/spec.md). Solo con desarrollo. Ningun valor del .env: si existe, si el modelo lo puede leer segun permissions.deny, y el estado de la proyeccion.",
+      "type": "object",
+      "required": [
+        "configurationMode",
+        "envFilePresent",
+        "envModelReadable",
+        "projection"
+      ],
+      "properties": {
+        "configurationMode": {
+          "enum": [
+            "ENVIRONMENT_FIRST"
+          ]
+        },
+        "envFilePresent": {
+          "type": "boolean"
+        },
+        "envModelReadable": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "projection": {
+          "type": "object",
+          "required": [
+            "path",
+            "state"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "CURRENT",
+                "LEGACY",
+                "MISSING",
+                "UNREADABLE"
+              ]
+            }
+          }
+        }
       }
     },
     "knowledge": {

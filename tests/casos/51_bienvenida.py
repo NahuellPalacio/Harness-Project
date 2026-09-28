@@ -20,6 +20,11 @@ import uuid
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
+
+# Las reglas de permissions.deny que dejan el .env fuera del modelo. Un settings.json real las
+# trae siempre; sin ellas, desde docs/cambios/entorno-primero/spec.md el estado queda PARCIAL por
+# ENV_MODEL_READABLE, y los fixtures que esperan LISTO tienen que parecerse a una instalacion.
+_DENY_ENV = {"deny": ["Read(./.env)", "Read(./.env.*)"]}
 HOOKS = RAIZ / "comun" / "hooks"
 HOOK = HOOKS / "session-start.py"
 LIB = HOOKS / "lib" / "bienvenida.py"
@@ -91,7 +96,7 @@ def _arbol_de_runtime(proy):
         _escribir(h / "schemas" / nombre,
                   (RAIZ / "comun" / "schemas" / nombre).read_text(encoding="utf-8"))
     comando = "python '%s/.claude/harness/bin/desarrollo/contabilidad/statusline.py'" % proy.as_posix()
-    _json(proy / ".claude" / "settings.json", {"statusLine": {"type": "command", "command": comando}})
+    _json(proy / ".claude" / "settings.json", {"permissions": _DENY_ENV, "statusLine": {"type": "command", "command": comando}})
     B.escribir_senal_de_vida(str(proy), SESION, B.BLOCK4_OK, "1.0.0",
                              momento="2026-09-24T11:00:00")
 

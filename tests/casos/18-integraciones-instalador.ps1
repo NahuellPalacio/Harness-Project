@@ -1,5 +1,9 @@
 # E-29 a E-33 de docs/cambios/integraciones-bootstrap/spec.md.
 #
+# E-29 y E-31 pisados por docs/cambios/entorno-primero/spec.md: harness.integraciones.json ya no
+# sale de una plantilla ni lo completa la persona. Lo genera el bootstrap desde el .env, y un
+# -Update convierte el archivo viejo en proyeccion sin perder lo que tenia.
+#
 # Va aparte de 03-instalador.ps1 por el mismo motivo que 17-env-instalador.ps1: ese caso
 # rompe archivos versionados a proposito, con un finally que no sobrevive a que maten el
 # proceso. Aca no se rompe nada del repo.
@@ -10,7 +14,6 @@
 Set-Grupo 'Instalador - las integraciones'
 
 $instaladorInteg = Join-Path $script:Raiz 'install.ps1'
-$origenPlantilla = Join-Path $script:Raiz 'harnesses\desarrollo\integraciones.plantilla.json'
 $origenBin       = Join-Path $script:Raiz 'harnesses\desarrollo\bin'
 
 function Invoke-InstaladorInteg {
@@ -57,15 +60,15 @@ try {
 
     Assert-Verdadero 'E-29 dev-harness.py quedo instalado' (Test-Path $cli) 'no se copio el bin'
     foreach ($modulo in @('base.py', 'http.py', 'almacen.py', 'config.py', 'jira.py',
-                          'gitlab.py', 'registro.py', '__init__.py')) {
+                          'gitlab.py', 'registro.py', 'entorno.py', '__init__.py')) {
         Assert-Verdadero "E-29 el modulo $modulo quedo instalado" `
             (Test-Path (Join-Path $dirBin "integraciones\$modulo")) "falta $modulo"
     }
     Assert-Verdadero 'E-29 harness.integraciones.json quedo creado' (Test-Path $rutaCfg) `
-        'no se sembro la configuracion de integraciones'
+        'el bootstrap del final de la instalacion no genero la proyeccion'
     if (Test-Path $rutaCfg) {
-        Assert-Igual 'E-29 la configuracion sale de la plantilla del harness' `
-            ([System.IO.File]::ReadAllText($origenPlantilla)) ([System.IO.File]::ReadAllText($rutaCfg))
+        Assert-Contiene 'E-29 es la proyeccion generada, no una plantilla' `
+            '"schema_version": "integration-projection/1.0"' ([System.IO.File]::ReadAllText($rutaCfg))
     }
 
     # E-33 mira el LOCKFILE, no el disco. El bytecode que compila el propio instalador al
@@ -90,8 +93,11 @@ try {
 
     $r = Invoke-InstaladorInteg @('-Project', $demo, '-Update')
     Assert-Igual '-Update sale con codigo 0' 0 $r.Codigo
-    Assert-Igual 'E-31 -Update no toca harness.integraciones.json' `
-        $mia ([System.IO.File]::ReadAllText($rutaCfg))
+    $proyeccion = [System.IO.File]::ReadAllText($rutaCfg) | ConvertFrom-Json
+    Assert-Igual 'E-31 -Update convierte el archivo viejo en proyeccion' `
+        'integration-projection/1.0' $proyeccion.schema_version
+    Assert-Igual 'E-31 y conserva lo que la persona habia cargado, para migrarlo' `
+        'https://propia' $proyeccion.legado.jira.baseUrl
     Assert-Verdadero 'E-31 -Update repone los modulos del bin' `
         (Test-Path (Join-Path $dirBin 'integraciones\jira.py')) 'jira.py no volvio'
 
