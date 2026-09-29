@@ -78,6 +78,23 @@ def asignaciones(lineas):
     return salida
 
 
+def posiciones(lineas):
+    """Donde esta cada asignacion: [(linea, columna, nombre, cargada)], sin ningun valor.
+
+    Las mismas reglas que `asignaciones` -la misma expresion-, con la posicion en vez del
+    valor. `linea` y `columna` empiezan en 1; la columna es la del nombre, despues de un
+    `export`. `cargada` es si el valor sirve (no vacio ni placeholder): se mira y se tira.
+    Lo usa el localizador de `flujo/entrada_humana.py`, que no puede devolver lo que no ve.
+    """
+    salida = []
+    for numero, linea in enumerate(lineas, 1):
+        m = _LINEA.match(linea)
+        if m:
+            salida.append((numero, m.start(1) + 1, m.group(1),
+                           not es_valor_vacio(_sin_comillas(m.group(2)))))
+    return salida
+
+
 class AlmacenSecretos(object):
     def __init__(self, ruta_env, entorno=None):
         self.ruta = ruta_env

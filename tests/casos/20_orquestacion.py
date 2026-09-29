@@ -9,6 +9,7 @@
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -55,14 +56,37 @@ def _propuesta(unidades=None, **extra):
     return p
 
 
+# Pisado por docs/cambios/flujo-precondiciones/spec.md: READY_FOR_EXECUTION exige las
+# precondiciones del flujo evaluadas. Estos tests son del nucleo, no del flujo, asi que le dan
+# al plan un repositorio MATCHED y lo demas resuelto, y siguen afirmando lo mismo que antes.
+PRECONDICIONES = {
+    "facts": {"planning.taskContext": True, "repository.task": True,
+              "repository.unambiguous": True, "repository.local": True,
+              "repository.match": True, "task.acceptanceCriteriaField": True},
+    "repository": {"status": "MATCHED", "failureCode": None,
+                   "taskRepository": "gitlab.example/tramites/backoffice",
+                   "declaredBy": ["FICHA"], "candidates": ["gitlab.example/tramites/backoffice"],
+                   "localRepositories": ["gitlab.example/tramites/backoffice"]},
+}
+URL_DEL_REPO = "https://gitlab.example/tramites/backoffice"
+
+
 def _armar(propuesta=None, registro=None, config=None, contexto=None):
     return c_plan.armar(propuesta or _propuesta(), contexto or CONTEXTO,
                         REGISTRO if registro is None else registro,
-                        config or {}, "0.18.0", "docs/x.json")
+                        config or {}, "0.18.0", "docs/x.json", PRECONDICIONES)
 
 
-def _proyecto_con_contexto(contexto=None):
+def _proyecto_con_contexto(contexto=None, repositorio=False):
+    """`repositorio` le da al proyecto el checkout de la tarea y la URL en la Ficha: sin eso el
+    plan que escribe la CLI es BLOCKED (pisado por docs/cambios/flujo-precondiciones)."""
     raiz = tempfile.mkdtemp(prefix="harness-orq-")
+    if repositorio:
+        contexto = json.loads(json.dumps(contexto or CONTEXTO))
+        contexto["project"]["ficha"]["summary"] = "El repositorio es " + URL_DEL_REPO
+        for args in (["init", "-q"], ["remote", "add", "origin", URL_DEL_REPO + ".git"]):
+            subprocess.run(["git", "-C", raiz] + args, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, check=True)
     os.makedirs(os.path.join(raiz, ".claude", "contextos"))
     with io.open(os.path.join(raiz, ".claude", "contextos", CLAVE + ".json"), "w",
                  encoding="utf-8") as f:
@@ -696,8 +720,11 @@ def test_e33_replanificar_sube_la_version_y_guarda_el_motivo(t):
 
 
 def test_e33b_un_plan_completo_sale_listo(t):
-    """E-33b — el camino feliz entero, contra la CLI y validando el archivo escrito."""
-    raiz = _proyecto_con_contexto()
+    """E-33b — el camino feliz entero, contra la CLI y validando el archivo escrito.
+
+    Pisado por docs/cambios/flujo-precondiciones/spec.md: el camino feliz ahora incluye el
+    checkout de la tarea, porque sin repositorio coincidente el plan no puede estar listo."""
+    raiz = _proyecto_con_contexto(repositorio=True)
     propuesta = os.path.join(raiz, "prop.json")
     with io.open(propuesta, "w", encoding="utf-8") as f:
         f.write(json.dumps(_propuesta([

@@ -10,6 +10,10 @@ un plan con huecos diga READY_FOR_EXECUTION, y el estado es justo lo que el bloq
 siguiente va a mirar para decidir si arranca.
 
 🔴 Nada de aca ejecuta una unidad de trabajo.
+
+🔴 READY_FOR_EXECUTION exige las precondiciones del flujo (docs/cambios/flujo-precondiciones):
+repositorio de la tarea resuelto, checkout coincidente, ningun input HARD_BLOCKER sin
+resolver y todos los agentes ruteables. Un plan que no las evaluo es BLOCKED.
 """
 import datetime
 import importlib.util
@@ -158,8 +162,14 @@ def contexto_para(dominio, task_context):
 
 # -- el plan -------------------------------------------------------------------
 
-def armar(propuesta, task_context, registro, config, version_harness="", ruta_contexto=""):
-    """De una propuesta a un plan completo. No escribe: eso lo hace `escribir`."""
+def armar(propuesta, task_context, registro, config, version_harness="", ruta_contexto="",
+          precondiciones=None):
+    """De una propuesta a un plan completo. No escribe: eso lo hace `escribir`.
+
+    `precondiciones` es lo que devuelve `flujo.precondiciones.de_planificacion`: los hechos
+    de PLANNING que no salen del plan y la identidad del repositorio. Sin eso el plan se arma
+    igual y sale BLOCKED: lo que no se evaluo no pasa.
+    """
     clave = str((task_context.get("meta") or {}).get("task_key") or "")
     dominios = sorted(set(propuesta.get("domains") or []))
     # Los dominios del plan se validan igual que el de cada unidad. No hay fuga de
@@ -192,6 +202,7 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
             aprobaciones.append(aprobacion)
 
     orden = orden_de_ejecucion(unidades)
+    precondiciones_del_flujo = _precondiciones(precondiciones, unidades)
 
     avisos = roster.huecos(agentes, skills, checks)
     aviso_matriz = normativa.aviso_de_matriz()
@@ -238,6 +249,7 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
         },
         "consumptionPolicy": politica,
         "humanApprovals": aprobaciones,
+        "flowPreconditions": precondiciones_del_flujo,
         "planHistory": [{
             "planVersion": 1,
             "changes": ["plan inicial"],
@@ -264,13 +276,18 @@ def _armar_unidad(propuesta_unidad, task_context, capacidades, politica, dominio
 
     ruteo = modelo.enrutar(senales)
     agente = str(propuesta_unidad.get("assignedAgent") or roster.agente_de_dominio(dominio))
+    ruteable = _ruteo_de_agente(agente)
     skills_del_dominio = roster.skills_para([dominio])
     unidad_para_gate = {"id": propuesta_unidad.get("id"), "assignedAgent": agente}
     aprobada, solicitud, presupuesto = consumo.decidir(
         unidad_para_gate, ruteo["requiredTier"], ruteo["reason"], politica)
     politica = dict(politica, sessionBudget=presupuesto)
 
-    if not aprobada:
+    if not ruteable["routable"]:
+        # Ruteo cerrado: un agente que el registro no rutea no recibe trabajo, y ninguna
+        # aprobacion lo arregla. No se le pregunta a nadie: es DERIVABLE del registro.
+        estado = "BLOCKED"
+    elif not aprobada:
         estado = "WAITING_FOR_HUMAN_APPROVAL"
     elif any(c in capacidades["missing"]
              for c in propuesta_unidad.get("requiredCapabilities", [])):
@@ -320,7 +337,32 @@ def _armar_unidad(propuesta_unidad, task_context, capacidades, politica, dominio
         },
         "status": estado,
     }
+    if not ruteable["routable"]:
+        unidad["blockers"] = [{"inputId": "agents.routing", "code": ruteable["result"]}]
     return unidad, solicitud, politica
+
+
+def _ruteo_de_agente(agente):
+    """La validacion canonica del Agent Registry. Sin registro no se rutea nada."""
+    from . import registro_agentes
+    try:
+        return registro_agentes.resolver_ruteo(agente)
+    except registro_agentes.RegistroInvalido:
+        return {"requestedAgent": agente, "result": "AGENT_NOT_FOUND", "routable": False}
+
+
+def _precondiciones(precondiciones, unidades):
+    """flowPreconditions: la evaluacion de PLANNING, con el ruteo de agentes que sabe el plan."""
+    from flujo import precondiciones as flujo
+    from flujo import requeridos
+    hechos = dict((precondiciones or {}).get("facts") or {})
+    hechos["agents.routing"] = not any(u.get("blockers") for u in unidades)
+    try:
+        evaluacion = flujo.evaluar(flujo.PLANNING, hechos)
+    except requeridos.RegistroInvalido as e:
+        raise PlanInvalido("no se pueden evaluar las precondiciones del flujo: %s" % e)
+    evaluacion["repository"] = (precondiciones or {}).get("repository")
+    return evaluacion
 
 
 def _runtime(config):
@@ -369,7 +411,15 @@ def _limpiar(documento):
 # -- estado, validacion y escritura --------------------------------------------
 
 def estado_de(documento):
-    """El estado sale del contenido, no de quien arma el plan."""
+    """El estado sale del contenido, no de quien arma el plan.
+
+    🔴 Las precondiciones van primero y se recalculan de sus preguntas: un `status: READY`
+    escrito a mano al lado de una pregunta bloqueante no hace pasar nada.
+    """
+    previas = documento.get("flowPreconditions")
+    if not isinstance(previas, dict) or previas.get("status") != "READY" or any(
+            p.get("blocking") for p in previas.get("questions") or []):
+        return "BLOCKED"
     if documento["capabilityGaps"]:
         return "CAPABILITY_RESOLUTION"
     if any(a["status"] == "PENDING" for a in documento["humanApprovals"]):

@@ -90,6 +90,9 @@ OUTPUT_INVALID = "REFUTATION_OUTPUT_INVALID"
 CACHE_INVALID = "REFUTATION_CACHE_INVALID"
 NOTHING_TO_VERIFY = "REFUTATION_NOTHING_TO_VERIFY"
 BATCH_INVALID = "REFUTATION_BATCH_INVALID"
+# La corrida se compilo sobre otro plan. `planFingerprint` se guarda desde 0.23.0; desde la
+# Wave 1 de Flow Governance tambien se compara (docs/cambios/flujo-precondiciones/spec.md).
+PLAN_STALE = "REFUTATION_PLAN_STALE"
 
 # De mayor a menor prioridad. Para cada (unidad, regla) se usan los alcances de la primera
 # fuente que tenga alguno; los de las de abajo se descartan.
@@ -995,6 +998,7 @@ def para_refutar(proyecto, clave, ids):
     if not ids or any(not ID_DE_UNIDAD.match(i) for i in ids):
         raise RefutacionInvalida(OUTPUT_INVALID, "se esperaba REF-001 o REF-001,REF-002.")
     elegidas = [unidad(proyecto, clave, i) for i in ids]
+    exigir_plan_vigente(proyecto, clave)
     for u in elegidas:
         if u["status"] != PENDIENTE:
             raise RefutacionInvalida(
@@ -1144,6 +1148,21 @@ def _limpiar(v):
     return v
 
 
+def exigir_plan_vigente(proyecto, clave):
+    """Levanta PLAN_STALE si el plan de hoy no es sobre el que se compilo la corrida.
+
+    Cualquier reescritura del plan cuenta: un `plan` nuevo o una replanificacion. Recompilar
+    cuesta poco -la cache exacta sigue valiendo- y entregar unidades de otro plan no se
+    puede deshacer.
+    """
+    doc, _, _ = leer(proyecto, clave)
+    plan, error = _leer_json(ruta_del_plan(proyecto, clave))
+    if not isinstance(plan, dict) or error or huella(plan) != doc["meta"]["planFingerprint"]:
+        raise RefutacionInvalida(
+            PLAN_STALE, "el plan de %s cambio desde que se compilo la corrida. Corré "
+            "`refute %s --compile` de nuevo." % (clave, clave))
+
+
 def registrar(proyecto, clave, texto, desde=__file__):
     """Valida lo que devolvio el refutador y lo guarda. Todo o nada. Devuelve los guardados."""
     salida = parsear_salida(texto)
@@ -1154,6 +1173,7 @@ def registrar(proyecto, clave, texto, desde=__file__):
     if len(set(ids)) != len(ids):
         raise RefutacionInvalida(OUTPUT_INVALID, "un veredicto por unidad, y hay ids repetidos.")
     unidades = [unidad(proyecto, clave, str(i)) for i in ids]
+    exigir_plan_vigente(proyecto, clave)
     micro_lote(unidades)
     limpios = [validar_veredicto(proyecto, u, v, desde) for u, v in zip(unidades, lista)]
 

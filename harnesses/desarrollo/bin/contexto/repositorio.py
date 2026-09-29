@@ -24,6 +24,10 @@ import re
 
 RE_URL_GITLAB = re.compile(r"https?://[^\s)]*gitlab[^\s)]*", re.IGNORECASE)
 
+# Los campos de la Ficha donde se busca la URL del repositorio. Los lee tambien la identidad
+# del repositorio de `flujo/`, que tiene que ver lo mismo que vio este resolvedor.
+CAMPOS_DE_FICHA = ("summary", "objectives", "scope", "architecture")
+
 
 def seccion_vacia(estado="missing"):
     return {
@@ -45,8 +49,7 @@ def referencia_de_proyecto(config_gitlab, ficha):
     if declarado:
         return declarado, "la configuracion del harness"
 
-    texto = " ".join(str(ficha.get(c) or "") for c in
-                     ("summary", "objectives", "scope", "architecture")) if ficha else ""
+    texto = " ".join(str(ficha.get(c) or "") for c in CAMPOS_DE_FICHA) if ficha else ""
     m = RE_URL_GITLAB.search(texto)
     if m:
         # De https://gitlab.ejemplo/grupo/proyecto queda grupo/proyecto, que es lo que

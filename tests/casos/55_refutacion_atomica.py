@@ -120,6 +120,38 @@ def _borrar(proy):
     shutil.rmtree(str(proy), ignore_errors=True)
 
 
+URL_DEL_REPO = "https://gitlab.example/grupo/proyecto"
+FLUJO_LISTO = {
+    "facts": {"planning.taskContext": True, "repository.task": True,
+              "repository.unambiguous": True, "repository.local": True,
+              "repository.match": True, "task.acceptanceCriteriaField": True},
+    "repository": {"status": "MATCHED", "failureCode": None,
+                   "taskRepository": "gitlab.example/grupo/proyecto", "declaredBy": ["FICHA"],
+                   "candidates": ["gitlab.example/grupo/proyecto"],
+                   "localRepositories": ["gitlab.example/grupo/proyecto"]},
+}
+
+
+def _listo_para_la_compuerta(proy, clave=CLAVE):
+    """Pisado por docs/cambios/flujo-precondiciones/spec.md: `refute --compile` pasa por una
+    compuerta -plan listo, TaskContext vigente, checkout de la tarea-. Esto le da al proyecto
+    las tres cosas; lo que el test afirma de la refutacion no cambia.
+
+    El plan de `_plan` no evaluo el flujo y es BLOCKED: se le pone la evaluacion real de
+    PLANNING y el hash del TaskContext que se escribe al lado."""
+    contexto = {"meta": {"task_key": clave, "context_hash": ""}, "task": {"title": "t"},
+                "project": {"ficha": {"summary": "El repositorio es " + URL_DEL_REPO}}}
+    contexto["meta"]["context_hash"] = R._armador().hash_de(contexto)
+    _escribir(proy / ".claude" / "contextos" / (clave + ".json"), json.dumps(contexto))
+    ruta = proy / ".claude" / "planes" / (clave + ".json")
+    plan = json.loads(ruta.read_text(encoding="utf-8"))
+    plan["meta"]["task_context_ref"]["context_hash"] = contexto["meta"]["context_hash"]
+    plan["flowPreconditions"] = orq_plan._precondiciones(FLUJO_LISTO, plan["workUnits"])
+    plan["status"] = orq_plan.estado_de(plan)
+    _escribir(ruta, json.dumps(plan, ensure_ascii=False))
+    _git(proy, "remote", "add", "origin", URL_DEL_REPO + ".git")
+
+
 def _unidades(proy, clave=CLAVE):
     return R.leer(str(proy), clave)[1]
 
@@ -1035,6 +1067,7 @@ def test_e53_e55_corrida_completa_por_cli(t):
     podia fallar."""
     proy = _proyecto()
     try:
+        _listo_para_la_compuerta(proy)
         c1 = _cli(proy, "refute", CLAVE, "--compile")[0]
         u = _unidades(proy)[0]
         ruta = proy / "v.json"

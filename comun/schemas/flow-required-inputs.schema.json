@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flow-required-inputs/1.0",
+  "title": "FLOW_REQUIRED_INPUTS",
+  "description": "Lo que cada etapa del flujo necesita saber antes de avanzar, y como se consigue si falta. Lo lee harnesses/desarrollo/bin/flujo/requeridos.py, que ademas valida lo que este subconjunto no puede expresar: la coherencia entre clasificacion, bloqueo y pregunta, y que una variable del .env este en integration-environment-contract. Solo bloquea lo declarado bloqueante para esa etapa.",
+  "type": "object",
+  "required": ["schema_version", "inputs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "string", "enum": ["flow-required-inputs/1.0"]},
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["stage", "inputId", "classification", "interactionType", "sourceOfTruth",
+                     "derivableFrom", "blocking", "askUser", "failureCode", "persistentTarget"],
+        "additionalProperties": false,
+        "properties": {
+          "stage": {"type": "string", "enum": ["CONTEXT", "PLANNING", "REFUTATION"]},
+          "inputId": {"type": "string", "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)+$"},
+          "classification": {"type": "string",
+                             "enum": ["HARD_BLOCKER", "SOFT_DEPENDENCY", "OPTIONAL", "DERIVABLE"]},
+          "interactionType": {
+            "description": "null solo para DERIVABLE: lo que el harness calcula no se le pide a nadie.",
+            "type": ["string", "null"],
+            "enum": ["PERSISTENT_CONFIG_INPUT", "TASK_INPUT", "HUMAN_DECISION", null]
+          },
+          "sourceOfTruth": {
+            "description": "La autoridad que ya existe para este dato. Flow Governance la referencia; no la reemplaza.",
+            "type": "string"
+          },
+          "derivableFrom": {"type": "array", "items": {"type": "string"}},
+          "blocking": {"type": "boolean"},
+          "askUser": {"type": "boolean"},
+          "failureCode": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+          "persistentTarget": {
+            "description": "Donde lo completa la persona. Solo para PERSISTENT_CONFIG_INPUT. Nunca harness.integraciones.json.",
+            "type": ["object", "null"],
+            "required": ["file", "format", "key", "revalidateWith"],
+            "additionalProperties": false,
+            "properties": {
+              "file": {"type": "string"},
+              "format": {"type": "string",
+                         "enum": ["dotenv", "json", "yaml", "toml", "properties", "ini"]},
+              "key": {"type": "string"},
+              "sensitivity": {
+                "description": "Solo fuera del .env. La de una variable del .env sale del contrato de entorno.",
+                "type": "string", "enum": ["SECRET", "PUBLIC_CONFIG"]
+              },
+              "revalidateWith": {"type": "string"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

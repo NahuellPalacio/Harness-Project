@@ -261,6 +261,20 @@
           "status": {
             "type": "string",
             "enum": ["PENDING", "BLOCKED", "WAITING_FOR_HUMAN_APPROVAL", "READY"]
+          },
+
+          "blockers": {
+            "description": "Por que la unidad esta BLOCKED por el flujo, con el codigo exacto de quien lo decidio. Hoy: un agente que el Agent Registry no rutea (agents.routing, con el `result` de resolver_ruteo). Opcional: una unidad sin bloqueos no lo lleva.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["inputId", "code"],
+              "additionalProperties": false,
+              "properties": {
+                "inputId": { "type": "string" },
+                "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+              }
+            }
           }
         }
       }
@@ -344,6 +358,51 @@
       }
     },
 
+    "flowPreconditions": {
+      "description": "La evaluacion de la etapa PLANNING del flujo (docs/cambios/flujo-precondiciones/spec.md): una pregunta por input sin resolver y la identidad del repositorio. Opcional para leer planes de antes; un plan sin este bloque es BLOCKED.",
+      "type": "object",
+      "required": ["stage", "status", "questions", "repository"],
+      "additionalProperties": false,
+      "properties": {
+        "stage": { "type": "string", "enum": ["PLANNING"] },
+        "status": { "type": "string", "enum": ["READY", "BLOCKED"] },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["inputId", "classification", "interactionType", "failureCode",
+                         "blocking", "askUser"],
+            "additionalProperties": false,
+            "properties": {
+              "inputId": { "type": "string" },
+              "classification": { "type": "string",
+                                  "enum": ["HARD_BLOCKER", "SOFT_DEPENDENCY", "OPTIONAL", "DERIVABLE"] },
+              "interactionType": { "type": ["string", "null"],
+                                   "enum": ["PERSISTENT_CONFIG_INPUT", "TASK_INPUT", "HUMAN_DECISION", null] },
+              "failureCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+              "blocking": { "type": "boolean" },
+              "askUser": { "type": "boolean" }
+            }
+          }
+        },
+        "repository": {
+          "description": "Identidades normalizadas (host/grupo/proyecto), nunca la URL de un remoto. null si el plan se armo sin evaluar el repositorio.",
+          "type": ["object", "null"],
+          "required": ["status", "failureCode", "taskRepository", "declaredBy", "candidates",
+                       "localRepositories"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "enum": ["MATCHED", "MISMATCH", "UNRESOLVED"] },
+            "failureCode": { "type": ["string", "null"] },
+            "taskRepository": { "type": ["string", "null"] },
+            "declaredBy": { "type": "array", "items": { "type": "string" } },
+            "candidates": { "type": "array", "items": { "type": "string" } },
+            "localRepositories": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+
     "planHistory": {
       "description": "Por que el plan es el que es. Una replanificacion sin motivo es un plan que cambio solo.",
       "type": "array",
@@ -367,10 +426,10 @@
     },
 
     "status": {
-      "description": "Se CALCULA del contenido, no lo declara quien arma el plan: con huecos de capacidad o aprobaciones pendientes, un plan no puede decir que esta listo.",
+      "description": "Se CALCULA del contenido, no lo declara quien arma el plan: con huecos de capacidad o aprobaciones pendientes, un plan no puede decir que esta listo. BLOCKED es que las precondiciones del flujo no se cumplen o no se evaluaron.",
       "type": "string",
-      "enum": ["RECEIVED", "ANALYZING", "PLANNING", "CAPABILITY_RESOLUTION", "WAITING_FOR_TOOL",
-               "WAITING_FOR_HUMAN_APPROVAL", "READY_FOR_DELEGATION", "DELEGATING",
+      "enum": ["RECEIVED", "ANALYZING", "PLANNING", "BLOCKED", "CAPABILITY_RESOLUTION",
+               "WAITING_FOR_TOOL", "WAITING_FOR_HUMAN_APPROVAL", "READY_FOR_DELEGATION", "DELEGATING",
                "REPLANNING", "READY_FOR_EXECUTION", "FAILED"]
     }
   }

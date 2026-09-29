@@ -61,6 +61,9 @@ from contexto import tarea as contexto_tarea                      # noqa: E402
 
 from integraciones import fuentes as int_fuentes                # noqa: E402
 
+from flujo import precondiciones as flujo_precondiciones          # noqa: E402
+from flujo import requeridos as flujo_requeridos                  # noqa: E402
+
 from orquestacion import frescura as orq_frescura                # noqa: E402
 from orquestacion import plan as orq_plan                         # noqa: E402
 from orquestacion import refutacion as orq_refutacion             # noqa: E402
@@ -834,6 +837,11 @@ def planificar(args, proyecto, rutas, consola):
                                     ensure_ascii=False, indent=2) + "\n")
         return 0
 
+    # Las precondiciones de PLANNING: de que repositorio es la tarea, si este checkout es ese
+    # y que falta. Solo lectura: el .env, el TaskContext y `git remote -v`.
+    precondiciones = flujo_precondiciones.de_planificacion(
+        task_context, gitlab_de_entorno(rutas), proyecto, config)
+
     if args.replanificar:
         if not os.path.isfile(destino):
             raise FallaDelHarness(
@@ -846,7 +854,8 @@ def planificar(args, proyecto, rutas, consola):
         anterior = _json_o_vacio(destino)
         nueva = _json_o_vacio(args.replanificar)
         documento = orq_plan.armar(nueva, task_context, registro, config,
-                                   version_de(rutas), _relativa(proyecto, ruta_contexto))
+                                   version_de(rutas), _relativa(proyecto, ruta_contexto),
+                                   precondiciones)
         documento["meta"]["plan_version"] = anterior.get("meta", {}).get("plan_version", 1)
         documento["planHistory"] = anterior.get("planHistory", [])
         documento = orq_plan.replanificar(
@@ -860,7 +869,8 @@ def planificar(args, proyecto, rutas, consola):
             raise FallaDelHarness("no existe la propuesta %s." % args.propuesta)
         propuesta = _json_o_vacio(args.propuesta)
         documento = orq_plan.armar(propuesta, task_context, registro, config,
-                                   version_de(rutas), _relativa(proyecto, ruta_contexto))
+                                   version_de(rutas), _relativa(proyecto, ruta_contexto),
+                                   precondiciones)
 
     consola.evento("plan.armado", tarea=clave, unidades=len(documento["workUnits"]),
                    version=documento["meta"]["plan_version"])
@@ -873,6 +883,17 @@ def planificar(args, proyecto, rutas, consola):
     else:
         mostrar_plan(consola, documento, destino)
     return 0
+
+
+def gitlab_de_entorno(rutas):
+    """La configuracion publica de GitLab resuelta del .env, sin escribir la proyeccion.
+
+    Es el camino de 0.26.0 (.env -> contrato -> entorno.py) y nada mas: la proyeccion no se
+    lee como fuente, y un .env roto hace fallar el comando en vez de dar una identidad del
+    repositorio sin su declaracion principal.
+    """
+    contrato = entorno.cargar_contrato(adaptadores=ADAPTADORES)
+    return entorno.resolver(contrato, rutas["env"], rutas["config"]).de("gitlab")
 
 
 def _relativa(proyecto, ruta):
@@ -942,6 +963,14 @@ def mostrar_plan(consola, documento, destino):
         consola.linea("  %-20s %-12s %-10s %s" % (
             u["id"], u["domain"], u["modelPolicy"]["requiredTier"], u["status"]))
         consola.linea("      %s · %s" % (u["assignedAgent"] or "sin agente", u["objective"]))
+    bloqueantes = flujo_precondiciones.bloqueantes(documento.get("flowPreconditions"))
+    if bloqueantes:
+        consola.linea("")
+        consola.linea("Lo que falta para avanzar")
+        for p in bloqueantes:
+            consola.linea("  %s (%s)%s" % (p["inputId"], p["failureCode"],
+                                           " · hay que preguntarle a la persona"
+                                           if p["askUser"] else ""))
     if documento["capabilityGaps"]:
         consola.linea("")
         consola.linea("Capacidades que faltan")
@@ -1238,6 +1267,16 @@ def refutar(args, proyecto, consola):
     accion = elegidos[0]
 
     if accion == "compile":
+        # La compuerta de REFUTATION va antes de tocar nada: si no pasa, no se crea ni se
+        # cambia run.json (docs/cambios/flujo-precondiciones/spec.md).
+        compuerta = flujo_precondiciones.compuerta_de_refutacion(
+            proyecto, clave, gitlab_de_entorno(rutas_de(proyecto)))
+        faltan = flujo_precondiciones.bloqueantes(compuerta)
+        if faltan:
+            raise FallaDelHarness(
+                "no se compila la refutacion de %s: %s. Resolvé eso y volvé a correr "
+                "`refute %s --compile`." % (
+                    clave, ", ".join(sorted(set(p["failureCode"] for p in faltan))), clave))
         doc = orq_refutacion.compilar(proyecto, clave)
         consola.evento("refutacion.compilada", unidades=doc["counts"]["units"],
                        estado=doc["status"])
@@ -1501,7 +1540,7 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             cont_presupuesto.PoliticaInvalida, cont_contrato.ContratoInvalido,
             seg_libro.EventoInvalido, seg_libro.TareaInvalida,
             seg_productores.ProductorInvalido, seg_resumen.ResumenInvalido,
-            orq_refutacion.RefutacionInvalida) as e:
+            orq_refutacion.RefutacionInvalida, flujo_requeridos.RegistroInvalido) as e:
         sys.stderr.write("harness: %s\n" % e)
         return 2
     except KeyboardInterrupt:
