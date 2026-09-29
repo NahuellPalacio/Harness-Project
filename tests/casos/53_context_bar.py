@@ -852,15 +852,23 @@ def _transcripcion(ruta, sesion, turnos=2, modelo="m-cb53", costo=None, extra=()
     return str(ruta)
 
 
-def _dibujar(entrada, renderizador=None, comando=None):
+def _dibujar(entrada, renderizador=None, comando=None, color=False):
     """(codigo, stdout, stderr) del renderizador instalado. `entrada`: dict, bytes o None
-    (sin stdin)."""
+    (sin stdin).
+
+    Sin `color`, corre con NO_COLOR: los escenarios de bloque-1-context-bar prueban lo que dice
+    la linea, no sus bytes de color. Los de context-bar-colores piden `color=True`, y E-17 es el
+    que prueba que con y sin colores dice lo mismo."""
     if renderizador is None:
         renderizador = _instalado()[1]
     crudo = entrada if isinstance(entrada, bytes) or entrada is None \
         else json.dumps(entrada).encode("utf-8")
     entorno = dict(os.environ)
     entorno.pop("CLAUDE_PROJECT_DIR", None)
+    if color:
+        entorno.pop("NO_COLOR", None)
+    else:
+        entorno["NO_COLOR"] = "1"
     r = subprocess.run(comando or [sys.executable, str(renderizador)],
                        input=crudo if crudo is not None else b"",
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -1627,11 +1635,216 @@ def test_e41_la_huella_de_la_senal_es_la_del_comando_que_corrio(t):
     t.igual("E-41 un comando sin huella deja null", None, _senal_de(proy)["configurationFingerprint"])
 
     tercera = registrar(base + " '--tercero'", momento="2030-01-01T00:00:00")
-    B.escribir_senal_de_vida(str(proy), sesion, B.BLOCK4_OK, "1.0.0",
+    B.escribir_senal_de_vida(str(proy), sesion, B.BLOCK4_OK, SL.INTEGRATION_VERSION,
                              momento="2030-01-01T00:00:00", huella=tercera)
     t.igual("E-41 una senal del mismo segundo que el registro no prueba nada", "RELOAD_REQUIRED",
             _barra(B.resolver(str(proy), sesion=sesion))["state"])
-    B.escribir_senal_de_vida(str(proy), sesion, B.BLOCK4_OK, "1.0.0",
+    B.escribir_senal_de_vida(str(proy), sesion, B.BLOCK4_OK, SL.INTEGRATION_VERSION,
                              momento="2030-01-01T00:00:01", huella=tercera)
     t.igual("E-41 un segundo despues, si", "ACTIVE",
             _barra(B.resolver(str(proy), sesion=sesion))["state"])
+
+
+# -- context-bar-colores — la misma linea, con el nivel del Bloque 4 a la vista -------------------
+#
+# Spec: docs/cambios/context-bar-colores/spec.md. E-nn de esa spec es CB-ANSI-nn del pedido.
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+_ESC_AMARILLO, _ESC_ROJO, _ESC_NEGRITA, _ESC_FIN = "\x1b[33m", "\x1b[31m", "\x1b[1m", "\x1b[0m"
+
+
+def _estado_cb(ctx_nivel="NORMAL", budget_nivel="NORMAL", ctx_fraccion=0.42, budget_fraccion=0.3,
+               ctx_tokens=None):
+    """Un estado de barra.de armado a mano, con todos los campos que la barra sabe dibujar."""
+    return {
+        "sessionId": "s-cb-colores", "taskId": "GCBA-9", "agentId": "dev-backend",
+        "model": "m-grande",
+        "context": {"tokens": ctx_tokens, "limit": None if ctx_fraccion is None else 200000,
+                    "fraction": ctx_fraccion, "level": ctx_nivel},
+        "tokens": {"inputTokens": 1000, "cacheReadTokens": 200000, "cacheCreationTokens": 0,
+                   "outputTokens": 34000},
+        "budget": {"amount": 2.84, "field": "apiEquivalentEstimated", "currency": "USD",
+                   "fraction": budget_fraccion, "level": budget_nivel},
+        "time": {"wallMs": 754000, "modelMs": None, "toolMs": None},
+        "unresolved": [],
+    }
+
+
+def _color(estado, color=True):
+    return SL.dibujar(estado, _b4(), color=color)
+
+
+class _NoColor(object):
+    """NO_COLOR puesta (o sacada, con None) en el entorno del proceso, y devuelta como estaba."""
+
+    def __init__(self, valor):
+        self.valor = valor
+
+    def __enter__(self):
+        self.antes = os.environ.get("NO_COLOR")
+        if self.valor is None:
+            os.environ.pop("NO_COLOR", None)
+        else:
+            os.environ["NO_COLOR"] = self.valor
+
+    def __exit__(self, *a):
+        if self.antes is None:
+            os.environ.pop("NO_COLOR", None)
+        else:
+            os.environ["NO_COLOR"] = self.antes
+
+
+def test_cb_e01_a_e03_ctx_sigue_su_nivel(t):
+    """colores E-01 / E-02 / E-03 — Ctx NN%: NORMAL sin color, WARNING amarillo, ERROR rojo."""
+    normal = _segmentos(_color(_estado_cb(ctx_nivel="NORMAL", ctx_fraccion=0.42)))
+    t.igual("colores E-01 NORMAL: Ctx sin ninguna secuencia", "Ctx 42%", normal[2])
+    aviso = _segmentos(_color(_estado_cb(ctx_nivel="WARNING", ctx_fraccion=0.82)))
+    t.igual("colores E-02 WARNING: Ctx en amarillo, cerrado con su reset",
+            _ESC_AMARILLO + "Ctx 82%" + _ESC_FIN, aviso[2])
+    error = _segmentos(_color(_estado_cb(ctx_nivel="ERROR", ctx_fraccion=0.95)))
+    t.igual("colores E-03 ERROR: Ctx en rojo, cerrado con su reset", _ESC_ROJO + "Ctx 95%" + _ESC_FIN, error[2])
+
+
+def test_cb_e04_a_e06_budget_sigue_su_nivel(t):
+    """colores E-04 / E-05 / E-06 — Budget NN%: NORMAL sin color, WARNING amarillo, ERROR rojo."""
+    normal = _color(_estado_cb(budget_nivel="NORMAL", budget_fraccion=0.3))
+    t.contiene("colores E-04 NORMAL: Budget sin color", " | Budget 30% | ", normal)
+    aviso = _color(_estado_cb(budget_nivel="WARNING", budget_fraccion=0.6))
+    t.contiene("colores E-05 WARNING: Budget en amarillo",
+               " | " + _ESC_AMARILLO + "Budget 60%" + _ESC_FIN + " | ", aviso)
+    error = _color(_estado_cb(budget_nivel="ERROR", budget_fraccion=0.95))
+    t.contiene("colores E-06 ERROR: Budget en rojo",
+               " | " + _ESC_ROJO + "Budget 95%" + _ESC_FIN + " | ", error)
+
+
+def test_cb_e07_e08_la_etiqueta_final(t):
+    """colores E-07 / E-08 — la etiqueta de alerta: WARNING amarillo, ERROR rojo."""
+    aviso = _segmentos(_color(_estado_cb(budget_nivel="WARNING", budget_fraccion=0.6)))
+    t.igual("colores E-07 WARNING en amarillo", _ESC_AMARILLO + "WARNING" + _ESC_FIN, aviso[7])
+    error = _segmentos(_color(_estado_cb(ctx_nivel="ERROR", ctx_fraccion=0.95,
+                                         budget_nivel="WARNING", budget_fraccion=0.6)))
+    t.igual("colores E-08 ERROR en rojo, aunque el otro nivel sea WARNING",
+            _ESC_ROJO + "ERROR" + _ESC_FIN, error[7])
+
+
+def test_cb_e09_e10_harness_en_negrita_sin_severidad(t):
+    """colores E-09 / E-10 — HARNESS en negrita con datos, y nunca con color de severidad."""
+    t.verdadero("colores E-09 empieza con HARNESS en negrita",
+                _color(_estado_cb()).startswith(_ESC_NEGRITA + "HARNESS" + _ESC_FIN + " | "))
+    peor = _segmentos(_color(_estado_cb(ctx_nivel="ERROR", ctx_fraccion=0.95,
+                                        budget_nivel="ERROR", budget_fraccion=0.95)))
+    t.igual("colores E-10 con todo en ERROR, HARNESS sigue en negrita y nada mas",
+            _ESC_NEGRITA + "HARNESS" + _ESC_FIN, peor[0])
+
+
+def _correr_con(entrada, no_color):
+    """stdout del renderizador instalado con NO_COLOR=`no_color` en su entorno."""
+    entorno = dict(os.environ)
+    entorno.pop("CLAUDE_PROJECT_DIR", None)
+    entorno["NO_COLOR"] = no_color
+    r = subprocess.run([sys.executable, str(_instalado()[1])],
+                       input=json.dumps(entrada).encode("utf-8"),
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       cwd=tempfile.gettempdir(), env=entorno, timeout=60)
+    return r.stdout.decode("ascii")
+
+
+def test_cb_e11_e12_no_color_apaga_todo(t):
+    """colores E-11 / E-12 — NO_COLOR definida apaga todo, tambien vacia: en dibujar, por el entorno, y
+    en el renderizador instalado, con un presupuesto en ERROR."""
+    peor = _estado_cb(ctx_nivel="ERROR", ctx_fraccion=0.95, budget_nivel="ERROR", budget_fraccion=0.95)
+    with _NoColor(None):
+        t.contiene("colores E-11 sin NO_COLOR hay color", "\x1b", SL.dibujar(peor, _b4()))
+    for rotulo, valor in (("colores E-11 NO_COLOR=1", "1"), ("colores E-12 NO_COLOR= vacia", "")):
+        with _NoColor(valor):
+            t.no_contiene("%s: ningun byte 0x1B" % rotulo, "\x1b", SL.dibujar(peor, _b4()))
+
+    proy, _ = _instalado()
+    sesion = _nueva_sesion()
+    tmp = Path(tempfile.mkdtemp(prefix="cb53-col-"))
+    _json(proy / ".claude" / "harness.presupuesto.json",
+          dict(POLITICA, task={"softLimit": 1.0, "hardLimit": 2.0}))
+    try:
+        entrada = {"session_id": sesion,
+                   "transcript_path": _transcripcion(tmp / "t.jsonl", sesion, costo=1.95)}
+        _, con_color, _ = _dibujar(entrada, color=True)
+        uno = _correr_con(entrada, "1")
+        vacia = _correr_con(entrada, "")
+    finally:
+        os.remove(str(proy / ".claude" / "harness.presupuesto.json"))
+        shutil.rmtree(str(tmp), ignore_errors=True)
+    t.contiene("colores E-11 el renderizador instalado pinta el ERROR", _ESC_ROJO + "ERROR" + _ESC_FIN, con_color)
+    t.no_contiene("colores E-11 con NO_COLOR=1, ni un byte 0x1B", "\x1b", uno)
+    t.no_contiene("colores E-12 con NO_COLOR= vacia, tampoco", "\x1b", vacia)
+    t.igual("colores E-12 y es la misma linea que con NO_COLOR=1", uno, vacia)
+    t.igual("colores E-11 y sacando las secuencias, la misma que con color", _ANSI_RE.sub("", con_color), uno)
+
+
+def test_cb_e13_e14_la_linea_sin_datos_no_se_pinta(t):
+    """colores E-13 / E-14 — HARNESS | sin datos del Bloque 4, byte a byte, con los colores habilitados."""
+    t.igual("colores E-13 la constante no cambio", "HARNESS | sin datos del Bloque 4", SL.LINEA_SIN_DATOS)
+    vacio = {"context": {}, "budget": {}, "tokens": {}, "time": {}, "unresolved": []}
+    t.igual("colores E-13 dibujar sin nada que mostrar, con color, da la linea sin datos",
+            "HARNESS | sin datos del Bloque 4", _color(vacio))
+    codigo, salida, _ = _dibujar(None, color=True)
+    t.igual("colores E-13 el renderizador instalado sin stdin, con color",
+            (0, "HARNESS | sin datos del Bloque 4"), (codigo, salida.rstrip("\r\n")))
+    t.no_contiene("colores E-14 sin ningun byte 0x1B en el renderizador", "\x1b", salida)
+    t.no_contiene("colores E-14 ni en dibujar", "\x1b", _color(vacio))
+
+
+def test_cb_e15_e16_unresolved_no_inventa_color(t):
+    """colores E-15 / E-16 — UNRESOLVED no se pinta, y no aparece ninguna etiqueta que nadie pidio."""
+    con_fraccion = _segmentos(_color(_estado_cb(ctx_nivel="UNRESOLVED", ctx_fraccion=0.95,
+                                                budget_nivel="UNRESOLVED", budget_fraccion=0.95)))
+    t.igual("colores E-15 Ctx UNRESOLVED con porcentaje, sin color", "Ctx 95%", con_fraccion[2])
+    t.igual("colores E-16 Budget UNRESOLVED, sin color", "Budget 95%", con_fraccion[6])
+    en_tokens = _segmentos(_color(_estado_cb(ctx_nivel="UNRESOLVED", ctx_fraccion=None,
+                                             ctx_tokens=10000, budget_nivel="UNRESOLVED")))
+    t.igual("colores E-15 Ctx UNRESOLVED en tokens, sin color", "Ctx 10k", en_tokens[2])
+    for linea in (con_fraccion, en_tokens):
+        t.vacio("colores E-16 ninguna etiqueta WARNING ni ERROR",
+                [s for s in linea if _ANSI_RE.sub("", s) in ("WARNING", "ERROR")])
+        t.vacio("colores E-15 / E-16 el unico color es la negrita de HARNESS",
+                [s for s in linea[1:] if "\x1b" in s])
+
+
+# La linea de antes, escrita a mano: la que dibujaba la barra antes de los colores.
+_LEGADO = ("HARNESS | m-grande | Ctx 95% | Tok 201k in / 34k out | USD 2.84 eq | 12m 34s | "
+           "Budget 60% | ERROR | Tarea GCBA-9 | Agente dev-backend")
+
+
+def test_cb_e17_e18_el_contenido_y_el_orden_no_cambian(t):
+    """colores E-17 / E-18 — sin las secuencias, la linea con color es la de NO_COLOR, y esa es la de antes."""
+    estado = _estado_cb(ctx_nivel="ERROR", ctx_fraccion=0.95, budget_nivel="WARNING", budget_fraccion=0.6)
+    con_color = _color(estado)
+    with _NoColor("1"):
+        sin_color = SL.dibujar(estado, _b4())
+    t.igual("colores E-17 con NO_COLOR es la linea de antes, byte a byte", _LEGADO, sin_color)
+    t.igual("colores E-17 sacando las secuencias, la de color es la de antes", _LEGADO, _ANSI_RE.sub("", con_color))
+    t.verdadero("colores E-17 y la de color si tiene secuencias", con_color != _LEGADO)
+    orden = ["HARNESS", "m-grande", "Ctx", "Tok", "USD", "12m", "Budget", "ERROR", "Tarea", "Agente"]
+    for rotulo, linea in (("con colores", con_color), ("sin colores", sin_color)):
+        primeros = [_ANSI_RE.sub("", s).split(" ")[0] for s in _segmentos(linea)]
+        t.igual("colores E-18 el orden de los campos, %s" % rotulo, orden, primeros)
+
+
+def test_cb_e20_la_senal_dice_la_version_nueva(t):
+    """colores E-20 — la barra dibuja y la senal de vida dice integrationVersion 1.1.0."""
+    t.igual("colores E-20 el renderizador del repositorio es 1.1.0", "1.1.0", SL.INTEGRATION_VERSION)
+    proy, _ = _instalado()
+    sesion = _nueva_sesion()
+    tmp = Path(tempfile.mkdtemp(prefix="cb53-20-"))
+    _dibujar({"session_id": sesion, "transcript_path": _transcripcion(tmp / "t.jsonl", sesion)},
+             color=True)
+    shutil.rmtree(str(tmp), ignore_errors=True)
+    senal = _senal_de(proy)
+    t.igual("colores E-20 la senal es de esa sesion", sesion, senal["sessionId"])
+    t.igual("colores E-20 con la version nueva", "1.1.0", senal["integrationVersion"])
+
+
+def test_cb_e21_la_doc_dice_los_colores(t):
+    """colores E-21 — docs/contabilidad.md dice que se pinta de amarillo y de rojo, y que NO_COLOR apaga."""
+    doc = (RAIZ / "docs" / "contabilidad.md").read_text(encoding="utf-8")
+    for palabra in ("amarillo", "rojo", "NO_COLOR"):
+        t.contiene("colores E-21 la doc dice %s" % palabra, palabra, doc)

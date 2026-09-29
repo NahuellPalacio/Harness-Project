@@ -269,6 +269,14 @@ Lo que dibuja sale del Bloque 4 y de ningún otro lado:
 - **No dibuja texto de la transcripción.** Del libro entran el modelo, la tarea y el agente, y solo
   si tienen forma de identificador y el catálogo de secretos no reconoce nada en ellos.
 
+Los colores muestran el nivel que ya calculó el Bloque 4, sin cambiar lo que dice la línea:
+- `Ctx NN%` y `Budget NN%` van en amarillo con `WARNING` y en rojo con `ERROR`. Con `NORMAL` o
+  `UNRESOLVED`, sin color.
+- La etiqueta `WARNING` del final va en amarillo, y `ERROR` en rojo.
+- `HARNESS` va en negrita. La línea `HARNESS | sin datos del Bloque 4` no lleva color nunca.
+- Con la variable `NO_COLOR` definida, aunque esté vacía, la barra sale sin colores: la misma línea
+  de antes, byte a byte.
+
 La latencia se mide con `install.ps1 -Doctor`, sobre una transcripción de 5 MB. El umbral es 400 ms
 de p50 y no se mueve: si pasa, `-Doctor` lo dice.
 

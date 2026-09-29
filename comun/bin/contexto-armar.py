@@ -734,7 +734,7 @@ class SchemaNoSoportado(Exception):
 ANOTACIONES = frozenset(("$schema", "$id", "title", "description", "examples",
                          "default", "deprecated", "$defs"))
 VALIDACIONES = frozenset(("type", "properties", "required", "items", "enum", "pattern",
-                          "additionalProperties", "$ref"))
+                          "additionalProperties", "$ref", "minimum"))
 
 # El valor de `additionalProperties` que cierra el objeto. `true` es el default de JSON
 # Schema y escribirlo no agrega nada, asi que no se interpreta. Un SCHEMA como valor -o sea
@@ -891,6 +891,9 @@ def controlar_soporte(esquema, ruta="$", raiz=None, vistos=None):
     # primer dato que pase por ahi.
     if esquema.get("type"):
         nombres_de_tipo(esquema["type"], ruta)
+    if "minimum" in esquema and (isinstance(esquema["minimum"], bool)
+                                 or not isinstance(esquema["minimum"], (int, float))):
+        raise SchemaNoSoportado("%s: `minimum` tiene que ser un numero" % ruta)
 
     for nombre, sub in (esquema.get("properties") or {}).items():
         controlar_soporte(sub, "%s.%s" % (ruta, nombre), raiz, vistos)
@@ -929,6 +932,11 @@ def validar(dato, esquema, ruta="$", raiz=None):
         if not re.search(esquema["pattern"], dato):
             errores.append("%s: `%s` no cumple el patron %s"
                            % (ruta, dato, esquema["pattern"]))
+
+    # Lo pidio la politica de refresco (`maxAgeHours` minimo 1). Un booleano no es un numero.
+    if ("minimum" in esquema and isinstance(dato, (int, float))
+            and not isinstance(dato, bool) and dato < esquema["minimum"]):
+        errores.append("%s: `%s` es menor que el minimo %s" % (ruta, dato, esquema["minimum"]))
 
     if isinstance(dato, dict):
         for req in esquema.get("required") or []:

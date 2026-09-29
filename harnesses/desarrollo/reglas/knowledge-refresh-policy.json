@@ -1,0 +1,13 @@
+{
+  "schema_version": "knowledge-refresh-policy/1.0",
+  "mode": "EVENT_AND_TTL",
+  "sessionStartNetwork": false,
+  "maxAgeHours": 24,
+  "triggers": {
+    "install": true,
+    "harnessUpdate": true,
+    "explicitSources": true,
+    "preKnowledgePromotion": true,
+    "preNormativeOperationIfStale": true
+  }
+}

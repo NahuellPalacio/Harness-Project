@@ -29,6 +29,9 @@ como la statusLine no deja __pycache__.
 
 📌 La salida es ASCII. La barra corre en Git Bash o en PowerShell segun la maquina, y
 PowerShell 5.1 vuelve a codificar la salida de un programa con la codepage de la consola.
+Los colores son secuencias SGR, que tambien son ASCII: el nivel que ya calculo el Bloque 4
+pinta `Ctx`, `Budget` y la alerta; `HARNESS` va en negrita. Con `NO_COLOR` definida, aunque
+este vacia, la linea es texto plano. LINEA_SIN_DATOS no se pinta nunca.
 """
 import importlib.util
 import json
@@ -36,10 +39,15 @@ import os
 import re
 import sys
 
-INTEGRATION_VERSION = "1.0.0"
+INTEGRATION_VERSION = "1.1.0"
 
 LINEA_SIN_DATOS = "HARNESS | sin datos del Bloque 4"
 _SEPARADOR = " | "
+
+ANSI_RESET = "\x1b[0m"
+ANSI_BOLD = "\x1b[1m"
+ANSI_YELLOW = "\x1b[33m"
+ANSI_RED = "\x1b[31m"
 
 # Un session_id es el nombre de una carpeta del libro: nada que pueda salir de accounting/.
 _SESION_VALIDA = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -190,6 +198,25 @@ def _porcentaje(fraccion):
     return "%d%%" % int(round(float(fraccion) * 100))
 
 
+def colores_habilitados():
+    """no-color.org: importa que NO_COLOR exista, no su valor. `NO_COLOR=` tambien apaga."""
+    return "NO_COLOR" not in os.environ
+
+
+def _ansi(texto, codigo, color):
+    """`texto` envuelto en `codigo` y cerrado con su propio reset: no se derrama al siguiente."""
+    return codigo + texto + ANSI_RESET if color else texto
+
+
+def _por_nivel(texto, nivel, color):
+    """Amarillo en WARNING, rojo en ERROR. NORMAL y UNRESOLVED quedan como estan."""
+    if nivel == "ERROR":
+        return _ansi(texto, ANSI_RED, color)
+    if nivel == "WARNING":
+        return _ansi(texto, ANSI_YELLOW, color)
+    return texto
+
+
 def _identificador(valor, catalogo, limpieza):
     """El texto si es un identificador que el catalogo de secretos no reconoce; si no, None."""
     if not isinstance(valor, str) or not _IDENTIFICADOR.match(valor):
@@ -200,12 +227,18 @@ def _identificador(valor, catalogo, limpieza):
     return valor
 
 
-def dibujar(estado, b4, politica_ilegible=False):
-    """La linea, con solo lo que `estado` -el de barra.de- tiene. Lo que falta no aparece."""
+def dibujar(estado, b4, politica_ilegible=False, color=None):
+    """La linea, con solo lo que `estado` -el de barra.de- tiene. Lo que falta no aparece.
+
+    `color`: None lo decide NO_COLOR. El color solo envuelve texto que ya se iba a mostrar,
+    segun el `level` que trae el estado: la barra no vuelve a calcular umbrales.
+    """
+    if color is None:
+        color = colores_habilitados()
     limpieza = b4["limpieza"]
     catalogo = limpieza.cargar_catalogo()
     abiertos = set(estado.get("unresolved") or ())
-    partes = ["HARNESS"]
+    partes = [_ansi("HARNESS", ANSI_BOLD, color)]
 
     modelo = _identificador(estado.get("model"), catalogo, limpieza)
     if modelo:
@@ -213,7 +246,8 @@ def dibujar(estado, b4, politica_ilegible=False):
 
     contexto = estado.get("context") or {}
     if contexto.get("fraction") is not None:
-        partes.append("Ctx " + _porcentaje(contexto["fraction"]))
+        partes.append(_por_nivel("Ctx " + _porcentaje(contexto["fraction"]),
+                                 contexto.get("level"), color))
     elif contexto.get("tokens") is not None:
         partes.append("Ctx %s" % _cantidad(contexto["tokens"]))
 
@@ -237,15 +271,16 @@ def dibujar(estado, b4, politica_ilegible=False):
         partes.append(b4["tiempo"].como_texto(tiempo_))
 
     if presupuesto.get("fraction") is not None:
-        partes.append("Budget " + _porcentaje(presupuesto["fraction"]))
+        partes.append(_por_nivel("Budget " + _porcentaje(presupuesto["fraction"]),
+                                 presupuesto.get("level"), color))
     elif politica_ilegible:
         partes.append("presupuesto ilegible")
 
     niveles = (contexto.get("level"), presupuesto.get("level"))
     if "ERROR" in niveles:
-        partes.append("ERROR")
+        partes.append(_por_nivel("ERROR", "ERROR", color))
     elif "WARNING" in niveles:
-        partes.append("WARNING")
+        partes.append(_por_nivel("WARNING", "WARNING", color))
 
     # La sesion es la tarea mientras nadie declare una: la tarea aparece solo si es otra.
     tarea = _identificador(estado.get("taskId"), catalogo, limpieza)

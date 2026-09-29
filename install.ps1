@@ -846,6 +846,59 @@ function Invoke-ResumenDeIntegraciones {
 }
 
 
+function Invoke-RefrescoDeConocimiento {
+    <#
+    .SYNOPSIS
+        Corre `dev-harness.py fuentes --auto --disparador INSTALL|HARNESS_UPDATE`. Nunca tira.
+    .DESCRIPTION
+        docs/cambios/conocimiento-auto-refresco/spec.md. Vuelve a mirar las fuentes contra el
+        canal que dejó la última corrida, si hay uno y si las capacidades alcanzan. Sin canal,
+        sin red o sin capacidades la instalación sigue y lo dice como pendiente: nunca como una
+        revisión que salió bien. No acepta nada: una versión nueva queda para que la decida una
+        persona con `fuentes --aceptar`.
+    #>
+    param([string] $Python, [string] $Project, [string] $Disparador)
+
+    $cli = Join-Path $Project '.claude\harness\bin\desarrollo\dev-harness.py'
+    if (-not (Test-Path $cli)) { return }
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName               = $Python
+    $psi.Arguments              = '"' + $cli + '" fuentes --auto --disparador ' + $Disparador + ' --json --proyecto "' + $Project + '"'
+    $psi.WorkingDirectory       = $Project
+    $psi.UseShellExecute        = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.RedirectStandardInput  = $true
+    $psi.EnvironmentVariables['PYTHONDONTWRITEBYTECODE'] = '1'
+    $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
+    $psi.StandardErrorEncoding  = New-Object System.Text.UTF8Encoding $false
+    try {
+        $p = [System.Diagnostics.Process]::Start($psi)
+        $p.StandardInput.Close()
+        $errores = $p.StandardError.ReadToEndAsync()
+        $salida  = $p.StandardOutput.ReadToEnd()
+        $p.WaitForExit()
+        if ($p.ExitCode -ne 0) {
+            $detalle = ($errores.Result -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 1)
+            EscribirAviso "Conocimiento: la revisión de fuentes quedó pendiente ($detalle). La instalación sigue."
+            return
+        }
+        $r = $salida | ConvertFrom-Json
+        if ($r.refreshed) {
+            EscribirPaso "Conocimiento: fuentes revisadas contra $($r.channel)"
+            $novedades = @($r.sources | Where-Object { $_.sourceState -ne 'CURRENT' -and $_.sourceState -ne 'RETIRED' })
+            foreach ($f in $novedades) {
+                EscribirPaso "  $($f.id) aceptada $($f.acceptedVersion), observada $($f.observedVersion): $($f.sourceState)"
+            }
+        } else {
+            EscribirPaso "Conocimiento: revisión de fuentes pendiente ($($r.errorCode)). Se muestra el último estado conocido."
+        }
+    } catch {
+        EscribirAviso "Conocimiento: la revisión de fuentes quedó pendiente ($($_.Exception.Message)). La instalación sigue."
+    }
+}
+
+
 function Invoke-ComandoDeHook {
     <#
     .SYNOPSIS
@@ -1949,6 +2002,10 @@ secrets/
         Escribir ''
         EscribirPaso 'Integraciones (desde el .env local):'
         Invoke-ResumenDeIntegraciones -Python $python -Project $Project
+        # 8d. El conocimiento, contra el canal que ya funcionó. Nunca es una compuerta.
+        $disparador = 'INSTALL'
+        if ($Update) { $disparador = 'HARNESS_UPDATE' }
+        Invoke-RefrescoDeConocimiento -Python $python -Project $Project -Disparador $disparador
     }
 
     # 9. El estado de la instalación, para la bienvenida. Recién acá: una instalación que se

@@ -61,6 +61,9 @@ from contexto import tarea as contexto_tarea                      # noqa: E402
 
 from integraciones import fuentes as int_fuentes                # noqa: E402
 
+from integraciones import http as int_http                        # noqa: E402
+
+from orquestacion import auto_refresh as orq_refresco             # noqa: E402
 from orquestacion import frescura as orq_frescura                # noqa: E402
 from orquestacion import plan as orq_plan                         # noqa: E402
 from orquestacion import refutacion as orq_refutacion             # noqa: E402
@@ -385,16 +388,43 @@ def detalle_verbose(b, doc, proyecto, rutas):
     if conocimiento.get("applies"):
         lineas.append("  Conocimiento        verificado: %s" % (conocimiento.get("verifiedAt") or "nunca"))
         for f in conocimiento.get("sources") or []:
-            lineas.append("  Fuente              %s %s" % (f["id"], f["state"]))
+            lineas.append("  Fuente              %s %s, aceptada %s, observada %s"
+                          % (f["id"], f["state"], f.get("acceptedVersion") or "—",
+                             f.get("observedVersion") or "—"))
+    lineas += _detalle_de_refresco(doc)
     lineas += _detalle_de_runtime(b, doc, proyecto)
     archivos = b.rutas(proyecto, _json_o_vacio(rutas["harness_config"]).get("rutaCodebase"))
     lineas.append("Archivos leídos")
     leidos = [archivos[c] for c in ("lock", "installation", "capacidades", "fuentes", "contexto")]
     if (doc.get("knowledge") or {}).get("applies"):
-        leidos += [os.path.join(proyecto, ".claude", "settings.json"), b.ruta_de_la_senal(proyecto)]
+        leidos += [os.path.join(proyecto, ".claude", "settings.json"), b.ruta_de_la_senal(proyecto),
+                   b.ruta_de_la_agenda(proyecto)]
     for ruta in leidos:
         lineas.append("  %s%s" % (os.path.normpath(ruta), "" if os.path.isfile(ruta) else "  (no existe)"))
     return "\n".join(lineas)
+
+
+def _detalle_de_refresco(doc):
+    """La agenda de la revision automatica: modo, fechas, disparador y error. Son ids y fechas;
+    el canal es una clave de Ficha o un directorio, y pasa por el catalogo de secretos igual."""
+    kr = doc.get("knowledgeRefresh")
+    if not isinstance(kr, dict):
+        return []
+    lineas = [
+        "  %-19s %s%s" % ("Revisión: modo", kr.get("mode") or "desconocido",
+                          " (%s)" % kr["policyError"] if kr.get("policyError") else ""),
+        "  %-19s %s" % ("Red en SessionStart", "sí" if kr.get("sessionStartNetwork") else "no"),
+        "  %-19s %s" % ("Estado de revisión", kr.get("state") or "NEVER_CHECKED"),
+        "  %-19s %s" % ("Vencida", "sí" if kr.get("due") else "no"),
+        "  %-19s %s" % ("Última que salió", kr.get("lastSuccessfulCheckAt") or "nunca"),
+        "  %-19s %s" % ("Último intento", kr.get("lastAttemptAt") or "nunca"),
+        "  %-19s %s" % ("Próxima", kr.get("nextCheckDueAt") or "a pedido"),
+        "  %-19s %s" % ("Disparador", kr.get("trigger") or "ninguno"),
+        "  %-19s %s" % ("Error de revisión", kr.get("errorCode") or "ninguno"),
+        "  %-19s %s" % ("Canal", kr.get("channel") or "ninguno"),
+    ]
+    catalogo = limpieza.cargar_catalogo()
+    return [limpieza.redactar(l, catalogo, "harness --verbose")[0] for l in lineas]
 
 
 def _detalle_de_runtime(b, doc, proyecto):
@@ -525,20 +555,21 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
 
     🔴 Sin canal que consultar -ni una clave de Jira ni un directorio local- no se declara
     que este todo bien: se declara que no se pudo verificar, que es otra cosa.
+
+    Con --auto o --si-vence es el refresco controlado (orquestacion/auto_refresh.py): mismo
+    camino de observacion y resolucion, con la agenda, las capacidades y sin escribir nada si el
+    canal no contesta.
     """
+    if args.auto or args.si_vence:
+        return refrescar_fuentes(args, proyecto, rutas, consola, transporte, transporte_bytes)
     try:
         registro = orq_fuentes.cargar()
+        entradas, destino, previo, decisiones = orq_refresco.contexto_de_fuentes(proyecto)
     except orq_fuentes.RegistroInvalido as e:
         # Un registro que no se puede leer entero no se lee a medias: es lo que la persona
         # tiene que arreglar antes de seguir, y por eso sale 2 y no 0.
         raise FallaDelHarness(str(e))
-    entradas = orq_fuentes.gestionadas(registro)
     hallazgos = orq_fuentes.hallazgos(registro)
-
-    destino = orq_frescura.ruta_por_defecto(proyecto)
-    anterior = orq_frescura.leer(destino)
-    previo = anterior.get("sources") or {}
-    decisiones = anterior.get("decisions") or {}
 
     canal = None
     observaciones = []
@@ -571,11 +602,12 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
         # Antes de escribir nada: si una no se puede aceptar, no se acepta ninguna.
         aceptadas = _aceptar(args, rutas, entradas, observaciones, canal, decisiones)
 
-    documento = orq_frescura.documento(entradas, observaciones, canal, decisiones)
     try:
-        orq_frescura.escribir(documento, destino)
+        documento = orq_refresco.resolver_y_escribir(entradas, observaciones, canal, decisiones,
+                                                     destino)
     except (ValueError, OSError) as e:
         raise FallaDelHarness(str(e))
+    _anotar_agenda(proyecto, consola, documento, canal)
     # El aviso de fabrica "no tiene hash aceptado" no se repite para una fuente que el proyecto
     # ya acepto: la referencia de esa fuente ahora es la aceptacion, y el aviso diria lo contrario.
     con_aceptacion = [sid for sid, f in documento["sources"].items() if f.get("acceptance")]
@@ -699,6 +731,152 @@ def mostrar_fuentes(consola, documento, destino):
         consola.linea("Las %d fuentes estan verificadas contra el canal configurado."
                       % len(documento["sources"]))
     consola.linea("Estado en %s" % destino)
+
+
+# -- el refresco controlado del conocimiento --------------------------------------
+
+def _anotar_agenda(proyecto, consola, documento, canal):
+    """`fuentes` a mano deja la agenda como EXPLICIT_SOURCES_COMMAND. Sin canal que contestara es
+    un intento que no salio bien: no mueve la ultima revision. Si la agenda no se puede escribir
+    se avisa y el comando sigue: harness.fuentes.json ya quedo escrito."""
+    politica, _ = orq_refresco.cargar_politica(proyecto)
+    disponible = bool(canal) and bool(canal.get("reachable", True))
+    codigo = None if disponible else orq_refresco.SIN_CANAL
+    try:
+        orq_refresco.registrar(proyecto, orq_frescura.ahora(),
+                               orq_refresco.EXPLICIT_SOURCES_COMMAND, politica, codigo,
+                               documento, (canal or {}).get("channel"))
+    except (OSError, ValueError) as e:
+        consola.linea("  aviso: no se pudo escribir la agenda de revisión (%s): %s"
+                      % (orq_refresco.AGENDA_SIN_ESCRIBIR, e))
+
+
+def _observar_ficha_directa(jira, clave_ficha, rutas):
+    """La Ficha leida por su clave: sus adjuntos y su descripcion. Es el canal que dejo la ultima
+    corrida, y se lee con el mismo `fuentes.observar` que `_observar_por_ficha`."""
+    respuesta = jira.issue(clave_ficha)
+    if not respuesta.ok:
+        codigo = (orq_refresco.TIMEOUT if respuesta.error == int_http.ERROR_TIMEOUT
+                  else orq_refresco.SIN_CANAL)
+        raise orq_refresco.ObservacionFallida(codigo, "Jira contesto %d" % respuesta.codigo)
+    campos = (respuesta.datos() or {}).get("fields") or {}
+    return campos
+
+
+def _observador_de_jira(args, proyecto, rutas, consola, transporte, transporte_bytes):
+    """El observador que el refresco inyecta: el adaptador de Jira que arma `armar`, con la
+    configuracion del .env que resuelve `resolver_configuracion`. Se arma recien cuando hace
+    falta salir al canal: un refresco que no vence no toca la configuracion."""
+    def observar(canal, entradas, previo):
+        config = resolver_configuracion(rutas)
+        almacen = AlmacenSecretos(rutas["env"])
+        timeout = timeout_de(rutas)
+        if canal["kind"] == "jira-tarea":
+            try:
+                canal_doc, observaciones = _observar_por_ficha(
+                    canal["key"], args, proyecto, rutas, config, almacen, timeout, consola,
+                    transporte, transporte_bytes, entradas, previo)
+            except FallaDelHarness as e:
+                raise orq_refresco.ObservacionFallida(orq_refresco.OBSERVACION_FALLIDA, str(e))
+            return canal_doc, observaciones
+        jira = armar(IntegracionJira, config, almacen, timeout, transporte)
+        jira.transporte_bytes = transporte_bytes
+        campos = _observar_ficha_directa(jira, canal["key"], rutas)
+        adjuntos = [a for a in (campos.get("attachment") or []) if isinstance(a, dict)]
+        texto = contexto_comun.texto_de_adf(campos.get("description"))
+        descargas = os.path.join(proyecto, ".claude", "conocimiento", "fuentes")
+        observaciones = int_fuentes.observar(entradas, adjuntos, previo, jira.bajar_adjunto,
+                                             descargas, texto)
+        tipo = str(_config_harness(rutas).get("fichaTipoDeIssue")
+                   or contexto_proyecto.TIPO_POR_DEFECTO)
+        return {"key": canal["key"], "issue_type": tipo, "reachable": True,
+                "channel": "jira:%s" % canal["key"]}, observaciones
+    return observar
+
+
+def _capacidades(rutas):
+    return _json_o_vacio(rutas["capacidades"]).get("capacidades") or {}
+
+
+def _refresco_de(args, proyecto, rutas, consola, transporte, transporte_bytes, disparador,
+                 clave=None):
+    canal = orq_refresco.canal_previsto(proyecto, clave, getattr(args, "archivo", "") or None)
+    return orq_refresco.refrescar(
+        proyecto, disparador,
+        _observador_de_jira(args, proyecto, rutas, consola, transporte, transporte_bytes),
+        _capacidades(rutas), canal)
+
+
+def refrescar_fuentes(args, proyecto, rutas, consola, transporte, transporte_bytes):
+    """`fuentes --auto [--disparador X]` y `fuentes --si-vence`. Sale 0 aunque no se haya podido
+    mirar: no poder mirar es un estado que se informa, no una falla del harness."""
+    if args.si_vence:
+        disparador = orq_refresco.PRE_NORMATIVE_OPERATION_IF_STALE
+    else:
+        disparador = args.disparador or orq_refresco.EXPLICIT_SOURCES_COMMAND
+    if disparador not in orq_refresco.DISPARADORES:
+        raise FallaDelHarness("--disparador tiene que ser uno de: %s."
+                              % ", ".join(orq_refresco.DISPARADORES))
+    clave = str(args.argumento) if args.argumento else None
+    if clave and not CLAVE_JIRA.match(clave):
+        raise FallaDelHarness("fuentes necesita una clave de Jira con la forma PROYECTO-123.")
+    resultado = _refresco_de(args, proyecto, rutas, consola, transporte, transporte_bytes,
+                             disparador, clave)
+    consola.evento("fuentes.refresco", disparador=disparador,
+                   refrescado="si" if resultado["refreshed"] else "no",
+                   codigo=resultado["errorCode"] or "ninguno")
+    if args.json:
+        sys.stdout.write(json.dumps(resultado, ensure_ascii=False, indent=2, sort_keys=True)
+                         + "\n")
+    else:
+        mostrar_refresco(consola, resultado)
+    return 0
+
+
+def mostrar_refresco(consola, resultado):
+    consola.linea("")
+    if resultado["refreshed"]:
+        consola.linea("Fuentes revisadas contra %s." % resultado["channel"])
+    elif orq_refresco.fallo(resultado):
+        consola.linea("Las fuentes no se pudieron revisar (%s): queda el último estado conocido."
+                      % resultado["errorCode"])
+    else:
+        consola.linea("No hacía falta revisar las fuentes (%s)." % resultado["errorCode"])
+    for f in resultado["sources"]:
+        consola.linea("  %-12s %-8s %-8s %s" % (f["id"], f["acceptedVersion"] or "—",
+                                               f["observedVersion"] or "—", f["sourceState"]))
+    consola.linea("Última revisión que salió bien: %s · próxima: %s"
+                  % (resultado.get("lastSuccessfulCheckAt") or "nunca",
+                     resultado.get("nextCheckDueAt") or "a pedido"))
+
+
+def compuerta_normativa(args, proyecto, rutas, consola, clave, transporte=None,
+                        transporte_bytes=None, cortar=True):
+    """Antes de una operacion que usa conocimiento normativo: refresca si vencio y decide.
+
+    `blocked` corta (codigo 2) si `cortar`; `unresolved` se avisa y se sigue. Lo que no es
+    normativo no pasa por aca.
+
+    🔴 El canal es el que dejo la ultima corrida de `fuentes`, no la clave de esta tarea: volver
+    a mirar es volver al canal que ya funciono, no buscar una Ficha nueva a partir de un plan.
+    """
+    del clave
+    canal = orq_refresco.canal_previsto(proyecto)
+    veredicto = orq_refresco.ensure_normative_knowledge_fresh(
+        proyecto, _observador_de_jira(args, proyecto, rutas, consola, transporte,
+                                      transporte_bytes),
+        _capacidades(rutas), canal)
+    consola.evento("conocimiento.compuerta", decision=veredicto["decision"],
+                   refrescado="si" if veredicto["refresh"]["refreshed"] else "no")
+    if veredicto["decision"] == orq_refresco.BLOQUEADO and cortar:
+        raise FallaDelHarness(
+            "el conocimiento normativo no se puede usar: %s. Revisalo con "
+            "`dev-harness.py fuentes` antes de seguir." % veredicto["reason"])
+    if veredicto["decision"] != orq_refresco.PERMITIDO:
+        consola.linea("  aviso: conocimiento normativo %s: %s"
+                      % ("BLOQUEADO" if veredicto["decision"] == orq_refresco.BLOQUEADO
+                         else "SIN RESOLVER", veredicto["reason"]))
+    return veredicto
 
 
 def resolver_contexto(args, proyecto, rutas, config, almacen, timeout, consola,
@@ -1323,16 +1501,26 @@ def comando(args, transporte=None, transporte_bytes=None):
     almacen = AlmacenSecretos(rutas["env"])
     timeout = timeout_de(rutas)
 
+    # 🔴 La compuerta normativa, solo donde se usa conocimiento normativo: armar un plan,
+    # compilar una refutacion, el estado de seguridad. `seguridad` no corta: reporta la alerta.
     if args.comando == "plan":
+        if not args.plantilla:
+            compuerta_normativa(args, proyecto, rutas, consola, args.argumento, transporte,
+                                transporte_bytes)
         return planificar(args, proyecto, rutas, consola)
 
     if args.comando == "contabilidad":
         return contabilizar(args, proyecto, rutas, consola)
 
     if args.comando == "seguridad":
+        compuerta_normativa(args, proyecto, rutas, consola, args.argumento, transporte,
+                            transporte_bytes, cortar=False)
         return reportar_seguridad(args, proyecto, consola)
 
     if args.comando == "refute":
+        if args.refutar_compile:
+            compuerta_normativa(args, proyecto, rutas, consola, args.argumento, transporte,
+                                transporte_bytes)
         return refutar(args, proyecto, consola)
 
     # Todo lo que sigue toca integraciones: primero el .env, despues el resto.
@@ -1437,6 +1625,14 @@ def parser():
     p.add_argument("--regresion", action="store_true",
                    help="fuentes --aceptar: admite una version anterior a la de fabrica, y deja "
                         "registrado cual se piso")
+    p.add_argument("--auto", action="store_true",
+                   help="fuentes: el refresco controlado, contra el canal que dejo la ultima corrida "
+                        "(o la clave o --archivo que se pasen). No acepta nada")
+    p.add_argument("--si-vence", action="store_true",
+                   help="fuentes: refresca solo si la revision vencio segun la politica")
+    p.add_argument("--disparador", default="",
+                   help="fuentes --auto: INSTALL, HARNESS_UPDATE, EXPLICIT_SOURCES_COMMAND o "
+                        "PRE_KNOWLEDGE_PROMOTION. Por defecto, EXPLICIT_SOURCES_COMMAND")
     p.add_argument("--proyecto", default=os.getcwd(),
                    help="raiz del proyecto (por defecto, el directorio actual)")
     p.add_argument("--json", action="store_true",

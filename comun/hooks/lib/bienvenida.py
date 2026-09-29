@@ -397,6 +397,9 @@ def cumple(dato, forma, raiz=None):
         return False
     if "pattern" in forma and isinstance(dato, str) and not re.search(forma["pattern"], dato):
         return False
+    if ("minimum" in forma and isinstance(dato, (int, float)) and not isinstance(dato, bool)
+            and dato < forma["minimum"]):
+        return False
     if isinstance(dato, dict):
         if any(r not in dato for r in forma.get("required") or ()):
             return False
@@ -561,8 +564,10 @@ def _conocimiento(r, bloqueos, pendientes):
         if not isinstance(estado, str) or not estado:
             estado = ILEGIBLE
         bloquea = datos.get("blocking") if isinstance(datos, dict) else None
+        aceptada, observada = versiones_de(datos)
         lista.append({"id": str(sid), "state": estado,
-                      "blocking": bloquea if isinstance(bloquea, bool) else None})
+                      "blocking": bloquea if isinstance(bloquea, bool) else None,
+                      "acceptedVersion": aceptada, "observedVersion": observada})
         if estado in (CURRENT, RETIRED):
             continue
         condicion = _condicion_de_fuente(estado, sid)
@@ -585,6 +590,225 @@ def resumen_de_fuentes(lista):
             return _GRAVEDAD.index(estado)
         return len(_GRAVEDAD) + (1 if estado == CURRENT else 0)
     return min(vigentes, key=rango)
+
+
+# -- el refresco del conocimiento (docs/cambios/conocimiento-auto-refresco/spec.md) --------
+#
+# La agenda (.claude/runtime/knowledge-refresh.json) la escribe orquestacion/auto_refresh.py y se
+# LEE aca. Es agenda y nada mas: cuando se miro, cuando vence, con que disparador y con que error.
+# El estado de cada fuente sigue saliendo de harness.fuentes.json, y la lista `sources` de la
+# agenda no se lee: si difiere, gana el canonico sin que haya nada que decidir.
+#
+# 🔴 Este modulo no refresca. Leer la politica y la agenda son dos archivos locales; salir al
+# canal es de auto_refresh.py, que SessionStart no importa.
+#
+# Las funciones puras de abajo -la politica, el vencimiento, la huella- son las UNICAS: las usa
+# tambien auto_refresh.py, que carga este archivo por ruta como la CLI.
+
+AGENDA = (".claude", "runtime", "knowledge-refresh.json")
+POLITICA = "knowledge-refresh-policy.json"
+SCHEMA_POLITICA = "knowledge-refresh-policy.schema.json"
+SCHEMA_AGENDA = "knowledge-refresh-state.schema.json"
+VERSION_AGENDA = "knowledge-refresh-state/1.0"
+
+EVENT_AND_TTL = "EVENT_AND_TTL"
+EVENT_ONLY = "EVENT_ONLY"
+POLITICA_INVALIDA = "AUTO_REFRESH_POLICY_INVALID"
+AGENDA_ILEGIBLE = "AUTO_REFRESH_STATE_UNREADABLE"
+
+# 🔴 Una politica que no se puede leer no inventa red: solo el pedido explicito de una persona.
+POLITICA_SEGURA = {
+    "schema_version": "knowledge-refresh-policy/1.0", "mode": EVENT_ONLY,
+    "sessionStartNetwork": False, "maxAgeHours": None,
+    "triggers": {"install": False, "harnessUpdate": False, "explicitSources": True,
+                 "preKnowledgePromotion": False, "preNormativeOperationIfStale": False},
+}
+
+# Los estados de la fuente que no avisan: esta al dia, o ya no se sigue.
+_SIN_NOVEDAD = (CURRENT, RETIRED)
+
+
+def _fecha(texto):
+    """La fecha de `ahora()`, o None. Lo que no se puede leer no vence ni deja de vencer."""
+    if not isinstance(texto, str):
+        return None
+    try:
+        return datetime.datetime.strptime(texto[:19], "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return None
+
+
+def mas_horas(momento, horas):
+    """`momento` + `horas`, con el formato de `ahora()`. None si no hay horas o fecha."""
+    base = _fecha(momento)
+    if base is None or not isinstance(horas, int) or isinstance(horas, bool):
+        return None
+    return (base + datetime.timedelta(hours=horas)).isoformat()
+
+
+def vencido(politica, agenda, momento):
+    """Si la revision esta vencida para la AGENDA. No dice nada de la fuente.
+
+    EVENT_AND_TTL: sin una revision que salio bien, vencido; con `nextCheckDueAt` en o antes de
+    `momento`, vencido; si no, no. EVENT_ONLY: nunca vence por tiempo.
+    """
+    if (politica or {}).get("mode") != EVENT_AND_TTL:
+        return False
+    agenda = agenda or {}
+    if not agenda.get("lastSuccessfulCheckAt"):
+        return True
+    limite, ahora_ = _fecha(agenda.get("nextCheckDueAt")), _fecha(momento)
+    if limite is None or ahora_ is None:
+        return True
+    return ahora_ >= limite
+
+
+def _schema(raiz, nombre):
+    forma, _ = _leer(os.path.join(raiz, "schemas", nombre))
+    return forma
+
+
+def ruta_de_la_politica(proyecto):
+    """reglas/desarrollo/ instalado; harnesses/desarrollo/reglas/ en el repositorio."""
+    raiz = raiz_del_harness(proyecto)
+    instalada = os.path.join(raiz, "reglas", "desarrollo", POLITICA)
+    if os.path.isfile(instalada):
+        return instalada
+    return os.path.join(os.path.dirname(raiz), "harnesses", "desarrollo", "reglas", POLITICA)
+
+
+def leer_politica(proyecto, ruta=None):
+    """(politica, codigo). Sin archivo o con uno que no valida, POLITICA_SEGURA y el codigo."""
+    raiz = raiz_del_harness(proyecto)
+    politica, problema = _leer(ruta or ruta_de_la_politica(proyecto))
+    forma = _schema(raiz, SCHEMA_POLITICA)
+    if problema or forma is None or not _cumple_o_falso(politica, forma):
+        return dict(POLITICA_SEGURA), POLITICA_INVALIDA
+    return politica, None
+
+
+def ruta_de_la_agenda(proyecto):
+    return os.path.join(proyecto, *AGENDA)
+
+
+def leer_agenda(proyecto):
+    """(agenda, codigo). Sin archivo (None, None); roto o con otra forma, (None, UNREADABLE)."""
+    agenda, problema = _leer(ruta_de_la_agenda(proyecto))
+    if problema == _FALTA:
+        return None, None
+    forma = _schema(raiz_del_harness(proyecto), SCHEMA_AGENDA)
+    if problema or forma is None or not _cumple_o_falso(agenda, forma):
+        return None, AGENDA_ILEGIBLE
+    return agenda, None
+
+
+def versiones_de(entrada):
+    """(aceptada, observada) de una entrada de harness.fuentes.json.
+
+    🔴 La aceptada es la que una persona acepto por el canal del proyecto, o la de fabrica. La
+    observada es lo que se vio del otro lado, y nunca se muestra como aceptada.
+    """
+    if not isinstance(entrada, dict):
+        return None, None
+    aceptacion = entrada.get("acceptance")
+    aceptada = aceptacion.get("version") if isinstance(aceptacion, dict) else None
+    if not isinstance(aceptada, str) or not aceptada:
+        aceptada = entrada.get("registry_version")
+    observada = entrada.get("observed_version")
+    return (aceptada if isinstance(aceptada, str) and aceptada else None,
+            observada if isinstance(observada, str) and observada else None)
+
+
+def huella_de_notificacion(doc_fuentes):
+    """El sha256 de lo que hay para avisar, o None si no hay nada.
+
+    Id, version aceptada, version observada, estado e identidad del adjunto (id, nombre, tamaño,
+    fecha, sha256) de cada fuente que no esta al dia. Sin contenido del documento ni credenciales:
+    son los campos que frescura ya escribio, y el sha256 es del original, no del texto.
+    """
+    fuentes = (doc_fuentes or {}).get("sources")
+    if not isinstance(fuentes, dict):
+        return None
+    partes = []
+    for sid in sorted(fuentes):
+        e = fuentes[sid] if isinstance(fuentes[sid], dict) else {}
+        estado = e.get("state")
+        if estado in _SIN_NOVEDAD:
+            continue
+        aceptada, observada = versiones_de(e)
+        partes.append([str(sid), aceptada, observada, estado] +
+                      [e.get(c) for c in ("attachmentId", "filename", "size", "created",
+                                          "observed_sha256")])
+    if not partes:
+        return None
+    return _sha256(json.dumps(partes, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+REFRESCO_SIN_RESOLVER = "KNOWLEDGE_REFRESH_UNRESOLVED"
+REFRESCO_ILEGIBLE = "KNOWLEDGE_REFRESH_STATE_UNREADABLE"
+REFRESCO_POLITICA_INVALIDA = "KNOWLEDGE_REFRESH_POLICY_INVALID"
+
+
+def _refresco(proyecto, r, previo, momento, pendientes):
+    """`knowledgeRefresh` del estado de la instalacion: observabilidad, no estado de fuentes."""
+    politica, codigo_politica = leer_politica(proyecto)
+    agenda, codigo_agenda = leer_agenda(proyecto)
+    if codigo_politica and os.path.isfile(ruta_de_la_politica(proyecto)):
+        pendientes.append(REFRESCO_POLITICA_INVALIDA)
+    if codigo_agenda:
+        pendientes.append(REFRESCO_ILEGIBLE)
+    a = agenda or {}
+    error = a.get("errorCode") if a.get("state") in ("UNRESOLVED", "ERROR") else None
+    if error:
+        pendientes.append("%s:%s" % (REFRESCO_SIN_RESOLVER, error))
+    doc_fuentes, _ = _leer(r["fuentes"])
+    anterior = (previo or {}).get("knowledgeRefresh")
+    notificada = anterior.get("notifiedFingerprint") if isinstance(anterior, dict) else None
+    return {
+        "installed": os.path.isfile(ruta_de_la_politica(proyecto)),
+        "mode": politica.get("mode"),
+        "sessionStartNetwork": politica.get("sessionStartNetwork") is True,
+        "policyError": codigo_politica,
+        "state": a.get("state") or ("UNREADABLE" if codigo_agenda else "NEVER_CHECKED"),
+        "due": vencido(politica, agenda, momento),
+        "lastAttemptAt": a.get("lastAttemptAt"),
+        "lastSuccessfulCheckAt": a.get("lastSuccessfulCheckAt"),
+        "nextCheckDueAt": a.get("nextCheckDueAt"),
+        "trigger": a.get("trigger"),
+        "channel": a.get("channel") if isinstance(a.get("channel"), str) else None,
+        "errorCode": error or codigo_agenda,
+        "notificationFingerprint": huella_de_notificacion(doc_fuentes),
+        "notifiedFingerprint": notificada if isinstance(notificada, str) else None,
+    }
+
+
+def texto_de_revision(kr):
+    """La revision automatica en una linea. Nunca dice verificado sin una revision que salio bien."""
+    ultima = kr.get("lastSuccessfulCheckAt") or "nunca"
+    if kr.get("errorCode"):
+        return "SIN RESOLVER (%s) · última revisión que salió bien: %s" % (kr["errorCode"], ultima)
+    if kr.get("due"):
+        return "VENCIDA · última revisión que salió bien: %s" % ultima
+    if kr.get("mode") == EVENT_ONLY:
+        return "solo por evento · última: %s" % ultima
+    return "al día hasta %s · última: %s" % (kr.get("nextCheckDueAt") or "?", ultima)
+
+
+def linea_de_version(f):
+    """`ES0901 6.3    ACTUALIZACIÓN DISPONIBLE → 6.4`. La izquierda es SIEMPRE la aceptada."""
+    aceptada, observada = f.get("acceptedVersion"), f.get("observedVersion")
+    texto = "%s %s" % (f["id"], aceptada or "sin versión aceptada")
+    estado = etiqueta(f["state"])
+    if observada and observada != aceptada and f["state"] not in _SIN_NOVEDAD:
+        estado += " → %s" % observada
+    return "%s%s" % (texto.ljust(14), estado)
+
+
+def novedad_sin_avisar(doc):
+    """Si hay una novedad de las fuentes que todavia no se mostro entera."""
+    kr = doc.get("knowledgeRefresh") or {}
+    huella = kr.get("notificationFingerprint")
+    return bool(huella) and huella != kr.get("notifiedFingerprint")
 
 
 def _proyecto(r):
@@ -998,8 +1222,10 @@ def _resolver(proyecto, ruta_codebase, momento, sesion, guardado):
     desarrollo = "desarrollo" in ids
     integraciones = _integraciones(r, pendientes) if desarrollo else []
     configuracion = _configuracion(proyecto, r, pendientes) if desarrollo else None
+    refresco = None
     if desarrollo:
         conocimiento = _conocimiento(r, bloqueos, pendientes)
+        refresco = _refresco(proyecto, r, previo, momento, pendientes)
     else:
         conocimiento = {"applies": False}
 
@@ -1041,6 +1267,8 @@ def _resolver(proyecto, ruta_codebase, momento, sesion, guardado):
     }
     if configuracion is not None:
         doc["integrationConfiguration"] = configuracion
+    if refresco is not None:
+        doc["knowledgeRefresh"] = refresco
     # Un campo del archivo anterior que este modulo no calcula se conserva: migrar de 1.0 a 1.1
     # no pierde ninguno, y un 1.1 tampoco los pierde en la escritura siguiente.
     for clave, valor in previo.items():
@@ -1158,6 +1386,11 @@ def _recalcular(doc):
 def marcar_mostrada(doc, momento=None):
     """La marca despues de mostrar: firstRunShown true, lastShownAt ahora, sin upgradeFrom."""
     doc["welcome"] = {"firstRunShown": True, "lastShownAt": momento or ahora()}
+    # Lo que se acaba de mostrar de las fuentes ya se aviso: la sesion siguiente no lo repite
+    # entero, hasta que la huella cambie.
+    if isinstance(doc.get("knowledgeRefresh"), dict):
+        doc["knowledgeRefresh"]["notifiedFingerprint"] = \
+            doc["knowledgeRefresh"].get("notificationFingerprint")
     return doc
 
 
@@ -1202,6 +1435,15 @@ def describir(condicion):
         return "no se puede leer .claude/harness.fuentes.json: corré `dev-harness.py fuentes`"
     if base == "SOURCES_STATE_EMPTY":
         return ".claude/harness.fuentes.json no tiene ninguna fuente: corré `dev-harness.py fuentes`"
+    if base == REFRESCO_SIN_RESOLVER:
+        return ("la última revisión automática de las fuentes no se pudo hacer (%s): se muestra el "
+                "último estado conocido. Corré `dev-harness.py fuentes --auto`" % (sujeto or "?"))
+    if base == REFRESCO_ILEGIBLE:
+        return ("no se puede leer .claude/runtime/knowledge-refresh.json: la próxima revisión lo "
+                "reescribe (`dev-harness.py fuentes --auto`)")
+    if base == REFRESCO_POLITICA_INVALIDA:
+        return ("la política de revisión de fuentes no valida: solo se revisa a pedido. "
+                "Corré install.ps1 -Update")
     if base.startswith("INTEGRATION_") and sujeto:
         estado = base[len("INTEGRATION_"):]
         largo, _ = _nombre_de(sujeto)
@@ -1386,6 +1628,15 @@ def renderizar_bienvenida(doc):
             for n, (e, ids) in enumerate(grupos):
                 lineas.append("  %s%s: %s" % ("Fuentes      " if n == 0 else " " * 13,
                                                _con_marca(e), ", ".join(ids)))
+            con_version = [f for f in conocimiento.get("sources") or []
+                           if f["state"] != RETIRED
+                           and (f.get("acceptedVersion") or f.get("observedVersion"))]
+            for n, f in enumerate(con_version):
+                lineas.append("  %s%s" % ("Versiones    " if n == 0 else " " * 13,
+                                          linea_de_version(f)))
+        kr = doc.get("knowledgeRefresh")
+        if isinstance(kr, dict):
+            lineas.append("  Revisión     " + texto_de_revision(kr))
 
         lineas += _observabilidad(doc)
         lineas += ["", "Comandos iniciales   (%s <comando>)" % _CLI]
@@ -1483,6 +1734,9 @@ def renderizar_linea(doc, con_barra=True):
         _, corto = _nombre_de(i["id"])
         partes.append("%s %s" % (corto, etiqueta(i["status"])))
 
+    if (doc.get("knowledgeRefresh") or {}).get("errorCode"):
+        partes.append("Revisión de fuentes SIN RESOLVER")
+
     partes += _segmentos_de_runtime(doc, con_barra)
 
     if (conocimiento.get("stateFile") == "present"
@@ -1521,14 +1775,29 @@ def renderizar_actualizacion(doc):
     return "\n".join(lineas)
 
 
+def renderizar_novedad(doc):
+    """El aviso entero de lo que cambio en las fuentes, o None. Sale una vez por huella: la
+    sesion siguiente, con la misma novedad, vuelve a la linea sola."""
+    if not novedad_sin_avisar(doc):
+        return None
+    fuentes = [f for f in (doc.get("knowledge") or {}).get("sources") or []
+               if f["state"] not in _SIN_NOVEDAD]
+    if not fuentes:
+        return None
+    lineas = ["Conocimiento normativo: hay novedades"]
+    lineas += ["  " + linea_de_version(f) for f in fuentes]
+    lineas.append("  Aceptar o posponer es una decisión tuya: `dev-harness.py fuentes`")
+    return "\n".join(lineas)
+
+
 def renderizar(doc):
     """Lo que corresponde mostrar en esta sesion, segun la marca."""
     que = que_mostrar(doc)
     if que == "completa":
         return renderizar_bienvenida(doc)
-    if que == "actualizacion":
-        return renderizar_actualizacion(doc)
-    return renderizar_linea(doc)
+    texto = renderizar_actualizacion(doc) if que == "actualizacion" else renderizar_linea(doc)
+    novedad = renderizar_novedad(doc)
+    return texto + ("\n" + novedad if novedad else "")
 
 
 # El instalador es PowerShell: llama a este archivo por ruta, sin paquete ni sys.path.
