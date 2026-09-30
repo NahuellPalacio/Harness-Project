@@ -7,6 +7,7 @@
     python .claude/harness/bin/desarrollo/dev-harness.py contexto GCBA-1234 [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py seguridad GCBA-1234 [--conocimiento] [--resumen] [--reporte] [--refutacion]
     python .claude/harness/bin/desarrollo/dev-harness.py refute GCBA-1234 --compile|--status|--unit REF-001|--record <v.json>|--summary
+    python .claude/harness/bin/desarrollo/dev-harness.py flujo GCBA-1234 --status [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py harness [--json] [--verbose] [--reiniciar-bienvenida]
 
 Los tres primeros son el Bloque 1 y contestan una sola pregunta: que integraciones hay
@@ -63,6 +64,8 @@ from integraciones import fuentes as int_fuentes                # noqa: E402
 
 from flujo import precondiciones as flujo_precondiciones          # noqa: E402
 from flujo import requeridos as flujo_requeridos                  # noqa: E402
+from flujo import estado as flujo_estado                          # noqa: E402
+from estado_de_tarea import persistencia as estado_persistencia   # noqa: E402
 
 from orquestacion import frescura as orq_frescura                # noqa: E402
 from orquestacion import plan as orq_plan                         # noqa: E402
@@ -759,6 +762,7 @@ def resolver_contexto(args, proyecto, rutas, config, almacen, timeout, consola,
     destino = os.path.join(proyecto, ".claude", "contextos", clave + ".json")
     contexto_ensamblador.escribir(documento, destino)
     consola.evento("contexto.listo", huecos=_cuantos_huecos(documento))
+    reconciliar_estado(consola, proyecto, rutas, clave)
 
     if args.json:
         sys.stdout.write(json.dumps(documento, ensure_ascii=False, indent=2,
@@ -876,6 +880,7 @@ def planificar(args, proyecto, rutas, consola):
                    version=documento["meta"]["plan_version"])
     orq_plan.escribir(documento, destino)
     consola.evento("plan.estado", estado=documento["status"])
+    reconciliar_estado(consola, proyecto, rutas, clave)
 
     if args.json:
         sys.stdout.write(json.dumps(documento, ensure_ascii=False, indent=2,
@@ -1273,6 +1278,8 @@ def refutar(args, proyecto, consola):
             proyecto, clave, gitlab_de_entorno(rutas_de(proyecto)))
         faltan = flujo_precondiciones.bloqueantes(compuerta)
         if faltan:
+            # El estado dice por que no se compilo antes de que el comando salga.
+            reconciliar_estado(consola, proyecto, rutas_de(proyecto), clave)
             raise FallaDelHarness(
                 "no se compila la refutacion de %s: %s. Resolvé eso y volvé a correr "
                 "`refute %s --compile`." % (
@@ -1280,6 +1287,7 @@ def refutar(args, proyecto, consola):
         doc = orq_refutacion.compilar(proyecto, clave)
         consola.evento("refutacion.compilada", unidades=doc["counts"]["units"],
                        estado=doc["status"])
+        reconciliar_estado(consola, proyecto, rutas_de(proyecto), clave)
         return _mostrar_refutacion(args, consola, doc, orq_refutacion.texto_de_estado(doc))
 
     if accion == "unit":
@@ -1293,6 +1301,7 @@ def refutar(args, proyecto, consola):
         with io.open(args.refutar_record, encoding="utf-8-sig") as f:
             texto = f.read()
         guardados = orq_refutacion.registrar(proyecto, clave, texto)
+        reconciliar_estado(consola, proyecto, rutas_de(proyecto), clave)
         for v in guardados:
             consola.evento("refutacion.registrada", unidad=v["refutationUnitId"],
                            veredicto=v["verdict"])
@@ -1310,6 +1319,35 @@ def refutar(args, proyecto, consola):
                                     ensure_ascii=False, indent=2, sort_keys=True) + "\n")
         return 0
     consola.linea(orq_refutacion.texto_de_resumen(doc, bloque4))
+    return 0
+
+
+def reconciliar_estado(consola, proyecto, rutas, clave):
+    """Deja el estado del flujo de la tarea al dia con lo que el comando acaba de escribir.
+
+    Una falla se avisa y no voltea el comando: el estado es derivado, se reconstruye, y el
+    comando ya aplico sus propias compuertas (docs/cambios/estado-del-flujo/spec.md).
+    """
+    try:
+        estado_persistencia.reconciliar(proyecto, clave, version_de(rutas))
+    except Exception as e:                              # noqa: BLE001 - derivado, no voltea
+        sys.stderr.write("harness: aviso: no se pudo actualizar el estado del flujo de %s: %s\n"
+                         % (clave, e))
+
+
+def mostrar_flujo(args, proyecto, rutas):
+    """`flujo <KEY> --status`: el estado de ahora y como esta el guardado. No escribe nada."""
+    clave = args.argumento
+    if not args.refutar_status:
+        raise FallaDelHarness("flujo necesita --status. Ejemplo:\n"
+                              "    dev-harness.py flujo %s --status" % clave)
+    derivado = flujo_estado.derivar(proyecto, clave, version_de(rutas))
+    guardado, error = flujo_estado.leer(proyecto, clave)
+    vigencia = flujo_estado.vigencia(guardado, derivado, error)
+    if args.json:
+        sys.stdout.write(json.dumps(derivado, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    else:
+        sys.stdout.write(flujo_estado.texto(derivado, vigencia, proyecto) + "\n")
     return 0
 
 
@@ -1374,6 +1412,9 @@ def comando(args, transporte=None, transporte_bytes=None):
     if args.comando == "refute":
         return refutar(args, proyecto, consola)
 
+    if args.comando == "flujo":
+        return mostrar_flujo(args, proyecto, rutas)
+
     # Todo lo que sigue toca integraciones: primero el .env, despues el resto.
     config = resolver_configuracion(rutas)
 
@@ -1421,7 +1462,7 @@ def parser():
         description="Integraciones y contexto de tarea del harness de desarrollo.")
     p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan",
                                        "contabilidad", "fuentes", "seguridad", "harness",
-                                       "refute"))
+                                       "refute", "flujo"))
     p.add_argument("argumento", nargs="?",
                    help="la integracion, para reconfigurar; la clave de Jira, para contexto")
     p.add_argument("--archivo", default="",
@@ -1523,6 +1564,12 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             "Ejemplo: dev-harness.py refute GCBA-1234 --compile\n")
         return 2
 
+    if args.comando == "flujo" and not CLAVE_JIRA.match(str(args.argumento or "")):
+        sys.stderr.write(
+            "flujo necesita una clave de Jira, con la forma PROYECTO-123. "
+            "Ejemplo: dev-harness.py flujo GCBA-1234 --status\n")
+        return 2
+
     if args.comando == "seguridad":
         # Antes de tocar el disco: un `..` o una barra sacarian la carpeta de la tarea de
         # `.claude/runtime/security/`.
@@ -1540,7 +1587,8 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             cont_presupuesto.PoliticaInvalida, cont_contrato.ContratoInvalido,
             seg_libro.EventoInvalido, seg_libro.TareaInvalida,
             seg_productores.ProductorInvalido, seg_resumen.ResumenInvalido,
-            orq_refutacion.RefutacionInvalida, flujo_requeridos.RegistroInvalido) as e:
+            orq_refutacion.RefutacionInvalida, flujo_requeridos.RegistroInvalido,
+            flujo_estado.ErrorDeEstado) as e:
         sys.stderr.write("harness: %s\n" % e)
         return 2
     except KeyboardInterrupt:

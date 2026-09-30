@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "task-flow-state/1.0",
+  "title": "TASK_FLOW_STATE",
+  "description": "El estado del flujo de UNA tarea: en que etapa esta, en que condicion, que la bloquea, que le falta a una persona y desde que compuerta se retoma. Es DERIVADO: lo arma harnesses/desarrollo/bin/flujo/estado.py de las fuentes que mandan (TaskContext, OrchestrationPlan, identidad del repositorio, flow-required-inputs, run.json) y se reconstruye si se borra. Guarda referencias y nunca copias. Vive en .claude/runtime/tasks/<KEY>/state.json. Los permisos no se guardan: se derivan. Ver docs/cambios/estado-del-flujo/spec.md.",
+  "type": "object",
+  "required": ["schema_version", "taskKey", "stage", "status", "blockedOn", "pendingHumanInteraction",
+               "resumeFrom", "contextRef", "planRef", "refutationRef", "repositoryRef", "stale",
+               "harnessVersion", "updatedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "string", "enum": ["task-flow-state/1.0"]},
+    "taskKey": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$"},
+    "stage": {"$ref": "#/$defs/stage"},
+    "status": {
+      "description": "READY_FOR_EXECUTION no esta: es del plan, y se lee en planRef.planStatus.",
+      "type": "string",
+      "enum": ["NEW", "ACTIVE", "BLOCKED", "WAITING_FOR_HUMAN_APPROVAL", "INCOMPLETE", "FAILED",
+               "COMPLETED", "CANCELLED"]
+    },
+    "blockedOn": {"type": "array", "items": {"$ref": "#/$defs/blocker"}},
+    "pendingHumanInteraction": {
+      "description": "Solo metadata segura. Ni valor, ni linea, ni columna, ni enlace: la posicion se recalcula con entrada_humana.localizar cuando se muestra.",
+      "type": ["object", "null"],
+      "required": ["kind", "inputId"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string", "enum": ["PERSISTENT_CONFIG_INPUT", "TASK_INPUT", "HUMAN_DECISION"]},
+        "inputId": {"type": "string"},
+        "target": {"type": "string"},
+        "key": {"type": "string"},
+        "sensitivity": {"type": "string", "enum": ["SECRET", "PUBLIC_CONFIG"]}
+      }
+    },
+    "resumeFrom": {
+      "type": ["object", "null"],
+      "required": ["stage", "gate"],
+      "additionalProperties": false,
+      "properties": {
+        "stage": {"$ref": "#/$defs/stage"},
+        "gate": {"type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"}
+      }
+    },
+    "contextRef": {
+      "type": ["object", "null"],
+      "required": ["path", "contextHash"],
+      "additionalProperties": false,
+      "properties": {"path": {"type": "string"}, "contextHash": {"type": "string"}}
+    },
+    "planRef": {
+      "type": ["object", "null"],
+      "required": ["path", "planFingerprint", "planStatus"],
+      "additionalProperties": false,
+      "properties": {"path": {"type": "string"}, "planFingerprint": {"type": "string"},
+                     "planStatus": {"type": "string"}}
+    },
+    "refutationRef": {
+      "type": ["object", "null"],
+      "required": ["path", "planFingerprint", "status"],
+      "additionalProperties": false,
+      "properties": {"path": {"type": "string"}, "planFingerprint": {"type": "string"},
+                     "status": {"type": "string"}}
+    },
+    "repositoryRef": {
+      "description": "Identidades normalizadas, como en flowPreconditions.repository. Nunca la URL de un remoto.",
+      "type": ["object", "null"],
+      "required": ["status", "failureCode", "taskRepository", "localRepositories"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"type": "string", "enum": ["MATCHED", "MISMATCH", "UNRESOLVED"]},
+        "failureCode": {"type": ["string", "null"]},
+        "taskRepository": {"type": ["string", "null"]},
+        "localRepositories": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "stale": {
+      "description": "Lo que no cuadra entre artefactos. Lo que no cuadra entre el guardado y lo de ahora lo dice estado.vigencia, y no se guarda.",
+      "type": "array",
+      "items": {"type": "string", "enum": ["TASK_CONTEXT_STALE", "PLAN_STALE", "REPOSITORY_STATE_STALE",
+                                           "REFUTATION_STATE_STALE"]}
+    },
+    "harnessVersion": {"type": "string"},
+    "updatedAt": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"}
+  },
+  "$defs": {
+    "stage": {"type": "string",
+              "enum": ["CONTEXT", "PLANNING", "EXECUTION", "VERIFICATION", "REFUTATION", "COMPLETION"]},
+    "blocker": {
+      "type": "object",
+      "required": ["blockerId", "inputId", "code", "classification", "interactionType", "source",
+                   "stage", "resumeFrom"],
+      "additionalProperties": false,
+      "properties": {
+        "blockerId": {"type": "string", "pattern": "^FLOW-[A-Z]+-[0-9]{3}$"},
+        "inputId": {"type": "string"},
+        "code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+        "classification": {"type": "string",
+                           "enum": ["HARD_BLOCKER", "SOFT_DEPENDENCY", "OPTIONAL", "DERIVABLE"]},
+        "interactionType": {"type": ["string", "null"],
+                            "enum": ["PERSISTENT_CONFIG_INPUT", "TASK_INPUT", "HUMAN_DECISION", null]},
+        "source": {"type": "string",
+                   "enum": ["flow-preconditions", "orchestration-plan", "task-flow-state",
+                            "atomic-refutation"]},
+        "stage": {"$ref": "#/$defs/stage"},
+        "resumeFrom": {
+          "type": "object",
+          "required": ["stage", "gate"],
+          "additionalProperties": false,
+          "properties": {
+            "stage": {"$ref": "#/$defs/stage"},
+            "gate": {"type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"}
+          }
+        }
+      }
+    },
+    "activeTask": {
+      "description": ".claude/runtime/active-task.json: un puntero a la ultima tarea reconciliada, nunca una copia de su estado.",
+      "type": "object",
+      "required": ["schema_version", "taskKey"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {"type": "string", "enum": ["active-task/1.0"]},
+        "taskKey": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$"}
+      }
+    }
+  }
+}
