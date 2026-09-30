@@ -1,6 +1,6 @@
 # Bloque 1 — el conocimiento confiable se vuelve a mirar solo, en momentos controlados
 
-**Estado:** especificado · **Fecha:** 29-09-2026 · **Bloque:** 1
+**Estado:** verificado y cerrado · **Fecha:** 29-09-2026 · **Bloque:** 1
 
 ## Qué problema resuelve
 
@@ -287,7 +287,7 @@ Cada escenario lleva entre paréntesis su id del paquete entregado (`KRF-nnn`).
 - **E-54** — (KRF-054) Ni `Authorization`, ni `Basic `, ni la credencial codificada.
   · rojo visto: no consta
 - **E-55** — (KRF-055) Ni el cuerpo crudo de la respuesta de Jira: solo las claves del schema.
-  · rojo visto: no consta
+  · rojo visto: si
 - **E-56** — (KRF-056) `auto_refresh.py` no menciona `.env`, `AlmacenSecretos` ni `entorno`.
   · rojo visto: no consta
 - **E-57** — (KRF-057) El refresco por Jira usa el adaptador que arma `dev-harness.armar` y el
@@ -335,8 +335,9 @@ Ningún escenario tiene por sujeto una corrida de un modelo: no hay `lectura`.
 ## Riesgos conocidos
 
 - **El canal recordado puede quedar viejo.** Si la Ficha de un proyecto cambia de clave, el refresco
-  sigue leyendo la anterior hasta que alguien corra `fuentes <CLAVE>`. Se ve: la agenda dice el
-  canal.
+  sigue leyendo la anterior hasta que alguien corra `fuentes <CLAVE>`. Se ve: `harness --verbose`
+  lo dice en la línea `Canal`, que sale de `ficha.channel` de `harness.fuentes.json`. La agenda no
+  lo lleva: no es una clave de su schema.
 - **La hora es local y sin zona**, como el resto del harness. Un cambio de horario corre una hora el
   vencimiento; con 24 h de margen no cambia nada que importe.
 - **`plan` puede tardar lo que tarda Jira** cuando la agenda vence. Es el precio de no mirarlo en

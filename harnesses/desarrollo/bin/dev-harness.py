@@ -745,7 +745,7 @@ def _anotar_agenda(proyecto, consola, documento, canal):
     try:
         orq_refresco.registrar(proyecto, orq_frescura.ahora(),
                                orq_refresco.EXPLICIT_SOURCES_COMMAND, politica, codigo,
-                               documento, (canal or {}).get("channel"))
+                               documento)
     except (OSError, ValueError) as e:
         consola.linea("  aviso: no se pudo escribir la agenda de revisión (%s): %s"
                       % (orq_refresco.AGENDA_SIN_ESCRIBIR, e))

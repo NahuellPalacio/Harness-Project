@@ -1843,8 +1843,80 @@ def test_cb_e20_la_senal_dice_la_version_nueva(t):
     t.igual("colores E-20 con la version nueva", "1.1.0", senal["integrationVersion"])
 
 
+DOC_CONTABILIDAD = RAIZ / "docs" / "contabilidad.md"
+_COLOR = re.compile(r"\b(amarill|roj)[oa]s?\b", re.IGNORECASE)
+_NIVEL = re.compile(r"\b(WARNING|ERROR)\b")
+
+
+def _seccion_de_la_barra(texto):
+    """El cuerpo de `### La Context Bar...` hasta el proximo titulo de su nivel o de uno mayor.
+    Los `#` de un bloque de codigo no son titulos. None si la seccion no esta."""
+    lineas, inicio, en_codigo = texto.splitlines(), None, False
+    for i, linea in enumerate(lineas):
+        if linea.lstrip().startswith("```"):
+            en_codigo = not en_codigo
+            continue
+        if en_codigo:
+            continue
+        if inicio is None:
+            if re.match(r"###\s+La Context Bar\b", linea):
+                inicio = i
+        elif re.match(r"#{1,3}\s", linea):
+            return "\n".join(lineas[inicio + 1:i])
+    return None if inicio is None else "\n".join(lineas[inicio + 1:])
+
+
+def _frases(seccion):
+    """Cada vineta y cada parrafo, sin bloques de codigo, partidos en `.` o `;`."""
+    bloques, actual, en_codigo = [], [], False
+    for linea in seccion.splitlines():
+        if linea.lstrip().startswith("```"):
+            en_codigo = not en_codigo
+            continue
+        if en_codigo:
+            continue
+        if not linea.strip() or re.match(r"\s*(?:[-*]|\d+\.)\s", linea):
+            if actual:
+                bloques.append(" ".join(actual))
+            actual = []
+        if linea.strip():
+            actual.append(linea.strip())
+    if actual:
+        bloques.append(" ".join(actual))
+    return [f for b in bloques for f in re.split(r"(?<=[.;])\s+", b) if f.strip()]
+
+
+def _color_por_nivel(frases):
+    """(color, nivel) de cada frase que nombra tantos colores como niveles: el primer color con el
+    primer nivel, y asi. "en amarillo con WARNING y en rojo con ERROR" da los dos pares, y
+    "rojo si dice ERROR, amarillo si dice WARNING" tambien."""
+    pares = []
+    for frase in frases:
+        colores = ["amarillo" if m.group(1).lower() == "amarill" else "rojo"
+                   for m in _COLOR.finditer(frase)]
+        niveles = _NIVEL.findall(frase)
+        if colores and len(colores) == len(niveles):
+            pares += list(zip(colores, niveles))
+    return pares
+
+
 def test_cb_e21_la_doc_dice_los_colores(t):
-    """colores E-21 — docs/contabilidad.md dice que se pinta de amarillo y de rojo, y que NO_COLOR apaga."""
-    doc = (RAIZ / "docs" / "contabilidad.md").read_text(encoding="utf-8")
-    for palabra in ("amarillo", "rojo", "NO_COLOR"):
-        t.contiene("colores E-21 la doc dice %s" % palabra, palabra, doc)
+    """colores E-21 — la seccion de la Context Bar de docs/contabilidad.md ata amarillo a WARNING y
+    rojo a ERROR, dice que se pinta Ctx, Budget y la etiqueta de alerta, y que NO_COLOR apaga.
+    Solo esa seccion: lo mismo dicho en otra parte del archivo no la describe."""
+    seccion = _seccion_de_la_barra(DOC_CONTABILIDAD.read_text(encoding="utf-8"))
+    t.verdadero("colores E-21 la doc tiene la seccion de la Context Bar", seccion is not None)
+    frases = _frases(seccion or "")
+    pares = _color_por_nivel(frases)
+    t.verdadero("colores E-21 amarillo va con WARNING", ("amarillo", "WARNING") in pares)
+    t.verdadero("colores E-21 rojo va con ERROR", ("rojo", "ERROR") in pares)
+    t.igual("colores E-21 ni amarillo con ERROR ni rojo con WARNING", [],
+            [p for p in pares if p in (("amarillo", "ERROR"), ("rojo", "WARNING"))])
+    pintadas = [f for f in frases if _COLOR.search(f) and _NIVEL.search(f)]
+    t.verdadero("colores E-21 se pinta Ctx", any("Ctx" in f for f in pintadas))
+    t.verdadero("colores E-21 se pinta Budget", any("Budget" in f for f in pintadas))
+    t.verdadero("colores E-21 se pinta la etiqueta de alerta",
+                any(re.search(r"\b(etiqueta|r[oó]tulo)\b", f, re.IGNORECASE) for f in pintadas))
+    t.verdadero("colores E-21 NO_COLOR apaga los colores", any(
+        "NO_COLOR" in f and re.search(r"sin colou?r|apaga|no lleva colou?r", f, re.IGNORECASE)
+        for f in frases))

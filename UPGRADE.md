@@ -23,6 +23,16 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.26.0 → 0.27.0
+
+`-Update` alcanza. No hay que hacer nada a mano. Lo nuevo se ve al terminar:
+
+- **El `-Update` revisa el conocimiento** contra el último canal que funcionó, y dice si quedó
+  revisado o pendiente. Con un canal de Jira puede tardar lo que tarda Jira. Si no contesta, la
+  instalación sigue.
+- **La Context Bar pasa a mostrar colores** cuando `Ctx` o `Budget` están en alerta. Para verla
+  como antes, sin colores, hay que definir `NO_COLOR` en el entorno.
+
 ## 0.25.0 → 0.26.0
 
 `-Update` alcanza para que nada deje de andar: la URL y el usuario del `harness.integraciones.json`

@@ -7,6 +7,7 @@
 # 🔴 Los estados y los codigos van clavados por literal, como en 45_conocimiento_fuentes.py:
 # leerlos del modulo y compararlos contra si mismos pasa con cualquier renombre.
 import ast
+import contextlib
 import hashlib
 import importlib.util
 import inspect
@@ -30,6 +31,7 @@ SESSION_START = RAIZ / "comun" / "hooks" / "session-start.py"
 MODULO = BIN / "orquestacion" / "auto_refresh.py"
 POLITICA = RAIZ / "harnesses" / "desarrollo" / "reglas" / "knowledge-refresh-policy.json"
 REGISTRO = RAIZ / "harnesses" / "desarrollo" / "reglas" / "source-registry.json"
+SCHEMA_AGENDA = RAIZ / "comun" / "schemas" / "knowledge-refresh-state.schema.json"
 
 if str(BIN) not in sys.path:
     sys.path.insert(0, str(BIN))
@@ -144,6 +146,18 @@ def _cli(proy, *args, transporte=None, transporte_bytes=None):
 
 def _sha(texto):
     return hashlib.sha256(texto.encode("utf-8") if isinstance(texto, str) else texto).hexdigest()
+
+
+@contextlib.contextmanager
+def _reloj(momento):
+    """El reloj de frescura clavado en `momento` mientras dura el bloque. La CLI en proceso usa
+    el mismo modulo, asi que un intento corre en un momento que el test conoce de antemano."""
+    previo = fr.ahora
+    fr.ahora = lambda: momento
+    try:
+        yield momento
+    finally:
+        fr.ahora = previo
 
 
 class Jira(object):
@@ -483,8 +497,7 @@ def test_e17_la_operacion_normativa_refresca_si_vencio(t):
     try:
         _cli(proy, "fuentes", "--archivo", str(ficha))
         _escribir_agenda(proy, lastSuccessfulCheckAt="2026-09-01T00:00:00",
-                         nextCheckDueAt="2026-09-02T00:00:00", lastAttemptAt="2026-09-01T00:00:00",
-                         channel="archivo:%s" % ficha)
+                         nextCheckDueAt="2026-09-02T00:00:00", lastAttemptAt="2026-09-01T00:00:00")
         codigo, _, err = _cli(proy, "plan", "GCBA-1", "--propuesta", "no-existe.json")
         agenda = _agenda(proy)
         t.igual("E-17 plan refresco con PRE_NORMATIVE_OPERATION_IF_STALE",
@@ -509,8 +522,7 @@ def test_e18_session_start_no_sale_a_la_red(t):
     try:
         _cli(proy, "fuentes", "--archivo", str(ficha))
         _escribir_agenda(proy, lastSuccessfulCheckAt="2026-09-01T00:00:00",
-                         nextCheckDueAt="2026-09-02T00:00:00", lastAttemptAt="2026-09-01T00:00:00",
-                         channel="archivo:%s" % ficha)
+                         nextCheckDueAt="2026-09-02T00:00:00", lastAttemptAt="2026-09-01T00:00:00")
         antes, agenda_antes = _bytes_fuentes(proy), _texto_agenda(proy)
         entrada = json.dumps({"hook_event_name": "SessionStart", "cwd": str(proy),
                               "session_id": "sesion-krf"})
@@ -533,12 +545,16 @@ def test_e19_a_e22_capacidades(t):
         codigo, _, _ = _auto_jira(proy, jira)
         t.igual("E-22 con las tres capacidades sale 0", 0, codigo)
         t.verdadero("E-22 con las tres capacidades sale al canal", len(jira.llamadas) > 0)
-        # Una revision buena de otro dia: si una falla la moviera, se veria.
+        # Una revision buena de otro dia: si una falla la moviera, se veria. El intento anterior
+        # tambien es de otro dia: cada bloqueo corre en un momento propio, y E-20 pide que la
+        # agenda diga ESE momento, no que tenga alguno.
         buena = dict(_agenda(proy), lastSuccessfulCheckAt="2026-01-01T00:00:00",
-                     nextCheckDueAt="2026-01-02T00:00:00")
+                     nextCheckDueAt="2026-01-02T00:00:00", lastAttemptAt="2026-01-01T00:00:00")
         _escribir(proy / ".claude" / "runtime" / "knowledge-refresh.json", buena)
         fuentes_antes = _bytes_fuentes(proy)
-        for capacidad in ("jira.issue.read", "jira.issue.search", "jira.attachment.read"):
+        for n, capacidad in enumerate(("jira.issue.read", "jira.issue.search",
+                                       "jira.attachment.read")):
+            momento = "2031-0%d-15T12:00:00" % (n + 1)
             caps = dict(CAPACIDADES_OK, **{capacidad: "DISABLED"})
             _escribir(proy / ".claude" / "harness.capacidades.json",
                       {"schema_version": "integraciones/1.0",
@@ -547,7 +563,10 @@ def test_e19_a_e22_capacidades(t):
                                                   "capacidades": []}},
                        "capacidades": caps})
             otra = Jira([_adjunto()])
-            codigo, salida, _ = _auto_jira(proy, otra, "--json")
+            t.verdadero("E-20 sin %s: el intento anterior es de otro momento" % capacidad,
+                        _agenda(proy)["lastAttemptAt"] not in (None, momento))
+            with _reloj(momento):
+                codigo, salida, _ = _auto_jira(proy, otra, "--json")
             r = json.loads(salida)
             t.igual("E-19 sin %s: AUTO_REFRESH_BLOCKED_CAPABILITY" % capacidad,
                     "AUTO_REFRESH_BLOCKED_CAPABILITY", r["errorCode"])
@@ -559,7 +578,8 @@ def test_e19_a_e22_capacidades(t):
                     buena["nextCheckDueAt"], agenda["nextCheckDueAt"])
             t.igual("E-20 sin %s: harness.fuentes.json igual" % capacidad, fuentes_antes,
                     _bytes_fuentes(proy))
-            t.verdadero("E-20 sin %s: anota el intento" % capacidad, bool(agenda["lastAttemptAt"]))
+            t.igual("E-20 sin %s: anota el intento en el momento del bloqueo" % capacidad,
+                    momento, agenda["lastAttemptAt"])
         # E-21: Jira AVAILABLE -lo que dejo la autenticacion- y la lectura de adjuntos DISABLED.
         t.igual("E-21 AVAILABLE sin jira.attachment.read sigue bloqueado",
                 ["jira.attachment.read"],
@@ -884,8 +904,11 @@ def test_e46_a_e48_versiones(t):
     """E-46 (KRF-046), E-47 (KRF-047), E-48 (KRF-048)."""
     base, proy, _ = _proyecto()
     try:
+        # ES0903 es la unica ACTUAL con una observada distinta de la aceptada: sin ella, nada
+        # distingue "no junto a ACTUAL" de "ACTUAL nunca tiene otra observada".
         _bienvenida_con(proy, {"ES0901": ("UPDATE_AVAILABLE", "6.3", "6.4", None),
-                               "ES0902": ("CURRENT", "6.1", "6.2", "6.2")})
+                               "ES0902": ("CURRENT", "6.1", "6.2", "6.2"),
+                               "ES0903": ("CURRENT", "2.2", "2.3", None)})
         doc = B.resolver(str(proy))
         completa = B.renderizar_bienvenida(doc)
         t.contiene("E-47 la linea de ES0901", "ES0901 6.3    ACTUALIZACIÓN DISPONIBLE → 6.4",
@@ -897,6 +920,13 @@ def test_e46_a_e48_versiones(t):
         t.verdadero("E-48 la observada no va a la izquierda", l01.strip().startswith("ES0901 6.3")
                     or "Versiones" in l01 and "ES0901 6.3" in l01)
         t.verdadero("E-48 ni junto a ACTUAL", "6.4" not in l01.split("→")[0])
+        l03 = _linea(completa, "ES0903 ")
+        t.verdadero("E-48 ES0903: a la izquierda la aceptada 2.2",
+                    l03.strip().startswith("ES0903 2.2") or "Versiones" in l03 and "ES0903 2.2" in l03)
+        t.verdadero("E-48 ES0903: la linea es ACTUAL", l03.rstrip().endswith("ACTUAL")
+                    or "ACTUAL →" in l03)
+        t.no_contiene("E-48 ES0903: la observada 2.3 no va junto a ACTUAL", "2.3", l03)
+        t.no_contiene("E-48 ES0903: ni con flecha", "→", l03)
         es = [f for f in doc["knowledge"]["sources"] if f["id"] == "ES0901"][0]
         t.igual("E-46 knowledge lleva acceptedVersion", "6.3", es["acceptedVersion"])
         t.igual("E-47 y observedVersion aparte", "6.4", es["observedVersion"])
@@ -984,10 +1014,16 @@ def test_e53_a_e57_la_agenda_no_lleva_secretos(t):
         t.no_contiene("E-54 sin la credencial", credencial, texto)
         t.no_contiene("E-55 sin el cuerpo de Jira", '"fields"', texto)
         t.no_contiene("E-55 ni la URL del adjunto", "attachment/content", texto)
-        claves = set(json.loads(texto))
-        t.igual("E-55 solo las claves de la agenda", {
-            "schema_version", "state", "lastAttemptAt", "lastSuccessfulCheckAt", "nextCheckDueAt",
-            "trigger", "errorCode", "channel", "notificationFingerprint", "sources"}, claves)
+        # Las claves permitidas salen del schema, no de una lista a mano: una lista a mano
+        # aprende la clave de mas junto con el codigo que la escribe.
+        esquema = json.loads(SCHEMA_AGENDA.read_text(encoding="utf-8"))
+        agenda = json.loads(texto)
+        t.igual("E-55 cada clave de la agenda esta en el schema", [],
+                sorted(set(agenda) - set(esquema["properties"])))
+        de_fuente = set(esquema["properties"]["sources"]["items"]["properties"])
+        t.verdadero("E-55 la agenda resume alguna fuente", len(agenda.get("sources") or []) > 0)
+        t.igual("E-55 y cada clave de cada fuente de la agenda tambien", [],
+                sorted({k for s in agenda.get("sources") or [] for k in s} - de_fuente))
     finally:
         _limpiar(base)
     fuente = MODULO.read_text(encoding="utf-8")
@@ -1128,8 +1164,16 @@ def test_e67_harness_verbose(t):
     base, proy, ficha = _proyecto(env=ENV, archivos={PDF_63: "original 6.3"})
     try:
         _cli(proy, "fuentes", "--auto", "--archivo", str(ficha))
+        # El canal vive en harness.fuentes.json. Uno que no esta en ningun otro lado -ni en la
+        # linea de comandos, ni en la agenda- dice de donde lo saca `Canal`.
+        fuentes = _fuentes(proy)
+        fuentes["ficha"]["channel"] = "jira:CANALKRF-6767"
+        _escribir(proy / ".claude" / "harness.fuentes.json", fuentes)
+        t.verdadero("E-67 la agenda no lleva el canal", "channel" not in _agenda(proy))
         codigo, salida, _ = _cli(proy, "harness", "--verbose")
         t.igual("E-67 sale 0", 0, codigo)
+        t.igual("E-67 Canal dice el de harness.fuentes.json", "Canal jira:CANALKRF-6767",
+                " ".join(_linea(salida, "Canal ").split()))
         for etiqueta in ("Revisión: modo", "EVENT_AND_TTL", "Última que salió", "Próxima",
                          "Disparador", "EXPLICIT_SOURCES_COMMAND", "Error de revisión"):
             t.contiene("E-67 muestra %s" % etiqueta, etiqueta, salida)

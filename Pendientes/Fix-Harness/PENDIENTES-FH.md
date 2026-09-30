@@ -127,6 +127,16 @@ zones in the first place. Fix unknown: either the zones get defined retroactivel
 decision — which of the file's sections is "fija" vs "cache" vs unzoned prose is not obvious), or
 `techoFueraDeZonas` needs a meaning that holds even for a file with zero zones marked.
 
+### `CLAUDE.md` states the gate runs 24875 tests, and it runs 37568
+
+Seen on 2026-09-30: `.\tests\Invoke-Tests.ps1` passed 37568/37568 (514 PowerShell, 37054 Python),
+and `CLAUDE.md`, under `## The gate`, still says "24875 tests". The number is loaded on every turn
+and has drifted by half. Every agent that reads it learns a count that no run produces, and a count
+that looks wrong cannot flag a run that is actually short.
+
+Fix. Either drop the number from `CLAUDE.md`, or have the budget check compare it against the last
+run. Hand-editing it once only moves the drift.
+
 ## Incomplete capabilities
 
 ### Eight of the 24 ES0901 §7.1 rules are operationalized
@@ -874,6 +884,45 @@ Separately, `tests/medir_barra.py`, and therefore `-Doctor`, launches the render
 a shell. Measured by the refuter on 2026-09-24, PowerShell adds about 180 ms on top: 103 ms direct,
 149 ms under bash and 282 ms under PowerShell. That leaves about 370 ms with one message per draw,
 close to the 400 ms budget and out of sight.
+
+### The knowledge auto-refresh closed with weak tests, a stale doc and a spec table that says less than the code
+
+Found by the refuter on `conocimiento-auto-refresco`, on 2026-09-29 and 2026-09-30. The change
+closed at 72/72 sostenidos, but only 15 of the 72 scenarios carry `rojo visto: si`. None of what
+follows contradicts a scenario:
+- **Weak tests that still discriminate.**
+  - E-18 searches the imports as text, so it does not see `import http.client`,
+    `import urllib.parse` or a module loaded by path. Its behavioural half uses only an `archivo`
+    channel.
+  - E-32 counts the literal `'"w"'`.
+  - E-35's fake transport does not see the HTTP method. That the calls are GET only is guaranteed by
+    `http.py:81` and `:167`, not by the test.
+  - E-44 proves "arma el plan" only as "reaches `planificar`", and it looks for the string
+    `compuerta_normativa`.
+  - E-30 uses fresh projects with no previous state.
+  - E-56 and E-57 are textual checks.
+  - E-21's named assert covers the pure function only.
+  - E-28's second half goes through `resolver_y_escribir`, not `refrescar`.
+  - E-36's fixture is ES0902, while the scenario names ES0901.
+  - E-52's "otro adjunto" case proves only the fingerprint.
+  - E-02 does not look at `.claude/skills`.
+  - E-65 leans on E-70.
+- **E-42's `sin plan escrito` assert cannot fail.** The fixture cannot write a plan in any way. The
+  scenario is held by the `por la compuerta` assert.
+- **`docs/reporte-de-seguridad.md:16-17` is stale.** It says the knowledge state is whatever
+  `fuentes` left, but `seguridad` now refreshes first when the check is due.
+- **The spec's `Qué se construye` table omits two things.** The policy, due-date and fingerprint
+  logic lives in `bienvenida.py`, which `auto_refresh.py:103-145` wraps. `bienvenida.py:400-402`
+  also learned `minimum`.
+- **The decision "la bienvenida no compara versiones" has no scenario.** `linea_de_version`
+  compares observed against accepted, by equality.
+- **E-55 is held by its test alone.** `knowledge-refresh-state.schema.json` does not declare
+  `additionalProperties: false`, so `escribir_agenda` would accept an extra key. Closing the schema
+  would change the delivered contract, which is a decision, not a fix.
+
+Fix. Harden the listed tests one at a time, each seen red under the defect it names. Correct
+`docs/reporte-de-seguridad.md` and the spec's table. Either add a scenario for "no compara versiones"
+or reword the decision.
 
 ## Installer defects
 

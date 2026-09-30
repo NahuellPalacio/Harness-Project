@@ -762,6 +762,10 @@ def _refresco(proyecto, r, previo, momento, pendientes):
     if error:
         pendientes.append("%s:%s" % (REFRESCO_SIN_RESOLVER, error))
     doc_fuentes, _ = _leer(r["fuentes"])
+    # El canal vive en harness.fuentes.json (`ficha.channel`), de donde lo lee tambien
+    # auto_refresh.canal_previsto. La agenda no lo declara en su schema, asi que no se lee de ahi.
+    ficha = doc_fuentes.get("ficha") if isinstance(doc_fuentes, dict) else None
+    canal = ficha.get("channel") if isinstance(ficha, dict) else None
     anterior = (previo or {}).get("knowledgeRefresh")
     notificada = anterior.get("notifiedFingerprint") if isinstance(anterior, dict) else None
     return {
@@ -775,7 +779,7 @@ def _refresco(proyecto, r, previo, momento, pendientes):
         "lastSuccessfulCheckAt": a.get("lastSuccessfulCheckAt"),
         "nextCheckDueAt": a.get("nextCheckDueAt"),
         "trigger": a.get("trigger"),
-        "channel": a.get("channel") if isinstance(a.get("channel"), str) else None,
+        "channel": canal if isinstance(canal, str) else None,
         "errorCode": error or codigo_agenda,
         "notificationFingerprint": huella_de_notificacion(doc_fuentes),
         "notifiedFingerprint": notificada if isinstance(notificada, str) else None,

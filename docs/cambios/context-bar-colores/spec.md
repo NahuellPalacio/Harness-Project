@@ -1,6 +1,6 @@
 # La Context Bar con colores
 
-**Estado:** construido, a verificar · **Fecha:** 29-09-2026 · **Bloque:** 1, capa de presentación
+**Estado:** verificado y cerrado · **Fecha:** 29-09-2026 · **Bloque:** 1, capa de presentación
 
 ## Qué problema resuelve
 

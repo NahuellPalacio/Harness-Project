@@ -3,6 +3,48 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.27.0] — 2026-09-30
+
+**El conocimiento normativo se vuelve a mirar solo, en momentos controlados, y la Context Bar muestra
+en color lo que pide atención.** Hasta 0.26.0 el harness sabía si ES0901 o ES0902 estaban al día solo
+cuando alguien corría `fuentes`. Ahora lo revisa al instalar, al actualizar y antes de un `plan` o un
+`refute --compile` si la revisión venció, sin aceptar nada y sin salir a la red en SessionStart. Son
+dos cambios verificados, con 72 y 21 escenarios sostenidos y ninguno contradicho.
+
+### Agregado
+
+- **`fuentes --auto [--disparador X]` y `fuentes --si-vence`** — vuelven a mirar las fuentes contra el
+  último canal que funcionó (`jira:<FICHA>` o `archivo:<dir>`). Sin canal, sin red o sin capacidades
+  queda como pendiente, nunca como revisión que salió bien
+- **La política `reglas/desarrollo/knowledge-refresh-policy.json`** — `EVENT_AND_TTL`, 24 horas y
+  `sessionStartNetwork: false`. Las 24 horas son un default del harness, no una exigencia de ES0901
+- **La agenda `.claude/runtime/knowledge-refresh.json`** — cuándo se intentó, cuándo salió bien,
+  cuándo vence, con qué disparador y con qué error. Se ve en `harness --verbose`
+- **La compuerta normativa en `plan` y `refute --compile`** — corta con una fuente en alerta de
+  integridad, cambiada con la misma versión o en regresión, y avisa cuando no se pudo verificar.
+  `contexto`, `estado` y `harness` no pasan por ella
+- **La Context Bar en color** — `Ctx`, `Budget` y la etiqueta en amarillo con `WARNING` y en rojo con
+  `ERROR`, y `HARNESS` en negrita. Lo que está `NORMAL` o `UNRESOLVED` no se pinta
+
+### Cambiado
+
+- **La bienvenida muestra la versión aceptada de cada fuente, y la observada solo si es otra** —
+  `ES0901 6.3    ACTUALIZACIÓN DISPONIBLE → 6.4`. Avisa una vez por novedad, y en la sesión
+  siguiente calla
+- **`install.ps1` revisa el conocimiento al instalar y en cada `-Update`** — si falla, la
+  instalación sigue y lo dice
+- **`seguridad` refresca antes de reportar si la revisión venció** — no corta: su trabajo es
+  reportar la alerta
+- **El renderizador de la Context Bar pasa a `integrationVersion` `1.1.0`**
+
+### Lo que no hace, a propósito
+
+- **No acepta ni promueve nada.** Una versión nueva queda `UPDATE_AVAILABLE` hasta que una persona
+  corre `fuentes --aceptar`. Ningún refresco escribe `source-registry.json`, matrices, policies,
+  checks, agents ni skills
+- **Con `NO_COLOR` definida, aunque esté vacía, la barra sale sin colores**, igual que antes byte a
+  byte
+
 ## [0.26.0] — 2026-09-28
 
 **Jira y GitLab se configuran en un solo archivo, el `.env` local, y nada pregunta por consola.**

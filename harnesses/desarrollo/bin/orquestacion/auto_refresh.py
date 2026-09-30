@@ -266,11 +266,14 @@ def _estado_de_exito(doc_fuentes):
     return "CURRENT" if al_dia else "SUCCEEDED_WITH_UPDATES"
 
 
-def registrar(proyecto, momento, disparador, politica, codigo=None, documento=None, canal=None):
+def registrar(proyecto, momento, disparador, politica, codigo=None, documento=None):
     """Escribe la agenda de este intento. Devuelve la agenda escrita.
 
     Con `codigo` es una falla: se anota el intento y se CONSERVAN lastSuccessfulCheckAt y
     nextCheckDueAt. Sin codigo salio bien: los dos se mueven.
+
+    🔴 Solo las claves del schema de la agenda. El canal no es una: vive en harness.fuentes.json
+    (`ficha.channel`), de donde lo leen canal_previsto y la bienvenida.
     """
     b = bienvenida()
     previa, _ = leer_agenda(proyecto)
@@ -295,7 +298,6 @@ def registrar(proyecto, momento, disparador, politica, codigo=None, documento=No
         "nextCheckDueAt": proxima,
         "trigger": disparador,
         "errorCode": codigo,
-        "channel": canal or previa.get("channel"),
         "notificationFingerprint": b.huella_de_notificacion(doc_fuentes),
         "sources": resumen_de_fuentes(doc_fuentes),
     }
@@ -401,8 +403,7 @@ def refrescar(proyecto, disparador, observar_jira=None, capacidades=None, canal=
     def falla(codigo_falla):
         resultado["errorCode"] = codigo_falla
         try:
-            registrar(proyecto, momento, disparador, politica, codigo_falla,
-                      canal=texto_de_canal(canal))
+            registrar(proyecto, momento, disparador, politica, codigo_falla)
         except (OSError, ValueError):
             resultado["stateError"] = AGENDA_SIN_ESCRIBIR
         return _cerrar(resultado, proyecto)
@@ -442,7 +443,7 @@ def refrescar(proyecto, disparador, observar_jira=None, capacidades=None, canal=
     resultado["downloads"] = sum(1 for o in observaciones if o.get("downloaded"))
     resultado["channel"] = canal_doc.get("channel") or texto_de_canal(canal)
     try:
-        registrar(proyecto, momento, disparador, politica, None, documento, resultado["channel"])
+        registrar(proyecto, momento, disparador, politica, None, documento)
     except (OSError, ValueError):
         resultado["stateError"] = AGENDA_SIN_ESCRIBIR
     return _cerrar(resultado, proyecto)
