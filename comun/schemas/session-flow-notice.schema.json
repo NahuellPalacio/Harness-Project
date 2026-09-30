@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session-flow-notice/1.0",
+  "title": "SESSION_FLOW_NOTICE",
+  "description": "La huella del ultimo aviso del flujo que UserPromptSubmit le dio a UNA sesion, para no repetir el bloque entero. La escribe comun/hooks/lib/flow_context.py en .claude/runtime/sessions/<SAFE_SESSION_ID>/notice.json. fingerprint es un SHA-256 de tarea, etapa, estado, bloqueos, vigencia, interaccion pendiente y su ubicacion: no lleva ninguno de ellos en claro. Ver docs/cambios/compuerta-del-flujo/spec.md.",
+  "type": "object",
+  "required": ["schema_version", "sessionId", "fingerprint", "updatedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "string", "enum": ["session-flow-notice/1.0"]},
+    "sessionId": {"type": "string", "pattern": "^\\S"},
+    "fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "updatedAt": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$"}
+  }
+}

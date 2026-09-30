@@ -3,7 +3,10 @@
     derivar(proyecto, clave)     el estado de ahora, armado de las fuentes que mandan
     leer(proyecto, clave)        el guardado, o por que no sirve
     vigencia(guardado, derivado) que cambio desde que se guardo
+    vigencia_local(guardado, p)  lo mismo, sin `.env` ni git: la que leen los hooks
     permisos(estado, vigencia)   que se puede hacer; no se guarda nunca
+    puede_avanzar(...)           la condicion de todo permiso de avance
+    reanudar_desde(...)          la etapa mas temprana desde la que se retoma
     validar_transicion(...)      un estado no se declara: se reevalua
     texto(...)                   lo que ve la persona, en espanol
 
@@ -266,6 +269,22 @@ def _pendiente(bloqueos, registro):
     return None
 
 
+def _referencias(relativas, contexto, plan, corrida, huella_plan):
+    """contextRef, planRef y refutationRef de los artefactos leidos. Una sola forma de armarlas:
+    la usan `derivar` y `vigencia_local`."""
+    return {
+        "contextRef": {"path": relativas["context"],
+                       "contextHash": str((contexto.get("meta") or {}).get("context_hash") or "")}
+        if contexto is not None else None,
+        "planRef": {"path": relativas["plan"], "planFingerprint": huella_plan,
+                    "planStatus": str(plan.get("status") or "")} if plan is not None else None,
+        "refutationRef": {"path": relativas["run"],
+                          "planFingerprint": str((corrida.get("meta") or {}).get(
+                              "planFingerprint") or ""),
+                          "status": str(corrida.get("status") or "")} if corrida is not None else None,
+    }
+
+
 def derivar(proyecto, clave, harness_version="", proceso=None, registro=None):
     """El estado de ahora, de las fuentes que mandan. La misma entrada da el mismo estado."""
     from orquestacion import plan as orq_plan
@@ -368,20 +387,12 @@ def derivar(proyecto, clave, harness_version="", proceso=None, registro=None):
         "blockedOn": bloqueos,
         "pendingHumanInteraction": _pendiente(bloqueos, registro),
         "resumeFrom": dict(bloqueos[0]["resumeFrom"]) if bloqueos else None,
-        "contextRef": {"path": relativas["context"],
-                       "contextHash": str((contexto.get("meta") or {}).get("context_hash") or "")}
-        if contexto is not None else None,
-        "planRef": {"path": relativas["plan"], "planFingerprint": huella_plan,
-                    "planStatus": str(plan.get("status") or "")} if plan is not None else None,
-        "refutationRef": {"path": relativas["run"],
-                          "planFingerprint": str((corrida.get("meta") or {}).get(
-                              "planFingerprint") or ""),
-                          "status": str(corrida.get("status") or "")} if corrida is not None else None,
         "repositoryRef": _repo_min(identidad),
         "stale": sorted(set(stale)),
         "harnessVersion": str(harness_version or ""),
         "updatedAt": ahora(),
     }
+    doc.update(_referencias(relativas, contexto, plan, corrida, huella_plan))
     errores = validar(doc)
     if errores:
         raise ErrorDeEstado(INVALIDO, "el estado derivado no valida: %s" % "; ".join(errores[:3]))
@@ -403,6 +414,80 @@ def vigencia(guardado, derivado, error=None):
     return sorted(codigo for campo, codigo in _REFS if guardado.get(campo) != derivado.get(campo))
 
 
+def _locales_de_ahora(proyecto, timeout):
+    """Los repositorios de este checkout como los guarda repositoryRef, de `git remote -v`.
+    Levanta RemotosSinRespuesta si `git` no contesta en `timeout`."""
+    return sorted(set(repositorio.como_texto(i) for _, i in repositorio.remotos(
+        proyecto, timeout=timeout, estricto=True) or []))
+
+
+def vigencia_local(guardado, proyecto, remotos=True, timeout=10):
+    """`vigencia()` contra las referencias de AHORA que se leen sin secretos.
+
+    Recalcula contextRef, planRef y refutationRef de los artefactos de la tarea, y la parte local
+    de repositoryRef -los remotos de este checkout- con `repositorio.remotos`: solo `git remote -v`,
+    local y sin red. La identidad del repositorio de la TAREA pide la URL de GitLab del `.env`:
+    esa no se recalcula aca. Un remoto cambiado sin reconciliar da REPOSITORY_STATE_STALE.
+
+    `remotos=False` salta `git remote -v`: es para lo que solo muestra (SessionStart), nunca para
+    una compuerta. `timeout` es el de `git remote -v`; si se vence, levanta
+    repositorio.RemotosSinRespuesta y quien decide falla cerrado. Es lo que consumen los hooks de
+    la Wave 3.
+    """
+    if guardado is None:
+        return vigencia(None, None)
+    clave = validar_clave(guardado.get("taskKey"))
+    relativas = _relativas(clave)
+    contexto, _ = _leer_json(os.path.join(proyecto, *relativas["context"].split("/")))
+    plan, _ = _leer_json(os.path.join(proyecto, *relativas["plan"].split("/")))
+    corrida, _ = _leer_json(os.path.join(proyecto, *relativas["run"].split("/")))
+    huella_plan = None
+    if plan is not None:
+        from orquestacion import refutacion
+        huella_plan = refutacion.huella(plan)
+    ahora_ = dict(guardado)
+    ahora_.update(_referencias(relativas, contexto, plan, corrida, huella_plan))
+    if remotos and isinstance(guardado.get("repositoryRef"), dict):
+        ahora_["repositoryRef"] = dict(guardado["repositoryRef"],
+                                       localRepositories=_locales_de_ahora(proyecto, timeout))
+    return vigencia(guardado, ahora_)
+
+
+def puede_avanzar(doc, vigencia_=()):
+    """Si una tarea puede avanzar: en curso, sin bloqueos, sin `stale` y con el estado vigente.
+
+    Es la condicion de todos los permisos de avance de `permisos()`, y la que usa la compuerta
+    de los hooks para dejar pasar una herramienta que modifica el proyecto.
+    """
+    doc = doc or {}
+    return bool(doc.get("status") in AVANZAN and not doc.get("blockedOn") and not doc.get("stale")
+                and not list(vigencia_))
+
+
+# Desde que etapa se retoma cada desactualizacion: la del comando que la reconcilia. Un estado
+# ausente o roto lo reconstruye cualquier comando que reconcilia, hasta la refutacion.
+_REANUDA = {TASK_CONTEXT_STALE: "PLANNING", PLAN_STALE: "PLANNING",
+            REPOSITORY_STATE_STALE: "PLANNING", REFUTATION_STATE_STALE: "REFUTATION",
+            AUSENTE: "REFUTATION", INVALIDO: "REFUTATION"}
+
+
+def reanudar_desde(doc, vigencia_=()):
+    """La etapa mas temprana desde la que el flujo tiene que retomar, o None.
+
+    Sale del `resumeFrom` guardado y de cada desactualizacion. Volver a correr esa etapa, o una
+    anterior, es revalidar: el comando reevalua su compuerta. Una posterior es saltearla.
+    """
+    doc = doc or {}
+    etapas = []
+    if doc.get("resumeFrom"):
+        etapas.append(doc["resumeFrom"].get("stage"))
+    for codigo in list(doc.get("stale") or []) + list(vigencia_):
+        if codigo in _REANUDA:
+            etapas.append(_REANUDA[codigo])
+    etapas = [e for e in etapas if e in STAGES]
+    return min(etapas, key=STAGES.index) if etapas else None
+
+
 def permisos(doc, vigencia_=()):
     """Que se puede hacer. Pura, y no se guarda: se deriva cada vez.
 
@@ -411,8 +496,7 @@ def permisos(doc, vigencia_=()):
     """
     doc = doc or {}
     etapa, estado = doc.get("stage"), doc.get("status")
-    avanza = (estado in AVANZAN and not doc.get("blockedOn") and not doc.get("stale")
-              and not list(vigencia_))
+    avanza = puede_avanzar(doc, vigencia_)
     salida = {
         "planningAllowed": avanza and etapa != "CONTEXT",
         "delegationAllowed": avanza and etapa in ("EXECUTION", "VERIFICATION", "REFUTATION"),

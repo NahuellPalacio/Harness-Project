@@ -1,4 +1,4 @@
-"""Deteccion de secretos. La unica regla del harness que impide algo.
+"""Deteccion de secretos. Una de las dos reglas que impiden algo; la otra es lib/flow_gate.py.
 
 Dos niveles de confianza, y la distincion es lo importante:
 

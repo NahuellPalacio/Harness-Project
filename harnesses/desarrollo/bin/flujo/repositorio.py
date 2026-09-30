@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -160,21 +161,34 @@ def de_la_tarea(task_context, gitlab):
 
 # -- el checkout ---------------------------------------------------------------
 
-def remotos(proyecto):
+class RemotosSinRespuesta(Exception):
+    """`git remote -v` no contesto a tiempo. No es lo mismo que no tener remotos."""
+
+
+def remotos(proyecto, timeout=10, estricto=False):
     """[(nombre, identidad)] de los remotos de fetch, o None si no es un repositorio git.
 
     Solo `git remote -v`: no hay `fetch`, ni `ls-remote`, ni red. Un remoto que no se puede
     normalizar -una ruta local- no cuenta como identidad.
+
+    `timeout` es el de la CLI; un hook pasa uno corto. Con `estricto`, un `git` que no contesta
+    a tiempo levanta RemotosSinRespuesta en vez de parecer un checkout sin remotos: quien decide
+    una compuerta no puede confundir "no se sabe" con "no hay".
     """
-    try:
-        salida = subprocess.run(["git", "-C", proyecto, "remote", "-v"],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if salida.returncode != 0:
+    argumentos = ["git", "-C", proyecto, "remote", "-v"]
+    if estricto:
+        codigo, crudo = _correr_con_limite(argumentos, timeout)
+    else:
+        try:
+            salida = subprocess.run(argumentos, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    timeout=timeout)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        codigo, crudo = salida.returncode, salida.stdout
+    if codigo != 0 or crudo is None:
         return None
     vistos = []
-    for linea in salida.stdout.decode("utf-8", "replace").splitlines():
+    for linea in crudo.decode("utf-8", "replace").splitlines():
         partes = linea.split()
         if len(partes) < 3 or partes[2] != "(fetch)":
             continue
@@ -182,6 +196,46 @@ def remotos(proyecto):
         if ident is not None and (partes[0], ident) not in vistos:
             vistos.append((partes[0], ident))
     return sorted(vistos)
+
+
+def _matar_arbol(proceso):
+    """El proceso y todo lo que lanzo. En Windows `git` es un lanzador (cmd\\git.exe) que deja vivo
+    al git de verdad si se mata solo al primero."""
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proceso.pid)],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        else:
+            os.killpg(proceso.pid, 9)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    try:
+        proceso.kill()
+    except OSError:
+        pass
+
+
+def _correr_con_limite(argumentos, timeout):
+    """(codigo, stdout) o (None, None) si no se pudo lanzar. Vencido, levanta RemotosSinRespuesta
+    EN el limite.
+
+    `subprocess.run(timeout=...)` no alcanza: mata al hijo y despues espera a que se cierren los
+    pipes, que un nieto puede tener abiertos para siempre. Aca la salida va a un archivo temporal,
+    se espera solo al proceso, y si se vence se mata el arbol entero y no se espera a nadie.
+    """
+    with tempfile.TemporaryFile() as salida:
+        try:
+            proceso = subprocess.Popen(argumentos, stdout=salida, stderr=subprocess.DEVNULL,
+                                       stdin=subprocess.DEVNULL, start_new_session=os.name != "nt")
+        except (OSError, ValueError):
+            return None, None
+        try:
+            proceso.wait(timeout)
+        except subprocess.TimeoutExpired:
+            _matar_arbol(proceso)
+            raise RemotosSinRespuesta("git remote -v no contesto en %s s" % timeout)
+        salida.seek(0)
+        return proceso.returncode, salida.read()
 
 
 # -- la identidad ---------------------------------------------------------------

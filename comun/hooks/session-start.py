@@ -213,6 +213,17 @@ def cuerpo(e):
             lineas.append("El indice del codigo no tiene su project-context.json: "
                           "dev-iniciador-code lo escribe en el mismo recorrido.")
 
+    # --- La tarea de esta sesion, en una linea ---------------------------------------
+    # La del binding de la sesion. Sin binding no se inventa: la ultima tarea tocada sale como
+    # sugerencia. La explicacion completa la da UserPromptSubmit cuando la persona sigue.
+    try:
+        from lib import flow_context
+        linea_del_flujo = flow_context.continuidad(e)
+    except Exception:                    # noqa: BLE001 - una linea no se lleva puesto el bloque
+        linea_del_flujo = None
+    if linea_del_flujo:
+        lineas.append(linea_del_flujo)
+
     if texto_bienvenida is None and not lineas:
         return
 

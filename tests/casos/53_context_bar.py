@@ -1464,6 +1464,15 @@ _EXTENSIONES = (".md", ".py", ".ps1", ".psm1", ".json", ".txt", ".html", ".sh", 
 # posibilidad. Uno que no dice nada de eso es uno que lo afirma.
 _VSCODE = re.compile(r"vs ?code|visual studio code", re.IGNORECASE)
 _NIEGA = re.compile(r"\b(no|sin|ni|nunca|ning[uú]n[ao]?|ser[ií]a|afuera|fuera de|si)\b", re.IGNORECASE)
+# Acotado en la Wave 3 de Flow Governance (docs/cambios/compuerta-del-flujo): un enlace
+# `vscode://file/...` que abre un archivo en una linea, y el campo `vscodeUri` que lo lleva, no
+# afirman una integracion nativa con la barra de estado. Se sacan antes de mirar; cualquier otra
+# mencion sigue obligada a negar.
+_ENLACE_VSCODE = re.compile(r"vscode://\S*|\bvscodeUri\b", re.IGNORECASE)
+
+
+def _menciona_vscode(parrafo):
+    return bool(_VSCODE.search(_ENLACE_VSCODE.sub(" ", parrafo)))
 
 
 def _parrafos_con_vscode():
@@ -1479,7 +1488,7 @@ def _parrafos_con_vscode():
             except (UnicodeDecodeError, OSError):
                 continue
             for parrafo in re.split(r"\n\s*\n", texto):
-                if _VSCODE.search(parrafo):
+                if _menciona_vscode(parrafo):
                     salida.append((archivo.relative_to(RAIZ).as_posix(), parrafo))
     return salida
 
@@ -1496,7 +1505,7 @@ def test_e25_ningun_texto_afirma_una_integracion_nativa_con_vs_code(t):
     for afirmacion in ("La Context Bar se ve también en la barra de estado de VS Code.",
                        "Integración nativa con la status bar de VSCode, lista para usar."):
         t.verdadero("E-25 el barrido agarra «%s»" % afirmacion[:30],
-                    _VSCODE.search(afirmacion) and not _NIEGA.search(afirmacion))
+                    _menciona_vscode(afirmacion) and not _NIEGA.search(afirmacion))
 
 
 # -- E-40 — la plata y el tiempo siguen al ultimo estado acumulado ---------------------------------

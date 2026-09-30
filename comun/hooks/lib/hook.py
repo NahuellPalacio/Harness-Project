@@ -86,7 +86,7 @@ def avisar_y_mostrar(evento_nombre, texto, mensaje):
 
 
 def bloquear(evento_nombre, motivo):
-    """BLOQUEA. Reservado a la regla de secretos: es lo unico que el harness impide."""
+    """BLOQUEA. Solo desde pre-tool-use.py: el Secret Guard y la compuerta del flujo, nada mas."""
     _emitir({"hookSpecificOutput": {
         "hookEventName": evento_nombre,
         "permissionDecision": "deny", "permissionDecisionReason": motivo}})

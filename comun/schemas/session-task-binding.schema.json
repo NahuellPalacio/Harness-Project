@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session-task-binding/1.0",
+  "title": "SESSION_TASK_BINDING",
+  "description": "Que tarea trabaja UNA sesion de Claude Code. Lo escribe comun/hooks/lib/task_binding.py cuando la sesion declara una clave: en el prompt (user-prompt) o en un comando del Harness (harness-command). Vive en .claude/runtime/sessions/<SAFE_SESSION_ID>/task.json. No guarda el prompt, ni tool_input, ni un valor, ni el TaskContext, el plan o el estado del flujo: solo la clave. sessionId es el session_id original, para verificar que el archivo es de esa sesion. Ver docs/cambios/compuerta-del-flujo/spec.md.",
+  "type": "object",
+  "required": ["schema_version", "sessionId", "taskKey", "source", "updatedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "string", "enum": ["session-task-binding/1.0"]},
+    "sessionId": {"type": "string", "pattern": "^\\S"},
+    "taskKey": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$"},
+    "source": {"type": "string", "enum": ["user-prompt", "harness-command"]},
+    "updatedAt": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$"}
+  }
+}

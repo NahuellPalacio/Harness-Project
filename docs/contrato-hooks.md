@@ -58,9 +58,11 @@ en el turno siguiente. **Es la forma normal de comunicar un incumplimiento.**
 
 > ⚠️ **Solo funciona en `PostToolUse`, `UserPromptSubmit` y `SessionStart`.** En
 > `PreToolUse`, la salida en caso de éxito va a la transcripción y el modelo no la ve.
-> Por eso **todos los avisos del harness se entregan en `PostToolUse`**, aunque el
+> Por eso **los avisos de los checks se entregan en `PostToolUse`**, aunque el
 > problema se pudiera detectar antes: `pre-tool-use.py` solo importa `bloquear` y
-> `preguntar` de `lib.hook`, nunca `avisar`.
+> `preguntar` de `lib.hook`, nunca `avisar`. El flujo avisa en `UserPromptSubmit` —la tarea
+> bloqueada, con el enlace al archivo donde se completa lo que falta— y en `SessionStart`, una
+> línea de continuidad.
 >
 > 📌 **Esto es una convención del código de los hooks, no algo que la biblioteca
 > impida.** `avisar()` no valida el evento que recibe: si un hook nuevo la llama desde
@@ -74,14 +76,31 @@ en el turno siguiente. **Es la forma normal de comunicar un incumplimiento.**
 bloquear("PreToolUse", "Literal con forma de client_secret. Usá una variable de entorno.")
 ```
 
-Impide que la herramienta se ejecute. **Reservado exclusivamente a la regla de
-secretos.** Ninguna otra regla del harness bloquea.
+Impide que la herramienta se ejecute. **Bloquean dos reglas, y ninguna más**, las dos en
+`pre-tool-use.py`:
+
+1. **El Secret Guard** (`lib/secretos.py`): un secreto de confianza alta a punto de escribirse.
+2. **La compuerta del flujo** (`lib/flow_gate.py`, desde la Wave 3 de Flow Governance): la tarea
+   de la sesión no puede avanzar —`BLOCKED`, esperando una aprobación, con el estado
+   desactualizado o sin estado— y la herramienta modifica o avanza el proyecto. Con una tarea
+   bloqueada siguen pasando la lectura y la recuperación del flujo (`flujo <KEY> --status`,
+   `contexto <KEY>`). Sin estado del flujo en el proyecto no hace nada. Por eso el matcher de
+   `PreToolUse` alcanza también la delegación, `^Agent$|^Task$`: con la tarea bloqueada, un
+   subagente no arranca.
+
+El orden es ese y no se invierte: un secreto de confianza alta es deny y la compuerta ni se
+evalúa; el deny del flujo gana sobre el `ask` de un secreto ambiguo, porque un `ask` dejaría
+saltar un bloqueo aprobando la herramienta. Sale una sola emisión. Un fallo interno de la
+compuerta, con una herramienta que escribe, es `FLOW_GATE_UNRESOLVED` y deny: acá el silencio
+que deja `invoke_hook` sería permiso para escribir. El detalle está en
+`docs/cambios/compuerta-del-flujo/spec.md`.
 
 El motivo se le muestra a Claude, así que tiene que decir **qué hacer**, no qué se
 impidió. `usá una variable de entorno` sirve; `operación denegada` no.
 
 Existe una cuarta función, `preguntar`, para la confianza media del detector de
-secretos: emite `permissionDecision: ask` y deja la decisión en manos de la persona.
+secretos: emite `permissionDecision: ask` y deja la decisión en manos de la persona. La
+compuerta del flujo no la usa nunca.
 
 ## Cómo se escribe un hook
 

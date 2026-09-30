@@ -560,6 +560,10 @@ Set-Grupo 'Instalador - hooks registrados para PowerShell'
 
 $hpsVersion = ([System.IO.File]::ReadAllText((Join-Path $script:Raiz 'VERSION'))).Trim()
 $hpsMatcher = 'Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell'
+# PreToolUse alcanza además la delegación, anclada para no tocar TaskCreate y parecidos: la
+# compuerta del flujo la niega con la tarea bloqueada (docs/cambios/compuerta-del-flujo, E-64).
+$hpsMatcherPre = $hpsMatcher + '|^Agent$|^Task$'
+$hpsMatchers = @{ PreToolUse = $hpsMatcherPre; PostToolUse = $hpsMatcher }
 $hpsEventos = [ordered]@{
     SessionStart     = 'session-start'
     UserPromptSubmit = 'user-prompt-submit'
@@ -657,7 +661,8 @@ function Set-HpsSettings {
     $s = [System.IO.File]::ReadAllText($ruta) | ConvertFrom-Json
     foreach ($ev in @($hpsEventos.Keys)) {
         foreach ($g in @($s.hooks.$ev)) {
-            if ($Viejo -and $g.PSObject.Properties['matcher'] -and $g.matcher -eq $hpsMatcher) {
+            if ($Viejo -and $g.PSObject.Properties['matcher'] -and
+                ($g.matcher -eq $hpsMatcher -or $g.matcher -eq $hpsMatcherPre)) {
                 $g.matcher = 'Write|Edit|MultiEdit|NotebookEdit|Bash'
             }
             foreach ($h in @($g.hooks)) {
@@ -788,7 +793,7 @@ try {
     }
     foreach ($ev in @('PreToolUse', 'PostToolUse')) {
         $m = @($hooks | Where-Object { $_.Evento -eq $ev } | Select-Object -ExpandProperty Matcher)
-        Assert-Igual "E-02 el filtro de $ev nombra PowerShell, exacto" $hpsMatcher ($m -join ' / ')
+        Assert-Igual "E-02 el filtro de $ev nombra PowerShell, exacto" $hpsMatchers[$ev] ($m -join ' / ')
     }
 
     # La invariante de portabilidad: settings.json no lleva ninguna ruta de esta maquina.
@@ -947,7 +952,7 @@ $problemas = Test-HooksInstalados -Project $Proyecto
     Assert-Verdadero 'E-09 -Update deja los comandos nuevos' `
         (@($hooksNuevos | Where-Object { ([string]$_.Hook.command).StartsWith('& "$env:CLAUDE_PROJECT_DIR/') }).Count -eq 4)
     Assert-Verdadero 'E-09 y los filtros con PowerShell' `
-        (@($hooksNuevos | Where-Object { $_.Matcher -eq $hpsMatcher }).Count -eq 2)
+        (@($hooksNuevos | Where-Object { $hpsMatchers.ContainsKey($_.Evento) -and $_.Matcher -eq $hpsMatchers[$_.Evento] }).Count -eq 2)
     $lockNuevo = [System.IO.File]::ReadAllText($rutaLockHps) | ConvertFrom-Json
     $shaLock = @($lockNuevo.archivos | Where-Object { $_.ruta -eq '.claude\settings.json' } | Select-Object -ExpandProperty sha256)
     Assert-Igual 'E-09 el hash de settings.json en el lockfile coincide con el archivo' `

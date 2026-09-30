@@ -7,7 +7,9 @@
     "PowerShell si no, y el mismo comando no puede estar bien escrito para los dos.",
     "Los matchers son estrictos a proposito. Un matcher '*' en PreToolUse agrega el",
     "arranque de un proceso a CADA llamada a herramienta. PowerShell va en los dos: es la",
-    "herramienta que usa Claude Code en Windows para correr comandos."
+    "herramienta que usa Claude Code en Windows para correr comandos. PreToolUse alcanza ademas",
+    "la delegacion (Agent, y Task, su nombre anterior), anclada para no tocar TaskCreate y",
+    "parecidos: la compuerta del flujo la niega con la tarea bloqueada."
   ],
   "hooks": {
     "SessionStart": [
@@ -27,7 +29,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell|^Agent$|^Task$",
         "hooks": [
           { "type": "command", "shell": "powershell", "command": "{{SHIM}} pre-tool-use; exit $LASTEXITCODE" }
         ]
