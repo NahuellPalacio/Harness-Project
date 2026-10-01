@@ -925,8 +925,11 @@ def test_e10_la_barra_escribe_solo_el_libro_y_la_senal(t):
             tocados)
     t.igual("E-10 y no borro nada", [], sorted(k for k in antes if k not in despues))
     senal = _senal_de(proy)
-    t.igual("E-10 la senal tiene los cinco campos del contrato",
-            sorted(B.CONTRATO_SENAL["required"]), sorted(senal or {}))
+    # Eran los cinco obligatorios. pisado por docs/cambios/context-bar-consumo-desde-instalacion/
+    # spec.md (E-60): el renderizador 1.2.0 escribe tambien `presentation`, que el contrato admite
+    # como opcional. Siguen sin entrar numeros, y la senal sigue cumpliendo el contrato.
+    t.igual("E-10 la senal tiene los cinco campos del contrato y presentation",
+            sorted(list(B.CONTRATO_SENAL["required"]) + ["presentation"]), sorted(senal or {}))
     t.igual("E-10 y ningun numero", [], [k for k, v in (senal or {}).items()
                                          if isinstance(v, (int, float)) and not isinstance(v, bool)])
     t.vacio("E-10 la senal cumple el contrato", [] if B.cumple(senal, B.CONTRATO_SENAL) else ["no"])
@@ -1087,8 +1090,15 @@ def test_e21_lo_que_el_bloque_4_no_tiene_no_aparece(t):
 
 
 def test_e22_tokens_y_costo_son_los_del_bloque_4_y_no_los_de_stdin(t):
-    """E-22 — lo que dibuja es barra.de sobre el libro; el costo, el contexto y el modelo que
-    llegan por stdin no cambian nada."""
+    """E-22 — lo que dibuja es barra.de sobre el libro; el costo y el modelo que llegan por stdin
+    no cambian nada.
+
+    🔴 pisado por docs/cambios/context-bar-consumo-desde-instalacion/spec.md, SOLO para el
+    contexto: este escenario pedia que `context_window` del stdin -`used_percentage` incluido- no
+    cambiara nada, y desde esa spec la ventana entra por el adaptador y SI cambia `Ctx`. El costo
+    del stdin sigue sin usarse (E-08 de esa spec), `exceeds_200k_tokens` sigue sin leerse (E-10) y
+    el modelo del stdin sigue sin dibujarse: eso es lo que queda de este test. Lo que dice la
+    ventana lo prueba tests/casos/62_context_bar_consumo.py."""
     proy, _ = _instalado()
     sesion = _nueva_sesion()
     tmp = Path(tempfile.mkdtemp(prefix="cb53-22-"))
@@ -1101,13 +1111,20 @@ def test_e22_tokens_y_costo_son_los_del_bloque_4_y_no_los_de_stdin(t):
         estado = b4["barra"].de(b4["libro"].leer(str(_libro(proy, sesion))), sesion, POLITICA)
         otras = []
         for engano in ({"cost": {"total_cost_usd": 999.99, "total_duration_ms": 1}},
-                       {"cost": {"total_cost_usd": 0}, "context_window": {"used_percentage": 99,
-                                                                           "total_input_tokens": 7}},
+                       {"cost": {"total_cost_usd": 0}},
                        {"model": {"id": "otro-modelo", "display_name": "Otro"},
                         "exceeds_200k_tokens": True}):
             otras.append(_dibujar(dict(base, **engano))[1])
+        # Lo pisado, dicho: una ventana usable en el stdin cambia Ctx, y deja de ser tokens.
+        _, con_ventana, _ = _dibujar(dict(base, context_window={
+            "context_window_size": 100000, "total_input_tokens": 40000,
+            "total_output_tokens": 2000, "used_percentage": 99}))
     finally:
         os.remove(str(proy / ".claude" / "harness.presupuesto.json"))
+    t.contiene("E-22 pisado por context-bar-consumo: una ventana usable si cambia Ctx",
+               " | Ctx 42% | ", con_ventana)
+    t.no_contiene("E-22 pisado por context-bar-consumo: y el used_percentage del stdin no es Ctx",
+                  "Ctx 99%", con_ventana)
     tokens = estado["tokens"]
     entrada = tokens["inputTokens"] + tokens["cacheReadTokens"] + tokens["cacheCreationTokens"]
     t.contiene("E-22 los tokens son los de barra.de",
@@ -1830,8 +1847,12 @@ def test_cb_e17_e18_el_contenido_y_el_orden_no_cambian(t):
 
 
 def test_cb_e20_la_senal_dice_la_version_nueva(t):
-    """colores E-20 — la barra dibuja y la senal de vida dice integrationVersion 1.1.0."""
-    t.igual("colores E-20 el renderizador del repositorio es 1.1.0", "1.1.0", SL.INTEGRATION_VERSION)
+    """colores E-20 — la barra dibuja y la senal de vida dice la version del renderizador.
+
+    Era 1.1.0. pisado por docs/cambios/context-bar-consumo-desde-instalacion/spec.md, que la sube a
+    1.2.0 (`INTEGRATION_VERSION pasa a 1.2.0`, E-65): lo que este escenario fija -que la senal
+    diga la version nueva del renderizador que dibujo- sigue igual."""
+    t.igual("colores E-20 el renderizador del repositorio es 1.2.0", "1.2.0", SL.INTEGRATION_VERSION)
     proy, _ = _instalado()
     sesion = _nueva_sesion()
     tmp = Path(tempfile.mkdtemp(prefix="cb53-20-"))
@@ -1840,7 +1861,7 @@ def test_cb_e20_la_senal_dice_la_version_nueva(t):
     shutil.rmtree(str(tmp), ignore_errors=True)
     senal = _senal_de(proy)
     t.igual("colores E-20 la senal es de esa sesion", sesion, senal["sessionId"])
-    t.igual("colores E-20 con la version nueva", "1.1.0", senal["integrationVersion"])
+    t.igual("colores E-20 con la version nueva", "1.2.0", senal["integrationVersion"])
 
 
 DOC_CONTABILIDAD = RAIZ / "docs" / "contabilidad.md"

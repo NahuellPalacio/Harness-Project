@@ -10,6 +10,9 @@ nada sobre la plata, y una tarea al 90% del presupuesto puede tener la ventana v
 
 🔴 Los umbrales salen de la politica. Sin umbrales declarados el nivel es `UNRESOLVED` y se
 muestra el numero igual: un verde inventado es peor que un signo de pregunta.
+
+🔴 Mas tokens que ventana es una falla del proveedor, y se ve: sin fraccion, sin nivel y con
+CONTEXT_WINDOW_PROVIDER_INCONSISTENT. Ninguna fraccion de contexto pasa de 1.
 """
 from . import agregacion
 from . import presupuesto
@@ -46,7 +49,8 @@ def de(libro, session_id, politica=None, task_id=""):
     foto = resumen["context"]
     limite = foto.get("contextLimit")
     fraccion_contexto = None
-    if foto.get("contextTokens") is not None and limite:
+    if foto.get("contextTokens") is not None and limite \
+            and float(foto["contextTokens"]) <= float(limite):
         fraccion_contexto = float(foto["contextTokens"]) / float(limite)
 
     gastado, campo = presupuesto.consumido(resumen, politica)
@@ -68,6 +72,8 @@ def de(libro, session_id, politica=None, task_id=""):
         "context": {
             "tokens": foto.get("contextTokens"),
             "limit": limite,
+            "source": foto.get("source"),
+            "diagnostic": foto.get("diagnostic"),
             "fraction": fraccion_contexto,
             "level": presupuesto.nivel(
                 fraccion_contexto,

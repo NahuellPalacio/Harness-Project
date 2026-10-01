@@ -3,6 +3,49 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.28.0] — 2026-10-01
+
+**La Context Bar muestra cuánto de la ventana de contexto se está usando desde la primera respuesta
+de Claude, sin configurar nada.** Hasta 0.27.0 un proyecto recién instalado veía `Ctx 10k` y nunca un
+porcentaje ni un color: faltaban el tamaño de la ventana y los umbrales. Ahora el instalador deja una
+política solo de contexto, y la barra lee la ventana que manda Claude Code. Es un cambio verificado,
+con 78 escenarios sostenidos y ninguno contradicho.
+
+### Agregado
+
+- **`Ctx NN%` con la primera observación de Claude Code** — el porcentaje sale del tamaño de ventana
+  que manda Claude Code a la `statusLine`. Si no lo manda, la barra sigue mostrando tokens
+  (`Ctx 134k`) y no inventa un límite
+- **Una política solo de contexto, sembrada al instalar** — `.claude/harness.presupuesto.json`, con
+  `WARNING` al 70% y `ERROR` al 90%, y sin ningún límite de plata. Esos números son defaults del
+  harness, no una exigencia de ES0901 ni de ES0902
+- **`dev-harness.py presupuesto --context-defaults`** — agrega los umbrales de contexto que le falten
+  a una política que ya tenías. No toca nada más y nunca agrega límites de plata
+- **`setup` y `harness --verbose` dicen el estado de la Context Bar** — la política (`DEFAULT`,
+  `PROJECT`, `MISSING` o `INVALID`), los umbrales y el presupuesto de plata. `harness --verbose` suma
+  la fuente de contexto, el límite de la ventana, el nivel actual, si el color está habilitado en el
+  proceso real de la barra, y por qué puede pintar o no
+
+### Cambiado
+
+- **`Ctx` y `Tok` son dos métricas distintas, y la doc lo dice** — `Ctx` es lo que ocupa la ventana
+  ahora, y `Tok` lo acumulado de la sesión. Después de un `/compact`, `Ctx` puede bajar mientras `Tok`
+  sigue subiendo
+- **El renderizador de la Context Bar pasa a `integrationVersion` `1.2.0`** — después del `-Update`
+  la barra queda en `RELOAD_REQUIRED` hasta que Claude Code corre el renderizador nuevo
+- **La señal de vida de la barra dice si el color está habilitado** (`presentation.ansi`) — una señal
+  vieja, sin ese campo, sigue valiendo y se informa como `SIN VERIFICAR`
+
+### Lo que no hace, a propósito
+
+- **No pisa una política que ya tenías.** Ni el instalador ni el `-Update` la tocan. Si le faltan los
+  umbrales de contexto, `setup` lo dice por nombre
+- **No usa el `cost` que manda Claude Code a la `statusLine`.** El costo sigue saliendo de la
+  transcripción, por el Bloque 4
+- **Nunca muestra más de 100%.** Si Claude Code informa más tokens que ventana, la barra dibuja los
+  tokens sin color y `harness --verbose` muestra `CONTEXT_WINDOW_PROVIDER_INCONSISTENT`
+- **Con `NO_COLOR` definida, la barra sigue sin colores**, igual que en 0.27.0
+
 ## [0.27.0] — 2026-09-30
 
 **El conocimiento normativo se vuelve a mirar solo, en momentos controlados, y la Context Bar muestra

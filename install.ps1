@@ -1326,6 +1326,40 @@ function Get-EstadoDeLaBarra {
 }
 
 
+function Get-UmbralesDeContexto {
+    <#
+    .SYNOPSIS
+        Los umbrales de contexto de .claude\harness.presupuesto.json, para decirlos al terminar.
+    .DESCRIPTION
+        Devuelve Legible (si el archivo parseó), Warning y Error en porcentaje entero -o $null si
+        faltan- y Faltan, los nombres de los que no están. Solo lee: una política que existe no
+        se toca nunca (docs/cambios/context-bar-consumo-desde-instalacion). Sin Python, como
+        Get-EstadoDeLaBarra.
+    #>
+    param([string] $Ruta)
+    $r = [pscustomobject]@{ Legible = $false; Warning = $null; Error = $null
+                            Faltan = @('contextWarningAt', 'contextErrorAt') }
+    if (-not (Test-Path -LiteralPath $Ruta -PathType Leaf)) { return $r }
+    try { $p = Read-TextoUtf8 $Ruta | ConvertFrom-Json } catch { return $r }
+    if ($null -eq $p) { return $r }
+    $r.Legible = $true
+    $barra = $null
+    if ($p.PSObject.Properties['statusBar']) { $barra = $p.statusBar }
+    $faltan = @()
+    foreach ($par in @(@('contextWarningAt', 'Warning'), @('contextErrorAt', 'Error'))) {
+        $valor = $null
+        if ($null -ne $barra -and $barra.PSObject.Properties[$par[0]]) { $valor = $barra.($par[0]) }
+        if ($null -eq $valor -or -not ($valor -is [double] -or $valor -is [int] -or $valor -is [long] -or $valor -is [decimal])) {
+            $faltan += $par[0]
+        } else {
+            $r.($par[1]) = [int][math]::Round([double]$valor * 100)
+        }
+    }
+    $r.Faltan = $faltan
+    return $r
+}
+
+
 function Get-EtiquetaDeLaBarra {
     <# El estado de la barra como lo dice la bienvenida. Un id que no está acá sale tal cual. #>
     param([string] $Estado)
@@ -1739,6 +1773,9 @@ function Invoke-Instalar {
         EscribirPaso ".claude\harness.lock.json"
         EscribirPaso ".claude\harness.installation.json  (solo si la instalación termina bien)"
         EscribirPaso ".claude\harness.config.json  (solo si no existe)"
+        if ($Ids -contains 'desarrollo') {
+            EscribirPaso ".claude\harness.presupuesto.json  (solo si no existe: umbrales de contexto de la Context Bar)"
+        }
         EscribirPaso "CLAUDE.md  (solo el bloque marcado)"
         EscribirPaso ".gitignore (solo el bloque marcado)"
         EscribirPaso "backup de lo que se pise en $dirBackup"
@@ -1874,6 +1911,28 @@ function Invoke-Instalar {
         }
         # harness.integraciones.json ya no se siembra: es la proyección que genera el
         # bootstrap desde el .env (paso 8c). Tampoco entra al lockfile.
+    }
+
+    # 5c. La política de la Context Bar (docs/cambios/context-bar-consumo-desde-instalacion).
+    # Sin umbrales de contexto la barra no pinta nunca, y una instalación nueva no tenía ninguno.
+    # Se copia la plantilla SOLO si el archivo no existe: una política que existe es del
+    # proyecto, y ni la instalación ni -Update la tocan, aunque le falten umbrales -eso lo agrega
+    # `dev-harness.py presupuesto --context-defaults`, y solo si alguien lo pide-.
+    #
+    # 🔴 No entra a $instalados, igual que harness.config.json: -Update compararía su hash y la
+    # trataría como un archivo del harness editado a mano, y -Uninstall la borraría.
+    #
+    # Es de contexto y nada más: billingMode UNKNOWN y ningún límite de plata. El 70% y el 90%
+    # son defaults de este harness, no una regla de ES0901 ni de ES0902.
+    $rutaPolitica = Join-Path $dirClaude 'harness.presupuesto.json'
+    if ($Ids -contains 'desarrollo') {
+        if (Test-Path -LiteralPath $rutaPolitica) {
+            EscribirOk 'harness.presupuesto.json ya existía: no se toca'
+        } else {
+            Copy-Item -LiteralPath (Join-Path $script:Repo 'harnesses\desarrollo\reglas\budget-policy-context-default.json') `
+                      -Destination $rutaPolitica
+            EscribirOk 'harness.presupuesto.json creado con la política por defecto de la Context Bar: umbrales de contexto y ningún límite de plata'
+        }
     }
 
     # 6. Bloques en archivos del humano.
@@ -2029,6 +2088,19 @@ secrets/
             EscribirAviso 'Context Bar configurada. Reiniciá la sesión de Claude Code para activarla.'
         } elseif ($estadoBarra) {
             EscribirPaso "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra)"
+        }
+
+        # Los umbrales que quedaron, sin prometer un porcentaje: la instalación no dibujó
+        # ninguno, y el límite de la ventana llega recién con la primera respuesta del modelo.
+        $umbrales = Get-UmbralesDeContexto -Ruta $rutaPolitica
+        if (-not $umbrales.Legible) {
+            EscribirAviso 'no se pudo leer .claude\harness.presupuesto.json: la barra lo va a dibujar como "presupuesto ilegible". No se toca; arreglalo a mano.'
+        } elseif ($umbrales.Faltan.Count -gt 0) {
+            EscribirAviso ("la política del proyecto no tiene " + ($umbrales.Faltan -join ' ni ') + ': Ctx no va a tomar color. La política no se toca.')
+            EscribirPaso  'Para agregarlos sin tocar el resto: python .claude\harness\bin\desarrollo\dev-harness.py presupuesto --context-defaults'
+        } else {
+            EscribirOk ("Umbrales de contexto configurados: WARNING {0}% / ERROR {1}%" -f $umbrales.Warning, $umbrales.Error)
+            EscribirPaso 'El porcentaje aparecerá con la primera observación de contexto de Claude Code.'
         }
     }
 

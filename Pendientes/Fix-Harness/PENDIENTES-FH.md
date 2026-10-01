@@ -127,11 +127,12 @@ zones in the first place. Fix unknown: either the zones get defined retroactivel
 decision — which of the file's sections is "fija" vs "cache" vs unzoned prose is not obvious), or
 `techoFueraDeZonas` needs a meaning that holds even for a file with zero zones marked.
 
-### `CLAUDE.md` states the gate runs 24875 tests, and it runs 37568
+### `CLAUDE.md` states the gate runs 24875 tests, and it runs 38025
 
 Seen on 2026-09-30: `.\tests\Invoke-Tests.ps1` passed 37568/37568 (514 PowerShell, 37054 Python),
-and `CLAUDE.md`, under `## The gate`, still says "24875 tests". The number is loaded on every turn
-and has drifted by half. Every agent that reads it learns a count that no run produces, and a count
+and `CLAUDE.md`, under `## The gate`, still says "24875 tests". The same day, after
+`context-bar-consumo-desde-instalacion`, the gate passed 38025/38025 (592 and 37433). The number is
+loaded on every turn and has drifted by more than half. Every agent that reads it learns a count that no run produces, and a count
 that looks wrong cannot flag a run that is actually short.
 
 Fix. Either drop the number from `CLAUDE.md`, or have the budget check compare it against the last
@@ -923,6 +924,33 @@ follows contradicts a scenario:
 Fix. Harden the listed tests one at a time, each seen red under the defect it names. Correct
 `docs/reporte-de-seguridad.md` and the spec's table. Either add a scenario for "no compara versiones"
 or reword the decision.
+
+### The Context Bar consumption change closed with two literal-ban tests and six uncovered edges
+
+Found by the refuter on `context-bar-consumo-desde-instalacion`, on 2026-09-30. The change closed at
+78/78 sostenidos. None of what follows contradicts a scenario:
+- **E-09 and E-10 ban literals, and are bypassed in one line.** A `_VENTANA_POR_DEFECTO = 2 * 10 ** 5`
+  in `barra.py` leaves `62_context_bar_consumo` at 335/335 (probe R04). So does a field name split
+  in two, like `"context_" + "window"`. `costos.py` itself now says `float(10 ** 6)` to get past
+  E-10. The real defence is behavioural: E-06, E-22 and E-49 go red under an invented limit.
+- **Superseding E-22 of `53_context_bar.py` dropped the partial-window case.** No test covers one
+  context total present and the other missing. The code leaves it unresolved.
+- **E-08 does not pin the snapshot's timestamp.** With the clock instead of the last model call, E-08
+  stays green (R03); only E-19 catches it.
+- **E-66 simulates 1.1.0** by editing the `INTEGRATION_VERSION` line of the 1.2.0 renderer and
+  rehashing the lockfile. It never installs the `statusline.py` and `claude_code.py` of 0.27.0.
+- **`current_usage` with zeros (not `null`) and both totals at 0 writes a snapshot of 0 and draws
+  `Ctx 0%`.** E-05 covers only `null`. Whether Claude Code ever sends that shape is not known.
+- **A snapshot without `transcript_path` takes the clock time** (`momento` is `None`).
+- **`-Uninstall` keeps the seeded `.claude/harness.presupuesto.json`,** because it is not in the
+  lockfile, and its message still says only "backups y tu harness.config.json".
+- **`docs/contabilidad.md` still says 8.811 bytes for the largest event.** The number was stale
+  before this change, according to its builder, and nobody re-measured it.
+
+Fix. For E-09 and E-10, replace the literal scans with behavioural assertions, or with an AST check
+over numeric constants. Add a partial-totals case and a zeros case to the adapter tests; for the
+zeros case, decide first whether it counts as "no observation". Pin the timestamp in E-08. Install
+the 0.27.0 renderer for real in E-66. Say in the `-Uninstall` message that the policy stays.
 
 ## Installer defects
 

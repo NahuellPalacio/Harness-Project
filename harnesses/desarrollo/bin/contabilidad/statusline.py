@@ -4,19 +4,23 @@
 El cliente la invoca al empezar la sesion y despues de cada mensaje, con un JSON por stdin.
 En cada invocacion hace cinco cosas, en este orden:
 
-    1. lee de stdin `session_id` y `transcript_path`, y nada mas;
-    2. ingiere la transcripcion con el adaptador que declara el registro, al libro de la
-       sesion (.claude/runtime/accounting/<session_id>/ledger.jsonl). El libro deduplica por
-       eventId: ingerir dos veces no suma dos veces;
+    1. lee de stdin `session_id` y `transcript_path`, y le pasa el JSON entero, ya parseado,
+       al adaptador de la barra (registro.DE_LA_BARRA);
+    2. ingiere la transcripcion con ese adaptador, al libro de la sesion
+       (.claude/runtime/accounting/<session_id>/ledger.jsonl), y si el adaptador saco del stdin
+       una foto de la ventana, la anota como CONTEXT_WINDOW_OBSERVED. El libro deduplica por
+       eventId: ingerir o anotar dos veces lo mismo no suma nada;
     3. pide `barra.de(...)` y lo dibuja en UNA linea;
     4. escribe su senal de vida, .claude/runtime/contextbar.json, con
-       bienvenida.escribir_senal_de_vida y la huella que el comando le paso como ultimo
-       argumento: es lo unico que prueba que la barra esta activa;
+       bienvenida.escribir_senal_de_vida, la huella que el comando le paso como ultimo
+       argumento y si este proceso tiene NO_COLOR: es lo unico que prueba que la barra esta
+       activa, y lo unico que sabe como se ven sus colores;
     5. sale con 0 siempre, y nunca en blanco: si algo falla dibuja LINEA_SIN_DATOS.
 
-🔴 El costo y el contexto que el cliente manda por stdin NO se usan. Dibujarlos seria una
-segunda fuente contable: el Bloque 4 es la unica, y si esos datos hacen falta entran por un
-adaptador, no por aca.
+🔴 El costo que el cliente manda por stdin NO se usa. Dibujarlo seria una segunda fuente
+contable: el Bloque 4 es la unica. La ventana si entra, y entra por el adaptador, que es el unico
+que sabe como se llaman sus campos: este archivo no nombra ninguno
+(docs/cambios/context-bar-consumo-desde-instalacion).
 
 🔴 Un campo que el Bloque 4 no tiene no aparece. No sale como 0, ni como `?`: un costo
 COST_UNRESOLVED no es `USD 0`, y una ventana sin limite conocido no tiene porcentaje.
@@ -39,7 +43,7 @@ import os
 import re
 import sys
 
-INTEGRATION_VERSION = "1.1.0"
+INTEGRATION_VERSION = "1.2.0"
 
 LINEA_SIN_DATOS = "HARNESS | sin datos del Bloque 4"
 _SEPARADOR = " | "
@@ -84,11 +88,11 @@ def _bloque4():
     """Los modulos del Bloque 4. Un import que falla es SOURCE_UNAVAILABLE, no un traceback."""
     if _BIN not in sys.path:
         sys.path.insert(0, _BIN)
-    from contabilidad import barra, libro, presupuesto, tiempo
+    from contabilidad import barra, eventos, libro, presupuesto, tiempo
     from contabilidad.adaptadores import contrato, registro
     from contexto import limpieza
-    return {"barra": barra, "libro": libro, "presupuesto": presupuesto, "tiempo": tiempo,
-            "contrato": contrato, "registro": registro, "limpieza": limpieza}
+    return {"barra": barra, "eventos": eventos, "libro": libro, "presupuesto": presupuesto,
+            "tiempo": tiempo, "contrato": contrato, "registro": registro, "limpieza": limpieza}
 
 
 _BIENVENIDA = []
@@ -115,24 +119,32 @@ def bienvenida():
 
 # -- 1. la entrada -------------------------------------------------------------------
 
-def leer_entrada(crudo):
-    """(session_id, transcript_path) de lo que llego por stdin, o (None, None).
-
-    Del JSON se leen esas dos claves y ninguna otra: ni `cost`, ni el contexto, ni el modelo.
-    """
+def _entrada(crudo):
+    """(session_id, transcript_path, el JSON entero) de lo que llego por stdin, o
+    (None, None, None). El JSON entero es para el adaptador: aca no se mira adentro."""
     try:
         datos = json.loads((crudo or b"").decode("utf-8-sig"))
     except (ValueError, UnicodeDecodeError):
-        return None, None
+        return None, None, None
     if not isinstance(datos, dict):
-        return None, None
+        return None, None, None
     sesion = datos.get("session_id")
     transcripcion = datos.get("transcript_path")
     if not isinstance(sesion, str) or not _SESION_VALIDA.match(sesion) \
             or sesion in (".", ".."):
-        return None, None
+        return None, None, None
     if not isinstance(transcripcion, str) or not transcripcion.strip():
         transcripcion = None
+    return sesion, transcripcion, datos
+
+
+def leer_entrada(crudo):
+    """(session_id, transcript_path) de lo que llego por stdin, o (None, None).
+
+    Son las dos claves que lee la barra. El resto del JSON -la ventana, el costo, el modelo-
+    no lo lee: la ventana se la pasa entera al adaptador, y el costo no lo usa nadie.
+    """
+    sesion, transcripcion, _ = _entrada(crudo)
     return sesion, transcripcion
 
 
@@ -154,41 +166,92 @@ def ultima_linea(leidos, archivo):
     return hasta
 
 
-def ingerir(b4, proyecto, sesion, transcripcion, politica):
-    """Pasa lo nuevo de la transcripcion al libro de la sesion y devuelve el libro leido.
+def foto_de_la_ventana(b4, sesion, entrada, cursor, conocidos=(), momento=None):
+    """El evento CONTEXT_WINDOW_OBSERVED de este stdin, o None.
+
+    None si el adaptador no saco ninguna observacion, si el libro ya la tiene -mismo eventId:
+    la misma ventana sobre la misma transcripcion-, o si no se pudo armar. Una foto que no se
+    puede anotar no tira la barra: la linea sigue con lo que ya hay en el libro.
+
+    `momento` es la marca del ultimo evento de la sesion: la ventana que se ve es la que quedo
+    despues de esa respuesta. Con eso el libro no depende del reloj -la misma sesion da el mismo
+    libro, byte a byte- y la hora sigue sin entrar en la identidad de la foto.
+    """
+    contrato, registro = b4["contrato"], b4["registro"]
+    try:
+        reg = registro.contexto_de_la_barra(entrada, sesion=sesion, cursor=cursor)
+        if reg is None:
+            return None
+        if momento and not reg.get("timestamp"):
+            reg["timestamp"] = momento
+        adaptador = registro.DE_LA_BARRA
+        if contrato.id_de(reg, adaptador) in conocidos:
+            return None
+        return contrato.a_evento(reg, sesion, adaptador, None, contrato.tipo_de(reg),
+                                 sessionId=sesion)
+    except Exception:                   # noqa: BLE001 - sin foto la barra dibuja igual
+        return None
+
+
+def ingerir(b4, proyecto, sesion, transcripcion, politica, entrada=None):
+    """Pasa lo nuevo de la transcripcion al libro de la sesion, anota la foto de la ventana si
+    el stdin trajo una, y devuelve el libro leido.
 
     Se saltea antes de convertir lo que el libro ya tiene: el id del evento se sabe desde el
     registro, y convertir y validar cientos de registros viejos en cada mensaje era lo que
     hacia lenta a la barra. Un registro sin resolver -la transcripcion todavia no tiene
     consumo- no se escribe: su id se inventa en cada corrida, y la barra dejaria uno por
     mensaje.
+
+    La foto va despues de lo ingerido, en la misma escritura, y su identidad lleva el cursor de
+    la transcripcion YA con lo de esta corrida: la misma ventana vista otra vez despues de que
+    la sesion avanzo es otra observacion, y la ultima del libro es la de ahora.
     """
     libro, contrato, registro = b4["libro"], b4["contrato"], b4["registro"]
     ruta = libro.ruta_de(proyecto, sesion)
     leidos = libro.leer(ruta)
+    adaptador = registro.DE_LA_BARRA
+    conocidos = set(str(e.get("eventId") or "") for e in leidos)
+    archivo = os.path.basename(transcripcion) if transcripcion else None
+    por_escribir = []
     if transcripcion and os.path.isfile(transcripcion):
-        adaptador = registro.DE_LA_BARRA
-        conocidos = set(str(e.get("eventId") or "") for e in leidos)
         leidas = registro.resolver(adaptador).leer(
-            transcripcion, rapido=True,
-            desde_linea=ultima_linea(leidos, os.path.basename(transcripcion)))
+            transcripcion, rapido=True, desde_linea=ultima_linea(leidos, archivo))
         nuevos = [r for r in leidas
                   if r.get("state") != contrato.SIN_RESOLVER
                   and contrato.id_de(r, adaptador) not in conocidos]
         if nuevos:
-            eventos_ = contrato.a_eventos(nuevos, sesion, adaptador, politica, sessionId=sesion)
-            escritos, _, _ = libro.agregar_varios(ruta, eventos_)
-            if escritos:
-                leidos = libro.leer(ruta)
+            por_escribir = contrato.a_eventos(nuevos, sesion, adaptador, politica,
+                                              sessionId=sesion)
+    cursor = ultima_linea(leidos + por_escribir, archivo) if archivo else 0
+    # La marca de la ultima llamada al modelo: ni otra foto, ni un agregado del proveedor, que
+    # es un estado acumulado de la sesion y no una respuesta.
+    momento = None
+    for evento in leidos + por_escribir:
+        if evento.get("eventType") != b4["eventos"].FOTO_DE_VENTANA and evento.get("timestamp") \
+                and not (evento.get("metadata") or {}).get("providerAggregate"):
+            momento = str(evento["timestamp"])
+    foto = foto_de_la_ventana(b4, sesion, entrada, cursor, conocidos, momento)
+    if foto is not None:
+        por_escribir.append(foto)
+    if por_escribir:
+        escritos, _, _ = libro.agregar_varios(ruta, por_escribir)
+        if escritos:
+            leidos = libro.leer(ruta)
     return leidos
 
 
 # -- 3. el dibujo --------------------------------------------------------------------
 
+# Un millon, escrito como potencia: ningun `.py` de la contabilidad lleva el literal de un tamano
+# de ventana (docs/cambios/context-bar-consumo-desde-instalacion, E-10). Dibuja lo mismo que antes.
+_MILLON = 10 ** 6
+
+
 def _cantidad(n):
     n = int(n)
-    if n >= 1000000:
-        return "%.1fM" % (n / 1000000.0)
+    if n >= _MILLON:
+        return "%.1fM" % (n / float(_MILLON))
     if n >= 1000:
         return "%dk" % int(round(n / 1000.0))
     return str(n)
@@ -316,7 +379,7 @@ def correr(crudo, proyecto, momento=None, huella=None):
     todavia-, SOURCE_UNAVAILABLE si no se pudo cargar, ingerir o leer. None si no hubo senal:
     sin sesion no hay a quien atribuirla.
     """
-    sesion, transcripcion = leer_entrada(crudo)
+    sesion, transcripcion, entrada = _entrada(crudo)
     if not proyecto or not sesion:
         return LINEA_SIN_DATOS, None
 
@@ -333,7 +396,7 @@ def correr(crudo, proyecto, momento=None, huella=None):
                 os.path.join(proyecto, ".claude", "harness.presupuesto.json"))
         except (ValueError, OSError, b4["presupuesto"].PoliticaInvalida):
             politica, politica_ilegible = None, True
-        libro_leido = ingerir(b4, proyecto, sesion, transcripcion, politica)
+        libro_leido = ingerir(b4, proyecto, sesion, transcripcion, politica, entrada)
         block4 = "OK"
         if b4["barra"].de_sesion(libro_leido, sesion):
             estado = b4["barra"].de(libro_leido, sesion, politica)
@@ -342,8 +405,12 @@ def correr(crudo, proyecto, momento=None, huella=None):
         linea = LINEA_SIN_DATOS
 
     try:
-        bienvenida().escribir_senal_de_vida(proyecto, sesion, block4, INTEGRATION_VERSION,
-                                            momento=momento, huella=huella)
+        modulo = bienvenida()
+        # Lo que ve ESTE proceso, que es el que corre el cliente: el shell de quien pregunta
+        # despues por `harness --verbose` puede tener otro entorno.
+        ansi = modulo.ANSI_ENABLED if colores_habilitados() else modulo.ANSI_DISABLED_NO_COLOR
+        modulo.escribir_senal_de_vida(proyecto, sesion, block4, INTEGRATION_VERSION,
+                                      momento=momento, huella=huella, presentacion=ansi)
     except Exception:                   # noqa: BLE001 - sin senal la barra dibuja igual
         block4 = None
     return linea, block4

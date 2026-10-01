@@ -1,9 +1,13 @@
 """El vocabulario de eventos y su contrato.
 
-Trece tipos, y ninguno lo emite un agente. El id de un evento derivado de una fuente es
+Catorce tipos, y ninguno lo emite un agente. El id de un evento derivado de una fuente es
 DETERMINISTICO: sale del adaptador, del tipo y de la clave de deduplicacion. Volver a
 ingerir la misma transcripcion tiene que ser inofensivo, y lo unico que lo garantiza es
 que el segundo evento traiga el mismo id que el primero.
+
+El catorce, CONTEXT_WINDOW_OBSERVED, es una FOTO de la ventana que informo el proveedor
+(docs/cambios/context-bar-consumo-desde-instalacion). No es una llamada al modelo: no lleva
+`usage` ni `cost`, y la agregacion no la suma, no la cuenta y no la atribuye.
 """
 import datetime
 import hashlib
@@ -34,12 +38,36 @@ TIPOS = (
     "MODEL_ESCALATION_REQUESTED",
     "BUDGET_DECISION_RECORDED",
     "ACCOUNTING_CORRECTION",
+    "CONTEXT_WINDOW_OBSERVED",
 )
 
 # Los que traen consumo y por lo tanto entran en la agregacion de tokens.
 TIPOS_CON_USO = ("MODEL_CALL_COMPLETED", "TOOL_CALL_COMPLETED", "ACCOUNTING_CORRECTION")
 
 CORRECCION = "ACCOUNTING_CORRECTION"
+
+# La foto de la ventana. Sus numeros viajan en `contextWindow`, no en `usage`: un evento de uso
+# con ceros entraria a los conteos, a la conciliacion y a la atribucion.
+FOTO_DE_VENTANA = "CONTEXT_WINDOW_OBSERVED"
+
+# Mas tokens que ventana: el proveedor informo algo que no puede ser. No se corrige ni se
+# recorta a 100%: se dice.
+VENTANA_INCONSISTENTE = "CONTEXT_WINDOW_PROVIDER_INCONSISTENT"
+
+
+def entero_no_negativo(valor):
+    """True si es un entero de verdad y no es negativo. Un booleano no es una cantidad."""
+    return isinstance(valor, int) and not isinstance(valor, bool) and valor >= 0
+
+
+def diagnostico_de_ventana(tokens, limite):
+    """VENTANA_INCONSISTENTE si hay mas tokens que ventana; None si no, o si falta alguno.
+
+    No es un nivel ni un umbral: es un control de coherencia de lo que informo el proveedor.
+    El nivel lo sigue calculando `presupuesto.nivel`, y con esta foto no calcula ninguno."""
+    if entero_no_negativo(tokens) and entero_no_negativo(limite) and limite and tokens > limite:
+        return VENTANA_INCONSISTENTE
+    return None
 
 # 🔴 `metadata` es un objeto libre en el schema porque el validador de subconjunto no sabe
 # decir "nada mas que esto". Las claves permitidas se cierran ACA, y la lista es corta a
@@ -268,7 +296,7 @@ def nuevo(tipo, task_id, adaptador, **campos):
     """Un evento armado y validado. Levanta si no cumple el contrato."""
     if tipo not in TIPOS:
         raise EventoInvalido(
-            "`%s` no es un tipo de evento. Los trece son: %s." % (tipo, ", ".join(TIPOS)))
+            "`%s` no es un tipo de evento. Los catorce son: %s." % (tipo, ", ".join(TIPOS)))
     if not str(task_id or ""):
         raise EventoInvalido("un evento sin taskId no tiene libro donde escribirse.")
 
@@ -284,7 +312,7 @@ def nuevo(tipo, task_id, adaptador, **campos):
         },
     }
     for nombre in ("projectId", "sessionId", "workUnitId", "agentId", "dedupKey",
-                   "correctsEventId", "usage", "time", "cost", "metadata"):
+                   "correctsEventId", "usage", "time", "cost", "contextWindow", "metadata"):
         if nombre in campos:
             evento[nombre] = campos[nombre]
 

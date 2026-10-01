@@ -23,6 +23,22 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.27.0 → 0.28.0
+
+`-Update` alcanza. Lo nuevo se ve al terminar:
+
+- **Si el proyecto no tenía `.claude/harness.presupuesto.json`, el `-Update` lo crea**, solo con
+  umbrales de contexto: `WARNING` al 70% y `ERROR` al 90%, sin límites de plata.
+- **Si ya tenía una política, no se toca.** Si le faltan los umbrales de contexto, `setup` lo dice.
+  Para agregarlos sin cambiar nada más:
+
+  ```powershell
+  python .claude\harness\bin\desarrollo\dev-harness.py presupuesto --context-defaults
+  ```
+
+- **La Context Bar queda en `RELOAD_REQUIRED`** hasta que Claude Code corre el renderizador nuevo
+  (`1.2.0`). El porcentaje aparece con la primera respuesta de Claude después de eso.
+
 ## 0.26.0 → 0.27.0
 
 `-Update` alcanza. No hay que hacer nada a mano. Lo nuevo se ve al terminar:

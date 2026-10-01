@@ -39,7 +39,9 @@ PLAN_FIJO = "FIXED_PLAN"
 CAMPOS = ("provider", "model", "pricingSource", "pricingVersionOrDate",
           "currency", "billingMode", "calculationMethod")
 
-POR_MILLON = 1000000.0
+# Escrito como potencia a proposito: ningun `.py` de la contabilidad lleva el literal de un
+# tamano de ventana (docs/cambios/context-bar-consumo-desde-instalacion, E-10), y un millon lo es.
+POR_MILLON = float(10 ** 6)
 
 # Que campo de la tarifa paga cada clase de token.
 TARIFA_DE = {

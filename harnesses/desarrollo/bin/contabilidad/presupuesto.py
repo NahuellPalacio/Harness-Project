@@ -89,6 +89,71 @@ def cargar(ruta):
     return politica
 
 
+# -- la politica por defecto de la Context Bar -------------------------------------------------
+#
+# La siembra install.ps1 en `.claude/harness.presupuesto.json` si falta
+# (docs/cambios/context-bar-consumo-desde-instalacion). Es de CONTEXTO y nada mas: ningun limite
+# de plata. Sus numeros viven en el archivo de la plantilla, no aca: 70% y 90% son defaults de
+# producto del harness, y un umbral escondido en el codigo es uno que nadie puede cambiar.
+
+PLANTILLA_DE_CONTEXTO = "budget-policy-context-default.json"
+
+# Que politica hay instalada. DEFAULT es "parseada, igual a la plantilla", no "tiene su
+# policyId": una con ese id y un hardLimit agregado a mano ya no es la del harness.
+POLITICA_DEFAULT = "DEFAULT"
+POLITICA_DEL_PROYECTO = "PROJECT"
+POLITICA_AUSENTE = "MISSING"
+POLITICA_INVALIDA = "INVALID"
+
+UMBRALES_DE_CONTEXTO = ("contextWarningAt", "contextErrorAt")
+
+
+def umbrales_de_contexto_que_faltan(politica):
+    """Los nombres de los umbrales de contexto que la politica no declara, o declara en null."""
+    barra = (politica or {}).get("statusBar")
+    barra = barra if isinstance(barra, dict) else {}
+    return [k for k in UMBRALES_DE_CONTEXTO if barra.get(k) is None]
+
+
+def clase_de_politica(ruta, plantilla):
+    """(clase, politica o None, motivo). La lee `cargar`; no escribe nada.
+
+    MISSING sin archivo, INVALID si no parsea o no valida, DEFAULT si es igual a `plantilla` y
+    PROJECT si es cualquier otra politica valida.
+    """
+    try:
+        politica = cargar(ruta)
+    except (ValueError, OSError, PoliticaInvalida) as e:
+        return POLITICA_INVALIDA, None, str(e)
+    if politica is None:
+        return POLITICA_AUSENTE, None, ""
+    if plantilla is not None and politica == plantilla:
+        return POLITICA_DEFAULT, politica, ""
+    return POLITICA_DEL_PROYECTO, politica, ""
+
+
+def con_umbrales_de_contexto(politica, plantilla):
+    """Una copia de `politica` con los umbrales de contexto que le faltan, con los valores de
+    `plantilla`. Todo lo demas queda con su valor y en su orden.
+
+    🔴 Agrega contextWarningAt y contextErrorAt, y nada mas: nunca un softLimit ni un
+    hardLimit. Un limite de plata lo decide el proyecto, no un comando del harness.
+    """
+    de_la_plantilla = (plantilla or {}).get("statusBar") or {}
+    faltan = umbrales_de_contexto_que_faltan(politica)
+    if any(de_la_plantilla.get(k) is None for k in faltan):
+        raise PoliticaInvalida("la plantilla %s no trae los umbrales de contexto."
+                               % PLANTILLA_DE_CONTEXTO)
+    nueva = json.loads(json.dumps(politica))
+    barra = nueva.get("statusBar")
+    if not isinstance(barra, dict):
+        barra = {}
+        nueva["statusBar"] = barra
+    for k in faltan:
+        barra[k] = de_la_plantilla[k]
+    return nueva
+
+
 def declarada(politica, ambito="task"):
     """True si hay al menos un limite declarado para ese ambito."""
     limites = (politica or {}).get(ambito) or {}

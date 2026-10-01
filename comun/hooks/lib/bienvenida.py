@@ -154,12 +154,19 @@ FUENTE_DE_LA_BARRA = "block4"
 #                                    argumento: huella_statusline() de su bloque> | null",
 #       "integrationVersion":       "<INTEGRATION_VERSION del renderizador>",
 #       "lastRenderedAt":           "<ahora(): YYYY-MM-DDTHH:MM:SS, hora local>",
-#       "block4":                   "OK" | "SOURCE_UNAVAILABLE"
+#       "block4":                   "OK" | "SOURCE_UNAVAILABLE",
+#       "presentation":             {"ansi": "ENABLED" | "DISABLED_NO_COLOR"}     opcional
 #     }
 #
-# 🔴 Esos cinco campos y ninguno mas: additionalProperties false. Un numero contable (tokens,
-# costo, contexto) no entra aca, vive en el libro del Bloque 4. Una senal con otra forma no se
-# toma por buena: la barra queda UNRESOLVED.
+# 🔴 Esos cinco campos obligatorios, `presentation` opcional, y ninguno mas: additionalProperties
+# false, arriba y adentro de `presentation`. Un numero contable (tokens, costo, contexto) no entra
+# aca, vive en el libro del Bloque 4. Una senal con otra forma no se toma por buena: la barra
+# queda UNRESOLVED.
+#
+# `presentation` la suma 1.2.0 (docs/cambios/context-bar-consumo-desde-instalacion): si el proceso
+# REAL de la statusLine tiene NO_COLOR, que no es el shell de quien corre `harness`. Una senal de
+# 1.1.0, sin ese campo, sigue cumpliendo y su ANSI es SIN VERIFICAR. No entra en el estado de la
+# barra: con o sin `presentation`, la misma senal da el mismo estado.
 #
 # La forma de escribirla sin equivocarse es `escribir_senal_de_vida`, con la huella que trajo el
 # comando, y escribe con .tmp + os.replace. Quien la escribe a mano tiene que respetar el orden
@@ -169,6 +176,16 @@ FUENTE_DE_LA_BARRA = "block4"
 SENAL_DE_VIDA = (".claude", "runtime", "contextbar.json")
 BLOCK4_OK = "OK"
 BLOCK4_SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE"
+ANSI_ENABLED = "ENABLED"
+ANSI_DISABLED_NO_COLOR = "DISABLED_NO_COLOR"
+# Lo que da ansi_de_la_senal sin una `presentation` que cumpla. Nunca se escribe en la senal.
+ANSI_UNVERIFIED = "UNVERIFIED"
+_FORMA_PRESENTACION = {
+    "type": "object",
+    "required": ["ansi"],
+    "additionalProperties": False,
+    "properties": {"ansi": {"type": "string", "enum": [ANSI_ENABLED, ANSI_DISABLED_NO_COLOR]}},
+}
 CONTRATO_SENAL = {
     "type": "object",
     "required": ["sessionId", "configurationFingerprint", "integrationVersion",
@@ -181,6 +198,7 @@ CONTRATO_SENAL = {
         "lastRenderedAt": {"type": "string",
                            "pattern": r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$"},
         "block4": {"type": "string", "enum": [BLOCK4_OK, BLOCK4_SOURCE_UNAVAILABLE]},
+        "presentation": _FORMA_PRESENTACION,
     },
 }
 
@@ -912,11 +930,23 @@ def leer_senal_de_vida(proyecto):
     return senal, problema
 
 
+def ansi_de_la_senal(senal):
+    """ANSI_ENABLED, ANSI_DISABLED_NO_COLOR o ANSI_UNVERIFIED. Pura: no lee nada.
+
+    UNVERIFIED sin senal, con algo que no es un objeto, sin `presentation`, o con una que no
+    cumple su forma del contrato. Es lo que dijo el proceso de la statusLine al dibujar, no el
+    entorno de quien pregunta."""
+    presentacion = senal.get("presentation") if isinstance(senal, dict) else None
+    if presentacion is None or not _cumple_o_falso(presentacion, _FORMA_PRESENTACION):
+        return ANSI_UNVERIFIED
+    return presentacion["ansi"]
+
+
 _DE_SETTINGS = object()
 
 
 def escribir_senal_de_vida(proyecto, session_id, block4, integration_version, momento=None,
-                           huella=_DE_SETTINGS):
+                           huella=_DE_SETTINGS, *, presentacion=None):
     """Lo que llama la barra despues de dibujar. `block4` es BLOCK4_OK o
     BLOCK4_SOURCE_UNAVAILABLE. Levanta ValueError con algo fuera del contrato, y OSError si no
     pudo escribir: la barra decide, y nunca por eso deja de dibujar.
@@ -925,7 +955,12 @@ def escribir_senal_de_vida(proyecto, session_id, block4, integration_version, mo
     tal cual (None si el comando no traia ninguna). Calcularla del settings.json de ahora
     haria que un comando viejo, todavia corriendo en una sesion sin reiniciar, probara la
     configuracion nueva (E-41). Sin el argumento se lee settings.json: es para quien escribe
-    una senal sin ser un comando registrado, como la suite."""
+    una senal sin ser un comando registrado, como la suite.
+
+    `presentacion` es ANSI_ENABLED o ANSI_DISABLED_NO_COLOR, visto en el proceso de la barra, y
+    se escribe como `presentation.ansi`. None, o cualquier otro valor, escribe la senal de 1.1.0
+    byte a byte, sin `presentation`: un valor que el contrato rechaza no se escribe, y tampoco
+    tira la senal entera."""
     if huella is _DE_SETTINGS:
         bloque, _ = leer_statusline(proyecto)
         huella = huella_statusline(bloque)
@@ -934,6 +969,8 @@ def escribir_senal_de_vida(proyecto, session_id, block4, integration_version, mo
              "integrationVersion": str(integration_version or ""),
              "lastRenderedAt": momento or ahora(),
              "block4": block4}
+    if isinstance(presentacion, str) and presentacion in (ANSI_ENABLED, ANSI_DISABLED_NO_COLOR):
+        senal["presentation"] = {"ansi": presentacion}
     if not _cumple_o_falso(senal, CONTRATO_SENAL):
         raise ValueError("la senal de vida no cumple el contrato de bienvenida.CONTRATO_SENAL")
     return escribir_estado(ruta_de_la_senal(proyecto), senal)
