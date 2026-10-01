@@ -74,6 +74,69 @@ _GIT_ESCRITURA = frozenset((
 _GIT_OPCIONES_CON_VALOR = ("-C", "-c", "--git-dir", "--work-tree", "--namespace")
 
 _PYTHON = re.compile(r"^(?:python[0-9.]*|py)(?:\.exe)?$", re.I)
+
+# La autoridad del flujo, y lo que ejecuta codigo por su cuenta: `.claude/` entero (el estado, los
+# bindings, los intents, las decisiones, el plan, el TaskContext, la refutacion, la CLI y los hooks
+# instalados, los settings) y `.git/` entero (core.fsmonitor, los hooks de git). Los escriben los
+# hooks, la CLI del Harness y git; una herramienta del modelo, nunca (Wave 4). Leerlos si se puede.
+_AUTORIDAD = re.compile(r"(?:^|[/\s\"'=:(;&|<>])\.(?:claude|git)(?=[/\s\"');&|<>]|$)", re.I)
+
+
+_CARPETAS_DE_AUTORIDAD = (".claude", ".git")
+_PEGADA_A_UNA_OPCION = re.compile(r"^-+[A-Za-z0-9]*\.(?:claude|git)$", re.I)
+
+
+def toca_autoridad(texto):
+    """Si un texto nombra `.claude` o `.git` como tramo de una ruta: en el texto crudo y en cada
+    palabra del comando, que es como lo va a leer el shell (`cd .claude;` o `cd .claude&&echo`)."""
+    if not isinstance(texto, str):
+        return False
+    if _AUTORIDAD.search(texto.replace("\\", "/")):
+        return True
+    try:
+        palabras = _tokens(texto)
+    except ValueError:
+        return True                                    # comillas sin cerrar: ante la duda, si
+    for palabra in palabras:
+        for tramo in palabra.replace("\\", "/").split("/"):
+            if tramo.rstrip(" .").lower() in (".claude", ".git") or tramo.lower() in (".claude", ".git"):
+                return True
+            if _PEGADA_A_UNA_OPCION.match(tramo.rstrip(" .")):   # `-o.claude/...`
+                return True
+    return False
+
+
+def _normalizada(ruta, base):
+    """La ruta como la va a abrir el sistema: contra `base`, sin `.`, `..` ni barras dobles, sin
+    los puntos y espacios finales que Windows ignora, y con los enlaces resueltos."""
+    ruta = ruta.replace("\\", "/")
+    if base and not os.path.isabs(ruta):
+        ruta = base.replace("\\", "/").rstrip("/") + "/" + ruta
+    tramos = [t if t in (".", "..") else t.rstrip(" .") or t for t in ruta.split("/")]
+    ruta = os.path.normpath("/".join(tramos))
+    try:
+        ruta = os.path.realpath(ruta)
+    except (OSError, ValueError):
+        pass
+    return os.path.normcase(ruta)
+
+
+def es_ruta_de_autoridad(ruta, proyecto=None, cwd=None):
+    """Si una ruta de archivo cae adentro de la autoridad del flujo de `proyecto`. Mira la ruta
+    normalizada, no el texto: `.claude/./runtime` o `.claude./runtime` son la misma carpeta."""
+    if not isinstance(ruta, str) or not ruta.strip():
+        return False
+    final = _normalizada(ruta, cwd or proyecto)
+    if toca_autoridad(final) or toca_autoridad(ruta):
+        return True
+    if not proyecto:
+        return False
+    raiz = _normalizada(proyecto, None)
+    for carpeta in _CARPETAS_DE_AUTORIDAD:
+        guarda = os.path.join(raiz, carpeta)
+        if final == guarda or final.startswith(guarda + os.sep):
+            return True
+    return False
 # La CLI del Harness es la instalada en ESTE proyecto: relativa, o absoluta dentro de el. Un
 # `dev-harness.py` en otra carpeta es un script cualquiera.
 _CLI_RELATIVA = ".claude/harness/bin/desarrollo/dev-harness.py"
@@ -107,9 +170,25 @@ def _nombra_env_en(tokens):
     return False
 
 
-def _resultado(clase, razon, clave=None, etapa=None, reconcilia=False):
+def _resultado(clase, razon, clave=None, etapa=None, reconcilia=False, intencion=None):
     return {"class": clase, "reason": razon, "taskKey": clave, "stage": etapa,
-            "reconcilia": reconcilia}
+            "reconcilia": reconcilia, "humanIntent": intencion, "protected": False}
+
+
+def _valor(argumentos, flag):
+    """El valor de `--flag v` o `--flag=v`, o None."""
+    for i, a in enumerate(argumentos):
+        if a == flag and i + 1 < len(argumentos):
+            return argumentos[i + 1]
+        if a.startswith(flag + "="):
+            return a.split("=", 1)[1]
+    return None
+
+
+# Los comandos que aplican una decision humana (Wave 4): FLOW_RECOVERY solo con un intent valido,
+# que la compuerta busca en la sesion del evento.
+_DECISIONES = {"--approve": "APPROVE", "--alternative": "USE_ALTERNATIVE", "--choose": "CHOOSE",
+               "--cancel": "CANCEL", "--answer": "ANSWER"}
 
 
 # -- el comando del Harness ----------------------------------------------------
@@ -123,6 +202,10 @@ def _harness(argumentos):
         return _resultado(UNRESOLVED, "dev-harness.py sin subcomando")
     sub, resto = argumentos[0], argumentos[1:]
     clave = resto[0] if resto and CLAVE.match(resto[0]) else None
+    repetidos = [a for a in resto if a.startswith("--")]
+    if len(set(a.split("=", 1)[0] for a in repetidos)) != len(repetidos):
+        # Un flag dos veces: la compuerta leeria uno y la CLI otro.
+        return _resultado(UNRESOLVED, "dev-harness.py con un flag repetido", clave)
     flags = set(a.split("=", 1)[0] for a in resto if a.startswith("--"))
     if "--proyecto" in flags:
         return _resultado(UNRESOLVED, "dev-harness.py sobre otro proyecto", clave)
@@ -133,7 +216,15 @@ def _harness(argumentos):
     if sub == "flujo":
         if clave and "--status" in flags and flags <= {"--status", "--json"}:
             return _resultado(FLOW_RECOVERY, "flujo --status", clave)
-        return _resultado(UNRESOLVED, "flujo sin --status", clave)
+        if clave and flags == {"--resume"}:
+            return _resultado(FLOW_RECOVERY, "flujo --resume", clave)
+        pedidas = [f for f in _DECISIONES if f in flags]
+        if clave and len(pedidas) == 1 and flags <= {pedidas[0], "--option", "--value", "--sesion"}:
+            return _resultado(FLOW_RECOVERY, "flujo %s" % pedidas[0], clave, intencion={
+                "action": _DECISIONES[pedidas[0]], "interactionId": _valor(resto, pedidas[0]),
+                "option": _valor(resto, "--option") or _valor(resto, "--value"),
+                "sesion": _valor(resto, "--sesion")})
+        return _resultado(UNRESOLVED, "flujo sin una accion conocida", clave)
     if sub == "contexto":
         if clave and flags <= {"--revalidar", "--json"}:
             return _resultado(FLOW_RECOVERY, "contexto", clave, "CONTEXT", True)
@@ -248,6 +339,11 @@ def _git(argumentos):
     return UNRESOLVED
 
 
+def _opcion_corta(argumentos, letra):
+    """Si `-<letra>` va sola, agrupada con otras o pegada a su valor."""
+    return any(a.startswith("-") and not a.startswith("--") and letra in a[1:] for a in argumentos)
+
+
 def _segmento(palabras, powershell):
     """La clase de un segmento simple: un programa y sus argumentos."""
     if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", palabras[0]):
@@ -261,12 +357,21 @@ def _segmento(palabras, powershell):
     lectura = (_LECTURA_POWERSHELL | _LECTURA_BASH) if powershell else _LECTURA_BASH
     if programa not in lectura:
         return UNRESOLVED
-    if programa == "find" and any(a in ("-delete", "-exec", "-execdir", "-ok", "-okdir",
-                                        "-fprint", "-fprintf", "-fls") for a in argumentos):
+    # Programas de lectura que tambien escriben. Una opcion corta se mira agrupada (`-uo`) y
+    # pegada a su valor (`-o<ruta>`), y una larga abreviada (`--out=`): getopt las lee igual.
+    if programa == "find" and any(a in ("-delete", "-exec", "-execdir", "-ok", "-okdir", "-fls")
+                                  or a.startswith("-fprint") for a in argumentos):
         return MUTATING
-    if programa in ("sort", "tree") and any(a == "-o" or a.startswith("--output")
-                                            for a in argumentos):
+    if programa in ("sort", "tree") and (_opcion_corta(argumentos, "o") or
+                                         any(a.startswith("--o") for a in argumentos)):
         return MUTATING
+    if programa == "sort" and any(a.startswith("--com") for a in argumentos):
+        return UNRESOLVED                        # --compress-program corre un programa
+    if programa == "uniq" and len([a for a in argumentos if not a.startswith("-")]) >= 2:
+        return MUTATING                          # uniq <entrada> <salida>
+    if programa == "file" and (_opcion_corta(argumentos, "C") or
+                               any(a.startswith("--comp") for a in argumentos)):
+        return MUTATING                          # -C escribe el .mgc
     if programa == "rg" and any(a.startswith("--pre") for a in argumentos):
         return UNRESOLVED                        # --pre corre un programa por archivo
     if programa == "hostname" and any(not a.startswith("-") for a in argumentos):
@@ -307,7 +412,9 @@ def _shell(tool, comando, proyecto=None, cwd=None):
     # Un comando del Harness, solo: `python <...>/dev-harness.py <subcomando> ...`.
     if len(segmentos) == 1 and len(segmentos[0]) >= 2 and _PYTHON.match(
             _programa(segmentos[0][0])) and _es_la_cli(segmentos[0][1], proyecto, cwd):
-        return _harness(segmentos[0][2:])
+        salida = _harness(segmentos[0][2:])
+        salida["cli"] = True
+        return salida
     clases = [_segmento(s, powershell) for s in segmentos]
     if MUTATING in clases:
         return _resultado(MUTATING, "un segmento escribe")
@@ -336,7 +443,17 @@ def clasificar(tool_name, tool_input, proyecto=None, cwd=None):
     """
     entrada = tool_input if isinstance(tool_input, dict) else {}
     if tool_name in _SHELLS:
-        return _shell(tool_name, entrada.get("command"), proyecto, cwd)
+        salida = _shell(tool_name, entrada.get("command"), proyecto, cwd)
+        if salida["class"] != READ_ONLY and not salida.get("cli") and \
+                toca_autoridad(entrada.get("command")):
+            salida.update({"class": MUTATING, "reason": "escribe la autoridad del flujo",
+                           "protected": True, "humanIntent": None})
+        return salida
+    if tool_name in _HERRAMIENTAS_QUE_ESCRIBEN and any(
+            es_ruta_de_autoridad(entrada.get(c), proyecto, cwd) for c in ("file_path", "notebook_path")):
+        salida = _resultado(MUTATING, "escribe la autoridad del flujo")
+        salida["protected"] = True
+        return salida
     if _nombra_env(entrada):
         return _resultado(UNRESOLVED, "nombra .env")
     if tool_name in _HERRAMIENTAS_DE_LECTURA:

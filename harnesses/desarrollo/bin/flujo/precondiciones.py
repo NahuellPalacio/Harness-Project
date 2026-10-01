@@ -77,13 +77,27 @@ def de_planificacion(task_context, gitlab, proyecto, config_harness):
     `gitlab` es la configuracion publica de GitLab que resuelve `entorno.py` desde el `.env`.
     `agents.routing` no esta: lo sabe el plan cuando arma las unidades.
     """
-    identidad = repositorio.identidad(task_context, gitlab, proyecto)
+    identidad = repositorio.identidad(task_context, gitlab, proyecto,
+                                      _eleccion(proyecto, task_context))
     hechos = dict(identidad["facts"])
     hechos["planning.taskContext"] = bool(
         ((task_context or {}).get("meta") or {}).get("task_key"))
     hechos["task.acceptanceCriteriaField"] = bool(
         str((config_harness or {}).get("campoCriteriosAceptacion") or "").strip())
     return {"facts": hechos, "repository": _sin_hechos(identidad)}
+
+
+def _eleccion(proyecto, task_context):
+    """El candidato que eligio una persona para esta tarea, sobre este mismo TaskContext."""
+    meta = (task_context or {}).get("meta") or {}
+    clave, hash_ = meta.get("task_key"), meta.get("context_hash")
+    if not clave or not hash_:
+        return None
+    from . import interaccion
+    try:
+        return interaccion.eleccion_de_repositorio(proyecto, clave, hash_)
+    except Exception:                                  # noqa: BLE001 - sin eleccion, el conflicto sigue
+        return None
 
 
 def _sin_hechos(identidad):
@@ -136,7 +150,7 @@ def compuerta_de_refutacion(proyecto, clave, gitlab, registro=None):
     """{stage, status, questions, repository}. No escribe nada: decide si se compila."""
     plan = _leer(os.path.join(proyecto, ".claude", "planes", clave + ".json"))
     contexto = _leer(os.path.join(proyecto, ".claude", "contextos", clave + ".json"))
-    identidad = repositorio.identidad(contexto, gitlab, proyecto)
+    identidad = repositorio.identidad(contexto, gitlab, proyecto, _eleccion(proyecto, contexto))
     hechos = {"refutation.planReady": plan_listo(plan),
               "refutation.contextFresh": contexto_vigente(plan, contexto),
               "refutation.repositoryMatch": identidad["status"] == repositorio.MATCHED}

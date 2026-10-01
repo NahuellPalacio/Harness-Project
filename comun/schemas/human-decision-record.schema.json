@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "human-decision-record/1.0",
+  "title": "HUMAN_DECISION_RECORD",
+  "description": "Una decision humana ya aplicada, para auditarla y para reconstruir el estado despues de un reinicio. La escribe harnesses/desarrollo/bin/estado_de_tarea/decisiones.py en .claude/runtime/tasks/<KEY>/decisions/<interactionId>.json, despues de consumir un human-intent/1.0. CANCEL y CHOOSE se derivan de aca; APPROVE y USE_ALTERNATIVE quedan ademas en el plan. No guarda el prompt, ni un secreto, ni el razonamiento de nadie. Ver docs/cambios/interaccion-humana/spec.md.",
+  "type": "object",
+  "required": ["schema_version", "taskKey", "interactionId", "action", "inputId", "workUnitId",
+               "optionId", "planFingerprint", "planFingerprintAfter", "contextHash",
+               "stateFingerprint", "sessionId", "decidedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "string", "enum": ["human-decision-record/1.0"]},
+    "taskKey": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$"},
+    "interactionId": {"type": "string", "pattern": "^ixn-[0-9a-f]{16}$"},
+    "action": {"type": "string", "enum": ["APPROVE", "USE_ALTERNATIVE", "CHOOSE", "CANCEL", "ANSWER"]},
+    "inputId": {"type": "string", "pattern": "^\\S"},
+    "workUnitId": {"type": ["string", "null"]},
+    "optionId": {"type": ["string", "null"]},
+    "planFingerprint": {"type": ["string", "null"]},
+    "planFingerprintAfter": {"type": ["string", "null"]},
+    "contextHash": {"type": ["string", "null"]},
+    "stateFingerprint": {"type": ["string", "null"]},
+    "sessionId": {"type": "string", "pattern": "^\\S"},
+    "decidedAt": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$"}
+  }
+}

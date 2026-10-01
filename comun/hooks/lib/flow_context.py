@@ -89,9 +89,10 @@ def _ubicacion(proyecto, pendiente):
 
 
 def _revalidar(estado, doc, vig, clave):
-    if estado.reanudar_desde(doc, vig) == "CONTEXT":
-        return "%s contexto %s" % (CLI, clave)
-    return "%s flujo %s --status" % (CLI, clave)
+    """Retomar es revalidar la fuente de lo pendiente: `flujo --resume`, que relee el `.env`,
+    vuelve a sondear la integracion si hace falta y reconcilia. Nunca `contexto` a secas, que lee
+    el registro de capacidades sin revalidarlo."""
+    return "%s flujo %s --resume (o escribí HARNESS RESUME %s)" % (CLI, clave, clave)
 
 
 def _bloque(estado, proyecto, clave, doc, vig, via):
@@ -117,11 +118,16 @@ def _bloque(estado, proyecto, clave, doc, vig, via):
             lineas.append("  La tarea es de %s y este checkout es de %s." % (
                 repo.get("taskRepository") or "—",
                 ", ".join(repo.get("localRepositories") or []) or "—"))
+        if ubicacion and ubicacion.get("present"):
+            lineas.append("  `%s` ya está cargado en %s, pero el estado guardado es de antes: falta "
+                          "retomar. Escribí HARNESS RESUME %s (el modelo corre `%s flujo %s --resume`)."
+                          % (ubicacion["key"], ubicacion["file"], clave, CLI, clave))
         if ubicacion:
             from flujo import entrada_humana
             lineas.append("")
             lineas.append(entrada_humana.renderizar(ubicacion, _revalidar(estado, doc, vig, clave)))
             lineas.append("")
+        lineas.extend(_decisiones(estado, proyecto, clave, doc))
         lineas.append("Mientras siga así solo pasan la lectura y la recuperación del flujo: nada "
                       "que modifique el proyecto. %s" % detalle)
         return "\n".join(lineas), ubicacion
@@ -129,6 +135,25 @@ def _bloque(estado, proyecto, clave, doc, vig, via):
     return ("Flujo · el estado de %s%s quedó desactualizado (%s): lo guardado ya no es lo de los "
             "artefactos. Regenerá la etapa que cambió antes de modificar el proyecto. %s" % (
                 clave, unica, ", ".join(desactualizado) or status, detalle)), None
+
+
+def _decisiones(estado, proyecto, clave, doc):
+    """Las interacciones abiertas y la linea exacta que la persona escribe para cada una."""
+    from flujo import interaccion
+    try:
+        abiertas = interaccion.interacciones(proyecto, clave, doc)
+    except Exception:                                  # noqa: BLE001 - mostrar no voltea el turno
+        return []
+    if not abiertas:
+        return []
+    salida = ["Para decidir o retomar, la persona escribe en el chat exactamente una de estas "
+              "líneas (el modelo no las puede escribir por ella):"]
+    for i in abiertas:
+        if i.get("workUnitId"):
+            salida.append("  %s: unidad %s pide tier %s (%s)" % (
+                i["interactionId"], i["workUnitId"], i.get("tier"), i.get("reason") or "sin motivo"))
+    salida.extend("    %s" % l for l in estado.lineas_para_la_persona(abiertas, clave))
+    return salida
 
 
 def _linea(clave, doc, vig):
@@ -155,7 +180,15 @@ def del_turno(evento):
         return None
     sesion = hook.campo(evento, "session_id", None)
     sesion = sesion if task_binding.sesion_segura(sesion) else None
-    clave = task_binding.clave_declarada(hook.campo(evento, "prompt", ""))
+    prompt = hook.campo(evento, "prompt", "")
+    from . import human_intent
+    if human_intent.analizar(prompt) is not None:
+        # Una decision de la persona (Wave 4): se valida contra las interacciones abiertas y se
+        # registra. Nada mas se dice en este turno.
+        estado = flow_gate.estado_del_flujo()
+        from flujo import interaccion
+        return human_intent.registrar(proyecto, sesion, prompt, estado, interaccion)
+    clave = task_binding.clave_declarada(prompt)
     if clave and sesion:
         task_binding.escribir(proyecto, sesion, clave, "user-prompt")
     if not task_binding.tareas(proyecto):

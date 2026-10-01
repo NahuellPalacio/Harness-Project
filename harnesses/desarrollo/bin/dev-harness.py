@@ -66,6 +66,7 @@ from flujo import precondiciones as flujo_precondiciones          # noqa: E402
 from flujo import requeridos as flujo_requeridos                  # noqa: E402
 from flujo import estado as flujo_estado                          # noqa: E402
 from estado_de_tarea import persistencia as estado_persistencia   # noqa: E402
+from estado_de_tarea import decisiones as estado_decisiones       # noqa: E402
 
 from orquestacion import frescura as orq_frescura                # noqa: E402
 from orquestacion import plan as orq_plan                         # noqa: E402
@@ -250,6 +251,14 @@ def correr_bootstrap(config, almacen, timeout, consola, transporte=None):
         consola.evento("capacidad.habilitada" if registro.esta_disponible(capacidad)
                        else "capacidad.deshabilitada", capacidad=capacidad)
     return registro
+
+
+def registrar_capacidades(config, almacen, timeout, consola, rutas, transporte=None):
+    """El camino autoritativo de Environment First: una sonda por integracion con la
+    configuracion que ya resolvio el `.env`, y el registro de capacidades escrito. Lo usan
+    `estado`, `setup`, `reconfigurar`, `contexto --revalidar` y `flujo --resume`: uno solo."""
+    registro = correr_bootstrap(config, almacen, timeout, consola, transporte)
+    return registro, registro.escribir(rutas["capacidades"], version_de(rutas))
 
 
 # -- el estado general del harness ----------------------------------------------
@@ -721,8 +730,7 @@ def resolver_contexto(args, proyecto, rutas, config, almacen, timeout, consola,
     if args.revalidar or not capacidades:
         if not capacidades:
             consola.linea("No hay registro de capacidades todavia: se valida una vez.")
-        registro = correr_bootstrap(config, almacen, timeout, consola, transporte)
-        documento = registro.escribir(rutas["capacidades"], version_de(rutas))
+        _, documento = registrar_capacidades(config, almacen, timeout, consola, rutas, transporte)
         capacidades = documento["capacidades"]
         consola.linea("")
 
@@ -1335,19 +1343,67 @@ def reconciliar_estado(consola, proyecto, rutas, clave):
                          % (clave, e))
 
 
-def mostrar_flujo(args, proyecto, rutas):
-    """`flujo <KEY> --status`: el estado de ahora y como esta el guardado. No escribe nada."""
+_DECISIONES_DEL_FLUJO = (("flujo_approve", "APPROVE"), ("flujo_alternative", "USE_ALTERNATIVE"),
+                         ("flujo_choose", "CHOOSE"), ("flujo_cancel", "CANCEL"),
+                         ("flujo_answer", "ANSWER"))
+
+
+def mostrar_flujo(args, proyecto, rutas, consola=None, almacen=None, timeout=None, transporte=None):
+    """`flujo <KEY>`: --status muestra y no escribe; --resume revalida y reconcilia; --approve,
+    --alternative, --choose, --cancel y --answer aplican una decision que la persona dejo
+    registrada (human-intent/1.0). Ninguna lee un valor por la linea de comandos ni por consola."""
     clave = args.argumento
-    if not args.refutar_status:
-        raise FallaDelHarness("flujo necesita --status. Ejemplo:\n"
-                              "    dev-harness.py flujo %s --status" % clave)
-    derivado = flujo_estado.derivar(proyecto, clave, version_de(rutas))
+    decisiones_pedidas = [(accion, getattr(args, dest)) for dest, accion in _DECISIONES_DEL_FLUJO
+                          if getattr(args, dest)]
+    elegidas = int(bool(args.refutar_status)) + int(bool(args.flujo_resume)) + len(decisiones_pedidas)
+    if elegidas != 1:
+        raise FallaDelHarness(
+            "flujo necesita exactamente una de --status, --resume, --approve, --alternative, "
+            "--choose, --cancel o --answer. Ejemplo:\n    dev-harness.py flujo %s --status" % clave)
+    if args.flujo_resume:
+        # Retomar es revalidar la fuente de lo que estaba pendiente. Si era la configuracion de una
+        # integracion (jira.*, gitlab.*, o su disponibilidad), se revalida por el camino de
+        # siempre: el `.env` y una sonda, que es lo unico de --resume que sale a la red.
+        guardado, _ = flujo_estado.leer(proyecto, clave)
+        nombres = estado_decisiones.integraciones_a_revalidar(guardado)
+        if nombres:
+            sys.stdout.write("Revalidando %s, la fuente de lo pendiente.\n" % ", ".join(nombres))
+            registrar_capacidades(resolver_configuracion(rutas), almacen, timeout, consola, rutas,
+                                  transporte)
+        doc = estado_decisiones.retomar(proyecto, clave, version_de(rutas))
+        sys.stdout.write(flujo_estado.texto(doc, [], proyecto) + "\n")
+        return 0
+    if decisiones_pedidas:
+        accion, interaction_id = decisiones_pedidas[0]
+        if not args.sesion:
+            raise estado_decisiones.ErrorDeDecision(
+                "HUMAN_INTENT_REQUIRED", "falta --sesion: la decision es de la sesion donde la "
+                "escribio la persona.")
+        record, doc = estado_decisiones.aplicar(
+            proyecto, clave, accion, interaction_id, args.sesion, args.flujo_option or None,
+            args.flujo_value or None, version_de(rutas))
+        sys.stdout.write("Decisión aplicada: %s sobre %s de %s.\n" % (
+            record["action"], record["interactionId"], clave))
+        sys.stdout.write(flujo_estado.texto(doc, [], proyecto) + "\n")
+        return 0
+    # STATUS READS AUTHORITY: el texto y el JSON muestran el estado guardado, el mismo que lee la
+    # compuerta (estado.leer). Nada de aca lo recalcula ni lo escribe; lo cambia --resume.
     guardado, error = flujo_estado.leer(proyecto, clave)
-    vigencia = flujo_estado.vigencia(guardado, derivado, error)
     if args.json:
-        sys.stdout.write(json.dumps(derivado, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
-    else:
+        if guardado is None:
+            raise FallaDelHarness(flujo_estado.texto_sin_autoridad(clave, error or flujo_estado.AUSENTE))
+        sys.stdout.write(json.dumps(guardado, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        return 0
+    derivado = flujo_estado.derivar(proyecto, clave, version_de(rutas))
+    vigencia = flujo_estado.vigencia(guardado, derivado, error)
+    if guardado is None:
+        # Sin autoridad: se dice, y lo derivado va rotulado como lo que es, una vista previa.
         sys.stdout.write(flujo_estado.texto(derivado, vigencia, proyecto) + "\n")
+        sys.stdout.write(flujo_estado.texto_sin_autoridad(clave, error or flujo_estado.AUSENTE) + "\n")
+        return 0
+    sys.stdout.write(flujo_estado.texto(guardado, vigencia, proyecto) + "\n")
+    if flujo_estado.difiere(guardado, derivado):
+        sys.stdout.write(flujo_estado.texto_de_revalidacion(derivado) + "\n")
     return 0
 
 
@@ -1413,7 +1469,7 @@ def comando(args, transporte=None, transporte_bytes=None):
         return refutar(args, proyecto, consola)
 
     if args.comando == "flujo":
-        return mostrar_flujo(args, proyecto, rutas)
+        return mostrar_flujo(args, proyecto, rutas, consola, almacen, timeout, transporte)
 
     # Todo lo que sigue toca integraciones: primero el .env, despues el resto.
     config = resolver_configuracion(rutas)
@@ -1442,8 +1498,7 @@ def comando(args, transporte=None, transporte_bytes=None):
 
     if consola.eventos:
         consola.linea("")
-    registro = correr_bootstrap(config, almacen, timeout, consola, transporte)
-    documento = registro.escribir(rutas["capacidades"], version_de(rutas))
+    registro, documento = registrar_capacidades(config, almacen, timeout, consola, rutas, transporte)
     consola.evento("harness.listo", disponibles=len(registro.disponibles()))
 
     if args.comando == "estado" and args.resumen and not args.json:
@@ -1504,6 +1559,22 @@ def parser():
                    help="refute: la unidad REF-001 (o un micro-lote REF-001,REF-002) para dev-refutador")
     p.add_argument("--record", dest="refutar_record", default="",
                    help="refute: el veredicto que devolvio dev-refutador, para validarlo y guardarlo")
+    p.add_argument("--resume", dest="flujo_resume", action="store_true",
+                   help="flujo: revalida desde las fuentes y reconcilia el estado")
+    p.add_argument("--approve", dest="flujo_approve", default="",
+                   help="flujo: aplica la aprobacion que la persona escribio (HARNESS APPROVE)")
+    p.add_argument("--alternative", dest="flujo_alternative", default="",
+                   help="flujo: aplica la alternativa que la persona eligio (HARNESS ALTERNATIVE)")
+    p.add_argument("--choose", dest="flujo_choose", default="",
+                   help="flujo: aplica el repositorio que la persona eligio (HARNESS CHOOSE)")
+    p.add_argument("--cancel", dest="flujo_cancel", default="",
+                   help="flujo: aplica la cancelacion que la persona escribio (HARNESS CANCEL)")
+    p.add_argument("--answer", dest="flujo_answer", default="",
+                   help="flujo: aplica la respuesta que la persona escribio (HARNESS ANSWER)")
+    p.add_argument("--option", dest="flujo_option", default="",
+                   help="flujo: la opcion de --alternative o --choose")
+    p.add_argument("--value", dest="flujo_value", default="",
+                   help="flujo: el valor de --answer; nunca un secreto")
     p.add_argument("--summary", dest="refutar_summary", action="store_true",
                    help="refute: el agregado y lo que el Bloque 4 tiene de la refutacion")
     p.add_argument("--refutacion", default="", nargs="?", const=TODAS_LAS_REFUTACIONES,
@@ -1588,7 +1659,7 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             seg_libro.EventoInvalido, seg_libro.TareaInvalida,
             seg_productores.ProductorInvalido, seg_resumen.ResumenInvalido,
             orq_refutacion.RefutacionInvalida, flujo_requeridos.RegistroInvalido,
-            flujo_estado.ErrorDeEstado) as e:
+            flujo_estado.ErrorDeEstado, estado_decisiones.ErrorDeDecision) as e:
         sys.stderr.write("harness: %s\n" % e)
         return 2
     except KeyboardInterrupt:

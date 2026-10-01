@@ -75,6 +75,11 @@ _PROPIOS = {
     "REFUTATION_OUTPUT_INVALID": ("refutation.compile", "DERIVABLE", None, "atomic-refutation",
                                   "REFUTATION"),
 }
+# Jira configurado en el `.env` pero la ultima sonda del registro de capacidades fallo: CONTEXT no
+# avanza, con el estado del adapter como codigo. Se revalida con `flujo <KEY> --resume`.
+_JIRA_NO_DISPONIBLE = ("AUTHENTICATION_FAILED", "CONNECTION_FAILED", "PERMISSION_DENIED")
+for _codigo in _JIRA_NO_DISPONIBLE:
+    _PROPIOS[_codigo] = ("jira.availability", "HARD_BLOCKER", None, "task-flow-state", "CONTEXT")
 
 
 class ErrorDeEstado(Exception):
@@ -166,6 +171,32 @@ def logico(doc):
     return dict((k, v) for k, v in (doc or {}).items() if k != "updatedAt")
 
 
+def difiere(guardado, derivado):
+    """Si reconciliar cambiaria lo que aplica la compuerta: la etapa, el estado o los bloqueos."""
+    def _clave(doc):
+        return (doc.get("stage"), doc.get("status"),
+                [(b["code"], b["inputId"]) for b in doc.get("blockedOn") or []])
+    return _clave(guardado or {}) != _clave(derivado or {})
+
+
+def texto_de_revalidacion(derivado):
+    """Lo que diria el estado si se reconciliara ahora, y el comando que lo aplica."""
+    bloqueos = ", ".join("%s %s" % (b["blockerId"], b["code"]) for b in derivado.get("blockedOn") or [])
+    return ("Revalidado ahora       %s / %s · bloqueos: %s · vista previa, no aplicado\n"
+            "                       La compuerta aplica lo guardado, de arriba. Para revalidar y "
+            "aplicarlo: `python .claude/harness/bin/desarrollo/dev-harness.py flujo %s --resume`." % (
+                derivado.get("stage"), derivado.get("status"), bloqueos or "ninguno",
+                derivado.get("taskKey")))
+
+
+def texto_sin_autoridad(clave, codigo):
+    """Sin estado guardado, o con uno roto, no hay autoridad que mostrar: se dice con su codigo."""
+    return ("%s no tiene un estado del flujo guardado que se pueda aplicar [%s]. Lo que se "
+            "derivaría ahora es una vista previa, no aplicado; lo aplica "
+            "`python .claude/harness/bin/desarrollo/dev-harness.py flujo %s --resume`." % (
+                clave, codigo, clave))
+
+
 # -- derivar -------------------------------------------------------------------
 
 def _entorno(proyecto, proceso):
@@ -199,6 +230,13 @@ def _variable_resuelta(resolucion, nombre):
             if v.nombre == nombre:
                 return bool(v.presente and v.valida)
     return False
+
+
+def _estado_de_jira(proyecto):
+    """El estado de Jira en el registro de capacidades (harness.capacidades.json), o None.
+    Lo escribe la sonda de `estado`/`setup`/`reconfigurar`/`flujo --resume`; aca solo se lee."""
+    doc, _ = _leer_json(os.path.join(proyecto, ".claude", "harness.capacidades.json"))
+    return (((doc or {}).get("integraciones") or {}).get("jira") or {}).get("estado")
 
 
 def _config_harness(proyecto):
@@ -311,6 +349,10 @@ def derivar(proyecto, clave, harness_version="", proceso=None, registro=None):
         evaluacion = precondiciones.evaluar("CONTEXT", _hechos_de_contexto(
             registro, resolucion, clave), registro)
         bloqueos += _bloqueos_de(evaluacion, registro)
+        if not bloqueos:
+            jira = _estado_de_jira(proyecto)
+            if jira in _JIRA_NO_DISPONIBLE:
+                bloqueos.append(_bloqueo_propio(jira))
         identidad = repositorio.identidad(None, gitlab, proyecto)
     else:
         previas = precondiciones.de_planificacion(contexto, gitlab, proyecto,
@@ -377,6 +419,11 @@ def derivar(proyecto, clave, harness_version="", proceso=None, registro=None):
         etapa = bloqueos[0]["stage"]
         estado = ("WAITING_FOR_HUMAN_APPROVAL"
                   if all(b["code"] == "HUMAN_APPROVAL_PENDING" for b in bloqueos) else "BLOCKED")
+    # Una persona cancelo la tarea (human-decision-record/1.0, Wave 4): terminal, sin bloqueos
+    # que resolver. Los artefactos quedan; lo que cambia es que ya no se avanza.
+    from . import interaccion
+    if interaccion.cancelada(proyecto, clave):
+        bloqueos, estado = [], "CANCELLED"
 
     from orquestacion.plan import ahora
     doc = {
@@ -556,6 +603,7 @@ def texto(doc, vigencia_, proyecto):
     else:
         lineas.append("Bloqueos               ninguno")
     lineas.extend(_texto_pendiente(doc["pendingHumanInteraction"], proyecto))
+    lineas.extend(_texto_interacciones(doc, proyecto))
     resume = doc["resumeFrom"]
     lineas.append("Retoma en              %s" % ("%s / %s" % (resume["stage"], resume["gate"])
                                                   if resume else "—"))
@@ -578,6 +626,44 @@ def texto(doc, vigencia_, proyecto):
                   "refutar %s · completar %s" % tuple(
                       "sí" if p[k] else "no" for k in AVANCE))
     return "\n".join(lineas)
+
+
+def lineas_para_la_persona(interacciones_, clave):
+    """Las lineas exactas que la persona escribe en el chat para cada interaccion abierta."""
+    salida = []
+    for i in interacciones_:
+        iid = i["interactionId"]
+        if "APPROVE" in i["actions"]:
+            salida.append("HARNESS APPROVE %s %s" % (clave, iid))
+        if "USE_ALTERNATIVE" in i["actions"]:
+            salida.extend("HARNESS ALTERNATIVE %s %s %s" % (clave, iid, o) for o in i["options"])
+        if "CHOOSE" in i["actions"]:
+            salida.extend("HARNESS CHOOSE %s %s %s" % (clave, iid, o) for o in i["options"])
+        if "RESUME" in i["actions"] and "HARNESS RESUME %s" % clave not in salida:
+            salida.append("HARNESS RESUME %s" % clave)
+        if "CANCEL" in i["actions"]:
+            salida.append("HARNESS CANCEL %s %s" % (clave, iid))
+    return salida
+
+
+def _texto_interacciones(doc, proyecto):
+    """Las interacciones abiertas y como las decide la persona. Solo las lineas: nunca un valor."""
+    from . import interaccion
+    try:
+        abiertas = interaccion.interacciones(proyecto, doc["taskKey"], doc)
+    except Exception:                                  # noqa: BLE001 - mostrar no voltea el estado
+        return []
+    if not abiertas:
+        return []
+    salida = ["Interacciones"]
+    for i in abiertas:
+        detalle = (" · unidad %s, tier %s" % (i["workUnitId"], i.get("tier"))
+                   if i.get("workUnitId") else "")
+        salida.append("  %s  %s %s%s · %s" % (i["interactionId"], i["kind"], i["inputId"], detalle,
+                                             ", ".join(i["actions"])))
+    salida.append("  La persona decide escribiendo en el chat exactamente una de estas líneas:")
+    salida.extend("    %s" % l for l in lineas_para_la_persona(abiertas, doc["taskKey"]))
+    return salida
 
 
 def _texto_pendiente(pendiente, proyecto):

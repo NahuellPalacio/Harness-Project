@@ -86,7 +86,13 @@ Impide que la herramienta se ejecute. **Bloquean dos reglas, y ninguna más**, l
    bloqueada siguen pasando la lectura y la recuperación del flujo (`flujo <KEY> --status`,
    `contexto <KEY>`). Sin estado del flujo en el proyecto no hace nada. Por eso el matcher de
    `PreToolUse` alcanza también la delegación, `^Agent$|^Task$`: con la tarea bloqueada, un
-   subagente no arranca.
+   subagente no arranca. Desde la Wave 4, un comando que aplica una decisión humana
+   (`flujo <KEY> --approve|--alternative|--choose|--cancel|--answer`) pasa solo si la persona la
+   dejó registrada en esa misma sesión: `UserPromptSubmit` es el único evento que prueba que un
+   texto lo escribió la persona, y es el único que escribe `human-intent/1.0`
+   (`docs/cambios/interaccion-humana/spec.md`). Con estado del flujo, ninguna herramienta escribe
+   en `.claude/` ni en `.git/` (`FLOW_AUTHORITY_PROTECTED`), y mientras alguna tarea espera una
+   decisión humana el shell solo lee y corre el Harness (`FLOW_HUMAN_DECISION_PENDING`).
 
 El orden es ese y no se invierte: un secreto de confianza alta es deny y la compuerta ni se
 evalúa; el deny del flujo gana sobre el `ask` de un secreto ambiguo, porque un `ask` dejaría

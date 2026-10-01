@@ -26,6 +26,10 @@ from . import tool_policy
 HARD_BLOCKER = "FLOW_HARD_BLOCKER"
 STATE_STALE = "FLOW_STATE_STALE"
 TASK_CLOSED = "FLOW_TASK_CLOSED"
+AUTHORITY_PROTECTED = "FLOW_AUTHORITY_PROTECTED"
+HUMAN_DECISION_PENDING = "FLOW_HUMAN_DECISION_PENDING"
+_SHELLS = ("Bash", "PowerShell")
+_DECISION_HUMANA = ("HUMAN_APPROVAL_PENDING", "REPOSITORY_CONFLICT")
 GATE_UNRESOLVED = "FLOW_GATE_UNRESOLVED"
 CLASS_UNRESOLVED = "FLOW_TOOL_CLASS_UNRESOLVED"
 
@@ -178,6 +182,39 @@ def decidir(evento):
                  "taskKey": None, "stage": None, "reconcilia": False}
     salida = {"decision": "allow", "code": None, "reason": "", "class": clase["class"],
               "taskKey": None, "resolution": None, "via": None}
+    if clase.get("protected"):
+        try:
+            gobernado = bool(task_binding.tareas(task_binding.raiz(hook.campo(evento, "cwd", ""))))
+        except Exception:                              # noqa: BLE001 - ante la duda, gobernado
+            gobernado = True
+        if gobernado:
+            return _negar(salida, AUTHORITY_PROTECTED, (
+                "Flujo: esta herramienta escribiría en .claude/ o en .git/ [%s]. Ahí están la "
+                "autoridad del flujo y lo que ejecuta código por su cuenta (la CLI y los hooks del "
+                "Harness, los settings, la configuración y los hooks de git): lo escriben los hooks, "
+                "la CLI del Harness y git, nunca una herramienta. Una decisión humana la escribe la "
+                "persona en el chat (HARNESS ...); una propuesta para `plan --propuesta` va fuera de "
+                ".claude/." % AUTHORITY_PROTECTED))
+    if hook.campo(evento, "tool_name", "") in _SHELLS and clase["class"] in (
+            tool_policy.MUTATING, tool_policy.UNRESOLVED):
+        try:
+            esperando = _esperando_a_una_persona(task_binding.raiz(hook.campo(evento, "cwd", "")))
+        except Exception:                              # noqa: BLE001 - ante la duda, esperando
+            esperando = ["?"]
+        if esperando:
+            return _negar(salida, HUMAN_DECISION_PENDING, (
+                "Flujo: %s espera una decisión humana [%s]. Mientras tanto, en este proyecto el shell "
+                "solo lee y corre el Harness: un comando que escribe o que no se reconoce podría "
+                "escribir esa decisión por la persona. La persona decide en el chat con la línea "
+                "HARNESS que muestra `%s flujo %s --status`; Write y Edit sobre archivos del código "
+                "siguen pasando." % (", ".join(esperando), HUMAN_DECISION_PENDING, CLI, esperando[0])))
+    if clase.get("humanIntent"):
+        try:
+            return _intencion_humana(evento, clase, salida)
+        except Exception as e:                         # noqa: BLE001 - fallar cerrado
+            return _negar(salida, GATE_UNRESOLVED, (
+                "Flujo: no se pudo verificar la intención de la persona (%s) [%s]."
+                % (type(e).__name__, GATE_UNRESOLVED)))
     if clase["class"] in _PASAN:
         if clase.get("taskKey"):
             _vincular_por_comando(evento, clase["taskKey"])
@@ -189,6 +226,55 @@ def decidir(evento):
             "Flujo: no se pudo evaluar la compuerta (%s) [%s]. Una herramienta que modifica o "
             "avanza el proyecto no pasa sin evaluarla; la lectura y `flujo <KEY> --status` sí."
             % (type(e).__name__, GATE_UNRESOLVED)))
+
+
+def _esperando_a_una_persona(proyecto):
+    """Las tareas del proyecto con una decision humana abierta: una aprobacion o un conflicto de
+    repositorio. Lectura liviana del estado guardado; uno que no se lee cuenta como esperando."""
+    import io
+    import json
+    salida = []
+    for clave in task_binding.tareas(proyecto):
+        ruta = os.path.join(proyecto, ".claude", "runtime", "tasks", clave, "state.json")
+        try:
+            with io.open(ruta, encoding="utf-8-sig") as f:
+                doc = json.load(f)
+        except (OSError, ValueError):
+            salida.append(clave)
+            continue
+        if not isinstance(doc, dict):
+            salida.append(clave)
+            continue
+        if doc.get("status") == "WAITING_FOR_HUMAN_APPROVAL" or any(
+                (b or {}).get("code") in _DECISION_HUMANA for b in doc.get("blockedOn") or []):
+            salida.append(clave)
+    return salida
+
+
+def _intencion_humana(evento, clase, salida):
+    """Un comando que aplica una decision pasa solo si la persona la dejo registrada en ESTA
+    sesion (human-intent/1.0) y el `--sesion` del comando es esta sesion. El modelo corre el
+    comando; la autoridad es el intent, que solo escribe UserPromptSubmit."""
+    from . import human_intent
+    pedido = clase["humanIntent"]
+    proyecto = task_binding.raiz(hook.campo(evento, "cwd", ""))
+    sesion = hook.campo(evento, "session_id", None)
+    salida["taskKey"] = clase.get("taskKey")
+    if not pedido.get("sesion"):
+        codigo = human_intent.REQUIRED
+    elif pedido["sesion"] != sesion:
+        codigo = human_intent.SESSION_MISMATCH
+    else:
+        codigo = human_intent.verificar(proyecto, sesion, clase.get("taskKey"), pedido["action"],
+                                        pedido.get("interactionId"), pedido.get("option"))
+    if codigo is None:
+        return salida
+    return _negar(salida, codigo, (
+        "Flujo: no hay una intención de la persona que autorice %s sobre %s de %s en esta sesión "
+        "[%s]. Una decisión humana no la toma el modelo: la persona tiene que escribir en el chat "
+        "la línea HARNESS que muestra `%s flujo %s --status`." % (
+            pedido["action"], pedido.get("interactionId") or "—", clase.get("taskKey"), codigo, CLI,
+            clase.get("taskKey"))))
 
 
 def _vincular_por_comando(evento, clave):

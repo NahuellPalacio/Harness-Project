@@ -240,9 +240,16 @@ def _correr_con_limite(argumentos, timeout):
 
 # -- la identidad ---------------------------------------------------------------
 
-def identidad(task_context, gitlab, proyecto):
-    """La identidad del repositorio de la tarea contra este checkout. Determinista."""
+def identidad(task_context, gitlab, proyecto, eleccion=None):
+    """La identidad del repositorio de la tarea contra este checkout. Determinista.
+
+    `eleccion` es el candidato que eligio una persona para esta tarea (HARNESS CHOOSE, Wave 4).
+    Resuelve un REPOSITORY_CONFLICT solo si es uno de los candidatos de ahora; si no, no cuenta.
+    """
     de_tarea, codigo, por, candidatos = de_la_tarea(task_context, gitlab)
+    if codigo == REPOSITORY_CONFLICT and eleccion and eleccion in candidatos:
+        de_tarea = normalizar("https://" + eleccion)
+        codigo, por = None, sorted(set(por) | {"HUMAN_DECISION"})
     locales = remotos(proyecto)
     hechos = {"repository.task": codigo != REPOSITORY_UNRESOLVED,
               "repository.unambiguous": None if codigo == REPOSITORY_UNRESOLVED

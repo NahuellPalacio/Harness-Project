@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "human-intent/1.0",
+  "title": "HUMAN_INTENT",
+  "description": "Lo que una persona decidio en el chat, capturado por UserPromptSubmit (comun/hooks/lib/human_intent.py) desde una linea exacta HARNESS <ACCION> <KEY> <interactionId> [<opcion>]. Es de un solo uso y esta ligado a una sesion, una tarea, una interaccion, un estado y un plan: el comando que aplica la decision lo consume (consumedAt). Vive en .claude/runtime/sessions/<SAFE_SESSION_ID>/human-intent.json. No guarda el prompt, ni un secreto, ni una linea del .env. Ver docs/cambios/interaccion-humana/spec.md.",
+  "type": "object",
+  "required": ["schema_version", "sessionId", "taskKey", "interactionId", "action", "inputId",
+               "optionId", "value", "stateFingerprint", "planFingerprint", "createdAt", "consumedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "string", "enum": ["human-intent/1.0"]},
+    "sessionId": {"type": "string", "pattern": "^\\S"},
+    "taskKey": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$"},
+    "interactionId": {"type": "string", "pattern": "^ixn-[0-9a-f]{16}$"},
+    "action": {"type": "string", "enum": ["APPROVE", "USE_ALTERNATIVE", "CHOOSE", "CANCEL", "ANSWER"]},
+    "inputId": {"type": "string", "pattern": "^\\S"},
+    "optionId": {"type": ["string", "null"]},
+    "value": {
+      "description": "Solo para ANSWER, y nunca un valor con forma de secreto: ese se rechaza sin guardarse.",
+      "type": ["string", "null"]
+    },
+    "stateFingerprint": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+    "planFingerprint": {"type": ["string", "null"]},
+    "createdAt": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$"},
+    "consumedAt": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$"}
+  }
+}
