@@ -135,7 +135,7 @@ foreach ($d in @($demoCc, $conPoliticaCc)) {
 try {
     # -- E-31 / E-75: instalar en un proyecto sin politica --------------------------------------
     $rutaPoliticaCc = Join-Path $demoCc '.claude\harness.presupuesto.json'
-    $r = Invoke-InstaladorCc @('-Project', $demoCc, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorCc @('-Project', $demoCc, '-Usuario', 'Ana Prueba')
     Assert-Igual 'consumo E-31 la instalacion sale 0' 0 $r.Codigo
     Assert-Verdadero 'consumo E-31 deja creada .claude\harness.presupuesto.json' (Test-Path -LiteralPath $rutaPoliticaCc)
     $iguales = (Test-Path -LiteralPath $rutaPoliticaCc) -and
@@ -219,7 +219,7 @@ try {
     New-Item -ItemType Directory -Path (Split-Path -Parent $rutaPropia) -Force | Out-Null
     [System.IO.File]::WriteAllText($rutaPropia, $propia, $utf8Cc)
     $bytesPropia = [System.IO.File]::ReadAllBytes($rutaPropia)
-    $r = Invoke-InstaladorCc @('-Project', $conPoliticaCc, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorCc @('-Project', $conPoliticaCc, '-Usuario', 'Ana Prueba')
     Assert-Igual 'consumo E-38 la instalacion sale 0' 0 $r.Codigo
     Assert-Verdadero 'consumo E-38 la politica que ya habia queda igual, byte a byte' `
         ([Convert]::ToBase64String([System.IO.File]::ReadAllBytes($rutaPropia)) -ceq [Convert]::ToBase64String($bytesPropia))

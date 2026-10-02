@@ -31,7 +31,7 @@ try {
     New-Item -ItemType Directory -Path $demo -Force | Out-Null
     [System.IO.File]::WriteAllText((Join-Path $demo 'CLAUDE.md'), "# Proyecto de prueba`r`n")
 
-    $r = Invoke-InstaladorCtx @('-Project', $demo, '-Harness', 'desarrollo',
+    $r = Invoke-InstaladorCtx @('-Project', $demo, 
                                 '-Usuario', 'Ana Prueba')
     Assert-Igual 'instalar desarrollo sale con codigo 0' 0 $r.Codigo
 

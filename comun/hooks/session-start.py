@@ -94,22 +94,25 @@ def cuerpo(e):
         proyecto, config, sesion if isinstance(sesion, str) else "")
     lineas = []
 
-    # --- Quien sos y que harness rige aca -----------------------------------------
+    # --- Quien sos y que version del harness rige aca --------------------------------
+    # El harness es un solo producto: el encabezado dice la version, no ids. El campo `harness`
+    # de un lock de 0.28.0 no se mira. Legible es JSON que es un objeto; cualquier otra cosa
+    # cuenta como sin lockfile y no levanta.
     encabezado = ""
     if config and config.get("usuario"):
         encabezado = str(config["usuario"])
 
-    harness_instalados = []
+    hay_lock = False
     ruta_lock = os.path.join(proyecto, ".claude", "harness.lock.json")
     if os.path.isfile(ruta_lock):
         try:
             datos = json.loads(_leer_utf8(ruta_lock))
-            harness_instalados = datos.get("harness") or []
-            ids = ", ".join(harness_instalados)
-            texto = "harness: %s v%s" % (ids, datos.get("version", ""))
-            encabezado = "%s - %s" % (encabezado, texto) if encabezado else texto
         except (OSError, ValueError):
-            pass
+            datos = None
+        if isinstance(datos, dict):
+            hay_lock = True
+            texto = "harness v%s" % datos.get("version", "")
+            encabezado = "%s - %s" % (encabezado, texto) if encabezado else texto
     if encabezado:
         lineas.append(encabezado)
 
@@ -165,13 +168,12 @@ def cuerpo(e):
                 pass
 
     # --- El primer recorrido del codigo, mientras no exista --------------------------
-    # Solo con `desarrollo` instalado -un proyecto de solo analisis no tiene codigo que
-    # recorrer- y solo hasta que el indice exista. Un aviso permanente se vuelve ruido y
-    # se deja de leer, y ahi se pierde tambien el resto del bloque.
+    # Solo con el harness instalado -un lockfile legible- y solo hasta que el indice exista.
+    # Un aviso permanente se vuelve ruido y se deja de leer, y ahi se pierde tambien el resto
+    # del bloque.
     #
-    # El orden importa: el chequeo de disco va ultimo y no corre en un proyecto sin
-    # `desarrollo`.
-    if "desarrollo" in harness_instalados:
+    # El orden importa: el chequeo de disco va ultimo y no corre sin lockfile.
+    if hay_lock:
         # harness.config.json es el archivo de la persona: el harness no lo valida ni lo
         # pisa nunca, asi que cualquier cosa puede llegar hasta aca. Y solo se crea si no
         # existe, por lo que un proyecto instalado antes de este cambio no va a ver la

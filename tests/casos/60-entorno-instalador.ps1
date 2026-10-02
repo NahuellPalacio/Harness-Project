@@ -40,7 +40,7 @@ try {
     $rutaExampleEnt = Join-Path $demoEnt '.env.example'
     [System.IO.File]::WriteAllText($rutaExampleEnt, "# del proyecto`r`nMI_VARIABLE=1`r`n")
 
-    $r = Invoke-InstaladorEnt @('-Project', $demoEnt, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorEnt @('-Project', $demoEnt, '-Usuario', 'Ana Prueba')
     Assert-Igual 'instalar desarrollo sale con codigo 0' 0 $r.Codigo
     $textoExample = [System.IO.File]::ReadAllText($rutaExampleEnt)
     Assert-Contiene 'E-63 el .env.example del proyecto conserva lo suyo' 'MI_VARIABLE=1' $textoExample

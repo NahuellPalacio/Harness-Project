@@ -23,6 +23,52 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.28.0 → 0.29.0
+
+`-Update` alcanza para un proyecto instalado. Lo manual está en los scripts que pasen `-Harness`, y
+en reiniciar Claude Code después del `-Update`.
+
+- 🔴 **El parámetro `-Harness` ya no existe.** Pasarlo sale con 1, sin escribir nada, y con el error
+  de PowerShell:
+
+  ```
+  No se encuentra ningún parámetro que coincida con el nombre del parámetro 'Harness'.
+  ```
+
+  Hay que sacarlo de cualquier script, `.cmd` o CI que lo use. El harness es uno solo, y se instala
+  así:
+
+  ```powershell
+  .\install.ps1 -Project <ruta> -Usuario <nombre>
+  ```
+
+  Los argumentos sin nombre también dejan de andar: `-Project` y `-Usuario` van siempre con su
+  nombre.
+
+- 🔴 **Si el proyecto tenía `analisis`, el `-Update` lo retira.** El proyecto pasa a tener el producto
+  entero (`comun` y `desarrollo`), y salen:
+  - las skills y agentes `hu-escribir`, `hu-redactor` y `hu-refutador`;
+  - las reglas de "Trabajo funcional" del bloque `HARNESS:COMUN` del `CLAUDE.md`, que pasan a ser las
+    de "Trabajo técnico". El `CLAUDE.md` anterior queda en el backup de esa corrida.
+
+  `harness.config.json` no se toca. Si habías editado a mano alguno de esos archivos, queda en disco
+  y la salida lo nombra, pero sale del inventario: `-Doctor` y `-Uninstall` dejan de mirarlo. Mirá el
+  lockfile antes de actualizar: si en `.claude\harness.lock.json` el campo `harness` lista
+  `analisis`, quien usa el proyecto tiene que saberlo antes.
+
+- **La Context Bar queda en `RELOAD_REQUIRED`.** Hay que cerrar y volver a abrir la sesión de Claude
+  Code para que la active. El `-Update` lo avisa: *Reiniciá la sesión de Claude Code para activarla.*
+
+- 🔴 **Volver a 0.28.0 no se puede con `-Update`.** El lockfile nuevo no tiene el campo `harness`, y el
+  `-Update` y el `-Doctor -Project` del instalador de 0.28.0 mueren al leerlo, antes de tocar nada.
+  Para volver, primero se desinstala con este instalador y después se reinstala con el de 0.28.0:
+
+  ```powershell
+  .\install.ps1 -Project <ruta> -Uninstall
+  # con el repo del harness en 0.28.0:
+  .\install.ps1 -Project <ruta> -Harness desarrollo -Usuario <nombre>
+  ```
+
 ## 0.27.0 → 0.28.0
 
 `-Update` alcanza. Lo nuevo se ve al terminar:

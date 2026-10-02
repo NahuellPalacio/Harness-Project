@@ -78,7 +78,7 @@ there. Nothing warned, because nothing measures it. And 27 skills were installed
 stretch, each with its own always-loaded description, none of them counted here.
 
 Fix. `-Doctor` measures and reports the total; new cap `techoAssetsSiempreCargados` in
-`comun/manifest.json`. It warns, it never blocks.
+`manifest.json`. It warns, it never blocks.
 
 ### The budget has to measure the session, not the harness
 
@@ -137,6 +137,10 @@ that looks wrong cannot flag a run that is actually short.
 
 Fix. Either drop the number from `CLAUDE.md`, or have the budget check compare it against the last
 run. Hand-editing it once only moves the drift.
+
+On 2026-10-02 the 0.29.0 close hand-edited it to the count of its own gate run, because the close
+asked for the real number. That is exactly the one-time edit this item says does not fix it: the
+item stays open, and the number starts drifting again with the next change.
 
 ## Incomplete capabilities
 
@@ -447,26 +451,65 @@ Fix. Either delete it — the witnesses it generated are committed and it has no
 leave a header saying it is a historical artifact of the 0.13.0 port and is not expected to run.
 What is not defensible is a script in `tests/` that looks runnable and is not.
 
-### `aporta` in every manifest is decorative — nothing reads it
+### The Agent Registry is invalid in every installed project
 
-Found on 2026-08-21 while building `iniciador-code`. A mutation removed `"agents": "agents"` from
-`harnesses/desarrollo/manifest.json` expecting the agent to stop being installed, and the whole
-suite stayed green. `grep -n "aporta" install.ps1` returns nothing: the installer never reads the
-key. What it actually does is copy `<harness>/skills` and `<harness>/agents` unconditionally
-(`install.ps1:1107-1108`), and the same for `checks`.
+Found on 2026-10-01 while specifying `harness-unico`, and measured on a real 0.28.0 install. In an
+installed project `registro_agentes.reporte()` gives `registryValid: false`: `flush-memoria` and
+`leer-docs` come out `ORPHAN_AGENT` with severity `ERROR`, and `instalar-desde-github` comes out
+`UNDECLARED_SKILL`. In the factory it gives `true`, because there it only looks at
+`harnesses/desarrollo/`. The three are installed by `comun/`, and `agent-registry.json`, which
+claims to be the source of agent existence, does not declare them. It goes unnoticed because no CLI
+calls `reporte()`. The disk scan has a second blind spot of the same shape: in an installed project
+it walks the whole `.claude/agents/`, so a project's own agents would also count as orphans.
 
-The key reads as load-bearing and is not. Somebody adding a harness will fill it in, expect it to
-select what gets installed, and be wrong in a way no test catches — a directory they forgot to
-declare gets installed anyway, and one they declared without creating fails silently. It is also
-why `analisis` can declare `checks` with an empty directory and nobody notices, which is already
-written down as a gap in `docs/mapa/mapa-harness.html`.
+`docs/cambios/harness-unico/spec.md` E-53 pins the 0.28.0 result on purpose, so it does not get
+worse while nobody fixes it.
 
-Fix. Two ways out and they are not the same. Either the installer reads `aporta` and copies only
-what it declares — which turns a comment into a contract and needs `docs/agregar-un-harness.md`
-updated to say so — or `aporta` comes out of the three manifests and the convention stays "the
-directory is the declaration", like checks discovery already works. The second is smaller and
-consistent with `os.walk(checks/)`; the first is what a reader of the manifest already believes is
-happening.
+Fix. Two ways, and they are not the same. Declare the three in the registry —which needs a type for
+two agents with no domain and an owner for a skill no agent holds, and the registry model has no
+place for the second— or make the disk scan look only at what the lockfile says the harness
+installed. The second also covers the project's own agents. It changes Agent Registry semantics,
+so it needs its own spec.
+
+### `config` defaults are repeated in Python, outside `manifest.json`
+
+Found on 2026-10-01 while specifying `harness-unico`. When `harness.config.json` lacks a key, the
+value does not come from `manifest.json` but from a default written in the code:
+
+- `rutaCodebase` = `"docs/codebase"` in `comun/hooks/lib/bienvenida.py:253`,
+  `comun/hooks/session-start.py:190`, `harnesses/desarrollo/bin/dev-harness.py:1132` and
+  `harnesses/desarrollo/bin/contexto/repositorio.py:63`;
+- `timeoutIntegraciones` = 5 in `dev-harness.py:90` and `bin/integraciones/http.py:27`;
+- `fichaTipoDeIssue` in `bin/contexto/proyecto.py:16`;
+- `topeTextoDocumento` in `bin/contexto/documentos.py:19`.
+
+Today they all match the manifest. It matters since `harness-unico`: a project that had only
+`analisis` keeps its `harness.config.json` byte for byte, without any key `desarrollo` used to seed,
+and lives on these defaults. Spec E-43 checks that the two values `harness` and `estado` read are
+equivalent to the manifest's; `fichaTipoDeIssue` and `topeTextoDocumento` have no scenario. If
+someone changes a value in `manifest.json`, new installs get it and the rest keep the code's, in
+silence.
+
+Fix. The code reads its defaults from `manifest.json`, or a test pins each code default against the
+manifest. The first changes where a value comes from in every project, so it needs its own spec.
+
+### `docs/codebase/` still describes a harness that no longer exists
+
+The factory's own index (`docs/codebase/indice.md`, `harnesses-analisis.md`, `install.md`,
+`project-context.json`, `mapa.html`) was written by `dev-iniciador-code` on 2026-08-21 and
+describes `harnesses/analisis/`, the composition and the three manifests. `harness-unico` retired
+all three and left the index on purpose: it is a model run, and its own header forbids hand edits.
+
+Fix. Run `dev-iniciador-code` over the factory again and commit what it writes.
+
+### Two hot-path comments still talk about several harnesses
+
+`comun/hooks/post-tool-use.py:3` says it runs "los checks de comun y de los harness instalados", and
+`comun/hooks/lib/reglas.py:1` says "los checks que aportan comun y los harness instalados". There is
+one harness since `harness-unico`. They were left because `harness-unico` E-16 pins every installed
+file it does not need to touch byte for byte, and these two are on every tool call's path.
+
+Fix. Reword both comments in a change that touches those files anyway.
 
 ### The reviewer panel is planned and deferred
 
@@ -1048,8 +1091,8 @@ route: check whether Claude Code resolves a more specific allow over a broader d
 
 ### `controles/` never reaches an installed project
 
-Found on 2026-09-19 while building D1. `install.ps1:1155-1161` copies a hardcoded list per
-harness — `checks`, `bin`, `reglas`, `skills`, `agents` — and `controles/` is not in it. The
+Found on 2026-09-19 while building D1. `install.ps1` copies a fixed list from
+`harnesses/desarrollo/` — `checks`, `bin`, `reglas`, `skills`, `agents` — and `controles/` is not in it. The
 directory was born with G1 and holds the normative controls: **sixteen policies, thirteen checks and two
 reviews** today (`harnesses/desarrollo/controles/`), thirty-one in all. It was four, three and one
 when this was found; every rule installed since has made it worse, and D7 added six at once — the
@@ -1063,16 +1106,19 @@ was copied there, so every declared control resolves to `CONTROL_FILE_MISSING` a
 factory reads the repository tree. `G1`, `G2` and `D1` all ship a control registry that says
 `INSTALLED` and an installed project where nothing is.
 
-Reproduce it: install `desarrollo` into an empty project and look for
+Reproduce it: install the harness into an empty project and look for
 `.claude\harness\controles\` — it is not created, and neither is `.claude\controles\`.
+`docs/cambios/harness-unico/spec.md` E-55 pins this on purpose: an installed project's
+`controles.reporte()` gives the same `result` as 0.28.0 did.
 
-Fix. Two decisions and they are not independent. First, where the controls live once installed:
-`.claude\harness\controles\<id>\` follows what `checks` already does and keeps the harnesses
-apart, and then `controles._ruta_de` needs the same second candidate that `roster.existe_check`
-already carries for `harness/checks/<id>/`. Second, whether the copy is added to the hardcoded
-list or the list is replaced by reading `aporta` — which is the item above, and doing this one by
-hand makes that one a little worse. It needs its own spec: it touches `install.ps1`, `controles.py`
-and a new installer case.
+Fix. Since `harness-unico` there is one product and no `<id>` to keep apart, and `aporta` is gone:
+the installer's map is a fixed list in `install.ps1`, and adding `controles` to it is one more
+line. What is left to decide is where the controls live once installed. `.claude\harness\controles\`
+is the plain choice; `.claude\harness\controles\desarrollo\` would follow `checks\desarrollo\`,
+which only kept its segment because the CLI's public path lives next to it. Either way
+`controles._ruta_de` needs a candidate for the installed tree, the way `roster.existe_check`
+carries one for `harness/checks/desarrollo/`. It needs its own spec: it touches `install.ps1`,
+`controles.py` and a new installer case.
 
 ### ES0902 C2 leaves four identity and freshness choices as the spec wrote them
 
@@ -1426,6 +1472,34 @@ observed.
 
 ## Verification that was not done
 
+### `harness-unico` closed with four tests that prove less than their scenario
+
+Found by `harness-spec-refuter` on 2026-10-02, verifying `docs/cambios/harness-unico/spec.md`. All
+62 scenarios are upheld, but in four of them the gap was closed by the refuter's own checks, not by
+the test that names the scenario:
+
+- **E-43, `rutaCodebase`.** The first way the test compares effective defaults (`harness --json`
+  and `estado --json` with the legacy config against the config completed from `manifest.json`)
+  cannot tell `rutaCodebase` apart in its fixture: the project has no
+  `docs/codebase/project-context.json`, and `bienvenida._proyecto` only reads the path when that
+  file exists. Setting `rutaCodebase: "docs/otro"` changes neither output. `timeoutIntegraciones`
+  is covered by `timeout_de`. If the code default and the manifest default diverge, the test does not
+  see it.
+- **E-45** checks exit 0 and a lock without `harness`, not that the inventory is the product's.
+- **E-48** does not prove `requierePython` comes from `manifest.json`: the 3.9 that `03-instalador`
+  E-24 checks is also the default in the code.
+- **E-55, the factory half** (`registryValid: true` in the repository) is held by cases 31 to 40, not
+  by a test that names E-55.
+
+Also an edge outside what E-11 measures: if someone hand-edited
+`.claude\harness\manifiestos\analisis.json`, `-Update` keeps it and names it, as the orphan rule
+requires, and that output contains the word `analisis`.
+
+Fix. In `tests/casos/63-harness-unico-instalador.ps1`: give the E-43 fixture a
+`project-context.json`, so a wrong `rutaCodebase` changes the output; compare the E-45 lock paths
+against the 259 of E-15; add an E-48 copy with `requierePython` at an impossible value; and name
+E-55 in the factory-side assertion.
+
 ### No real `dev-refutador` run over a `refutation-unit/1.0` has been read
 
 Atomic refutation (`docs/cambios/refutacion-atomica/spec.md`, 2026-09-25) proves the boundary
@@ -1619,8 +1693,8 @@ documentation shaped like configuration. Test assertions of the form
 `"REPOSITORY_DEPENDENCY" in CHECK.EVIDENCIA_QUE_NO_PRUEBA` assert that a string is in a tuple and
 prove nothing about behaviour; the state assertions beside them are what hold `D4/E-09` to `E-13`.
 
-Same smell as `aporta` in the manifests, one item above: a name that reads like a contract and is a
-comment. Fix. Either drop the two tuples into the module docstring where a reader expects prose, or
+Same smell `aporta` had in the manifests until `harness-unico` took it out: a name that reads like a
+contract and is a comment. Fix. Either drop the two tuples into the module docstring where a reader expects prose, or
 have `_evaluar_caso` reject a declared-useless class explicitly instead of by omission. Touches
 `D4/E-09`..`E-13`, which name the constants.
 
@@ -1712,10 +1786,18 @@ loads as instructions, Spanish for anything a person reads. The ADR names its ow
 They were not translated with the ADR on purpose: mixing the translation with the change that
 introduces the rule would make one diff say two things.
 
-Fix. Translate the three to English, keeping every rule and every example intact — these are
-working agents, not drafts, and `hu-refutador` in particular is the one `dev-refutador` inherited
-its shape from. What they output for people stays in Spanish, and each one should say so in its
-second line, the way `dev-iniciador-code.md` already does.
+Since `harness-unico` two of the three are gone: `hu-redactor` and `hu-refutador` left with the
+`analisis` harness. One remains, and it carries a second loose end: its HTML comment still says it
+is the sibling of `harnesses/analisis/agents/hu-refutador.md`, a file that no longer exists.
+`harness-unico` left both on purpose, because the file's fingerprint is part of the atomic
+refutation's cache key (`refutacion.py:41-45`): any edit, even a comma, invalidates the cache in
+every installed project.
+
+Fix. Translate `dev-refutador.md` to English, keeping every rule and every example intact — it is a
+working agent, not a draft — and in the same edit point the comment at the shape it inherited
+from `hu-refutador` as history, not as a path. What it outputs for people stays in Spanish, and it
+should say so in its second line, the way `dev-iniciador-code.md` already does. Ship it with the
+cache invalidation said in UPGRADE.
 
 ### Nothing measures whether a loadable .md is in the right language
 
@@ -1723,9 +1805,9 @@ ADR-0011 claims its criterion is checkable: *"un `.md` con frontmatter `name:`/`
 pieza cargable y va en inglés. No hace falta juicio para clasificarlo."* Nothing checks it. The
 three files above prove the rule does not enforce itself.
 
-Fix. A case in `06-composicion.ps1` — the one that already audits the repo's composition — asserting
-that every `.md` with `name:` frontmatter under `harnesses/*/agents/` and `harnesses/*/skills/` is
-in English. Detecting "is in English" mechanically is the hard part; a cheap proxy that would have
+Fix. A case in the suite — `06-composicion.ps1`, which audited the repo's composition, left with
+`harness-unico` — asserting that every `.md` with `name:` frontmatter under `comun/agents/`,
+`comun/skills/`, `harnesses/desarrollo/agents/` and `harnesses/desarrollo/skills/` is in English. Detecting "is in English" mechanically is the hard part; a cheap proxy that would have
 caught all three is the presence of Spanish function words (`que`, `debe`, `para`, `cuando`) in the
 first 40 lines. It warns, it does not block — the same shape as every other measurement in this
 repo.
@@ -1790,6 +1872,11 @@ It is missing the 8 skills, the 4 checks, `dev-refutador` and the secrets fix fr
 powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
   -Project 'C:\Work\GCBA\IGE' -Update
 ```
+
+Seen on 2026-10-02, while closing 0.29.0, read only: `C:\Work\GCBA\IGE` does not exist on this
+machine. The Portal IGE at `C:\dev\portal-ige-web` has a 0.28.0 lockfile with
+`harness: comun, desarrollo`, 261 files and no `hu-*`, installed 2026-10-01. Whether the Portal IGE
+is the project this item meant is not recorded. Until somebody says so, the item stays as written.
 
 ### `ES0902.md` was the only extract that did not close as faithful
 

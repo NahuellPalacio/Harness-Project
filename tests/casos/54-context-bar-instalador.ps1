@@ -82,7 +82,7 @@ New-Item -ItemType Directory -Path $demoCb -Force | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $demoCb 'CLAUDE.md'), "# Proyecto de prueba`r`n")
 
 try {
-    $r = Invoke-InstaladorCb @('-Project', $demoCb, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorCb @('-Project', $demoCb, '-Usuario', 'Ana Prueba')
     Assert-Igual 'la instalacion con la Context Bar sale 0' 0 $r.Codigo
 
     $rutaSenal = Join-Path $demoCb '.claude\runtime\contextbar.json'

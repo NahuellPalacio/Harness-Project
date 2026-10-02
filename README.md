@@ -7,30 +7,20 @@ se acuerde de las reglas**. Tiene tres capas: lo que el agente tiene que **saber
 **obliga** a hacerlo, y lo que **comprueba** que lo hizo. Un `CLAUDE.md` bien escrito es solo
 la primera.
 
-## Los dos harness
+## Un solo harness
 
-El corte es por **tipo de trabajo**, no por proyecto. Sirve para que nadie cargue reglas que
-no le tocan: un analista funcional no necesita las reglas de diseño de APIs, y quien escribe
-código no necesita las reglas de redacción de historias de usuario.
+El harness es **un solo producto**, para el trabajo técnico: código, APIs y deploy. Trae
+ES0901, ES0902, ES0903, Obelisco y accesibilidad, las versiones homologadas, las integraciones
+con Jira y GitLab, el contexto de una tarea, la planificación, la Context Bar y la contabilidad
+de ejecución. Se instala entero: no hay nada que elegir.
 
-| Harness | Para qué | Qué trae |
-|---|---|---|
-| `analisis` | Relevar, escribir historias de usuario, leer maquetas y normativa | La ley de no inventar, lectura de maquetas, formato de HU con Check IA |
-| `desarrollo` | Código, APIs, deploy | ES0901, ES0903, Obelisco y accesibilidad, versiones homologadas |
+En el repo vive en dos árboles por historia: `comun/` es la base —los hooks, la regla de
+secretos, las zonas del `CLAUDE.md`, el estado de la instalación— y `harnesses/desarrollo/` es
+el producto. La decisión está en [ADR-0012](docs/adr/0012-un-solo-harness.md).
 
-Los dos se apoyan sobre `comun/`, que se instala siempre: la regla de secretos, los hooks, el
-formato de memoria del proyecto y el instalador.
-
-Un proyecto puede tener **los dos a la vez**, nombrándolos juntos o agregando uno después:
-
-```powershell
-.\install.ps1 -Project ... -Harness analisis,desarrollo   # los dos de una
-.\install.ps1 -Project ... -Harness desarrollo            # sumar el segundo más tarde
-```
-
-**Instalar es aditivo**: lo que el proyecto ya tenía se conserva, y el instalador lo anuncia.
-Es lo que va a pasar cuando un repo de relevamiento reciba su primer código. Para quedarse con
-un conjunto exacto, el camino es `-Uninstall` y volver a instalar.
+📌 **Hasta 0.28.0 había un segundo harness, `analisis`, y se podían componer.** Ya no: un proyecto
+que lo tenía pasa a tener el producto entero en su próximo `-Update`. Qué sale y qué hacer está en
+[docs/instalacion.md](docs/instalacion.md#6-actualizar-y-desinstalar).
 
 ## Requisitos
 
@@ -70,17 +60,17 @@ cd C:\Work\Project-Harness
 
 # 2. Ver exactamente qué se va a escribir, antes de escribirlo.
 #    No pide nada: como no escribe, no puede exigir.
-.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Harness analisis -WhatIf
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -WhatIf
 
 # 3. Instalar. El harness te trata por tu nombre; si no lo pasás, te lo pregunta.
-.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Harness analisis -Usuario "Tu Nombre"
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Usuario "Tu Nombre"
 ```
 
 Lo mismo desde bash — Git Bash sobre Windows — es el mismo instalador con otro prefijo:
 
 ```bash
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
-  -Project 'C:/Work/GCBA/MiProyecto' -Harness analisis -Usuario 'Tu Nombre'
+  -Project 'C:/Work/GCBA/MiProyecto' -Usuario 'Tu Nombre'
 ```
 
 Después:
@@ -93,7 +83,7 @@ Después:
 `-Update` **nunca pisa un archivo que hayas editado a mano**: escribe la versión nueva al
 lado, con extensión `.nuevo`, y te avisa al final. `harness.config.json` no se toca jamás.
 
-Con el harness `desarrollo` instalado, queda un paso más — conectar Jira y GitLab: completar el
+Después de instalar queda un paso más — conectar Jira y GitLab: completar el
 `.env` local, que el instalador crea con la plantilla de `.env.example` y que Claude no puede leer.
 `setup` no pregunta nada: dice qué variable falta, por nombre, y valida.
 
@@ -175,8 +165,8 @@ siguiente. Nadie queda trabado.
 
 ## Qué recuerda
 
-Al abrir una sesión te dice en qué quedaron: qué harness rige, el estado de git, el último
-trabajo, lo que alguien dejó anotado en la caché y cuántas definiciones quedaron abiertas.
+Al abrir una sesión te dice en qué quedaron: qué versión del harness rige, el estado de git, el
+último trabajo, lo que alguien dejó anotado en la caché y cuántas definiciones quedaron abiertas.
 
 > **Se lee lo que alguien decidió dejar anotado. No se captura nada.**
 
@@ -192,21 +182,12 @@ El detalle completo, con las zonas del `CLAUDE.md` y sus techos, está en
 
 | Carpeta | Qué hay |
 |---|---|
-| `comun/` | El esqueleto. Se instala siempre, con cualquier harness |
-| `harnesses/<id>/` | Lo específico de cada tipo de trabajo |
+| `manifest.json` | El único manifiesto: los requisitos de la máquina y la configuración inicial de cada proyecto |
+| `comun/` | La base del harness: hooks, secretos, zonas del `CLAUDE.md`, schemas y estado de la instalación |
+| `harnesses/desarrollo/` | El producto: la CLI, los checks, las reglas, las skills y los agentes |
 | `normativa/` | Los estándares del GCBA destilados a markdown, en `extractos/`. **Insumo, nunca se copia a un proyecto**. Los PDF originales son documentación interna del GCBA y **no se publican acá**: van en `normativa/fuentes/`, que está gitignoreada — cada quien pone los suyos |
 | `docs/adr/` | Por qué cada decisión es como es |
 | `tests/` | Payloads reales de cada evento de hook, y los casos que los verifican |
-
-## Agregar un tercer harness
-
-Crear `harnesses/<id>/manifest.json`. Nada más: el instalador descubre los harness recorriendo
-`harnesses/`, no hay ningún id que registrar. Está documentado en
-[docs/agregar-un-harness.md](docs/agregar-un-harness.md).
-
-Cada harness declara un **prefijo de namespace** obligatorio. Eso hace estructuralmente
-imposible que dos harness aporten dos cosas con el mismo nombre, y por lo tanto componer
-siempre es seguro.
 
 ## Estado
 

@@ -41,7 +41,7 @@ one token every four characters of `name` plus `description`, paid on every turn
 claims to guard and does not measure. Nothing stops the next piece from doubling that number.
 
 Fix. `-Doctor` measures and reports the total; new cap `techoAssetsSiempreCargados` in
-`comun/manifest.json`. It warns, it never blocks.
+`manifest.json`. It warns, it never blocks.
 ```
 
 📌 **Write it so it can be picked up cold.** The evidence is the part that decays: a number without

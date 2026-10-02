@@ -30,7 +30,7 @@ New-Item -ItemType Directory -Path $demoKr -Force | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $demoKr 'CLAUDE.md'), "# Proyecto de prueba`r`n")
 
 try {
-    $r = Invoke-InstaladorKr @('-Project', $demoKr, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorKr @('-Project', $demoKr, '-Usuario', 'Ana Prueba')
     Assert-Igual 'E-68 instalar sin red ni canal sale 0' 0 $r.Codigo
     Assert-Contiene 'E-68 dice que el conocimiento queda pendiente' 'Conocimiento: revis' $r.Salida
     Assert-Contiene 'E-68 con el codigo' 'AUTO_REFRESH_CHANNEL_UNAVAILABLE' $r.Salida

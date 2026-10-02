@@ -56,10 +56,10 @@ cd C:\Work\gcba-harness
 .\install.ps1 -Doctor
 
 # 2. ¿Qué va a escribir, exactamente? Tampoco escribe nada.
-.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Harness analisis -WhatIf
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -WhatIf
 
 # 3. Instalar.
-.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Harness analisis -Usuario "Tu Nombre"
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Usuario "Tu Nombre"
 ```
 
 Si te salta `no se puede cargar el archivo ... install.ps1`, es la política de ejecución de
@@ -82,11 +82,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 -Doctor
 
 # 2. Ver qué va a escribir.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
-  -Project 'C:/Work/GCBA/MiProyecto' -Harness analisis -WhatIf
+  -Project 'C:/Work/GCBA/MiProyecto' -WhatIf
 
 # 3. Instalar.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
-  -Project 'C:/Work/GCBA/MiProyecto' -Harness analisis -Usuario 'Tu Nombre'
+  -Project 'C:/Work/GCBA/MiProyecto' -Usuario 'Tu Nombre'
 ```
 
 Cuatro detalles que sí importan en esta vía:
@@ -101,9 +101,8 @@ nombre, aborta explicando en vez de inventar un default. Por parámetro, no hay 
 **`-NoProfile` no es un lujo.** Si tu perfil de PowerShell imprime algo, ese texto se mezcla
 con la salida y ensucia el diagnóstico.
 
-**Los dos harness juntos se pasan igual:** `-Harness analisis,desarrollo`. Invocado con
-`-File` eso llega como una sola cadena literal, y el instalador la parte él mismo. Las dos
-vías se comportan igual.
+**Todo parámetro va con su nombre.** El instalador no acepta argumentos sueltos: uno de más falla
+a la vista, con el error de PowerShell, en vez de caer en el parámetro que le toque por posición.
 
 ## 4. Comprobar que quedó
 
@@ -116,7 +115,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
   -Project 'C:/Work/GCBA/MiProyecto' -Doctor
 ```
 
-Te dice qué harness rige, en qué versión está, si el proyecto está bajo control de versiones y
+Te dice qué versión del harness está instalada, si el proyecto está bajo control de versiones y
 qué archivos del harness fueron editados a mano. Abrí Claude Code en el proyecto: si en el
 saludo aparece tu nombre y el estado del repo, está andando.
 
@@ -156,11 +155,22 @@ Por bash, lo mismo con el prefijo `powershell.exe -NoProfile -ExecutionPolicy By
 `-Update` **nunca pisa un archivo que hayas editado a mano**: escribe la versión nueva al lado,
 con extensión `.nuevo`, y te avisa al final. `harness.config.json` no se toca jamás.
 
+Lo que la versión anterior instaló y la nueva ya no trae se saca, y la salida lo nombra. Si lo
+habías editado a mano, se queda —sin `.nuevo`, porque no hay versión nueva— y sale del inventario:
+`-Doctor` y `-Uninstall` dejan de mirarlo.
+
+📌 **Desde 0.29.0, el harness es uno solo.** El parámetro `Harness`
+ya no existe: pasarlo da el error de PowerShell *No se encuentra ningún parámetro que coincida
+con el nombre del parámetro 'Harness'*, y no se escribe nada. Un proyecto que tenía `analisis` pasa a
+tener el producto entero en su próximo `-Update`, y pierde `hu-escribir`, `hu-redactor`,
+`hu-refutador` y las reglas de "Trabajo funcional" del bloque de su `CLAUDE.md` (el `CLAUDE.md`
+anterior queda en el backup de esa corrida). Su `harness.config.json` no se toca.
+
 Para migrar entre versiones con cambios que rompen, mirá [UPGRADE.md](../UPGRADE.md).
 
 ## 7. Conectar Jira y GitLab
 
-Solo si instalaste el harness `desarrollo`. Se completa **un solo archivo**, el `.env` de la raíz,
+Se completa **un solo archivo**, el `.env` de la raíz,
 que el instalador creó con la plantilla de `.env.example`, que el `.gitignore` excluye y que Claude
 no puede leer: `HARNESS_JIRA_ENABLED`, `JIRA_BASE_URL`, `JIRA_USER`, `JIRA_TOKEN`, y lo mismo para
 GitLab. Nada te pregunta nada. Para ver qué falta, por nombre y sin mostrar ningún valor:
@@ -182,17 +192,6 @@ python .claude\harness\bin\desarrollo\dev-harness.py reconfigurar jira   # cambi
 
 Los estados, las capacidades y cómo agregar una integración nueva están en
 [integraciones.md](integraciones.md).
-
-## 8. Sumar el segundo harness
-
-Instalar es **aditivo**: lo que el proyecto ya tenía se conserva, y el instalador lo anuncia.
-
-```powershell
-.\install.ps1 -Project ... -Harness analisis,desarrollo   # los dos de una
-.\install.ps1 -Project ... -Harness desarrollo            # sumar el segundo más tarde
-```
-
-Para quedarte con un conjunto exacto, el camino es `-Uninstall` y volver a instalar.
 
 ## Cuando algo falla
 

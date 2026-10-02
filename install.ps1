@@ -18,8 +18,8 @@
 .PARAMETER Project
     Ruta del proyecto sobre el que operar.
 
-.PARAMETER Harness
-    Uno o más harness a instalar. Se pueden combinar: -Harness analisis,desarrollo
+.PARAMETER Usuario
+    Con qué nombre te trata el harness. Sin consola para preguntarlo, es obligatorio.
 
 .PARAMETER Update
     Trae los cambios del repo sin pisar lo que hayas editado a mano.
@@ -29,15 +29,16 @@
 
 .EXAMPLE
     .\install.ps1 -Doctor
-    .\install.ps1 -Project C:\Work\GCBA\IGE -Harness analisis -WhatIf
-    .\install.ps1 -Project C:\Work\GCBA\IGE -Harness analisis
-    .\install.ps1 -Project C:\Work\GCBA\IGE -Update
-    .\install.ps1 -Project C:\Work\GCBA\IGE -Uninstall
+    .\install.ps1 -Project C:\Work\GCBA\MiProyecto -WhatIf
+    .\install.ps1 -Project C:\Work\GCBA\MiProyecto -Usuario 'Tu Nombre'
+    .\install.ps1 -Project C:\Work\GCBA\MiProyecto -Update
+    .\install.ps1 -Project C:\Work\GCBA\MiProyecto -Uninstall
 #>
-[CmdletBinding(SupportsShouldProcess)]
+# PositionalBinding=$false: todo parámetro va con su nombre. Un argumento suelto falla a la vista
+# en vez de caer en el parámetro que le toque por posición.
+[CmdletBinding(SupportsShouldProcess, PositionalBinding=$false)]
 param(
     [string]   $Project,
-    [string[]] $Harness = @(),
     [string]   $Usuario,
     [switch]   $Update,
     [switch]   $Uninstall,
@@ -110,37 +111,17 @@ function Get-Sha256Archivo {
 
 
 function Read-Manifiesto {
-    <# Lee y valida un manifest.json. Es el mismo contrato para comun y para cada harness. #>
-    param([string] $Directorio)
-
-    $ruta = Join-Path $Directorio 'manifest.json'
-    if (-not (Test-Path $ruta)) { throw "falta manifest.json en $Directorio" }
+    <# Lee y valida manifest.json, el de la raíz del repo: el único. Los requisitos de la
+       máquina y la configuración inicial salen de acá y de ningún otro archivo. #>
+    $ruta = Join-Path $script:Repo 'manifest.json'
+    if (-not (Test-Path $ruta)) { throw "falta manifest.json en $($script:Repo)" }
 
     $m = Read-TextoUtf8 $ruta | ConvertFrom-Json
 
-    foreach ($campo in @('id', 'descripcion', 'requiereClaudeCode')) {
-        if (-not $m.PSObject.Properties[$campo]) {
-            throw "manifest.json de $Directorio no declara '$campo'"
-        }
+    if (-not $m.PSObject.Properties['requiereClaudeCode']) {
+        throw "manifest.json no declara 'requiereClaudeCode'"
     }
     return $m
-}
-
-
-function Get-HarnessDisponibles {
-    <#
-    .NOTES
-        Devuelve con la coma adelante a propósito: sin eso, PowerShell desenvuelve un
-        array vacío a $null y uno de un solo elemento a un escalar. Con Set-StrictMode
-        2.0, pedirle .Count a cualquiera de los dos es un error terminante.
-    #>
-    $dir = Join-Path $script:Repo 'harnesses'
-    if (-not (Test-Path $dir)) { return ,@() }
-
-    $ids = @(Get-ChildItem $dir -Directory |
-             Where-Object { Test-Path (Join-Path $_.FullName 'manifest.json') } |
-             Select-Object -ExpandProperty Name)
-    return ,$ids
 }
 
 
@@ -362,6 +343,101 @@ function Copy-Arbol {
 }
 
 
+function Read-InventarioPrevio {
+    <# ruta -> sha256 del lockfile que ya estaba en el proyecto, o vacío si no hay uno legible.
+       Sin inventario no se sabe qué era del harness, y entonces no se limpia nada. #>
+    param([string] $Project)
+
+    $inventario = @{}
+    $ruta = Join-Path $Project '.claude\harness.lock.json'
+    if (-not (Test-Path -LiteralPath $ruta)) { return $inventario }
+    try { $d = Read-TextoUtf8 $ruta | ConvertFrom-Json } catch { return $inventario }
+    if ($null -eq $d -or -not $d.PSObject.Properties['archivos']) { return $inventario }
+    foreach ($a in @($d.archivos)) {
+        if ($a -and $a.PSObject.Properties['ruta'] -and $a.ruta) {
+            $sha = ''
+            if ($a.PSObject.Properties['sha256']) { $sha = [string]$a.sha256 }
+            $inventario[[string]$a.ruta] = $sha
+        }
+    }
+    return $inventario
+}
+
+
+function Write-HuerfanosEditados {
+    param([string[]] $Rutas)
+    EscribirAviso "$($Rutas.Count) archivo(s) que ya no son parte del harness quedaron porque los editaste a mano. Salen del inventario: -Doctor y -Uninstall ya no los miran:"
+    foreach ($r in $Rutas) { EscribirPaso $r }
+}
+
+
+function Remove-Huerfanos {
+    <#
+    .SYNOPSIS
+        Lo que el lock anterior lista y el inventario nuevo no. Sin editar se borra; editado se queda.
+    .DESCRIPTION
+        Un huérfano es un archivo que el harness instaló antes y la versión de ahora ya no instala.
+        Si se lo deja, queda en disco fuera del inventario: invisible para -Doctor y para -Uninstall,
+        que es la peor forma de fallar. No hay una lista de lo que se retiró: el lock anterior dice
+        qué había y el inventario nuevo dice qué hay.
+
+          · Sin editar -su sha256 es el del lock anterior-: se borra. Si está fuera de
+            .claude\harness\ se nombra; lo de adentro no, porque .claude\harness\ se regenera entero.
+          · Editado a mano: se queda, sin .nuevo -no hay versión nueva-, y se nombra.
+          · Después se borra cada carpeta que quedó vacía debajo de .claude\harness\, .claude\skills\
+            o .claude\agents\. Una que solo tiene __pycache__ cuenta como vacía. Esas tres raíces no
+            se borran nunca acá.
+
+        Se llama recién cuando los hooks respondieron: una instalación que todavía se puede
+        revertir no borra nada de la anterior.
+    #>
+    param([string] $Project, [hashtable] $Previo, $Actual)
+
+    if ($null -eq $Previo -or $Previo.Count -eq 0) { return }
+
+    $nuevas = @{}
+    foreach ($a in @($Actual)) { $nuevas[[string]$a.ruta] = $true }
+
+    $sacados  = @()
+    $editados = @()
+    $carpetas = @{}
+    foreach ($rel in @($Previo.Keys | Sort-Object)) {
+        if ($nuevas.ContainsKey($rel)) { continue }
+        $ruta = Join-Path $Project $rel
+        if (-not (Test-Path -LiteralPath $ruta -PathType Leaf)) { continue }
+        if ((Get-Sha256Archivo $ruta) -eq $Previo[$rel]) {
+            Remove-Item -LiteralPath $ruta -Force -ErrorAction SilentlyContinue
+            $carpetas[(Split-Path -Parent $ruta)] = $true
+            if (-not $rel.StartsWith('.claude\harness\')) { $sacados += $rel }
+        } else {
+            $editados += $rel
+        }
+    }
+
+    $raices = @(foreach ($sub in @('harness', 'skills', 'agents')) { Join-Path $Project ".claude\$sub" })
+    foreach ($c in @($carpetas.Keys | Sort-Object -Descending)) {
+        $d = $c
+        while ($d) {
+            $adentro = @($raices | Where-Object { $d.StartsWith($_ + '\', [System.StringComparison]::OrdinalIgnoreCase) })
+            if ($adentro.Count -eq 0) { break }
+            if (Test-Path -LiteralPath $d) {
+                $quedan = @(Get-ChildItem -LiteralPath $d -Recurse -File -Force -ErrorAction SilentlyContinue |
+                            Where-Object { $_.FullName -notmatch '\\__pycache__\\' })
+                if ($quedan.Count -gt 0) { break }
+                Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            $d = Split-Path -Parent $d
+        }
+    }
+
+    if ($sacados.Count -gt 0) {
+        EscribirOk "$($sacados.Count) archivo(s) que ya no son parte del harness, sacados:"
+        foreach ($r in $sacados) { EscribirPaso $r }
+    }
+    if ($editados.Count -gt 0) { Write-HuerfanosEditados -Rutas $editados }
+}
+
+
 # ── Entorno ─────────────────────────────────────────────────────────────────────
 
 function Get-VersionClaudeCode {
@@ -405,21 +481,21 @@ function Test-Entorno {
         [void] $h.Add(@{ Nivel='falla'; Texto="PowerShell $psv — hace falta 5.1 o superior" })
     }
 
-    $manifiestoComun = Read-Manifiesto (Join-Path $script:Repo 'comun')
+    $manifiesto = Read-Manifiesto
     $vcc = Get-VersionClaudeCode
     if (-not $vcc) {
         [void] $h.Add(@{ Nivel='aviso'; Texto="no se pudo determinar la versión de Claude Code (¿está en el PATH?)" })
-    } elseif (Test-VersionMinima -Actual $vcc -Minima $manifiestoComun.requiereClaudeCode) {
-        [void] $h.Add(@{ Nivel='ok'; Texto="Claude Code $vcc (mínimo $($manifiestoComun.requiereClaudeCode))" })
+    } elseif (Test-VersionMinima -Actual $vcc -Minima $manifiesto.requiereClaudeCode) {
+        [void] $h.Add(@{ Nivel='ok'; Texto="Claude Code $vcc (mínimo $($manifiesto.requiereClaudeCode))" })
     } else {
-        [void] $h.Add(@{ Nivel='falla'; Texto="Claude Code $vcc es anterior al mínimo $($manifiestoComun.requiereClaudeCode)" })
+        [void] $h.Add(@{ Nivel='falla'; Texto="Claude Code $vcc es anterior al mínimo $($manifiesto.requiereClaudeCode)" })
     }
 
     # Python: desde que los hooks son Python, es tan indispensable como PowerShell mismo.
     # E-23: esto tiene que poder reportar "falla" sin morir, incluso si no hay ningún
     # intérprete alcanzable — es exactamente el caso que -Doctor existe para diagnosticar.
     $requierePython = '3.9'
-    if ($manifiestoComun.PSObject.Properties['requierePython']) { $requierePython = $manifiestoComun.requierePython }
+    if ($manifiesto.PSObject.Properties['requierePython']) { $requierePython = $manifiesto.requierePython }
 
     if ($PythonSimulado) {
         $verPython = $PythonSimulado
@@ -461,15 +537,6 @@ function Test-Entorno {
         [void] $h.Add(@{ Nivel='falla'; Texto="$($bloqueados.Count) script(s) con Mark-of-the-Web. Cloná el repo en vez de bajarlo como ZIP, o corré Unblock-File." })
     } else {
         [void] $h.Add(@{ Nivel='ok'; Texto='ningún script bloqueado por Mark-of-the-Web' })
-    }
-
-    # Sin @() a propósito: la función ya devuelve con la coma adelante, y envolver de
-    # nuevo produce un array adentro de un array.
-    $disponibles = Get-HarnessDisponibles
-    if ($disponibles.Count -gt 0) {
-        [void] $h.Add(@{ Nivel='ok'; Texto="harness disponibles: $($disponibles -join ', ')" })
-    } else {
-        [void] $h.Add(@{ Nivel='aviso'; Texto='todavía no hay ningún harness en harnesses/' })
     }
 
     return ,$h
@@ -741,19 +808,18 @@ function New-ConfigProyecto {
         Es el archivo del humano. Es donde se disiente de un default del harness —
         por ejemplo el nombre de la rama, que tiene tres variantes en la norma.
     #>
-    param([string] $Ruta, $Manifiestos, [string] $Usuario)
+    param([string] $Ruta, $Manifiesto, [string] $Usuario)
 
     if (Test-Path $Ruta) { return $false }
 
+    # El nombre va primero, y la clave `usuario` del manifiesto -vacía- se saltea.
     $config = [ordered]@{
         '$comentario' = 'Tus ajustes. El harness no pisa este archivo nunca, ni en -Update.'
         usuario       = $Usuario
     }
-    foreach ($m in $Manifiestos) {
-        if ($m.PSObject.Properties['config']) {
-            foreach ($p in $m.config.PSObject.Properties) {
-                if (-not $config.Contains($p.Name)) { $config[$p.Name] = $p.Value }
-            }
+    if ($Manifiesto.PSObject.Properties['config']) {
+        foreach ($p in $Manifiesto.config.PSObject.Properties) {
+            if (-not $config.Contains($p.Name)) { $config[$p.Name] = $p.Value }
         }
     }
 
@@ -1582,7 +1648,7 @@ function Invoke-Doctor {
             $lock = Join-Path $Project '.claude\harness.lock.json'
             if (Test-Path $lock) {
                 $d = Read-TextoUtf8 $lock | ConvertFrom-Json
-                EscribirOk "harness instalado: $($d.harness -join ', ') (v$($d.version))"
+                EscribirOk "harness instalado (v$($d.version))"
 
                 if ($d.version -ne $script:Version) {
                     EscribirAviso "el proyecto está en v$($d.version) y el repo en v$($script:Version). Corré -Update."
@@ -1621,17 +1687,15 @@ function Invoke-Doctor {
                 # La Context Bar, como la dejó la última instalación o la última sesión. Se lee
                 # el archivo y nada más: probar el comando escribiría la señal de vida, y
                 # -Doctor no escribe. Nunca es una falla: la barra no es una compuerta.
-                if (@($d.harness) -contains 'desarrollo') {
-                    $estadoBarra = Get-EstadoDeLaBarra -Project $Project
-                    if ($estadoBarra -in @('ACTIVE', 'CONFIGURED')) {
-                        EscribirOk "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra)"
-                    } elseif ($estadoBarra -eq 'RELOAD_REQUIRED') {
-                        EscribirAviso 'Context Bar configurada. Reiniciá la sesión de Claude Code para activarla.'
-                    } elseif ($estadoBarra) {
-                        EscribirAviso "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra). Qué hacer: python .claude\harness\bin\desarrollo\dev-harness.py harness"
-                    } else {
-                        EscribirAviso 'Context Bar: no se puede leer .claude\harness.installation.json'
-                    }
+                $estadoBarra = Get-EstadoDeLaBarra -Project $Project
+                if ($estadoBarra -in @('ACTIVE', 'CONFIGURED')) {
+                    EscribirOk "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra)"
+                } elseif ($estadoBarra -eq 'RELOAD_REQUIRED') {
+                    EscribirAviso 'Context Bar configurada. Reiniciá la sesión de Claude Code para activarla.'
+                } elseif ($estadoBarra) {
+                    EscribirAviso "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra). Qué hacer: python .claude\harness\bin\desarrollo\dev-harness.py harness"
+                } else {
+                    EscribirAviso 'Context Bar: no se puede leer .claude\harness.installation.json'
                 }
             } else {
                 EscribirAviso 'no tiene el harness instalado'
@@ -1683,8 +1747,6 @@ function Invoke-Doctor {
 
 
 function Invoke-Instalar {
-    param([string[]] $Ids)
-
     Escribir ''
     Escribir "gcba-harness v$($script:Version) — instalar"
     Escribir ''
@@ -1697,66 +1759,12 @@ function Invoke-Instalar {
     }
     if (-not (Test-Path $Project)) { throw "el proyecto no existe: $Project" }
 
-    # -Harness analisis,desarrollo se parte solo en una sesión interactiva: ahí el parser
-    # de PowerShell arma el array. Invocado con -File —desde un .cmd, desde CI, desde otro
-    # script— el mismo texto llega como UNA cadena literal y el harness "analisis,desarrollo"
-    # no existe. Se normaliza acá para que las dos vías se comporten igual.
-    $Ids = @($Ids | ForEach-Object { $_ -split ',' } |
-                    ForEach-Object { $_.Trim() } |
-                    Where-Object { $_ })
+    $manifiesto = Read-Manifiesto
 
-    # Instalar es ADITIVO: lo que el proyecto ya tenía se conserva. Sin esto, agregar el
-    # segundo harness reemplaza el bloque del CLAUDE.md y el lockfile con el conjunto nuevo,
-    # y los archivos del primero quedan en disco fuera del inventario — invisibles para
-    # -Doctor y para -Uninstall. Y falla en silencio, que es la peor forma de fallar.
-    #
-    # Es el caso que el README anticipa: un repo de relevamiento que recibe su primer código
-    # meses después. Ese camino es incremental por naturaleza.
-    #
-    # Para quedarse con un conjunto exacto, el camino es -Uninstall y volver a instalar.
-    $heredados = @()
-    $rutaLockPrevio = Join-Path $Project '.claude\harness.lock.json'
-    if (Test-Path $rutaLockPrevio) {
-        $lockPrevio = Read-TextoUtf8 $rutaLockPrevio | ConvertFrom-Json
-        if ($lockPrevio.PSObject.Properties['harness']) {
-            $heredados = @($lockPrevio.harness |
-                           Where-Object { $_ -and $_ -ne 'comun' -and $Ids -notcontains $_ })
-        }
-    }
-    if ($heredados.Count -gt 0) {
-        $Ids = @($Ids) + $heredados
-        EscribirOk ("se conserva lo ya instalado: " + ($heredados -join ', '))
-    }
-
-    # Orden canónico, no orden de instalación. Llegar al mismo conjunto instalando los dos
-    # juntos o agregando uno después tiene que producir el mismo archivo: si el orden
-    # dependiera del camino, el bloque del CLAUDE.md cambiaría de orden solo, y un -Update
-    # generaría un diff que no corresponde a ningún cambio real.
-    $Ids = @($Ids | Sort-Object)
-
-    # Sin @() a propósito: la función ya devuelve con la coma adelante, y envolver de
-    # nuevo produce un array adentro de un array.
-    $disponibles = Get-HarnessDisponibles
-    foreach ($id in $Ids) {
-        if ($disponibles -notcontains $id) {
-            throw "no existe el harness '$id'. Disponibles: $($disponibles -join ', ')"
-        }
-    }
-
-    $manifiestos = @(Read-Manifiesto (Join-Path $script:Repo 'comun'))
-    foreach ($id in $Ids) {
-        $manifiestos += Read-Manifiesto (Join-Path $script:Repo "harnesses\$id")
-    }
-
-    # Prefijos disjuntos: es lo que hace imposible que dos harness colisionen.
-    $prefijos = @($manifiestos | Where-Object { $_.PSObject.Properties['prefijo'] -and $_.prefijo } |
-                  Select-Object -ExpandProperty prefijo)
-    $repetidos = @($prefijos | Group-Object | Where-Object { $_.Count -gt 1 })
-    if ($repetidos.Count -gt 0) {
-        throw "hay prefijos repetidos entre los harness pedidos: $(($repetidos | Select-Object -ExpandProperty Name) -join ', ')"
-    }
-
-    EscribirOk ("se va a instalar: " + (@('comun') + $Ids -join ', '))
+    # Lo que dejó la instalación anterior, si la hay. Instalar sobre una instalación existente
+    # reinstala el producto entero, y lo que el lock anterior lista y el nuevo no se limpia
+    # recién cuando los hooks respondieron (ver Remove-Huerfanos).
+    $inventarioPrevio = Read-InventarioPrevio -Project $Project
 
     $dirClaude  = Join-Path $Project '.claude'
     $dirHarness = Join-Path $dirClaude 'harness'
@@ -1768,14 +1776,12 @@ function Invoke-Instalar {
         Escribir ''
         Escribir '  Se escribiría:'
         EscribirPaso ".claude\settings.json"
-        EscribirPaso ".claude\harness\  (hooks, reglas, checks, manifiestos)"
+        EscribirPaso ".claude\harness\  (hooks, reglas, checks)"
         EscribirPaso ".claude\skills\ y .claude\agents\"
         EscribirPaso ".claude\harness.lock.json"
         EscribirPaso ".claude\harness.installation.json  (solo si la instalación termina bien)"
         EscribirPaso ".claude\harness.config.json  (solo si no existe)"
-        if ($Ids -contains 'desarrollo') {
-            EscribirPaso ".claude\harness.presupuesto.json  (solo si no existe: umbrales de contexto de la Context Bar)"
-        }
+        EscribirPaso ".claude\harness.presupuesto.json  (solo si no existe: umbrales de contexto de la Context Bar)"
         EscribirPaso "CLAUDE.md  (solo el bloque marcado)"
         EscribirPaso ".gitignore (solo el bloque marcado)"
         EscribirPaso "backup de lo que se pise en $dirBackup"
@@ -1827,24 +1833,15 @@ function Invoke-Instalar {
     # condicion de frescura mira ese encabezado. Los PDF no: siguen siendo de la fabrica.
     foreach ($x in (Copy-Arbol (Join-Path $script:Repo 'normativa\extractos') (Join-Path $dirHarness 'normativa\extractos'))) { [void]$instalados.Add($x) }
 
-    # cada harness
-    foreach ($id in $Ids) {
-        $origen = Join-Path $script:Repo "harnesses\$id"
-        foreach ($x in (Copy-Arbol (Join-Path $origen 'checks') (Join-Path $dirHarness "checks\$id"))) { [void]$instalados.Add($x) }
-        foreach ($x in (Copy-Arbol (Join-Path $origen 'bin')    (Join-Path $dirHarness "bin\$id")))    { [void]$instalados.Add($x) }
-        foreach ($x in (Copy-Arbol (Join-Path $origen 'reglas') (Join-Path $dirHarness "reglas\$id"))) { [void]$instalados.Add($x) }
-        foreach ($x in (Copy-Arbol (Join-Path $origen 'skills') (Join-Path $dirClaude 'skills')))      { [void]$instalados.Add($x) }
-        foreach ($x in (Copy-Arbol (Join-Path $origen 'agents') (Join-Path $dirClaude 'agents')))      { [void]$instalados.Add($x) }
-    }
-
-    # manifiestos, para que -Doctor sepa qué rige acá
-    $dirManif = Join-Path $dirHarness 'manifiestos'
-    if (-not (Test-Path $dirManif)) { New-Item -ItemType Directory -Path $dirManif -Force | Out-Null }
-    foreach ($m in $manifiestos) {
-        $destino = Join-Path $dirManif ($m.id + '.json')
-        Write-TextoUtf8 -Ruta $destino -Texto (ConvertTo-JsonTexto $m)
-        [void] $instalados.Add($destino)
-    }
+    # El producto, a destinos fijos. El `desarrollo` de checks\, bin\ y reglas\ ya no es un
+    # espacio de nombres: es la dirección pública de la CLI (bin\desarrollo\dev-harness.py),
+    # y la conservan también las rutas internas que la acompañan.
+    $origenProducto = Join-Path $script:Repo 'harnesses\desarrollo'
+    foreach ($x in (Copy-Arbol (Join-Path $origenProducto 'checks') (Join-Path $dirHarness 'checks\desarrollo'))) { [void]$instalados.Add($x) }
+    foreach ($x in (Copy-Arbol (Join-Path $origenProducto 'bin')    (Join-Path $dirHarness 'bin\desarrollo')))    { [void]$instalados.Add($x) }
+    foreach ($x in (Copy-Arbol (Join-Path $origenProducto 'reglas') (Join-Path $dirHarness 'reglas\desarrollo'))) { [void]$instalados.Add($x) }
+    foreach ($x in (Copy-Arbol (Join-Path $origenProducto 'skills') (Join-Path $dirClaude 'skills')))            { [void]$instalados.Add($x) }
+    foreach ($x in (Copy-Arbol (Join-Path $origenProducto 'agents') (Join-Path $dirClaude 'agents')))            { [void]$instalados.Add($x) }
     EscribirOk "$($instalados.Count) archivo(s) copiados"
 
     # 4. Shims y settings.
@@ -1856,13 +1853,10 @@ function Invoke-Instalar {
     [void] $instalados.Add((Join-Path $dirHarness 'run-hook.cmd'))
     [void] $instalados.Add((Join-Path $dirHarness 'run-hook.sh'))
 
-    # La Context Bar es del harness de desarrollo: el Bloque 4 vive ahí.
-    $comandoBarra = ''
-    if ($Ids -contains 'desarrollo') {
-        $comandoBarra = Get-ComandoBarra -Project $Project -Python $python
-        if (-not $comandoBarra) {
-            EscribirAviso "la ruta del proyecto tiene un apóstrofo: el comando de la Context Bar no se puede escribir igual para Git Bash y para PowerShell, y no se registra"
-        }
+    # La Context Bar: el renderizador vive en bin\desarrollo\contabilidad, con el Bloque 4.
+    $comandoBarra = Get-ComandoBarra -Project $Project -Python $python
+    if (-not $comandoBarra) {
+        EscribirAviso "la ruta del proyecto tiene un apóstrofo: el comando de la Context Bar no se puede escribir igual para Git Bash y para PowerShell, y no se registra"
     }
 
     $rutaSettings = Join-Path $dirClaude 'settings.json'
@@ -1885,33 +1879,29 @@ function Invoke-Instalar {
 
     # 5. Config del humano.
     $rutaConfig = Join-Path $dirClaude 'harness.config.json'
-    if (New-ConfigProyecto -Ruta $rutaConfig -Manifiestos $manifiestos -Usuario $nombreUsuario) {
+    if (New-ConfigProyecto -Ruta $rutaConfig -Manifiesto $manifiesto -Usuario $nombreUsuario) {
         EscribirOk "harness.config.json creado para $nombreUsuario (no se vuelve a tocar nunca)"
     } else {
         EscribirOk "harness.config.json ya existía: no se toca (usuario: $nombreUsuario)"
     }
 
-    # 5b. Credenciales externas del humano. Solo si desarrollo esta instalado: Jira,
-    # GitLab y OpenShift son herramientas del ciclo de desarrollo, y un proyecto de solo
-    # analisis no las necesita.
+    # 5b. Credenciales externas del humano: Jira, GitLab y OpenShift.
     #
     # 🔴 Ninguno de los dos entra a $instalados. -Uninstall borra exactamente lo que el
     # lockfile lista, y .env.example (contenido del harness, pero de la raiz del
     # proyecto) y .env (del desarrollador) sobreviven a -Uninstall igual que
     # harness.config.json — ninguno de los tres esta en esa lista a proposito.
-    if ($Ids -contains 'desarrollo') {
-        $rutaEnvExample = Join-Path $Project '.env.example'
-        $rutaEnv        = Join-Path $Project '.env'
-        $rutaEnvOrigen  = Join-Path $script:Repo 'harnesses\desarrollo\.env.example'
-        $creado = New-EnvProyecto -RutaEnvExample $rutaEnvExample -RutaEnv $rutaEnv -RutaOrigen $rutaEnvOrigen
-        if ($creado) {
-            EscribirOk '.env.example y .env creados (.env no se vuelve a tocar nunca)'
-        } else {
-            EscribirOk '.env.example actualizado; .env ya existía y no se tocó'
-        }
-        # harness.integraciones.json ya no se siembra: es la proyección que genera el
-        # bootstrap desde el .env (paso 8c). Tampoco entra al lockfile.
+    $rutaEnvExample = Join-Path $Project '.env.example'
+    $rutaEnv        = Join-Path $Project '.env'
+    $rutaEnvOrigen  = Join-Path $origenProducto '.env.example'
+    $creado = New-EnvProyecto -RutaEnvExample $rutaEnvExample -RutaEnv $rutaEnv -RutaOrigen $rutaEnvOrigen
+    if ($creado) {
+        EscribirOk '.env.example y .env creados (.env no se vuelve a tocar nunca)'
+    } else {
+        EscribirOk '.env.example actualizado; .env ya existía y no se tocó'
     }
+    # harness.integraciones.json ya no se siembra: es la proyección que genera el
+    # bootstrap desde el .env (paso 8c). Tampoco entra al lockfile.
 
     # 5c. La política de la Context Bar (docs/cambios/context-bar-consumo-desde-instalacion).
     # Sin umbrales de contexto la barra no pinta nunca, y una instalación nueva no tenía ninguno.
@@ -1925,22 +1915,19 @@ function Invoke-Instalar {
     # Es de contexto y nada más: billingMode UNKNOWN y ningún límite de plata. El 70% y el 90%
     # son defaults de este harness, no una regla de ES0901 ni de ES0902.
     $rutaPolitica = Join-Path $dirClaude 'harness.presupuesto.json'
-    if ($Ids -contains 'desarrollo') {
-        if (Test-Path -LiteralPath $rutaPolitica) {
-            EscribirOk 'harness.presupuesto.json ya existía: no se toca'
-        } else {
-            Copy-Item -LiteralPath (Join-Path $script:Repo 'harnesses\desarrollo\reglas\budget-policy-context-default.json') `
-                      -Destination $rutaPolitica
-            EscribirOk 'harness.presupuesto.json creado con la política por defecto de la Context Bar: umbrales de contexto y ningún límite de plata'
-        }
+    if (Test-Path -LiteralPath $rutaPolitica) {
+        EscribirOk 'harness.presupuesto.json ya existía: no se toca'
+    } else {
+        Copy-Item -LiteralPath (Join-Path $origenProducto 'reglas\budget-policy-context-default.json') `
+                  -Destination $rutaPolitica
+        EscribirOk 'harness.presupuesto.json creado con la política por defecto de la Context Bar: umbrales de contexto y ningún límite de plata'
     }
 
-    # 6. Bloques en archivos del humano.
-    $bloqueClaude = Read-TextoUtf8 (Join-Path $origenComun 'claude-md\bloque-comun.md')
-    foreach ($id in $Ids) {
-        $extra = Join-Path $script:Repo "harnesses\$id\claude-md\bloque.md"
-        if (Test-Path $extra) { $bloqueClaude += "`r`n`r`n" + (Read-TextoUtf8 $extra) }
-    }
+    # 6. Bloques en archivos del humano. El del CLAUDE.md son dos fragmentos en orden fijo: la
+    # base y el trabajo técnico, separados por una línea en blanco. Es el mismo texto que dejaba
+    # 0.28.0, así que en esos proyectos un -Update no deja diff en un archivo que se versiona.
+    $bloqueClaude = (Read-TextoUtf8 (Join-Path $origenComun 'claude-md\bloque-comun.md')) + "`r`n`r`n" +
+                    (Read-TextoUtf8 (Join-Path $origenProducto 'claude-md\bloque.md'))
     $nombreProyecto = Split-Path -Leaf $Project
     $rutaClaudeMd = Join-Path $Project 'CLAUDE.md'
 
@@ -2017,7 +2004,6 @@ secrets/
     }
     $lock = [ordered]@{
         version   = $script:Version
-        harness   = @('comun') + $Ids
         instalado = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
         backup    = ".claude\.harness-backup\$sello"
         archivos  = $inventario
@@ -2037,35 +2023,36 @@ secrets/
     }
     EscribirOk 'los cuatro hooks responden correctamente, con el comando que quedó en settings.json'
 
+    # 8a. Lo que el lock anterior lista y el nuevo no. Recién acá: con los hooks respondiendo
+    # ya no hay vuelta atrás, y una instalación que todavía se puede revertir no borra nada de
+    # la anterior.
+    Remove-Huerfanos -Project $Project -Previo $inventarioPrevio -Actual $inventario
+
     # 8b. La Context Bar, con el comando que quedó en settings.json. NO es una compuerta: si
     # no corre en algún shell la barra queda NOT_CONFIGURED con
     # CONTEXT_BAR_CONFIGURATION_INVALID, y la instalación sigue.
     $flagBarra = ''
-    if ($Ids -contains 'desarrollo') {
-        $barra = Test-BarraRegistrada -Project $Project
-        if ($barra.Registrada) {
-            if ($barra.Probada) {
-                $flagBarra = '--barra-probada'
-                EscribirOk ("Context Bar: el comando registrado corre y dibuja en " + ($barra.Shells -join ' y '))
-            } else {
-                $flagBarra = '--barra-invalida'
-                EscribirAviso 'Context Bar: el comando registrado no corre en todos los shells. La barra queda sin configurar; la instalación sigue.'
-            }
-            foreach ($p in $barra.Problemas) { EscribirPaso $p }
+    $barra = Test-BarraRegistrada -Project $Project
+    if ($barra.Registrada) {
+        if ($barra.Probada) {
+            $flagBarra = '--barra-probada'
+            EscribirOk ("Context Bar: el comando registrado corre y dibuja en " + ($barra.Shells -join ' y '))
+        } else {
+            $flagBarra = '--barra-invalida'
+            EscribirAviso 'Context Bar: el comando registrado no corre en todos los shells. La barra queda sin configurar; la instalación sigue.'
         }
+        foreach ($p in $barra.Problemas) { EscribirPaso $p }
     }
 
     # 8c. La configuración de las integraciones, desde el .env. Antes del estado: así la
     # bienvenida ya sabe qué integración quedó disponible y qué variable falta.
-    if ($Ids -contains 'desarrollo') {
-        Escribir ''
-        EscribirPaso 'Integraciones (desde el .env local):'
-        Invoke-ResumenDeIntegraciones -Python $python -Project $Project
-        # 8d. El conocimiento, contra el canal que ya funcionó. Nunca es una compuerta.
-        $disparador = 'INSTALL'
-        if ($Update) { $disparador = 'HARNESS_UPDATE' }
-        Invoke-RefrescoDeConocimiento -Python $python -Project $Project -Disparador $disparador
-    }
+    Escribir ''
+    EscribirPaso 'Integraciones (desde el .env local):'
+    Invoke-ResumenDeIntegraciones -Python $python -Project $Project
+    # 8d. El conocimiento, contra el canal que ya funcionó. Nunca es una compuerta.
+    $disparador = 'INSTALL'
+    if ($Update) { $disparador = 'HARNESS_UPDATE' }
+    Invoke-RefrescoDeConocimiento -Python $python -Project $Project -Disparador $disparador
 
     # 9. El estado de la instalación, para la bienvenida. Recién acá: una instalación que se
     # revirtió no deja harness.installation.json. En un -Update el archivo ya existe y
@@ -2082,35 +2069,31 @@ secrets/
     # Lo que quedó de la Context Bar, dicho como lo va a decir la bienvenida. Una barra recién
     # registrada no tiene señal de vida todavía: la documentación no garantiza que Claude Code
     # la recargue a mitad de sesión, así que se dice que puede hacer falta reiniciar.
-    if ($Ids -contains 'desarrollo') {
-        $estadoBarra = Get-EstadoDeLaBarra -Project $Project
-        if ($estadoBarra -eq 'RELOAD_REQUIRED') {
-            EscribirAviso 'Context Bar configurada. Reiniciá la sesión de Claude Code para activarla.'
-        } elseif ($estadoBarra) {
-            EscribirPaso "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra)"
-        }
+    $estadoBarra = Get-EstadoDeLaBarra -Project $Project
+    if ($estadoBarra -eq 'RELOAD_REQUIRED') {
+        EscribirAviso 'Context Bar configurada. Reiniciá la sesión de Claude Code para activarla.'
+    } elseif ($estadoBarra) {
+        EscribirPaso "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra)"
+    }
 
-        # Los umbrales que quedaron, sin prometer un porcentaje: la instalación no dibujó
-        # ninguno, y el límite de la ventana llega recién con la primera respuesta del modelo.
-        $umbrales = Get-UmbralesDeContexto -Ruta $rutaPolitica
-        if (-not $umbrales.Legible) {
-            EscribirAviso 'no se pudo leer .claude\harness.presupuesto.json: la barra lo va a dibujar como "presupuesto ilegible". No se toca; arreglalo a mano.'
-        } elseif ($umbrales.Faltan.Count -gt 0) {
-            EscribirAviso ("la política del proyecto no tiene " + ($umbrales.Faltan -join ' ni ') + ': Ctx no va a tomar color. La política no se toca.')
-            EscribirPaso  'Para agregarlos sin tocar el resto: python .claude\harness\bin\desarrollo\dev-harness.py presupuesto --context-defaults'
-        } else {
-            EscribirOk ("Umbrales de contexto configurados: WARNING {0}% / ERROR {1}%" -f $umbrales.Warning, $umbrales.Error)
-            EscribirPaso 'El porcentaje aparecerá con la primera observación de contexto de Claude Code.'
-        }
+    # Los umbrales que quedaron, sin prometer un porcentaje: la instalación no dibujó
+    # ninguno, y el límite de la ventana llega recién con la primera respuesta del modelo.
+    $umbrales = Get-UmbralesDeContexto -Ruta $rutaPolitica
+    if (-not $umbrales.Legible) {
+        EscribirAviso 'no se pudo leer .claude\harness.presupuesto.json: la barra lo va a dibujar como "presupuesto ilegible". No se toca; arreglalo a mano.'
+    } elseif ($umbrales.Faltan.Count -gt 0) {
+        EscribirAviso ("la política del proyecto no tiene " + ($umbrales.Faltan -join ' ni ') + ': Ctx no va a tomar color. La política no se toca.')
+        EscribirPaso  'Para agregarlos sin tocar el resto: python .claude\harness\bin\desarrollo\dev-harness.py presupuesto --context-defaults'
+    } else {
+        EscribirOk ("Umbrales de contexto configurados: WARNING {0}% / ERROR {1}%" -f $umbrales.Warning, $umbrales.Error)
+        EscribirPaso 'El porcentaje aparecerá con la primera observación de contexto de Claude Code.'
     }
 
     Escribir ''
     Write-Host '  Listo.' -ForegroundColor Green
-    if ($Ids -contains 'desarrollo') {
-        Escribir ''
-        Escribir '  Para conectar Jira y GitLab, completá el .env local (ver .env.example) y mirá qué falta con:'
-        Escribir '    python .claude\harness\bin\desarrollo\dev-harness.py setup'
-    }
+    Escribir ''
+    Escribir '  Para conectar Jira y GitLab, completá el .env local (ver .env.example) y mirá qué falta con:'
+    Escribir '    python .claude\harness\bin\desarrollo\dev-harness.py setup'
     Escribir ''
     return 0
 }
@@ -2125,7 +2108,6 @@ function Invoke-Actualizar {
     if (-not (Test-Path $lock)) { throw "el proyecto no tiene el harness instalado: $Project" }
 
     $d = Read-TextoUtf8 $lock | ConvertFrom-Json
-    $ids = @($d.harness | Where-Object { $_ -ne 'comun' })
 
     # Lo que el humano editó a mano NO se pisa. Se escribe al lado con .nuevo y se avisa.
     $editados = @()
@@ -2161,8 +2143,8 @@ function Invoke-Actualizar {
     #
     # E-30 (hallazgo del revisor, regresión que este mismo cambio introdujo): "seguro en
     # el caso feliz" no alcanza. Invoke-Instalar no devuelve nunca distinto de 0 -SIEMPRE
-    # tira, nunca hace return de un código de error: falta de Python, zonas.py roto, un id
-    # inválido, prefijos repetidos, hooks que no responden- así que un borrado y DESPUÉS
+    # tira, nunca hace return de un código de error: falta de Python, zonas.py roto, un
+    # manifiesto ilegible, hooks que no responden- así que un borrado y DESPUÉS
     # un `if ($codigo -ne 0)` es una red que no existe: para cuando ese `if` se evalúa, ya
     # no hubo excepción, osea que ya salió bien. La única forma de no perder nada si
     # Invoke-Instalar tira es no borrar antes de tener la reinstalación en pie: se MUEVE
@@ -2186,7 +2168,7 @@ function Invoke-Actualizar {
     }
 
     try {
-        Invoke-Instalar -Ids $ids | Out-Null
+        Invoke-Instalar | Out-Null
     } catch {
         $mensajeOriginal = $_.Exception.Message
 
@@ -2220,14 +2202,31 @@ function Invoke-Actualizar {
         Remove-Item $dirHarnessTemp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
+    # Un editado que la versión nueva todavía instala vuelve a su lugar con la nueva al lado,
+    # como .nuevo. Uno que ya no instala vuelve tal cual, sin .nuevo -no hay versión nueva- y con
+    # su carpeta si el -Update la sacó, y queda fuera del inventario. Los de fuera de
+    # .claude\harness\ ya los nombró Remove-Huerfanos: siguieron en disco todo el tiempo.
+    $rutasNuevas = @{}
+    foreach ($a in @((Read-TextoUtf8 $lock | ConvertFrom-Json).archivos)) { $rutasNuevas[[string]$a.ruta] = $true }
+    $conNuevo = @()
+    $retiradosAdentro = @()
     foreach ($e in $editados) {
         $ruta = Join-Path $Project $e
-        if (Test-Path $ruta) { Copy-Item $ruta ($ruta + '.nuevo') -Force }
-        [System.IO.File]::WriteAllBytes($ruta, $guardados[$e])
+        if ($rutasNuevas.ContainsKey($e)) {
+            if (Test-Path $ruta) { Copy-Item $ruta ($ruta + '.nuevo') -Force }
+            [System.IO.File]::WriteAllBytes($ruta, $guardados[$e])
+            $conNuevo += $e
+        } else {
+            $dir = Split-Path -Parent $ruta
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            [System.IO.File]::WriteAllBytes($ruta, $guardados[$e])
+            if ($e.StartsWith('.claude\harness\')) { $retiradosAdentro += $e }
+        }
     }
-    if ($editados.Count -gt 0) {
+    if ($conNuevo.Count -gt 0) {
         EscribirAviso 'tus versiones se conservaron. Las nuevas quedaron como .nuevo al lado.'
     }
+    if ($retiradosAdentro.Count -gt 0) { Write-HuerfanosEditados -Rutas $retiradosAdentro }
 
     Escribir ''
     Write-Host "  Actualizado de v$($d.version) a v$($script:Version)." -ForegroundColor Green
@@ -2370,10 +2369,7 @@ try {
     if (-not $Project)   { throw 'falta -Project. Probá: .\install.ps1 -Doctor' }
     if ($Uninstall)      { exit (Invoke-Desinstalar) }
     if ($Update)         { exit (Invoke-Actualizar) }
-    if ($Harness.Count -eq 0) {
-        throw "falta -Harness. Disponibles: $((Get-HarnessDisponibles) -join ', ')"
-    }
-    exit (Invoke-Instalar -Ids $Harness)
+    exit (Invoke-Instalar)
 }
 catch {
     Escribir ''

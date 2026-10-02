@@ -338,11 +338,6 @@ def seccion_de_runtime(b, doc, proyecto):
     """
     rc = doc.get("runtimeComponents") or {}
     lineas = ["", "Runtime / Observabilidad"]
-    if not rc or not (doc.get("knowledge") or {}).get("applies"):
-        lineas.append("  sin el harness de desarrollo: no hay Bloque 4, ni Context Bar, ni "
-                      "reporte de seguridad")
-        return "\n".join(lineas)
-
     ancho = len("Reinicio de Claude Code") + 3
     acciones = []
     for clave, nombre, _, _ in b.COMPONENTES:
@@ -437,7 +432,7 @@ def _detalle_de_runtime(b, doc, proyecto):
     """Las huellas, las versiones y las fechas de los componentes de runtime. Son sha256 y
     fechas: ningun secreto, y ninguna ruta que no se vea ya en "Archivos leídos"."""
     rc = doc.get("runtimeComponents") or {}
-    if not rc or not (doc.get("knowledge") or {}).get("applies"):
+    if not rc:
         return []
     lineas = []
     for clave, nombre, _, _ in b.COMPONENTES:
@@ -597,7 +592,7 @@ def _detalle_de_consumo(b, doc, proyecto, rutas):
     umbrales, y nada mas.
     """
     rc = doc.get("runtimeComponents") or {}
-    if not rc or not (doc.get("knowledge") or {}).get("applies"):
+    if not rc:
         return []
     comp = rc.get("contextBar") or {}
     senal, _ = b.leer_senal_de_vida(proyecto)

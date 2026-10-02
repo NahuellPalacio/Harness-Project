@@ -30,8 +30,8 @@
         "Los revisores por lente de codigo (readability, reliability, resilience). Sirven para el harness desarrollo cuando exista"
       ],
       "adaptadoEn": [
-        "harnesses/analisis/agents/hu-refutador.md — de review-refuter.md y review-risk.md. Adapta el refutador desacoplado a la verificacion de una historia contra su maqueta: tres veredictos, default a sin-sustento ante evidencia faltante, una pasada por lote, una invocacion por modulo. El cambio de fondo es que sin-sustento no es un descarte sino el entregable mas valioso, porque es una definicion pendiente que alguien iba a inventar",
-        "harnesses/analisis/agents/hu-redactor.md — de skill-resolver.md. Toma el reporte de resolucion de skill (skill-invocada / leida-por-ruta / no-encontrada / sin-cargar) para que una falla de carga deje de ser silenciosa"
+        "harnesses/analisis/agents/hu-refutador.md — de review-refuter.md y review-risk.md. Adapta el refutador desacoplado a la verificacion de una historia contra su maqueta: tres veredictos, default a sin-sustento ante evidencia faltante, una pasada por lote, una invocacion por modulo. El cambio de fondo es que sin-sustento no es un descarte sino el entregable mas valioso, porque es una definicion pendiente que alguien iba a inventar. Retirado en 0.29.0 con docs/cambios/harness-unico (ADR-0012): el harness analisis salio del producto, y el archivo queda en el historial de git.",
+        "harnesses/analisis/agents/hu-redactor.md — de skill-resolver.md. Toma el reporte de resolucion de skill (skill-invocada / leida-por-ruta / no-encontrada / sin-cargar) para que una falla de carga deje de ser silenciosa. Retirado en 0.29.0 con docs/cambios/harness-unico (ADR-0012): el harness analisis salio del producto, y el archivo queda en el historial de git."
       ],
       "observaciones": "En Windows no hay binario oficial: el proyecto retuvo la distribucion por falta de firma Authenticode. La palabra 'uninstall' no aparece en su README. Ver terceros/gentle-ai/ORIGEN.md para la lectura completa."
     }

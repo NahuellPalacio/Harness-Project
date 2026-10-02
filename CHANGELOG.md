@@ -3,6 +3,49 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.29.0] — 2026-10-02
+
+**El harness es uno solo: `desarrollo` es el producto, `comun` es su base, y `analisis` se retira.**
+Hasta 0.28.0 el instalador descubría harnesses, los elegía con `-Harness` y los componía, aunque el
+producto ya era uno. Ahora instala siempre lo mismo, desde un único `manifest.json` en la raíz. Las
+rutas instaladas no cambian: la CLI sigue en `bin\desarrollo\dev-harness.py`. Es un cambio
+verificado, con 62 escenarios sostenidos y ninguno contradicho. Cierra, además, el ítem de `aporta`
+de los manifiestos.
+
+### Cambiado
+
+- 🔴 **`-Harness` ya no existe** — pasarlo sale con 1 y el error de PowerShell *No se encuentra
+  ningún parámetro que coincida con el nombre del parámetro 'Harness'*, sin escribir nada. Los
+  argumentos posicionales también dejan de bindear. Ver [UPGRADE.md](UPGRADE.md)
+- 🔴 **`analisis` se retira** — en el `-Update`, un proyecto que lo tenía pasa a tener el producto
+  entero y pierde `hu-escribir`, `hu-redactor`, `hu-refutador` y las reglas de "Trabajo funcional"
+  del bloque de su `CLAUDE.md`. El `CLAUDE.md` anterior queda en el backup, y `harness.config.json` no
+  se toca
+- 🔴 **El lockfile pierde el campo `harness`** — queda con `version`, `instalado`, `backup` y
+  `archivos`. El instalador de 0.28.0 ya no puede actualizar ni diagnosticar un proyecto actualizado:
+  volver atrás pide `-Uninstall`
+- **Un solo `manifest.json`, en la raíz** — reemplaza a `comun/manifest.json` y a los de
+  `harnesses/*/`. Lleva solo lo que alguien lee: los requisitos, las capacidades y `config`. Salen
+  `id`, `prefijo`, `aporta`, `claudeMd` y `descripcion`
+- **El `-Update` saca lo que la versión nueva ya no instala** — un archivo que el lock anterior
+  listaba y el inventario nuevo no se borra, y la salida lo nombra si está fuera de
+  `.claude\harness\`. Si lo habías editado a mano, queda, sin `.nuevo`, y sale del inventario
+- **La Context Bar pide reiniciar una vez más** — el `-Update` la deja en `RELOAD_REQUIRED` hasta que
+  Claude Code arranca de nuevo
+- **El encabezado de cada sesión** pasa de `harness: comun, desarrollo vX` a `harness vX`
+- **`-Doctor`** deja de listar los harnesses disponibles y dice `harness instalado (v<versión>)`
+
+### Lo que no cambia, a propósito
+
+- **Las rutas instaladas**, `bin\desarrollo\`, `reglas\desarrollo\` y `checks\desarrollo\`, igual que
+  los nombres `dev-*`, `dev-harness.py` y el marcador `HARNESS:COMUN`
+- **El bloque del `CLAUDE.md`** de un proyecto que tenía `desarrollo` sale igual, byte a byte
+- **El estado de la instalación** no cambia de forma: `harnessId` sigue siendo `"desarrollo"`
+- **Lo que este cambio descubrió y no arregló** sigue abierto en `PENDIENTES-FH.md`, sin presentarse
+  como resuelto: el Agent Registry inválido en los proyectos instalados, los defaults de `config`
+  repetidos en Python, `docs/codebase/` sin regenerar, `controles/` sin instalarse, y cuatro tests
+  que prueban menos que su escenario
+
 ## [0.28.0] — 2026-10-01
 
 **La Context Bar muestra cuánto de la ventana de contexto se está usando desde la primera respuesta

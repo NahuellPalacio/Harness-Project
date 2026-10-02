@@ -211,9 +211,12 @@ def test_e01_el_modo_es_environment_first(t):
 
 
 def _del_arbol(commit, patron):
+    """Lo de ese commit, menos lo de un harness cuyo directorio ya no existe: lo retiro
+    docs/cambios/harness-unico/spec.md, y eso no es un agente ni una skill nuevos."""
     salida = subprocess.run(["git", "-C", str(RAIZ), "ls-tree", "-r", "--name-only", commit],
                             stdout=subprocess.PIPE, check=True).stdout.decode("utf-8")
-    return sorted(l for l in salida.splitlines() if re.search(patron, l))
+    return sorted(l for l in salida.splitlines() if re.search(patron, l)
+                  and not (l.startswith("harnesses/") and not (RAIZ / "/".join(l.split("/")[:2])).is_dir()))
 
 
 def _del_disco(patron):

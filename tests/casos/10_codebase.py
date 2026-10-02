@@ -114,11 +114,13 @@ def test_e07b_sin_fichas_y_sin_indice_sigue_siendo_el_primer_recorrido(t):
     t.no_contiene("E-07b: y no habla de nada a medias", "a medias", ctx)
 
 
-def test_e03_calla_sin_desarrollo_en_el_lockfile(t):
-    """E-03 — un proyecto de solo analisis no tiene codigo que recorrer."""
-    ctx = _contexto(_proyecto(harness=("comun", "analisis")))
-    t.no_contiene("E-03: no lo nombra", AGENTE, ctx)
-    t.contiene("E-03: y el resto del bloque sigue saliendo", "Nahue", ctx)
+def test_e03_el_campo_harness_del_lock_no_cambia_el_aviso(t):
+    """E-03 de iniciador-code decia que un lock sin `desarrollo` callaba el aviso. Desde
+    docs/cambios/harness-unico/spec.md el harness es un solo producto y el campo `harness` del
+    lock no se mira (E-28): cualquier lock legible avisa igual."""
+    ctx = _contexto(_proyecto(harness=("comun", "datos")))
+    t.contiene("harness-unico E-28: un lock con otro id avisa igual", AGENTE, ctx)
+    t.contiene("harness-unico E-28: y el resto del bloque sigue saliendo", "Nahue", ctx)
 
 
 # ── Lo que el aviso cuesta ───────────────────────────────────────────────────────

@@ -1,8 +1,7 @@
 # E-18, E-19 y E-21 de docs/cambios/iniciador-code/spec.md.
 #
-# Va aparte de 03-instalador.ps1 a proposito. Ese caso instala 'analisis' -y estos tres
-# escenarios son de 'desarrollo'- y ademas rompe archivos versionados para probar el
-# -Update, con un finally que no sobrevive a que maten el proceso. Sumarle carga agranda
+# Va aparte de 03-instalador.ps1 a proposito. Ese caso rompe archivos versionados para probar
+# el -Update, con un finally que no sobrevive a que maten el proceso. Sumarle carga agranda
 # esa superficie sin ninguna necesidad: aca no se rompe nada del repo.
 #
 # Sin acentos a proposito: un .ps1 con caracteres no ASCII necesita BOM, y el propio
@@ -30,7 +29,7 @@ try {
     [System.IO.File]::WriteAllText((Join-Path $demo '.gitignore'), "node_modules/`r`n")
 
     # -- Instalar desarrollo --------------------------------------------------------
-    $r = Invoke-InstaladorCb @('-Project', $demo, '-Harness', 'desarrollo',
+    $r = Invoke-InstaladorCb @('-Project', $demo, 
                                '-Usuario', $usuarioPrueba)
     Assert-Igual 'instalar desarrollo sale con codigo 0' 0 $r.Codigo
 

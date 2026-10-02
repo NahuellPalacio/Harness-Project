@@ -46,7 +46,7 @@ may sign, labelled `Firmó (delegado):` and never `Leyó:`. Fewer than five foll
 .\tests\Invoke-Tests.ps1
 ```
 
-Green before anything is called done. 24875 tests, two engines, one exit code. `install.ps1` uses the
+Green before anything is called done. 38337 tests, two engines, one exit code. `install.ps1` uses the
 same suite as its own gate.
 
 🔴 If the suite is killed mid-run, check the tree before anything else. `tests/casos/03-instalador.ps1`
@@ -63,7 +63,7 @@ git checkout -- comun/hooks/pre-tool-use.py comun/hooks/lib/zonas.py
 | Agent | Owns |
 |---|---|
 | `harness-hook-engineer` | `comun/hooks/`, `comun/checks/`, `*/checks/` |
-| `harness-backend-engineer` | `install.ps1`, `tests/`, manifests, lockfile |
+| `harness-backend-engineer` | `install.ps1`, `tests/`, `manifest.json`, lockfile |
 | `harness-staff-engineer` | Performance, size, simplicity — behaviour frozen |
 | `harness-spec-refuter` | Verdicts against a spec. Runs the tests, writes nothing |
 | `harness-budget-auditor` | Always-loaded context cost and the `CLAUDE.md` ceilings |

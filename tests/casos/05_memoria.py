@@ -74,7 +74,9 @@ def _git_init(proy):
 # ── SessionStart: el saludo ──────────────────────────────────────────────────────
 
 def test_saludo_trae_nombre_y_harness(t):
-    proy = _proyecto_de_prueba(usuario="Nahue", harness=["comun", "analisis"], version="0.13.0")
+    """E-31 de docs/cambios/harness-unico/spec.md: el encabezado dice la version y ningun id,
+    tambien con un lock de 0.28.0 que todavia trae el campo `harness`."""
+    proy = _proyecto_de_prueba(usuario="Nahue", harness=["comun", "desarrollo"], version="0.13.0")
     _git_init(proy)
     _escribir(proy / "a.txt", "x")
     subprocess.run(["git", "-C", str(proy), "add", "-A"], check=True)
@@ -84,7 +86,8 @@ def test_saludo_trae_nombre_y_harness(t):
                                                      "hook_event_name": "SessionStart"}))
     ctx = salida["hookSpecificOutput"]["additionalContext"]
     t.contiene("saludo: nombre", "Nahue", ctx)
-    t.contiene("saludo: harness", "comun, analisis v0.13.0", ctx)
+    t.igual("saludo: la version, sin ids (harness-unico E-31)", ["Nahue - harness v0.13.0"],
+            [l for l in ctx.split("\n") if l.startswith("Nahue")])
     t.verdadero("las cuatro secciones van en orden: encabezado antes que el estado de git",
                ctx.index("Nahue") < ctx.index("git:"))
 
@@ -150,12 +153,14 @@ def test_devuelve_lo_que_quedo_anotado_en_la_cache(t):
 
 
 def test_cuenta_definiciones_pendientes(t):
+    """E-33 de docs/cambios/harness-unico/spec.md: una funcion de comun cuya clave solo la
+    sembraba el harness retirado. Sigue andando en todo proyecto que la tenga."""
     proy = _proyecto_de_prueba(usuario="Ana", config_extra={"rutaDefinicionesPendientes": "PENDIENTES.md"})
     _escribir(proy / "PENDIENTES.md", "- [ ] uno\n- [x] hecho\n- [ ] dos\n")
     salida = json.loads(_correr("session-start.py", {"session_id": "s", "cwd": str(proy),
                                                      "hook_event_name": "SessionStart"}))
     ctx = salida["hookSpecificOutput"]["additionalContext"]
-    t.contiene("cuenta solo las abiertas", "2 definiciones pendientes abiertas", ctx)
+    t.contiene("cuenta solo las abiertas (harness-unico E-33)", "2 definiciones pendientes abiertas", ctx)
 
 
 def test_no_inventa_contexto_de_otro_proyecto(t):

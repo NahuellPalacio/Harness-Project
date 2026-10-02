@@ -197,7 +197,7 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
 <header class="masthead">
   <div class="fila-chips">
     <span class="chip viva">v0.14.0</span>
-    <span class="chip">comun + 2 harness</span>
+    <span class="chip">un solo harness</span>
     <span class="chip">4 hooks · Python 3.9+</span>
     <span class="chip">772 tests</span>
   </div>
@@ -250,7 +250,7 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
         <text class="t-tit acento" x="34" y="200">COMPROBAR</text>
         <text class="t-min" x="34" y="216">avisa, no traba</text>
         <rect class="caja" x="196" y="176" width="330" height="52" rx="3"/>
-        <text class="t" x="210" y="196">checks de comun y de cada harness</text>
+        <text class="t" x="210" y="196">checks de comun y de desarrollo</text>
         <text class="t" x="210" y="214">se entregan como additionalContext</text>
         <line class="l-viva" x1="526" y1="202" x2="558" y2="202" marker-end="url(#f1a)"/>
         <text class="t" x="566" y="206">después de cada escritura</text>
@@ -261,73 +261,63 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
 </section>
 
 <section>
-  <span class="eyebrow">Composición</span>
-  <h2>Qué aporta cada harness y dónde aterriza</h2>
+  <span class="eyebrow">Qué se instala</span>
+  <h2>Un solo harness: la base y el producto, a destinos fijos</h2>
   <div class="prosa">
-    <p>El corte es por <strong>tipo de trabajo</strong>, no por proyecto. <code>comun/</code> se instala siempre; encima va uno o los dos harness. Cada manifiesto declara un <strong>prefijo de namespace obligatorio</strong> —<code>hu</code>, <code>dev</code>— y el instalador aborta si dos coinciden: por eso componer siempre es seguro, y por eso agregar un tercero no exige registrar un id en ningún lado.</p>
+    <p>El harness es <strong>un solo producto</strong> (<code>docs/adr/0012-un-solo-harness.md</code>). En el repo vive en dos árboles por historia, no por composición: <code>comun/</code> es la base y <code>harnesses/desarrollo/</code> es el producto. No se elige nada al instalar, no hay ids ni prefijos que validar, y un solo <code>manifest.json</code>, en la raíz, dice los requisitos y la configuración inicial. El <code>desarrollo</code> de las rutas instaladas ya no es un espacio de nombres: es la dirección de la CLI, y se conserva.</p>
   </div>
 
   <figure>
     <div class="lienzo">
-      <svg viewBox="0 0 900 434" role="img" aria-label="Los manifiestos de comun, analisis y desarrollo convergen en un único árbol dentro del proyecto, separado por namespace">
+      <svg viewBox="0 0 900 434" role="img" aria-label="La base y el producto se copian a destinos fijos dentro del proyecto, con un solo manifiesto en la raíz del repo">
         <defs>
           <marker id="f2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
           </marker>
         </defs>
 
-        <text class="t-min" x="20" y="18">EN EL REPO — harnesses/&lt;id&gt;/manifest.json</text>
+        <text class="t-min" x="20" y="18">EN EL REPO — un solo manifest.json, en la raíz</text>
 
-        <rect class="caja-viva" x="20" y="30" width="266" height="88" rx="3"/>
-        <text class="t-tit acento" x="34" y="52">comun</text>
-        <text class="t-min" x="102" y="52">prefijo: (ninguno)</text>
-        <text class="t" x="34" y="72">hooks · reglas · checks · bin</text>
+        <rect class="caja-viva" x="20" y="30" width="410" height="88" rx="3"/>
+        <text class="t-tit acento" x="34" y="52">comun/ — la base</text>
+        <text class="t" x="34" y="72">hooks · reglas · schemas · checks · bin</text>
         <text class="t" x="34" y="90">skills · agents · bloque CLAUDE.md</text>
-        <text class="t-min" x="34" y="108">se instala siempre</text>
+        <text class="t-min" x="34" y="108">hooks, secretos, zonas, estado de la instalación</text>
 
-        <rect class="caja" x="306" y="30" width="266" height="88" rx="3"/>
-        <text class="t-tit" x="320" y="52">analisis</text>
-        <text class="t-min" x="392" y="52">prefijo: hu</text>
-        <text class="t" x="320" y="72">skills · agents · checks</text>
-        <text class="t-min" x="320" y="90">HU, maquetas, normativa funcional</text>
-        <text class="t-min" x="320" y="108">1 skill · 2 agentes · 0 checks</text>
+        <rect class="caja-viva" x="450" y="30" width="430" height="88" rx="3"/>
+        <text class="t-tit acento" x="464" y="52">harnesses/desarrollo/ — el producto</text>
+        <text class="t" x="464" y="72">bin · checks · reglas · skills · agents</text>
+        <text class="t-min" x="464" y="90">ES0901, ES0902, ES0903, Obelisco, WCAG 2.2 AA</text>
+        <text class="t-min" x="464" y="108">la CLI dev-harness.py, la Context Bar, el Bloque 4</text>
 
-        <rect class="caja" x="592" y="30" width="288" height="88" rx="3"/>
-        <text class="t-tit" x="606" y="52">desarrollo</text>
-        <text class="t-min" x="692" y="52">prefijo: dev</text>
-        <text class="t" x="606" y="72">skills · agents · checks</text>
-        <text class="t-min" x="606" y="90">ES0901, ES0903, Obelisco, WCAG 2.2 AA</text>
-        <text class="t-min" x="606" y="108">8 skills · 2 agentes · 5 checks</text>
-
-        <path class="l" d="M153,118 L153,148 L438,148 L438,178" marker-end="url(#f2a)"/>
-        <path class="l" d="M439,118 L439,148"/>
-        <path class="l" d="M736,118 L736,148 L440,148"/>
-        <text class="t-eti" x="452" y="144">prefijos disjuntos: se verifica antes de copiar nada</text>
+        <path class="l" d="M225,118 L225,148 L450,148 L450,178" marker-end="url(#f2a)"/>
+        <path class="l" d="M665,118 L665,148 L452,148"/>
+        <text class="t-eti" x="462" y="144">copia fija: sin descubrir, sin ids, sin prefijos</text>
 
         <text class="t-min" x="20" y="200">EN EL PROYECTO — regenerable y gitignoreado</text>
         <rect class="caja-hueca" x="20" y="210" width="860" height="152" rx="3"/>
 
         <text class="t" x="38" y="234">.claude/harness/hooks/</text>
-        <text class="t-min" x="266" y="234">4 hooks .py — solo los aporta comun</text>
+        <text class="t-min" x="266" y="234">4 hooks .py — de la base</text>
         <text class="t" x="38" y="256">.claude/harness/checks/</text>
         <text class="t-min" x="266" y="256">claude-md-zonas.py</text>
-        <text class="t-min" x="430" y="256">← comun, en la raíz</text>
-        <text class="t" x="54" y="278">checks/analisis/</text>
-        <text class="t-min" x="266" y="278">(vacío)</text>
-        <text class="t" x="54" y="300">checks/desarrollo/</text>
-        <text class="t-min" x="266" y="300">dev-api-rutas · dev-dependencias · dev-accesibilidad-html · dev-infra-en-codigo · dev-codebase-forma</text>
+        <text class="t-min" x="430" y="256">← la base, en la raíz</text>
+        <text class="t" x="54" y="278">checks/desarrollo/</text>
+        <text class="t-min" x="266" y="278">dev-api-rutas · dev-dependencias · dev-accesibilidad-html · dev-infra-en-codigo · dev-codebase-forma</text>
+        <text class="t" x="54" y="300">bin/desarrollo/</text>
+        <text class="t-min" x="266" y="300">dev-harness.py y sus paquetes: la dirección pública de la CLI</text>
         <text class="t" x="38" y="322">.claude/skills/ y .claude/agents/</text>
-        <text class="t-min" x="266" y="322">todos juntos, sin subdirectorio: el prefijo es lo que los separa</text>
+        <text class="t-min" x="266" y="322">todos juntos, sin subdirectorio</text>
         <text class="t" x="38" y="344">.claude/harness.lock.json</text>
-        <text class="t-min" x="266" y="344">qué versión, qué archivos, SHA256 de cada uno</text>
+        <text class="t-min" x="266" y="344">qué versión, qué archivos, SHA256 de cada uno — sin ids</text>
 
         <line class="l" x1="450" y1="362" x2="450" y2="388" marker-end="url(#f2a)"/>
         <rect class="caja" x="196" y="388" width="508" height="34" rx="3"/>
-        <text class="t" x="212" y="410">CLAUDE.md — bloque marcado: comun + un bloque por harness instalado</text>
+        <text class="t" x="212" y="410">CLAUDE.md — bloque marcado: la base + "Trabajo técnico", en orden fijo</text>
         <text class="t-min" x="716" y="410">se versiona; el resto no se toca</text>
       </svg>
     </div>
-    <figcaption><b>Figura 2.</b> Los checks de cada harness aterrizan en su propio subdirectorio, pero <code>reglas.py</code> recorre el árbol entero con <code>os.walk</code>: para el motor son una sola lista ordenada alfabéticamente. La invariante que ordena todo el diseño está en el corte entre las dos mitades — <b><code>.claude/</code> es 100% regenerable, <code>CLAUDE.md</code> no</b>.</figcaption>
+    <figcaption><b>Figura 2.</b> Los checks del producto aterrizan en <code>checks/desarrollo/</code>, pero <code>reglas.py</code> recorre el árbol entero con <code>os.walk</code>: para el motor son una sola lista ordenada alfabéticamente. La invariante que ordena todo el diseño está en el corte entre las dos mitades — <b><code>.claude/</code> es 100% regenerable, <code>CLAUDE.md</code> no</b>.</figcaption>
   </figure>
 </section>
 
@@ -335,7 +325,7 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
   <span class="eyebrow">Instalación</span>
   <h2>Ocho pasos, dos puntos de vuelta atrás</h2>
   <div class="prosa">
-    <p>Instalar es <strong>aditivo</strong>: si el proyecto ya tenía <code>analisis</code> y llega su primer código, agregar <code>desarrollo</code> conserva lo anterior y lo anuncia. El conjunto se ordena canónicamente —no por orden de instalación— para que llegar al mismo resultado por dos caminos produzca el mismo archivo y no un diff que no corresponde a ningún cambio real.</p>
+    <p>Instalar sobre una instalación existente reinstala el producto entero. Lo que el lockfile anterior listaba y la versión nueva ya no instala se limpia recién cuando los hooks respondieron: sin editar se borra, editado a mano se queda y se nombra. No hay una lista de lo retirado: el lock anterior dice qué había y el inventario nuevo dice qué hay.</p>
   </div>
 
   <figure>
@@ -356,8 +346,8 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
 
         <circle class="caja" cx="46" cy="98" r="12"/>
         <text class="t" x="42" y="102">2</text>
-        <text class="t-tit" x="78" y="94">Resolver el conjunto</text>
-        <text class="t-min" x="78" y="111">hereda lo instalado del lockfile previo · ordena canónicamente · exige prefijos disjuntos</text>
+        <text class="t-tit" x="78" y="94">Leer el manifiesto y el inventario anterior</text>
+        <text class="t-min" x="78" y="111">un solo manifest.json · lo que listaba el lock previo, para limpiarlo después de verificar los hooks</text>
 
         <circle class="caja" cx="46" cy="154" r="12"/>
         <text class="t" x="42" y="158">3</text>
@@ -706,11 +696,6 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
       <span class="ref">comun/hooks/lib/reglas.py</span>
     </div>
     <div class="gap">
-      <h4><code>analisis</code> no aporta ni un check</h4>
-      <p>Declara <code>checks</code> en su manifiesto y el directorio está vacío. El harness de análisis es hoy solo capa de saber: skills, agentes y bloque de <code>CLAUDE.md</code>, sin nada que compruebe.</p>
-      <span class="ref">harnesses/analisis/checks/</span>
-    </div>
-    <div class="gap">
       <h4>Los checks corren en un solo evento</h4>
       <p><code>correr_checks</code> recibe el evento entero y serviría a cualquiera, pero solo <code>PostToolUse</code> lo llama. Una regla que quiera mirar el prompt o el arranque de sesión hoy no tiene dónde vivir.</p>
       <span class="ref">comun/hooks/post-tool-use.py</span>
@@ -743,7 +728,7 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
 </section>
 
 <footer>
-  <p>Leído del repo <code>gcba-harness</code> en v0.13.0 — README, <code>docs/contrato-hooks.md</code>, los cuatro hooks, <code>lib/reglas.py</code>, <code>lib/secretos.py</code>, los tres manifiestos y <code>install.ps1</code>.</p>
+  <p>Leído del repo <code>gcba-harness</code> en v0.13.0 — README, <code>docs/contrato-hooks.md</code>, los cuatro hooks, <code>lib/reglas.py</code>, <code>lib/secretos.py</code>, los tres manifiestos de entonces y <code>install.ps1</code>. Los mapas de qué se instala y de cómo se instala se volvieron a dibujar con <code>docs/cambios/harness-unico</code>, cuando el harness pasó a ser un solo producto.</p>
 </footer>
 
 </div>

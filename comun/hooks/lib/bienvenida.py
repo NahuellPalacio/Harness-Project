@@ -2,12 +2,15 @@
 
 Es el resolvedor UNICO. Lo usan session-start.py, `dev-harness.py harness` y `dev-harness.py
 setup`, y el instalador escribe con el el archivo de estado. Vive en la lib de los hooks porque
-el hook tiene que poder leerlo sin importar `harnesses/`, y un proyecto de solo `analisis`
-tambien tiene hooks.
+el hook tiene que poder leerlo sin importar el bin del producto.
+
+El harness es un solo producto (docs/cambios/harness-unico/spec.md): todo lo que este modulo
+resuelve se resuelve siempre. El campo `harness` que traen los lockfiles de 0.28.0 y anteriores
+no se mira.
 
 Lee archivos locales y nada mas:
 
-    .claude/harness.lock.json           la version y los harness instalados (install.ps1)
+    .claude/harness.lock.json           la version instalada (install.ps1)
     .claude/harness.installation.json   el estado de la instalacion y la marca de la bienvenida
     .claude/harness.capacidades.json    el `estado` por integracion que dejo el ultimo `setup`
     .claude/harness.fuentes.json        el `state` por fuente que dejo el ultimo `fuentes`
@@ -52,6 +55,10 @@ except ImportError:                      # pragma: no cover - otro interprete
 
 ARCHIVO = "harness.installation.json"
 VERSION_SCHEMA = "harness-installation/1.1"
+# `harnessId` es obligatorio en el schema 1.1, y en todo proyecto con `desarrollo` valia esto. Es
+# un nombre historico que quedo en un contrato persistido: una constante no cambia ni un byte del
+# estado de esos proyectos, y no toca el schema (docs/cambios/harness-unico/spec.md).
+HARNESS_ID = "desarrollo"
 # El que escribio 0.21.0. Se lee, se migra y se escribe como 1.1 la proxima vez que se escribe.
 VERSION_SCHEMA_1_0 = "harness-installation/1.0"
 
@@ -1168,22 +1175,7 @@ def _barra(proyecto, rt, version, guardado, sesion, block4_activo, lectura):
     return salida(CONFIGURED, None, huella=huella, sesion_vista=vista)
 
 
-def _sin_desarrollo(version):
-    """Sin `desarrollo` no hay Bloque 4, ni barra, ni reporte de seguridad: NOT_CONFIGURED, sin
-    condicion. Un proyecto de solo analisis no tiene nada que activar."""
-    barra = _componente(NOT_CONFIGURED, False, False, version, None, None)
-    barra.update({"renderer": None, "source": None, "reloadRequired": False,
-                  "activeInCurrentSession": False, "configurationFingerprint": None,
-                  "integrationVersion": None, "fingerprints": None, "commandTested": None,
-                  "lastSessionId": None})
-    return {"block4Accounting": _componente(NOT_CONFIGURED, False, False, version, None, None),
-            "contextBar": barra,
-            "securityReporting": _componente(NOT_CONFIGURED, False, False, version, None, None)}
-
-
-def _runtime(proyecto, desarrollo, version, previo, guardado, sesion, momento):
-    if not desarrollo:
-        return _sin_desarrollo(version)
+def _runtime(proyecto, version, previo, guardado, sesion, momento):
     rt = _rutas_de_runtime(raiz_del_harness(proyecto))
     previo_rc = (previo or {}).get("runtimeComponents")
     lectura = leer_senal_de_vida(proyecto)
@@ -1239,14 +1231,13 @@ def _resolver(proyecto, ruta_codebase, momento, sesion, guardado):
         pendientes.append("INSTALLATION_STATE_UNREADABLE")
     previo = previo or {}
 
+    # Legible es JSON que es un objeto (`_leer`). El campo `harness` de un lock de 0.28.0 no se
+    # mira: con un solo producto no hay nada que decidir con el.
     lock, problema_lock = _leer(r["lock"])
-    ids = (lock or {}).get("harness")
     if problema_lock == _FALTA:
         bloqueos.append("LOCKFILE_MISSING")
-    elif problema_lock == _ROTO or not isinstance(ids, list):
+    elif problema_lock == _ROTO:
         bloqueos.append("LOCKFILE_UNREADABLE")
-        lock = None
-    ids = [str(i) for i in ids] if lock is not None else []
 
     instalado = previo.get("installed", True)
     if instalado is False:
@@ -1260,19 +1251,14 @@ def _resolver(proyecto, ruta_codebase, momento, sesion, guardado):
         sello = (lock or {}).get("instalado")
         instalado_en = sello if isinstance(sello, str) and sello else momento
 
-    desarrollo = "desarrollo" in ids
-    integraciones = _integraciones(r, pendientes) if desarrollo else []
-    configuracion = _configuracion(proyecto, r, pendientes) if desarrollo else None
-    refresco = None
-    if desarrollo:
-        conocimiento = _conocimiento(r, bloqueos, pendientes)
-        refresco = _refresco(proyecto, r, previo, momento, pendientes)
-    else:
-        conocimiento = {"applies": False}
+    integraciones = _integraciones(r, pendientes)
+    configuracion = _configuracion(proyecto, r, pendientes)
+    conocimiento = _conocimiento(r, bloqueos, pendientes)
+    refresco = _refresco(proyecto, r, previo, momento, pendientes)
 
     if guardado is None:
         guardado = _guardado_de_la_barra(previo)
-    componentes = _runtime(proyecto, desarrollo, version, previo, guardado, sesion, momento)
+    componentes = _runtime(proyecto, version, previo, guardado, sesion, momento)
     for clave, _, _, _ in COMPONENTES:
         condicion = condicion_de_componente(clave, componentes[clave])
         if condicion:
@@ -1294,7 +1280,7 @@ def _resolver(proyecto, ruta_codebase, momento, sesion, guardado):
     doc = {
         "schema_version": VERSION_SCHEMA,
         "installed": instalado,
-        "harnessId": "+".join(i for i in ids if i != "comun") or "comun",
+        "harnessId": HARNESS_ID,
         "installedVersion": version,
         "installedAt": instalado_en,
         "updatedAt": momento,
@@ -1382,12 +1368,7 @@ def registrar_instalacion(proyecto, momento=None, barra_probada=None):
     previo, _ = _leer_previo(r["installation"])
     version_previa = (previo or {}).get("installedVersion")
 
-    lock, _ = _leer(r["lock"])
-    ids = (lock or {}).get("harness")
-    if isinstance(ids, list) and "desarrollo" in [str(i) for i in ids]:
-        guardado = _guardado_al_registrar(proyecto, previo, momento, barra_probada)
-    else:
-        guardado = None
+    guardado = _guardado_al_registrar(proyecto, previo, momento, barra_probada)
     doc = _resolver(proyecto, None, momento, None, guardado)
     doc["installed"] = True
     if previo is None:

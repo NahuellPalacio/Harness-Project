@@ -25,7 +25,7 @@ function New-ProyectoOrq {
 
 $demo = New-ProyectoOrq 'harness-orq'
 try {
-    $r = Invoke-InstaladorOrq @('-Project', $demo, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorOrq @('-Project', $demo, '-Usuario', 'Ana Prueba')
     Assert-Igual 'instalar desarrollo sale con codigo 0' 0 $r.Codigo
 
     # -- E-34: los modulos, el schema y las reglas ---------------------------------
