@@ -57,6 +57,8 @@ def como_texto(ms):
     """Milisegundos como los lee una persona. None es `sin resolver`, no `0m`."""
     if ms is None:
         return "sin resolver"
+    if isinstance(ms, str):
+        return ms                                    # N/D: un tiempo parcial no es el total
     segundos = int(ms) // 1000
     horas, resto = divmod(segundos, 3600)
     minutos, seg = divmod(resto, 60)

@@ -127,6 +127,54 @@
       }
     },
 
+    "capabilityStatus": {
+      "description": "Wave 5. Por cada capacidad pedida: si esta soportada, si esta disponible y por que. Una soportada y no disponible -la integracion caida- no se deriva: derivedTo y toolClass van en null salvo en NOT_SUPPORTED. Opcional: un plan anterior no lo trae.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["capabilityId", "supported", "available", "availability", "integration",
+                     "integrationState", "reasonCode", "derivedTo", "toolClass", "workUnits"],
+        "properties": {
+          "capabilityId": { "type": "string" },
+          "supported": { "type": "boolean" },
+          "available": { "type": "boolean" },
+          "availability": {
+            "type": "string",
+            "enum": ["SUPPORTED_AVAILABLE", "SUPPORTED_UNAVAILABLE", "NOT_SUPPORTED"]
+          },
+          "integration": { "type": ["string", "null"] },
+          "integrationState": {
+            "description": "Uno de los cinco estados de integracion, o null si no hay integracion o nunca se valido.",
+            "type": ["string", "null"],
+            "enum": ["NOT_CONFIGURED", "AUTHENTICATION_FAILED", "CONNECTION_FAILED",
+                     "PERMISSION_DENIED", "AVAILABLE", null]
+          },
+          "reasonCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "derivedTo": { "type": ["string", "null"] },
+          "toolClass": {
+            "type": ["string", "null"],
+            "enum": ["TEMPORARY", "PROMOTION_CANDIDATE", null]
+          },
+          "workUnits": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+
+    "knowledgeSources": {
+      "description": "Wave 5. La frescura de las fuentes normativas que el plan exige, de harness.fuentes.json. Solo un problema de integridad bloquea; lo no verificado se declara, nunca pasa por CURRENT. Opcional: un plan anterior no lo trae.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["standard", "state", "verified", "blocking"],
+        "properties": {
+          "standard": { "type": "string" },
+          "state": { "type": "string", "pattern": "^[A-Z][A-Z_]*$" },
+          "verified": { "type": "boolean" },
+          "blocking": { "type": "boolean" }
+        }
+      }
+    },
+
     "policies": {
       "description": "Restricciones que el plan tiene que respetar. Una policy previene; un check verifica.",
       "type": "array",

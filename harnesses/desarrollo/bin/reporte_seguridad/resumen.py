@@ -113,6 +113,7 @@ ABIERTO = "OPEN"
 REABIERTO = "REOPENED"
 RESUELTO = "RESOLVED"
 HALLAZGO_SIN_RESOLVER = "UNRESOLVED"
+SEVERIDAD_SIN_RESOLVER = "UNRESOLVED"
 VIGENTES = (ABIERTO, REABIERTO)
 
 EVIDENCIA_MATERIAL = ("MISSING", "CONFLICTING", "UNRESOLVED", "UNSAFE_TEST_SKIPPED")
@@ -198,9 +199,23 @@ def ejecucion_del_bloque4(datos, task_id):
     if not isinstance(doc, dict):
         return "task:%s" % task_id, {}
     valores = {}
+    # El Bloque 4 dice que familia resolvio (`resolved`, Wave 5). Un numero de una familia sin
+    # resolver -un 0 que nadie midio, un piso- no se copia como si fuera el valor: queda null.
+    resueltas = doc.get("resolved") if isinstance(doc.get("resolved"), dict) else None
+    if resueltas is None:
+        # Un summary.json anterior a la Wave 5 no dice que familia resolvio. Con algo sin
+        # resolver adentro no se puede saber cual numero es un piso: ninguno se copia como valor.
+        abierto = bool(doc.get("unresolved"))
+        resueltas = dict((k, not abierto) for k in ("tokens", "cost", "wallMs", "modelMs",
+                                                     "toolMs"))
     for grupo, campo in EJECUCION:
         bloque = doc.get(grupo) if isinstance(doc.get(grupo), dict) else {}
-        valores.setdefault(grupo, {})[campo] = bloque.get(campo)
+        valor = bloque.get(campo)
+        clave = campo if grupo == "time" else grupo
+        if grupo in ("tokens", "time", "cost") and campo != "currency" \
+                and resueltas.get(clave) is False:
+            valor = None
+        valores.setdefault(grupo, {})[campo] = valor
     return "task:%s" % task_id, valores
 
 
@@ -478,9 +493,10 @@ def _bloqueos(conocimiento, integridad_, filas, hallazgos, estado_evaluacion, ev
             sumar(f["ruleKey"], "La regla %s de %s no se cumple" % (f["rule"], seguridad.ESTANDAR),
                   FALLA, f["evidenceRefs"], ACCION)
     for h in hallazgos["items"]:
-        if h["state"] in VIGENTES and (h["severity"] == "CRITICAL" or h["blocking"]):
+        efecto = _efecto_del_hallazgo(h)
+        if efecto:
             sumar("finding", h["title"] or "Hallazgo %s (%s)" % (h["findingId"], h["severity"]),
-                  h["state"], ["finding:%s" % h["findingId"]] + h["evidenceRefs"], ACCION)
+                  h["state"], ["finding:%s" % h["findingId"]] + h["evidenceRefs"], efecto)
     if integridad_["sourceState"] in (integridad.CONFIRMADO, integridad.SOSPECHOSO):
         sumar("repository-integrity",
               "La revisión de integridad del repositorio reporta %s" % integridad_["state"],
@@ -489,6 +505,27 @@ def _bloqueos(conocimiento, integridad_, filas, hallazgos, estado_evaluacion, ev
         sumar("assessment", "La evaluación de seguridad tiene que volver a hacerse",
               REEVALUAR, evaluacion_["evidenceRefs"], ACCION)
     return lista
+
+
+def _efecto_del_hallazgo(h):
+    """Que hace un hallazgo con la revision (Wave 5, docs/cambios/fail-closed-hardening/spec.md).
+
+        RESOLVED                                        -> nada: resuelto y seguro
+        vigente, CRITICAL o blocking                    -> ACTION_REQUIRED: esta y es grave
+        vigente de severidad desconocida                -> REVIEW_INCOMPLETE: podria ser critico
+        UNRESOLVED, CRITICAL, blocking o sin severidad  -> REVIEW_INCOMPLETE: no se sabe
+
+    UNRESOLVED sigue siendo UNRESOLVED: no se cuenta como abierto. Lo que no se sabe no aprueba.
+    """
+    grave = h["severity"] == "CRITICAL" or h["blocking"]
+    desconocida = h["severity"] == SEVERIDAD_SIN_RESOLVER
+    if h["state"] in VIGENTES:
+        if desconocida and not grave:
+            return INCOMPLETA
+        return ACCION if grave else None
+    if h["state"] == HALLAZGO_SIN_RESOLVER and (grave or desconocida):
+        return INCOMPLETA
+    return None
 
 
 def _incompleto(filas, evidencia_, integridad_):
@@ -500,7 +537,8 @@ def _incompleto(filas, evidencia_, integridad_):
 def _estado_del_sistema(bloqueos, incompleto):
     if any(b["effect"] == BLOQUEADO for b in bloqueos):
         return BLOQUEADO
-    if incompleto["rules"] or incompleto["materialEvidence"] or incompleto["repositoryIntegrity"]:
+    if incompleto["rules"] or incompleto["materialEvidence"] or incompleto["repositoryIntegrity"] \
+            or any(b["effect"] == INCOMPLETA for b in bloqueos):
         return INCOMPLETA
     if any(b["effect"] == ACCION for b in bloqueos):
         return ACCION

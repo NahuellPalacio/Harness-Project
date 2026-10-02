@@ -50,6 +50,7 @@ from integraciones.almacen import AlmacenSecretos, ErrorDeAlmacen  # noqa: E402
 from integraciones.config import ConfigIlegible, ClaveProhibida      # noqa: E402
 from integraciones.gitlab import IntegracionGitLab                # noqa: E402
 from integraciones.jira import IntegracionJira                    # noqa: E402
+from integraciones import registro as int_registro               # noqa: E402
 from integraciones.registro import RegistroCapacidades            # noqa: E402
 
 from contexto import comun as contexto_comun                      # noqa: E402
@@ -76,6 +77,7 @@ from orquestacion import registro_fuentes as orq_fuentes         # noqa: E402
 from contabilidad import agregacion as cont_agregacion            # noqa: E402
 from contabilidad import barra as cont_barra                      # noqa: E402
 from contabilidad import libro as cont_libro                      # noqa: E402
+from contabilidad import presentacion as cont_presentacion        # noqa: E402
 from contabilidad import presupuesto as cont_presupuesto          # noqa: E402
 from contabilidad import reporte as cont_reporte                  # noqa: E402
 from contabilidad.adaptadores import contrato as cont_contrato    # noqa: E402
@@ -86,7 +88,7 @@ from reporte_seguridad import productores as seg_productores      # noqa: E402
 from reporte_seguridad import reporte as seg_reporte              # noqa: E402
 from reporte_seguridad import resumen as seg_resumen              # noqa: E402
 
-CLASES = (IntegracionJira, IntegracionGitLab)
+CLASES = int_registro.clases()      # lo que soporta cada una: su tupla CAPACIDADES
 NOMBRES = tuple(c.nombre for c in CLASES)
 
 TIMEOUT_POR_DEFECTO = 5
@@ -840,7 +842,12 @@ def planificar(args, proyecto, rutas, consola):
             "    dev-harness.py contexto %s" % (clave, clave))
 
     task_context = _json_o_vacio(ruta_contexto)
-    registro = _json_o_vacio(rutas["capacidades"]).get("capacidades") or {}
+    del_registro = _json_o_vacio(rutas["capacidades"])
+    registro = del_registro.get("capacidades") or {}
+    # El estado de cada integracion: con eso lo soportado y caido no se deriva como un hueco.
+    integraciones = del_registro.get("integraciones") or {}
+    # La frescura de las fuentes, local: lo que el plan exige se declara con su estado.
+    fuentes = orq_frescura.leer(orq_frescura.ruta_por_defecto(proyecto))
     config = _config_harness(rutas)
     destino = os.path.join(proyecto, ".claude", "planes", clave + ".json")
 
@@ -867,7 +874,7 @@ def planificar(args, proyecto, rutas, consola):
         nueva = _json_o_vacio(args.replanificar)
         documento = orq_plan.armar(nueva, task_context, registro, config,
                                    version_de(rutas), _relativa(proyecto, ruta_contexto),
-                                   precondiciones)
+                                   precondiciones, integraciones=integraciones, fuentes=fuentes)
         documento["meta"]["plan_version"] = anterior.get("meta", {}).get("plan_version", 1)
         documento["planHistory"] = anterior.get("planHistory", [])
         documento = orq_plan.replanificar(
@@ -882,7 +889,7 @@ def planificar(args, proyecto, rutas, consola):
         propuesta = _json_o_vacio(args.propuesta)
         documento = orq_plan.armar(propuesta, task_context, registro, config,
                                    version_de(rutas), _relativa(proyecto, ruta_contexto),
-                                   precondiciones)
+                                   precondiciones, integraciones=integraciones, fuentes=fuentes)
 
     consola.evento("plan.armado", tarea=clave, unidades=len(documento["workUnits"]),
                    version=documento["meta"]["plan_version"])
@@ -984,6 +991,15 @@ def mostrar_plan(consola, documento, destino):
             consola.linea("  %s (%s)%s" % (p["inputId"], p["failureCode"],
                                            " · hay que preguntarle a la persona"
                                            if p["askUser"] else ""))
+    caidas = orq_plan.no_disponibles(documento)
+    if caidas:
+        consola.linea("")
+        consola.linea("Capacidades soportadas y no disponibles (no se construye nada: se revalida "
+                      "la integracion)")
+        for d in caidas:
+            consola.linea("  %s · %s %s, la piden: %s" % (
+                d["capabilityId"], d["integration"] or "sin integracion",
+                d["reasonCode"], ", ".join(d["workUnits"])))
     if documento["capabilityGaps"]:
         consola.linea("")
         consola.linea("Capacidades que faltan")
@@ -1107,9 +1123,19 @@ def _atribucion_de_refutacion(args, proyecto, tarea):
     return atribucion
 
 
+def _plata_o_nd(moneda, valor):
+    if valor is None:
+        return "sin resolver"
+    if valor == cont_presentacion.ND:
+        return valor                                  # un piso no es el total
+    return "%s %.4f" % (moneda, valor)
+
+
 def mostrar_contabilidad(consola, resumen, destino):
     from contabilidad import tiempo as cont_tiempo
 
+    # Lo que una persona lee: un numero de una familia sin resolver es N/D (Wave 5).
+    resumen = cont_presentacion.para_mostrar(resumen)
     costo = resumen["cost"]
     moneda = costo.get("currency") or ""
     consola.linea("")
@@ -1129,12 +1155,9 @@ def mostrar_contabilidad(consola, resumen, destino):
         cont_tiempo.como_texto(resumen["time"].get("modelMs")),
         cont_tiempo.como_texto(resumen["time"].get("toolMs")),
         resumen.get("timeSource", "")))
-    consola.linea("Costo real   %s" % (
-        ("%s %.4f" % (moneda, costo["actual"])) if costo.get("actual") is not None
-        else "sin resolver"))
-    consola.linea("Equivalente  %s  ← lo que habría costado por API, no lo gastado" % (
-        ("%s %.4f" % (moneda, costo["apiEquivalentEstimated"]))
-        if costo.get("apiEquivalentEstimated") is not None else "sin resolver"))
+    consola.linea("Costo real   %s" % _plata_o_nd(moneda, costo.get("actual")))
+    consola.linea("Equivalente  %s  ← lo que habría costado por API, no lo gastado"
+                  % _plata_o_nd(moneda, costo.get("apiEquivalentEstimated")))
 
     for titulo, filas in (("Por agente", resumen["byAgent"]),
                           ("Por unidad de trabajo", resumen["byWorkUnit"]),
@@ -1365,7 +1388,8 @@ def mostrar_flujo(args, proyecto, rutas, consola=None, almacen=None, timeout=Non
         # integracion (jira.*, gitlab.*, o su disponibilidad), se revalida por el camino de
         # siempre: el `.env` y una sonda, que es lo unico de --resume que sale a la red.
         guardado, _ = flujo_estado.leer(proyecto, clave)
-        nombres = estado_decisiones.integraciones_a_revalidar(guardado)
+        nombres = estado_decisiones.integraciones_a_revalidar(
+            guardado, _json_o_vacio(os.path.join(proyecto, ".claude", "planes", clave + ".json")))
         if nombres:
             sys.stdout.write("Revalidando %s, la fuente de lo pendiente.\n" % ", ".join(nombres))
             registrar_capacidades(resolver_configuracion(rutas), almacen, timeout, consola, rutas,
@@ -1427,15 +1451,8 @@ def _bloque4_de_refutacion(proyecto, clave):
     eventos = orq_refutacion.de_refutacion(cont_libro.leer(ruta))
     if not eventos:
         return {"events": 0}
-    resumen = cont_agregacion.resumir(eventos, task_id=clave)
-    return {"events": resumen["events"]["counted"],
-            "inputTokens": resumen["tokens"]["inputTokens"],
-            "outputTokens": resumen["tokens"]["outputTokens"],
-            "wallMs": resumen["time"].get("wallMs"),
-            "modelMs": resumen["time"].get("modelMs"),
-            "actual": resumen["cost"].get("actual"),
-            "apiEquivalentEstimated": resumen["cost"].get("apiEquivalentEstimated"),
-            "currency": resumen["cost"].get("currency")}
+    # Un numero de una familia sin resolver sale N/D, no como un cero medido (Wave 5).
+    return cont_presentacion.para_refutacion(cont_agregacion.resumir(eventos, task_id=clave))
 
 
 # -- comandos ------------------------------------------------------------------

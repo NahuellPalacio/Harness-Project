@@ -76,11 +76,12 @@ def _bloque4():
     """Los modulos del Bloque 4. Un import que falla es SOURCE_UNAVAILABLE, no un traceback."""
     if _BIN not in sys.path:
         sys.path.insert(0, _BIN)
-    from contabilidad import barra, libro, presupuesto, tiempo
+    from contabilidad import barra, libro, presentacion, presupuesto, tiempo
     from contabilidad.adaptadores import contrato, registro
     from contexto import limpieza
     return {"barra": barra, "libro": libro, "presupuesto": presupuesto, "tiempo": tiempo,
-            "contrato": contrato, "registro": registro, "limpieza": limpieza}
+            "contrato": contrato, "registro": registro, "limpieza": limpieza,
+            "presentacion": presentacion}
 
 
 _BIENVENIDA = []
@@ -204,7 +205,8 @@ def dibujar(estado, b4, politica_ilegible=False):
     """La linea, con solo lo que `estado` -el de barra.de- tiene. Lo que falta no aparece."""
     limpieza = b4["limpieza"]
     catalogo = limpieza.cargar_catalogo()
-    abiertos = set(estado.get("unresolved") or ())
+    # Que familia esta resuelta: lo que no, no aparece (Wave 5). Ni como 0, ni como un piso.
+    ok = b4["presentacion"].resuelto(estado)
     partes = ["HARNESS"]
 
     modelo = _identificador(estado.get("model"), catalogo, limpieza)
@@ -221,22 +223,22 @@ def dibujar(estado, b4, politica_ilegible=False):
     entrada = sum(int(tokens.get(c) or 0) for c in ("inputTokens", "cacheReadTokens",
                                                    "cacheCreationTokens"))
     salida = int(tokens.get("outputTokens") or 0)
-    if "USAGE_UNRESOLVED" not in abiertos and (entrada or salida):
+    if ok["tokens"] and (entrada or salida):
         partes.append("Tok %s in / %s out" % (_cantidad(entrada), _cantidad(salida)))
 
     # Un total con algo sin resolver adentro es un piso, no un total: no se muestra como uno.
     presupuesto = estado.get("budget") or {}
     monto = presupuesto.get("amount")
-    if monto is not None and "COST_UNRESOLVED" not in abiertos:
+    if monto is not None and ok["cost"]:
         moneda = presupuesto.get("currency") or ""
         marca = "" if presupuesto.get("field") == "actual" else " eq"
         partes.append(("%s %.2f%s" % (moneda, float(monto), marca)).strip())
 
     tiempo_ = (estado.get("time") or {}).get("wallMs")
-    if tiempo_ is not None:
+    if tiempo_ is not None and ok["wallMs"]:
         partes.append(b4["tiempo"].como_texto(tiempo_))
 
-    if presupuesto.get("fraction") is not None:
+    if presupuesto.get("fraction") is not None and ok["cost"]:
         partes.append("Budget " + _porcentaje(presupuesto["fraction"]))
     elif politica_ilegible:
         partes.append("presupuesto ilegible")

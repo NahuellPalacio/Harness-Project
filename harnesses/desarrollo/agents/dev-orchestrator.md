@@ -120,6 +120,7 @@ The plan comes back with a status. Read it:
 |---|---|
 | `READY_FOR_EXECUTION` | Nothing is pending. Hand it over |
 | `CAPABILITY_RESOLUTION` | Something you asked for does not exist. Either it gets built, or the unit gets rethought |
+| `BLOCKED` with `capabilityStatus` `SUPPORTED_UNAVAILABLE` | The capability exists, but its integration is down (`AUTHENTICATION_FAILED`, `CONNECTION_FAILED`...). Nothing gets built: the person fixes the integration and resumes |
 | `WAITING_FOR_HUMAN_APPROVAL` | A unit needs an expensive model. A person decides, not you |
 
 And it comes back with `warnings`. Read those too, and **tell the person about them in Spanish**:

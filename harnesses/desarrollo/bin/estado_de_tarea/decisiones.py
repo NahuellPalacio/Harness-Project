@@ -145,15 +145,20 @@ def aplicar(proyecto, clave, accion, interaction_id, sesion, opcion=None, valor=
     return record, doc
 
 
-def integraciones_a_revalidar(guardado):
+def integraciones_a_revalidar(guardado, plan=None):
     """Que integraciones revalida --resume: las de lo que estaba pendiente. Un input de jira.* o
-    de gitlab.*, o la disponibilidad de Jira. Nada mas: retomar otro bloqueo no sale a la red."""
+    de gitlab.*, la disponibilidad de Jira, o -Wave 5- las integraciones caidas de las que
+    depende el plan (CAPABILITY_UNAVAILABLE). Nada mas: retomar otro bloqueo no sale a la red."""
     nombres = set()
     for b in (guardado or {}).get("blockedOn") or []:
         prefijo = str(b.get("inputId") or "").split(".", 1)[0]
         if prefijo in ("jira", "gitlab") and (b.get("interactionType") == "PERSISTENT_CONFIG_INPUT"
                                               or b.get("inputId") == "jira.availability"):
             nombres.add(prefijo)
+        if b.get("code") == estado.CAPACIDAD_NO_DISPONIBLE:
+            from orquestacion import plan as orq_plan
+            nombres.update(d["integration"] for d in orq_plan.no_disponibles(plan or {})
+                           if d.get("integration"))
     return sorted(nombres)
 
 

@@ -163,12 +163,16 @@ def contexto_para(dominio, task_context):
 # -- el plan -------------------------------------------------------------------
 
 def armar(propuesta, task_context, registro, config, version_harness="", ruta_contexto="",
-          precondiciones=None):
+          precondiciones=None, integraciones=None, fuentes=None):
     """De una propuesta a un plan completo. No escribe: eso lo hace `escribir`.
 
     `precondiciones` es lo que devuelve `flujo.precondiciones.de_planificacion`: los hechos
     de PLANNING que no salen del plan y la identidad del repositorio. Sin eso el plan se arma
     igual y sale BLOCKED: lo que no se evaluo no pasa.
+
+    `integraciones` es el estado de cada integracion del registro de capacidades: con eso una
+    capacidad soportada y caida se distingue de una que no existe. `fuentes` es el
+    `harness.fuentes.json` del proyecto: la frescura de lo que el plan exige (Wave 5).
     """
     clave = str((task_context.get("meta") or {}).get("task_key") or "")
     dominios = sorted(set(propuesta.get("domains") or []))
@@ -186,7 +190,9 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
 
     politica = consumo.politica(config)
     perfiles = modelo.perfiles_declarados((config or {}).get("modelRouting"))
-    capacidades, huecos = cap.resolver(unidades_propuestas, registro)
+    capacidades, huecos = cap.resolver(unidades_propuestas, registro, integraciones=integraciones)
+    estado_de_capacidades = cap.estado(unidades_propuestas, registro, integraciones=integraciones)
+    no_soportadas = set(h["capability"] for h in huecos)
 
     agentes = roster.agentes_para(dominios)
     skills = roster.skills_para(dominios)
@@ -196,7 +202,7 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
     unidades = []
     for propuesta_unidad in unidades_propuestas:
         unidad, aprobacion, politica = _armar_unidad(
-            propuesta_unidad, task_context, capacidades, politica, dominios)
+            propuesta_unidad, task_context, capacidades, politica, dominios, no_soportadas)
         unidades.append(unidad)
         if aprobacion:
             aprobaciones.append(aprobacion)
@@ -217,6 +223,21 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
         avisos.append(
             "las capacidades locales del roster son una declaracion, no una comprobacion: "
             "nadie verifico que la sesion tenga habilitada la herramienta que las provee.")
+    for d in estado_de_capacidades:
+        if d["availability"] == "SUPPORTED_UNAVAILABLE":
+            avisos.append(
+                "%s esta soportada pero %s no esta disponible (%s): no se construye una tool, se "
+                "revalida la integracion." % (d["capabilityId"], d["integration"], d["reasonCode"]))
+    from . import frescura
+    from . import refutacion
+    conocimiento = frescura.de_la_operacion(fuentes, refutacion.estandares_de_unidades(unidades))
+    for f in conocimiento:
+        if f["blocking"]:
+            avisos.append("la fuente %s esta en %s: el plan no avanza hasta revisarla."
+                          % (f["standard"], f["state"]))
+        elif not f["verified"]:
+            avisos.append("la fuente %s no esta verificada como vigente (%s): el plan la usa, "
+                          "pero no como CURRENT." % (f["standard"], f["state"]))
 
     documento = {
         "meta": {
@@ -239,6 +260,8 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
         "checks": checks,
         "capabilities": capacidades,
         "capabilityGaps": huecos,
+        "capabilityStatus": estado_de_capacidades,
+        "knowledgeSources": conocimiento,
         "policies": list(propuesta.get("policies") or []),
         "workUnits": unidades,
         "executionOrder": orden,
@@ -265,12 +288,16 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
     return documento
 
 
-def _armar_unidad(propuesta_unidad, task_context, capacidades, politica, dominios_del_plan):
+def _armar_unidad(propuesta_unidad, task_context, capacidades, politica, dominios_del_plan,
+                  no_soportadas=None):
     dominio = str(propuesta_unidad.get("domain") or "")
     senales = list(propuesta_unidad.get("signals") or [])
     if propuesta_unidad.get("requiredCapabilities"):
+        # La senal es de construir una tool: solo por lo que no se soporta. Lo soportado y caido
+        # bloquea la unidad igual, mas abajo, pero no pide una tool nueva.
         faltan = [c for c in propuesta_unidad["requiredCapabilities"]
-                  if c in capacidades["missing"]]
+                  if c in capacidades["missing"]
+                  and (no_soportadas is None or c in no_soportadas)]
         if faltan and "capability_gap" not in senales:
             senales.append("capability_gap")
 
@@ -420,6 +447,10 @@ def estado_de(documento):
     if not isinstance(previas, dict) or previas.get("status") != "READY" or any(
             p.get("blocking") for p in previas.get("questions") or []):
         return "BLOCKED"
+    # Una integracion caida o una fuente con un problema de integridad no se resuelven
+    # construyendo nada: el plan queda BLOCKED, no en CAPABILITY_RESOLUTION (Wave 5).
+    if no_disponibles(documento) or fuentes_que_bloquean(documento):
+        return "BLOCKED"
     if documento["capabilityGaps"]:
         return "CAPABILITY_RESOLUTION"
     if any(a["status"] == "PENDING" for a in documento["humanApprovals"]):
@@ -427,6 +458,28 @@ def estado_de(documento):
     if any(u["status"] == "BLOCKED" for u in documento["workUnits"]):
         return "CAPABILITY_RESOLUTION"
     return "READY_FOR_EXECUTION"
+
+
+def no_disponibles(documento):
+    """Las capacidades que el plan pide, soportadas y no disponibles. Un plan de antes de la
+    Wave 5 no trae capabilityStatus: no hay ninguna."""
+    return [d for d in documento.get("capabilityStatus") or []
+            if d.get("availability") == "SUPPORTED_UNAVAILABLE"]
+
+
+def huecos_de_un_plan_viejo(documento):
+    """Los huecos de un plan de antes de la Wave 5 -sin capabilityStatus- que son capacidades
+    soportadas: ese plan derivo a dev-tool-builder una integracion caida. No es un hueco: el plan
+    quedo viejo y se regenera."""
+    if "capabilityStatus" in documento:
+        return []
+    soportadas = cap.registro_de_capacidades.soporte()
+    return [h for h in documento.get("capabilityGaps") or [] if h.get("capability") in soportadas]
+
+
+def fuentes_que_bloquean(documento):
+    """Las fuentes que el plan exige y que tenian un problema de integridad al armarlo."""
+    return [f for f in documento.get("knowledgeSources") or [] if f.get("blocking")]
 
 
 def validar(documento):

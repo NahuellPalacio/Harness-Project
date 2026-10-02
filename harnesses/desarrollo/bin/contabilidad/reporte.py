@@ -17,6 +17,7 @@ import os
 
 from . import costos
 from . import libro
+from . import presentacion
 from . import tiempo
 
 TITULO = "Contabilidad de ejecucion"
@@ -25,12 +26,16 @@ TITULO = "Contabilidad de ejecucion"
 def _num(valor):
     if valor is None:
         return "sin resolver"
+    if valor == presentacion.ND:
+        return valor
     return "{:,}".format(int(valor)).replace(",", ".")
 
 
 def _plata(valor, moneda):
     if valor is None:
         return "sin resolver"
+    if valor == presentacion.ND:
+        return valor
     return "%s %.4f" % (moneda or "", float(valor))
 
 
@@ -47,7 +52,7 @@ def _tabla_de_filas(filas, titulo_columna, moneda):
     for fila in filas:
         costo = fila.get("cost") or {}
         monto = costo.get("actual")
-        if monto is None:
+        if monto in (None, presentacion.ND):
             monto = costo.get("apiEquivalentEstimated")
         lineas.append("| %s | %d | %s | %s | %s | %s | %s |" % (
             fila["id"], fila["events"],
@@ -110,7 +115,9 @@ def _presupuesto(resumen):
 
 
 def generar(resumen):
-    """El reporte entero, como texto. Todos sus numeros salen del resumen."""
+    """El reporte entero, como texto. Todos sus numeros salen del resumen, y uno de una familia
+    sin resolver sale N/D: no es un cero medido ni un total (Wave 5)."""
+    resumen = presentacion.para_mostrar(resumen)
     costo = resumen["cost"]
     moneda = costo.get("currency")
     real = costo.get("actual")

@@ -80,6 +80,15 @@ _PROPIOS = {
 _JIRA_NO_DISPONIBLE = ("AUTHENTICATION_FAILED", "CONNECTION_FAILED", "PERMISSION_DENIED")
 for _codigo in _JIRA_NO_DISPONIBLE:
     _PROPIOS[_codigo] = ("jira.availability", "HARD_BLOCKER", None, "task-flow-state", "CONTEXT")
+# Wave 5. Un plan que pide una capacidad soportada cuya integracion esta caida: no es un hueco que
+# se deriva, es una integracion que hay que revalidar (`flujo <KEY> --resume`).
+CAPACIDAD_NO_DISPONIBLE = "CAPABILITY_UNAVAILABLE"
+_PROPIOS[CAPACIDAD_NO_DISPONIBLE] = ("plan.capabilityStatus", "HARD_BLOCKER", None,
+                                     "orchestration-plan", "PLANNING")
+# Wave 5. Una fuente que el plan exige con un problema de integridad lleva su estado como codigo.
+# La lista es la de `frescura.BLOQUEAN_OPERACION`, la misma que frena `plan` y `refute --compile`:
+# se lee de ahi, en `_bloqueo_propio`, y no se repite aca.
+_DE_LA_FUENTE = ("plan.knowledgeSources", "HARD_BLOCKER", None, "orchestration-plan", "PLANNING")
 
 
 class ErrorDeEstado(Exception):
@@ -232,6 +241,41 @@ def _variable_resuelta(resolucion, nombre):
     return False
 
 
+def _capacidades_de_ahora(proyecto):
+    """El bloque `capacidades` del registro escrito, o {}."""
+    doc, _ = _leer_json(os.path.join(proyecto, ".claude", "harness.capacidades.json"))
+    return (doc or {}).get("capacidades") or {}
+
+
+def _explicaciones_del_plan(proyecto, plan, orq_plan):
+    """(bloqueos, viejo): lo que frena al plan y no es del plan (Wave 5), mirado AHORA.
+
+    Una capacidad soportada y caida, o una fuente que el plan exige con un problema de integridad,
+    son bloqueos propios. Si lo que lo frenaba al armarlo ya no esta -la integracion volvio, la
+    alerta se resolvio-, el plan quedo viejo y hay que regenerarlo.
+    """
+    from orquestacion import frescura
+    from orquestacion import refutacion
+    bloqueos, viejo = [], False
+    caidas = orq_plan.no_disponibles(plan)
+    if caidas:
+        ahora = _capacidades_de_ahora(proyecto)
+        if all(ahora.get(d.get("capabilityId")) == "ENABLED" for d in caidas):
+            viejo = True
+        else:
+            bloqueos.append(_bloqueo_propio(CAPACIDAD_NO_DISPONIBLE))
+    de_ahora = frescura.de_la_operacion(
+        frescura.leer(frescura.ruta_por_defecto(proyecto)),
+        refutacion.estandares_de_unidades(plan.get("workUnits") or []))
+    codigos = sorted(set(f["state"] for f in de_ahora if f["blocking"]))
+    bloqueos += [_bloqueo_propio(c) for c in codigos]
+    if not codigos and orq_plan.fuentes_que_bloquean(plan):
+        viejo = True
+    if orq_plan.huecos_de_un_plan_viejo(plan):
+        viejo = True           # un plan de antes de la Wave 5 derivo algo que esta soportado
+    return bloqueos, viejo
+
+
 def _estado_de_jira(proyecto):
     """El estado de Jira en el registro de capacidades (harness.capacidades.json), o None.
     Lo escribe la sonda de `estado`/`setup`/`reconfigurar`/`flujo --resume`; aca solo se lee."""
@@ -260,7 +304,11 @@ def _bloqueo_del_registro(entrada, etapa):
 
 
 def _bloqueo_propio(codigo):
-    input_id, clase, interaccion, fuente, etapa = _PROPIOS[codigo]
+    if codigo not in _PROPIOS:
+        from orquestacion import frescura
+        if codigo not in frescura.BLOQUEAN_OPERACION:
+            raise KeyError(codigo)
+    input_id, clase, interaccion, fuente, etapa = _PROPIOS.get(codigo, _DE_LA_FUENTE)
     return {"inputId": input_id, "code": codigo, "classification": clase,
             "interactionType": interaccion, "source": fuente, "stage": etapa}
 
@@ -385,11 +433,15 @@ def derivar(proyecto, clave, harness_version="", proceso=None, registro=None):
             del_plan = _repo_min((plan.get("flowPreconditions") or {}).get("repository"))
             if del_plan is not None and del_plan != _repo_min(identidad):
                 stale.append(REPOSITORY_STATE_STALE)
-            if recalculado == "CAPABILITY_RESOLUTION":
+            explicados, viejo = _explicaciones_del_plan(proyecto, plan, orq_plan)
+            bloqueos += explicados
+            if viejo:
+                stale.append(PLAN_STALE)
+            if recalculado == "CAPABILITY_RESOLUTION" and not orq_plan.huecos_de_un_plan_viejo(plan):
                 bloqueos.append(_bloqueo_propio("CAPABILITY_GAP"))
             elif recalculado == "WAITING_FOR_HUMAN_APPROVAL":
                 bloqueos.append(_bloqueo_propio("HUMAN_APPROVAL_PENDING"))
-            elif not de_planificacion and (
+            elif not de_planificacion and not explicados and (
                     recalculado != LISTO or plan.get("status") != LISTO
                     or PLAN_STALE in stale or REPOSITORY_STATE_STALE in stale):
                 # El plan no esta listo -el escrito o el recalculado- o se hizo con otros

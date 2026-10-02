@@ -113,7 +113,8 @@ toolBuilderRequest:
 
 ```text
 1. Validate that this is a real CAPABILITY_GAP
-2. Reject CHECK_GAP / POLICY_GAP as Tool creation requests
+2. Reject CHECK_GAP / POLICY_GAP as Tool creation requests, and any capability whose
+   `capabilityStatus` is `SUPPORTED_UNAVAILABLE`: it exists and its integration is down
 3. Search Capability Registry / Tool Registry
 4. Reuse existing Tool if compatible
 5. Extend an existing Tool when safe

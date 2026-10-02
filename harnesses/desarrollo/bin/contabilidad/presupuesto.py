@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import rutas  # noqa: E402
 
 from . import costos  # noqa: E402
+from . import presentacion  # noqa: E402
 
 SCHEMA = "budget-policy.schema.json"
 
@@ -226,8 +227,9 @@ def nivel(fraccion, umbrales):
 def texto_de_decision(decision):
     """La decision como la lee una persona. En espanol, por ADR-0011."""
     def monto(valor):
-        if valor is None:
-            return "sin resolver"
+        # Lo que no esta, o lo que la presentacion ya marco como piso: N/D (Wave 5, E-43).
+        if valor is None or valor == presentacion.ND:
+            return presentacion.ND
         return "%s %.2f" % (decision.get("currency") or "", float(valor))
 
     return "\n".join([

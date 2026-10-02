@@ -701,7 +701,9 @@ def test_e12_una_suscripcion_no_es_gasto(t):
     reporte_ = c_reporte.generar(resumen)
     t.contiene("E-12 el reporte separa los dos", "Equivalente de API estimado", reporte_)
     t.contiene("E-12 y avisa que no se gasto", "NO se gasto", reporte_)
-    t.contiene("E-12 el costo real sale sin resolver", "| Costo real | sin resolver |", reporte_)
+    # Wave 5 (docs/cambios/fail-closed-hardening/spec.md, E-43): lo que no se resolvio es N/D, la
+    # misma convencion para toda metrica del Bloque 4. Sigue sin ser plata gastada ni un 0.
+    t.contiene("E-12 el costo real sale sin resolver (N/D)", "| Costo real | N/D |", reporte_)
 
     estado = c_barra.de([_ev(dedupKey="k-1", sessionId="s-1", usage=_uso(),
                              cost=_costo(equivalente=12.5))], "s-1", POLITICA, TAREA)

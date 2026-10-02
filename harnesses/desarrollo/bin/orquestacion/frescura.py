@@ -64,6 +64,30 @@ ESTADOS = (CURRENT, NUEVA, HAY_ACTUALIZACION, CAMBIO_MISMA_VERSION, ALERTA_DE_IN
 # No bloquean: uno porque esta al dia y el otro porque ya no se sigue. Todo lo demas si.
 NO_BLOQUEAN = (CURRENT, RETIRADA)
 
+# Lo que frena una OPERACION que depende de la fuente -plan, refute --compile- (Wave 5): solo la
+# integridad. Lo demas que no es CURRENT no la frena, pero la operacion lo declara: nunca pasa
+# por CURRENT. Es la misma lista que la bienvenida trata como bloqueo (FUENTE_BLOQUEA).
+BLOQUEAN_OPERACION = (ALERTA_DE_INTEGRIDAD, CAMBIO_MISMA_VERSION, REGRESION)
+
+
+def de_la_operacion(doc, estandares):
+    """[{standard, state, verified, blocking}] de las fuentes que una operacion exige.
+
+    `doc` es el `harness.fuentes.json` del proyecto (o None). Una fuente que no esta, o un estado
+    que no se conoce, es FRESHNESS_UNVERIFIED: nadie la verifico.
+    """
+    fuentes = (doc or {}).get("sources") if isinstance(doc, dict) else None
+    fuentes = fuentes if isinstance(fuentes, dict) else {}
+    salida = []
+    for estandar in sorted(set(estandares or ())):
+        estado = (fuentes.get(estandar) or {}).get("state") if isinstance(
+            fuentes.get(estandar), dict) else None
+        if estado not in ESTADOS:
+            estado = SIN_VERIFICAR
+        salida.append({"standard": estandar, "state": estado, "verified": estado == CURRENT,
+                       "blocking": estado in BLOQUEAN_OPERACION})
+    return salida
+
 # Las dos decisiones que una persona puede tomar sobre una identidad observada.
 APLICAR = "APPLY"
 POSPONER = "POSTPONE"

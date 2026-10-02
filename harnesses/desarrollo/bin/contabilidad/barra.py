@@ -12,6 +12,7 @@ nada sobre la plata, y una tarea al 90% del presupuesto puede tener la ventana v
 muestra el numero igual: un verde inventado es peor que un signo de pregunta.
 """
 from . import agregacion
+from . import presentacion
 from . import presupuesto
 from . import tiempo
 
@@ -85,6 +86,8 @@ def de(libro, session_id, politica=None, task_id=""):
             "wallMs": resumen["time"].get("wallMs"),
             "modelMs": resumen["time"].get("modelMs"),
             "toolMs": resumen["time"].get("toolMs"),
+            # Cuantos eventos no tuvieron cada clase: un tiempo con faltantes es un piso.
+            "wallMsMissing": resumen["time"].get("wallMsMissing", 0),
         },
         "tokens": resumen["tokens"],
         "unresolved": resumen["unresolved"],
@@ -93,7 +96,7 @@ def de(libro, session_id, politica=None, task_id=""):
 
 def _porcentaje(fraccion):
     if fraccion is None:
-        return "?"
+        return presentacion.ND
     return "%d%%" % int(round(fraccion * 100))
 
 
@@ -104,8 +107,8 @@ def _plata(estado):
     como plata que se gasto.
     """
     monto = estado["budget"]["amount"]
-    if monto is None:
-        return "sin resolver"
+    if monto is None or not presentacion.resuelto(estado)["cost"]:
+        return presentacion.ND                       # lo que no esta, o un piso: no es el total
     moneda = estado["budget"]["currency"] or ""
     marca = "" if estado["budget"]["field"] == "actual" else " eq"
     return ("%s %.2f%s" % (moneda, float(monto), marca)).strip()
@@ -120,12 +123,14 @@ def compacto(estado, ancho=60):
     """Una linea. Degrada de a pedazos y NUNCA suelta un estado de aviso o de error."""
     alerta = [n for n in (estado["context"]["level"], estado["budget"]["level"])
               if n in ("WARNING", "ERROR")]
+    ok = presentacion.resuelto(estado)
     piezas = {
         "model": estado.get("model") or "sin modelo",
         "context": "Ctx " + _porcentaje(estado["context"]["fraction"]),
-        "budget": "Budget " + _porcentaje(estado["budget"]["fraction"]),
+        "budget": "Budget " + (_porcentaje(estado["budget"]["fraction"]) if ok["cost"]
+                               else presentacion.ND),
         "money": _plata(estado),
-        "time": tiempo.como_texto(estado["time"].get("wallMs")),
+        "time": tiempo.como_texto(presentacion.cantidad(estado["time"].get("wallMs"), ok["wallMs"])),
     }
     orden = ["model", "context", "budget", "money", "time"]
     if alerta:

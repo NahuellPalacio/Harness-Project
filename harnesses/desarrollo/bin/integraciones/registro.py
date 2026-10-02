@@ -23,6 +23,68 @@ DISABLED = "DISABLED"
 
 VERSION_DOCUMENTO = "integraciones/1.0"
 
+# La disponibilidad de una capacidad, en la capa de la capacidad: los cinco estados de una
+# integracion no cambian (Wave 5, docs/cambios/fail-closed-hardening/spec.md).
+SOPORTADA_DISPONIBLE = "SUPPORTED_AVAILABLE"
+SOPORTADA_NO_DISPONIBLE = "SUPPORTED_UNAVAILABLE"
+NO_SOPORTADA = "NOT_SUPPORTED"
+DISPONIBILIDADES = (SOPORTADA_DISPONIBLE, SOPORTADA_NO_DISPONIBLE, NO_SOPORTADA)
+
+DISPONIBLE = "CAPABILITY_AVAILABLE"
+NO_DESCUBIERTA = "CAPABILITY_NOT_DISCOVERED"
+SIN_REGISTRO = "CAPABILITY_REGISTRY_ABSENT"
+NO_SOPORTADA_MOTIVO = "CAPABILITY_NOT_SUPPORTED"
+
+
+def clases():
+    """Los adapters de este harness. Lo que soporta cada uno es su tupla CAPACIDADES: la unica
+    autoridad de que sabe hacer el harness, la misma con la que se arma el registro."""
+    from .gitlab import IntegracionGitLab
+    from .jira import IntegracionJira
+    return (IntegracionJira, IntegracionGitLab)
+
+
+def soporte():
+    """{capacidad: integracion} de todo lo que algun adapter declara."""
+    return dict((c, clase.nombre) for clase in clases() for c in clase.CAPACIDADES)
+
+
+def disponibilidad(capacidad, capacidades=None, integraciones=None, locales=()):
+    """Si una capacidad se puede usar ahora, y si no, por que.
+
+    `capacidades` e `integraciones` son los dos bloques del registro escrito (None si no hay);
+    `locales`, las capacidades que da el runtime. Lo soportado sale de los adapters, no del
+    registro: una integracion caida, o que nunca se valido, sigue soportando lo que declara.
+    """
+    salida = {"capabilityId": capacidad, "integration": None, "integrationState": None}
+    if capacidad in (locales or ()):
+        salida.update(supported=True, available=True, availability=SOPORTADA_DISPONIBLE,
+                      reasonCode=DISPONIBLE)
+        return salida
+    integracion = soporte().get(capacidad)
+    if integracion is None and (capacidades or {}).get(capacidad) == ENABLED:
+        # El registro la habilito: la escribio un adapter, aunque hoy no la declare.
+        salida.update(supported=True, available=True, availability=SOPORTADA_DISPONIBLE,
+                      reasonCode=DISPONIBLE)
+        return salida
+    if integracion is None:
+        salida.update(supported=False, available=False, availability=NO_SOPORTADA,
+                      reasonCode=NO_SOPORTADA_MOTIVO)
+        return salida
+    estado = ((integraciones or {}).get(integracion) or {}).get("estado")
+    salida.update(integration=integracion, integrationState=estado, supported=True)
+    if (capacidades or {}).get(capacidad) == ENABLED:
+        salida.update(available=True, availability=SOPORTADA_DISPONIBLE, reasonCode=DISPONIBLE)
+        return salida
+    if estado is None:
+        motivo = SIN_REGISTRO
+    elif estado == "AVAILABLE":
+        motivo = NO_DESCUBIERTA
+    else:
+        motivo = estado
+    salida.update(available=False, availability=SOPORTADA_NO_DISPONIBLE, reasonCode=motivo)
+    return salida
+
 
 class RegistroCapacidades(object):
     def __init__(self, soportadas, modo=None):

@@ -93,6 +93,8 @@ BATCH_INVALID = "REFUTATION_BATCH_INVALID"
 # La corrida se compilo sobre otro plan. `planFingerprint` se guarda desde 0.23.0; desde la
 # Wave 1 de Flow Governance tambien se compara (docs/cambios/flujo-precondiciones/spec.md).
 PLAN_STALE = "REFUTATION_PLAN_STALE"
+# Se compilo contra una fuente que no esta verificada como vigente (Wave 5). No frena: lo dice.
+SOURCE_UNVERIFIED = "REFUTATION_SOURCE_UNVERIFIED"
 
 # De mayor a menor prioridad. Para cada (unidad, regla) se usan los alcances de la primera
 # fuente que tenga alguno; los de las de abajo se descartan.
@@ -518,6 +520,28 @@ def _bloques(normative):
     return [(sid, str((normative.get("standard") or {}).get("version") or "") or None, normative)]
 
 
+def estandares_de_unidades(unidades):
+    """Los estandares que traen los bloques normativos de unas unidades del plan: las fuentes de
+    las que dependen el plan y la refutacion que se va a compilar de el (Wave 5)."""
+    return sorted(set(sid for u in unidades or [] for sid, _, _ in _bloques(u.get("normative"))))
+
+
+def _frescura_de(proyecto, estandares, desde=__file__):
+    """La frescura de lo que la compilacion exige. Levanta RefutacionInvalida con el estado si
+    una fuente tiene un problema de integridad; si no, devuelve los avisos de lo no verificado."""
+    from . import frescura
+    estados = frescura.de_la_operacion(frescura.leer(frescura.ruta_por_defecto(proyecto)),
+                                       estandares)
+    for f in estados:
+        if f["blocking"]:
+            raise RefutacionInvalida(f["state"], (
+                "la fuente %s esta en %s: no se compila una refutacion contra una fuente cuya "
+                "integridad no se puede confirmar. Revisala con `dev-harness.py fuentes`."
+                % (f["standard"], f["state"])))
+    return [aviso(SOURCE_UNVERIFIED, f["standard"], f["state"]) for f in estados
+            if not f["verified"]]
+
+
 def _reglas_del_bloque(bloque):
     """[(regla, aplicable)]: las aplicables y las que no se pudieron decidir."""
     salida = [(str(r), True) for r in bloque.get("applicableRules") or []]
@@ -902,6 +926,9 @@ def compilar(proyecto, clave, desde=__file__):
     plan = _leer_plan(proyecto, clave)
     scope, resultados, avisos = _entradas_de(proyecto, clave, desde)
     unidades = compilar_unidades(proyecto, plan, scope, desde)
+    # Antes de escribir nada: una fuente con un problema de integridad frena la compilacion.
+    avisos = avisos + _frescura_de(
+        proyecto, sorted(set(u["standard"]["id"] for u in unidades)), desde)
     matrices = _matrices(desde)
     registrados = _controles(desde)
 
@@ -1254,6 +1281,7 @@ COMO_SE_LEE_EL_AVISO = {
     CACHE_INVALID: "{0}: la entrada de cache no coincide en {1} y no se usa",
     EVIDENCE_STALE: "el veredicto anterior de {0} sobre {1} ya no vale: cambio su evidencia",
     NOTHING_TO_VERIFY: "el plan no tiene reglas aplicables ni sin resolver",
+    SOURCE_UNVERIFIED: "se compilo contra {0}, que no esta verificada como vigente: {1}",
 }
 
 

@@ -22,6 +22,7 @@ import os
 from . import costos
 from . import eventos
 from . import libro
+from . import presentacion
 from . import tiempo
 
 VERSION_SCHEMA = "execution-summary/1.0"
@@ -339,6 +340,9 @@ def resumir(libro, task_id="", project_id=None, presupuesto=None):
     }
     resumen["unresolved"] = _sin_resolver(
         contables, total_tiempo, total_costo, no_atribuido, conciliacion)
+    # Que familia esta resuelta, para quien muestra un numero y no puede importar la regla
+    # (el reporte de seguridad). Un 0 de una familia sin resolver no es un cero medido.
+    resumen["resolved"] = presentacion.resuelto(resumen)
     return resumen
 
 

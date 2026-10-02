@@ -142,6 +142,9 @@ def _es_porcentaje(ruta):
 def mostrado(resumen, ruta):
     """El texto que la pagina muestra para una ruta. Uno solo, para md y html."""
     valor = valor_en(resumen, ruta)
+    if ruta.startswith("block4Execution.") and valor is None:
+        # Lo que el Bloque 4 no pudo resolver, o no tiene: N/D, nunca un 0 (Wave 5).
+        return SIN_DENOMINADOR
     return porciento(valor) if _es_porcentaje(ruta) else texto(valor)
 
 
@@ -281,7 +284,7 @@ def _md_ejecucion(resumen):
         "Referencia: `%s`. Los valores se copian tal cual del resumen del Bloque 4, que es el "
         "dueño de tiempos, tokens y costos." % resumen["block4ExecutionRef"],
         "",
-        _tabla([(nombre, texto(valor_en(valores, ruta))) for nombre, ruta in EJECUCION],
+        _tabla([(nombre, mostrado(resumen, "block4Execution." + ruta)) for nombre, ruta in EJECUCION],
                ("Métrica", "Valor"))])
 
 

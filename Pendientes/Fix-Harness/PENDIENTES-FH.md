@@ -1917,6 +1917,61 @@ the shape of thing to look for if anything else in that file reads wrong.
 What should happen: somebody who knows what the file said reads it once against the five specs it
 documents. Until then it is an honest reconstruction and not a restoration.
 
+### Block 4 still loses the unresolved marker on ingest, and installation states paint OK
+
+Found while building Flow Governance Wave 5 (`docs/cambios/fail-closed-hardening/`), on
+2026-10-01, and deferred to Wave 6 on purpose: Wave 5 fixed how an unresolved metric is *shown*
+(`N/D`, never `0`), not how it is *recorded*.
+- **The Claude Code adapter records a message without `usage` as `RESOLVED`,** with `None` tokens
+  (`contabilidad/adaptadores/claude_code.py`, around line 134). It sums as zero and
+  `USAGE_UNRESOLVED` is never raised, so the presentation has nothing to turn into `N/D`. Decide
+  first whether a message without `usage` is unmeasured or simply not a model call.
+- **The bar drops `USAGE_UNRESOLVED` records before they reach the ledger**
+  (`contabilidad/statusline.py`, around line 167). The marker the bar checks can therefore never
+  fire on the live path.
+- **Installation and runtime states that say OK without resolving anything:** `block4: OK` right
+  after an ingest with no events (already listed above, under the Context Bar), `_block4` ACTIVE
+  before any session (`bienvenida.py`, `_libro_legible(None)` is `True`), Block 4 "installed" when
+  three of its files exist, `-Doctor` printing green `OK` for `CONFIGURED`, and the proof check
+  passing when `integrationVersion` or `lastValidatedAt` is missing.
+- **The budget decision is computed on a floor.** With a partial cost (`COST_UNRESOLVED`, part of
+  it priced), `presupuesto.evaluar` still returns `WITHIN_BUDGET` on the priced part. Wave 5 shows
+  the amounts as `N/D`, but the status is a decision taken on a number nobody can call the total.
+  Block 4 does not govern, so nothing is gated on it; it is still evidence that reads better than
+  it is. Found by the refuter on 2026-10-02.
+- **A partial time or cost inside the `--barra --json` and `contabilidad --json` documents** is still
+  a number with its state beside it. That is the contract for a program; it is listed here only so
+  nobody reads those documents as a presentation.
+
+What should happen: one change for the ingest (a spec scenario per adapter), and one for the
+installation states, each with the state that is actually reachable written next to the one that is
+declared.
+
+### Three inconsistencies the Wave 5 manual acceptance surfaced, all older than Wave 5
+
+Found on 2026-10-02 during the Wave 5 manual acceptance, and checked against the baseline `2c33fba`
+in a separate worktree: the same output there. None changes a gate decision.
+- **`contabilidad <KEY>` loses its key in the flow gate.** `tool_policy._harness` parses the key and
+  then returns `_resultado(MUTATING, "contabilidad")` without it (since Wave 3, `2b43a77`), so the
+  gate evaluates the command against the session's bound task instead of the key it names.
+  `seguridad <KEY>` keeps it. The Wave 3 spec says a Harness command with a key is evaluated against
+  *its* key. The outcome is still a deny when the session's task is blocked, because the named task
+  with no flow state is `TASK_FLOW_STATE_MISSING`; what is wrong is the reason the person reads.
+- **`workUnits[].context.repository` is empty while `flowPreconditions.repository` is `MATCHED`.**
+  The unit context reads `task_context.repository.project.name`; the flow preconditions resolve the
+  repository from the Ficha (`Repo: …`) and the remotes. Two sources for one fact, and a TaskContext
+  without a GitLab project leaves the unit saying nothing.
+- **The plan warns «26 de las 26 reglas de ES0901 §7.1 estan sin clasificar … la matriz normativa
+  todavia no se construyo»** while every unit carries the normative matrix's resolution (7
+  applicable, 17 unresolved in the fixture). The warning counts the rules of `es0901-7.1.json` with
+  no `conditions` (what `applicableStandards` cites); the units read
+  `es0901-7.1-normative-matrix.json`. The matrix does exist, so the sentence says the opposite of what
+  the plan shows.
+
+What should happen: pass the key in `contabilidad` with a scenario in `63_compuerta_del_flujo`, give
+the unit context and the preconditions one repository source, and reword the warning so it names
+the file it counts.
+
 ## Outside the harness, written down so it is not lost
 
 ### Four IGE documents nobody read

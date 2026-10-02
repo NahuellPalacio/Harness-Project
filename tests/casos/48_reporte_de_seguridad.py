@@ -221,6 +221,10 @@ def _esperado(r, ruta):
     valor = _resolver(r, ruta)
     if ruta.endswith("Pct"):
         return "N/D" if valor is None else "%.1f%%" % valor
+    # Wave 5 (docs/cambios/fail-closed-hardening/spec.md): lo que el Bloque 4 no resolvio, o no
+    # tiene, es N/D en la seccion de ejecucion, nunca un 0 ni un hueco.
+    if ruta.startswith("block4Execution.") and valor is None:
+        return "N/D"
     if valor is None or valor == "":
         return "desconocido"
     if valor is True:
