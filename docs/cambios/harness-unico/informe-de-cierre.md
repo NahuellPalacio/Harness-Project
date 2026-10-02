@@ -13,10 +13,10 @@ verde sobre el árbol del commit: `38337/38337`, exit 0. Los dos controles que l
 hicieron antes del commit.
 
 Este informe no entra en ese commit: un archivo no puede llevar el hash del commit que lo contiene.
-Va en el siguiente.
+Entró en el siguiente, `6c6b24d`.
 
-Queda una sola decisión tuya, que no bloquea: **`mapa-harness.html`**. Su URL no se encontró. Si
-querés que se publique como un artifact nuevo, hay que cambiar la URL de su cabecera.
+Después pediste publicar el mapa largo como uno nuevo. Se publicó, y eso va en un tercer commit con
+su propia corrida de la suite (ver `## El mapa largo, después del cierre`).
 
 ## Los pasos del pedido
 
@@ -33,7 +33,7 @@ querés que se publique como un artifact nuevo, hay que cambiar la URL de su cab
 | 8 | Que los pendientes sigan abiertos | Hecho: dos notas agregadas, nada cerrado de más |
 | 9 | La suite, con stdin redirigido | Hecho: dos corridas en verde, `38337/38337` |
 | 10 | `git status` y diff, con `manifest.json` en git | Hecho: `manifest.json` entra en el commit, y no hay cambios fuera de alcance |
-| 11 | `close-a-version` completo | Hecho, salvo la republicación del mapa largo |
+| 11 | `close-a-version` completo | Hecho. El mapa largo salió en un artifact nuevo, después del cierre |
 | 12 | Este informe | Hecho |
 
 ## 2.1 — El lockfile del IGE
@@ -103,6 +103,7 @@ Dos cosas que se vieron y no contradicen la spec:
 |---|---|---|---|---|---|
 | Cierre 1, con stdin redirigido desde un archivo vacío | 754/754 | 37583/37583 | **38337/38337** | **0** | 910 s |
 | Cierre 2, sobre el árbol definitivo, el del commit | 754/754 | 37583/37583 | **38337/38337** | **0** | 1342 s |
+| Mapa largo, sobre el árbol del tercer commit | 754/754 | 37583/37583 | **38337/38337** | **0** | 1506 s |
 
 Después de cada corrida, `pre-tool-use.py` y `zonas.py` tenían el mismo hash que al principio
 (`61567f3` y `e996067`).
@@ -123,16 +124,27 @@ Después de cada corrida, `pre-tool-use.py` y `zonas.py` tenían el mismo hash q
 - **El commit:** `f16ce3d 0.29.0 cierra: un solo harness, desarrollo es el producto y analisis se
   retira`, con 62 archivos (+3694 −1327). No se pusheó.
 
-## Lo que no se pudo hacer
+## El mapa largo, después del cierre
 
-- **`docs/mapa/mapa-harness.html` no se republicó.** Su URL (`claude.ai/code/artifact/e11c6e31-…`)
-  devolvió que no existe o que no está compartida con esta cuenta. El archivo del repo está al día.
-  No se publicó uno nuevo sin preguntar, porque eso cambia la URL de la cabecera. Quedó anotado en
-  *Lo que quedó abierto* de la nota de versión.
+Al cerrar, `docs/mapa/mapa-harness.html` no se pudo republicar. Su URL vieja
+(`claude.ai/code/artifact/e11c6e31-…`) devolvió que no existe o que no está compartida con esta
+cuenta. No se publicó uno nuevo sin preguntar, porque eso cambia la URL de la cabecera.
+
+Después lo pediste, y se hizo así:
+
+- se corrigió la Figura 4: SessionStart dice la versión del harness, no "el harness que rige";
+- se publicó como artifact nuevo, en `https://claude.ai/artifact/9TVbAjZD1fco4GGB45Gm3Q`;
+- la cabecera del archivo pasó a la URL nueva, y se republicó para que la copia publicada coincida
+  con la del repo (versión 2);
+- en `docs/versiones/0.29.0.md`, el mapa pasó de *Lo que quedó abierto* a *Qué se hizo*. En lo
+  abierto quedó solo que quien tenía el link viejo tiene que pasar al nuevo.
+
+El artifact es privado: para que lo vea alguien más hay que compartirlo desde su menú. Las chips del
+mapa siguen diciendo `v0.14.0` y `772 tests`, porque es la lectura de 0.13.0 que dice su pie.
 
 ## Estado
 
-Lo del mapa largo no bloquea el cierre, y está anotado como abierto en la nota de versión. Lo que
-falta en otros proyectos es correr el `-Update` del Portal IGE, y eso lo decide quien lo usa.
+No queda nada que bloquee. Lo que falta en otros proyectos es correr el `-Update` del Portal IGE, y
+eso lo decide quien lo usa.
 
 TASK 1 CLOSED
