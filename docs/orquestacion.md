@@ -9,7 +9,7 @@ python .claude\harness\bin\desarrollo\dev-harness.py plan GCBA-1234 --propuesta 
 ```
 
 El plan queda en `.claude/planes/GCBA-1234.json` y valida contra
-`comun/schemas/orchestration-plan.schema.json`.
+`comun/schemas/orchestration-plan.schema.json`, que es el contrato `orchestration-plan/2.0`.
 
 > 🔴 **Este bloque no ejecuta nada.** `READY_FOR_EXECUTION` es un estado del documento, no una
 > invocación. Orquestar decide qué, quién, con qué y en qué orden; ejecutar modifica, y eso es
@@ -148,7 +148,9 @@ elige el tier solo, y que los baratos los ejecuta solo.
 }
 ```
 
-Lo que requiere aprobación deja el plan en `WAITING_FOR_HUMAN_APPROVAL` con la solicitud armada:
+Lo que requiere aprobación queda con la solicitud armada. Deja el plan en
+`WAITING_FOR_HUMAN_APPROVAL` solo si no falta ninguna capacidad: con un hueco, el plan queda en
+`CAPABILITY_RESOLUTION` (ver `## El estado se calcula`).
 
 ```
 Solicitud de escalamiento de modelo
@@ -172,13 +174,50 @@ premium autorizadas son dos, y la tercera vuelve a preguntar.
 
 ## El estado se calcula
 
-No lo declara quien arma el plan. Con huecos, un plan no puede decir que está listo.
+No lo declara quien arma el plan. Con huecos, un plan no puede decir que está listo. El plan tiene
+estos tres estados, y ninguno más:
 
 | Estado | Cuándo |
 |---|---|
 | `CAPABILITY_RESOLUTION` | Falta una capacidad, o una unidad quedó bloqueada |
-| `WAITING_FOR_HUMAN_APPROVAL` | Una unidad necesita un modelo que requiere aprobación |
+| `WAITING_FOR_HUMAN_APPROVAL` | Una unidad necesita un modelo que requiere aprobación, y no falta ninguna capacidad |
 | `READY_FOR_EXECUTION` | No queda nada pendiente |
+
+Las condiciones se miran en orden (`plan.estado_de`):
+
+1. si falta una capacidad, `CAPABILITY_RESOLUTION`, aunque haya aprobaciones pendientes;
+2. si no, una aprobación pendiente da `WAITING_FOR_HUMAN_APPROVAL`;
+3. si no, una unidad bloqueada da `CAPABILITY_RESOLUTION`;
+4. si no queda nada de eso, `READY_FOR_EXECUTION`.
+
+Cada unidad tiene estos tres, también calculados:
+
+| Estado de la unidad | Cuándo |
+|---|---|
+| `PENDING` | Está planificada y nada la frena |
+| `BLOCKED` | Le falta una capacidad |
+| `WAITING_FOR_HUMAN_APPROVAL` | Su tier de modelo pide una aprobación |
+
+Son estados del documento. Ninguno dice que algo se delegó o se ejecutó, porque nada de eso existe.
+
+## La versión del contrato, y un plan guardado con la anterior
+
+El plan se escribe siempre como `orchestration-plan/2.0`. Hasta 0.29.0 era `orchestration-plan/1.0`,
+y la 1.0 declaraba estados que el código nunca escribía. `refute --compile` y `--replanificar` leen un
+plan guardado por una sola regla:
+
+| Lo que encuentran | Qué hacen |
+|---|---|
+| Un `2.0` | Lo usan |
+| Un `1.0` cuyos estados existen en 2.0 | Lo usan tal cual. `refute --compile` no lo reescribe; `--replanificar` lo escribe como `2.0`, con la versión siguiente y toda su historia |
+| Un `1.0` con un estado que no existe en 2.0, como un plan `DELEGATING` o una unidad `READY` | Lo rechazan: salen con 2, nombran el campo y el valor, y piden regenerarlo con `plan --propuesta`. No se migra, porque no hay un estado 2.0 que signifique eso |
+| Otra versión, o ninguna | Lo rechazan igual, nombrando la versión |
+
+El rechazo no toca el plan ni la refutación de esa tarea. Lo que la compuerta normativa haya escrito
+antes de leer el plan queda.
+
+La propuesta tiene dos reglas más que el núcleo hace cumplir: los ids de las unidades no se repiten,
+y el dominio de cada unidad tiene que estar en `domains`. Si no, el plan no se escribe.
 
 ## El aislamiento de contexto
 

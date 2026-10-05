@@ -7,7 +7,7 @@ manifiesto, que el design system este aprobado, que haya media queries: todo eso
 segundos y ninguno dice si la aplicacion se ve bien en un telefono. Un check que los mire se pone
 verde siempre.
 
-🔴 **Esto no es un check del hook.** No corre en `PreToolUse`, no tiene presupuesto de latencia y
+🔴 **Esto no es un check del hook.** No corre en `PostToolUse`, no tiene presupuesto de latencia y
 no devuelve las tres salidas del contrato de `comun/checks/`. Es un control normativo.
 
 🔴 **Este modulo no renderiza nada.** No abre un navegador, no ejecuta un caso y no crea un

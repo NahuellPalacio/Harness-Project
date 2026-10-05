@@ -3,6 +3,89 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.30.0] — 2026-10-05
+
+**HARNESS tiene su modelo de dominio escrito, y el plan de orquestación pasa a
+`orchestration-plan/2.0`.**
+
+Hasta 0.29.0 había tres problemas:
+
+- el dominio existía en el código, pero no estaba escrito;
+- la misma palabra nombraba cosas distintas;
+- el plan declaraba once estados y escribía tres.
+
+Ahora hay un documento canónico y un ADR, y el contrato del plan dice solo los estados que existen.
+También se corrigieron los comportamientos que dejaban producir un artefacto contra el modelo.
+
+El cambio se verificó en tres pasadas y quedó con 52 escenarios sostenidos y ninguno contradicho. No
+agrega ejecución: nada toma una unidad de trabajo y la lleva a cabo.
+
+### Agregado
+
+- **El modelo de dominio canónico** — `docs/dominio/modelo-canonico.md`. Cada concepto tiene su
+  contexto, su clasificación, su identidad, su ciclo, sus invariantes, quién lo crea y lo lee, su
+  contrato, dónde vive y qué no es. Hay nueve contextos delimitados: Work Intake, Project Knowledge,
+  Normative Sources, Planning, Catalog, Governance, Guardrails, Observability y Host Integration.
+  Execution queda como un límite reservado, con nombre y vacío. El vocabulario lleva cada nombre del
+  código a su nombre canónico, sin renombrar nada
+- **[ADR-0013](docs/adr/0013-modelo-de-dominio-canonico.md)** — fija seis decisiones:
+  - los nueve contextos;
+  - la Task es externa: Jira la registra, y HARNESS guarda lo que deriva de ella, nombrado por su
+    TaskKey;
+  - el Host, Claude Code, no es dominio;
+  - Execution está reservado;
+  - "check" son tres conceptos;
+  - qué promete un `schema_version`
+- **Las separaciones que el modelo deja escritas** — Capability y Tool, Agent y Skill, Policy,
+  ControlCheck, GuardrailCheck y CheckSpecification, Evidence y EvaluationResult, Plan y Execution, y
+  Execution y la contabilidad. Cada una dice qué código la sostiene
+- **Tests nuevos** — `tests/casos/64_modelo_de_dominio.py` y
+  `tests/casos/64-modelo-de-dominio-instalador.ps1`. La versión anterior para comparar sale de
+  `git archive 4c6f0f3` en cada corrida
+
+### Cambiado
+
+- 🔴 **El plan pasa a `orchestration-plan/2.0`** — el plan tiene tres estados:
+  `CAPABILITY_RESOLUTION`, `WAITING_FOR_HUMAN_APPROVAL` y `READY_FOR_EXECUTION`. La unidad tiene otros
+  tres: `PENDING`, `BLOCKED` y `WAITING_FOR_HUMAN_APPROVAL`. Salen los que nadie escribía, como
+  `DELEGATING` y `READY`, y `plan` escribe solo 2.0. Ver [UPGRADE.md](UPGRADE.md)
+- **Un plan 1.0 guardado se sigue leyendo si sus estados existen en 2.0** — `refute --compile` lo lee
+  sin reescribirlo, y `--replanificar` lo escribe como 2.0, con toda su historia. Un 1.0 con un
+  estado retirado, otra versión o ninguna se rechaza con código 2, sin tocar el plan, la refutación
+  ni la caché
+- 🔴 **`plan` rechaza ids de unidad repetidos y unidades de un dominio que no está en el plan** — sale
+  con 2 y no escribe; hasta 0.29.0 los escribía. Un dominio que HARNESS no conoce también entra en
+  este caso. Los demás errores de una propuesta (un ciclo, una dependencia rota, ninguna unidad) salen
+  como antes
+- 🔴 **`seguridad` exige una TaskKey válida** — si no lo es, sale con 2 antes de escribir nada
+- 🔴 **`contabilidad` exige una clave de libro** — una TaskKey, o el UUID de una sesión de Claude
+  Code. La `statusLine` no cambia
+- **Cuando Jira devuelve otra clave que la pedida**, el TaskContext lo anota como conflicto, nombra
+  las dos y conserva la pedida
+- **`declaredChecks`, en una unidad de refutación,** lleva los checks que declara la norma, estén
+  registrados o no, y ya no suma los checks del hook. No cambian la `cacheKey`, los `REF-nnn`, el
+  `resolutionPath` ni ningún veredicto
+- **Descripciones que decían otra cosa:**
+  - los schemas de la contabilidad y de la señal normativa;
+  - "PostToolUse" en el registro de controles y en los checks de `controles/`;
+  - `docs/orquestacion.md`: los estados, su precedencia y la regla de lectura;
+  - `docs/contabilidad.md`: "La contabilidad no es estado de ejecución";
+  - `docs/integraciones.md`;
+  - `dev-orchestrator.md`
+
+### Lo que no cambia, a propósito
+
+- **No hay ejecución.** Ningún comando ejecuta una unidad de trabajo, y nadie emite los eventos de
+  ciclo de una tarea
+- **`controles/` sigue sin instalarse**
+- **G2 sigue declarando un mismo id como policy y como check.** Es un defecto de datos: hay un
+  diagnóstico, pero ningún comando lo emite
+- **Los nombres del código siguen en español.** El documento canónico los mapea
+- **La contabilidad no cambia su contrato:** los `eventId` son los mismos
+- **Lo que el modelo encontró y no arregló** sigue abierto en `PENDIENTES-FH.md`, sin presentarse
+  como resuelto: doce ítems con las contradicciones que no pasaron la regla de inclusión, y los cabos
+  sueltos de la verificación
+
 ## [0.29.0] — 2026-10-02
 
 **El harness es uno solo: `desarrollo` es el producto, `comun` es su base, y `analisis` se retira.**

@@ -1,0 +1,94 @@
+E-25 [no-es-clave] new plan: exit 2 | planes diff [] | ` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `no-es-clave` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-25 [no-es-clave] old plan: exit 1 | planes diff [] | ` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `no-es-clave` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-25 [GCBA_12] new plan: exit 2 | planes diff [] | A_12` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `GCBA_12` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-25 [GCBA_12] old plan: exit 1 | planes diff [] | A_12` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `GCBA_12` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-25 [GCBA-12a] new plan: exit 2 | planes diff [] | 12a` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `GCBA-12a` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-25 [GCBA-12a] old plan: exit 1 | planes diff [] | 12a` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `GCBA-12a` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-25 [1GCBA-2] new plan: exit 2 | planes diff [] | BA-2` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `1GCBA-2` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-25 [1GCBA-2] old plan: exit 1 | planes diff [] | BA-2` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `1GCBA-2` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-25 [GCBA-] new plan: exit 2 | planes diff [] | _GCBA-` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `GCBA-` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-25 [GCBA-] old plan: exit 1 | planes diff [] | _GCBA-` no cumple el patron ^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$ - $.meta.task_key: `GCBA-` no cumple el patron ^[A-Za-z][A-Za-z0-9_]*-[0-9]+$
+E-26 contexto no-es-clave -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute no-es-clave --compile -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute no-es-clave --status -> new exit 2 diff [] || old exit 2 diff []
+E-26 seguridad no-es-clave -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad no-es-clave --resumen -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json', 'created .claude/runtime/security/', 'created .claude/runtime/security/no-es-clave/']
+E-26 seguridad no-es-clave --conocimiento -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad no-es-clave --refutacion -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 contexto GCBA_12 -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute GCBA_12 --compile -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute GCBA_12 --status -> new exit 2 diff [] || old exit 2 diff []
+E-26 seguridad GCBA_12 -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad GCBA_12 --resumen -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json', 'created .claude/runtime/security/', 'created .claude/runtime/security/GCBA_12/']
+E-26 seguridad GCBA_12 --conocimiento -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad GCBA_12 --refutacion -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 contexto GCBA-12a -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute GCBA-12a --compile -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute GCBA-12a --status -> new exit 2 diff [] || old exit 2 diff []
+E-26 seguridad GCBA-12a -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad GCBA-12a --resumen -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json', 'created .claude/runtime/security/', 'created .claude/runtime/security/GCBA-12a/']
+E-26 seguridad GCBA-12a --conocimiento -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad GCBA-12a --refutacion -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 contexto 1GCBA-2 -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute 1GCBA-2 --compile -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute 1GCBA-2 --status -> new exit 2 diff [] || old exit 2 diff []
+E-26 seguridad 1GCBA-2 -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad 1GCBA-2 --resumen -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json', 'created .claude/runtime/security/', 'created .claude/runtime/security/1GCBA-2/']
+E-26 seguridad 1GCBA-2 --conocimiento -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad 1GCBA-2 --refutacion -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 contexto GCBA- -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute GCBA- --compile -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute GCBA- --status -> new exit 2 diff [] || old exit 2 diff []
+E-26 seguridad GCBA- -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad GCBA- --resumen -> new exit 2 diff [] || old exit 0 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json', 'created .claude/runtime/security/', 'created .claude/runtime/security/GCBA-/']
+E-26 seguridad GCBA- --conocimiento -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 seguridad GCBA- --refutacion -> new exit 2 diff [] || old exit 2 diff ['created .claude/runtime/', 'created .claude/runtime/knowledge-refresh.json']
+E-26 contexto ../GCBA-1 -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute ../GCBA-1 --compile -> new exit 2 diff [] || old exit 2 diff []
+E-26 refute ../GCBA-1 --status -> new exit 2 diff [] || old exit 2 diff []
+E-26 seguridad ../GCBA-1 -> new exit 2 diff [] || old exit 2 diff []
+E-26 seguridad ../GCBA-1 --resumen -> new exit 2 diff [] || old exit 2 diff []
+E-26 seguridad ../GCBA-1 --conocimiento -> new exit 2 diff [] || old exit 2 diff []
+E-26 seguridad ../GCBA-1 --refutacion -> new exit 2 diff [] || old exit 2 diff []
+E-26 control seguridad GCBA-64 --resumen: exit 0, summary exists True
+E-26 lowercase valid key seguridad gcba-12 --resumen: exit 0, summary exists True
+plan without key (pendiente 12, must remain unfixed): exit 1 | last line: TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'
+CLAVE_JIRA defs in dev-harness: ['CLAVE_JIRA = re.compile(r"^[A-Za-z][A-Za-z0-9_]*-[0-9]+$")'] | CLAVE defs in refutacion: ['CLAVE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*-[0-9]+$")']
+plan key validation added in main?: False
+E-28 accept GCBA-28: exit 0 ledger True
+E-28 accept gcba-28: exit 0 ledger True
+E-28 accept 7b466f28-b12d-4bf9-9745-65a8d4c258fa: exit 0 ledger True
+E-28 accept 7B70AAF0-A4E6-4DD4-ABB5-88122C7AAF4B: exit 0 ledger True
+E-28 reject 'no-es-clave' --ingerir: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'no-es-clave' : exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'no-es-clave' --reporte: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'no-es-clave' --barra: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 's-sesion-1' --ingerir: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 's-sesion-1' : exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 's-sesion-1' --reporte: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 's-sesion-1' --barra: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'GCBA_12' --ingerir: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'GCBA_12' : exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'GCBA_12' --reporte: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'GCBA_12' --barra: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '../GCBA-1' --ingerir: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '../GCBA-1' : exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '../GCBA-1' --reporte: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '../GCBA-1' --barra: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '12345678-1234-1234-1234-12345678901' --ingerir: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '12345678-1234-1234-1234-12345678901' : exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '12345678-1234-1234-1234-12345678901' --reporte: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '12345678-1234-1234-1234-12345678901' --barra: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '{4a7d41a2-e157-4625-8a3a-04b4268725c0}' --ingerir: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '{4a7d41a2-e157-4625-8a3a-04b4268725c0}' : exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '{4a7d41a2-e157-4625-8a3a-04b4268725c0}' --reporte: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '{4a7d41a2-e157-4625-8a3a-04b4268725c0}' --barra: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '23b141cae64243a7acead30a36b4920a' --ingerir: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '23b141cae64243a7acead30a36b4920a' : exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '23b141cae64243a7acead30a36b4920a' --reporte: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject '23b141cae64243a7acead30a36b4920a' --barra: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'GCBA-1/x' --ingerir: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'GCBA-1/x' : exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'GCBA-1/x' --reporte: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 reject 'GCBA-1/x' --barra: exit 2 diff [] | o el id de una sesion, con la forma xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234
+E-28 baseline contrast: old CLI with 'no-es-clave' exit 0, ledger written True

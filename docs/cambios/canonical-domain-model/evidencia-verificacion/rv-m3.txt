@@ -1,0 +1,4 @@
+ran ['test_e17_el_productor_escribe_lo_mismo_que_4c6f0f3'] in 4s: 8/10 passed
+failures by scenario: {'E-17': 2} of {'E-17': 10}
+  MAL E-17 una unidad: el mismo documento, salvo generated_at, timestamps y schema_version esperado <'{\n "agents": [\n  {\n   "domain": "backend",\n   "exists": true,\n   "name": "dev-backend",\n   "role": "specialist",\n   "validation": "VALID"\n  }\n ],\n "applicableStandards": [],\n "ca
+  MAL E-17 tres dominios, hueco, aprobacion y senales: el mismo documento, salvo generated_at, timestamps y schema_version esperado <'{\n "agents": [\n  {\n   "domain": "backend",\n   "exists": true,\n   "name": "dev-backend",\n   "role": "specialist",\n   "validation": "VALID"\n  },\n  {\n   "domain": "frontend",\n   "ex

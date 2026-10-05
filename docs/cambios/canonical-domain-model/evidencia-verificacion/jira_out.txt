@@ -1,0 +1,9 @@
+E-29 pedida OBRA-77 / Jira obra-77: exit 0 | files ['OBRA-77.json'] | meta.task_key OBRA-77 | context_id tsk_OBRA-77 | task.key obra-77 | key conflicts ['se pidio OBRA-77 y Jira devolvio el issue obra-77: el contexto queda nombrado por la clave pedida y `task.key` lleva la que devolvio Jira.'] | validates task-context: []
+E-29 pedida OBRA-77 / Jira MOVIDO-3: exit 0 | files ['OBRA-77.json'] | meta.task_key OBRA-77 | context_id tsk_OBRA-77 | task.key MOVIDO-3 | key conflicts ['se pidio OBRA-77 y Jira devolvio el issue MOVIDO-3: el contexto queda nombrado por la clave pedida y `task.key` lleva la que devolvio Jira.'] | validates task-context: []
+E-29 pedida OBRA-77 / Jira OBRA-77: exit 0 | files ['OBRA-77.json'] | meta.task_key OBRA-77 | context_id tsk_OBRA-77 | task.key OBRA-77 | key conflicts [] | validates task-context: []
+E-30 contexto exit 0 file True context_id tsk_OBRA-77
+E-30 plan exit 0 plan_id pln_OBRA-77 task_key OBRA-77
+E-30 refute exit 0 units 135 taskKeys ['OBRA-77'] 
+E-30 record exit 0 
+E-30 seguridad exit 0 ledger at runtime/security/OBRA-77/: True events 1 taskIds ['OBRA-77']
+E-30 security dirs: ['OBRA-77']

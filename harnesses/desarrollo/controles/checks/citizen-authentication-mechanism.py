@@ -7,7 +7,7 @@ GCBA o lo reemplaza por credenciales propias. Como esta integrado ese mecanismo 
 claims, redirect URIs, endpoints, ambientes- es otra cosa, no hay material autoritativo para
 verificarlo, y este check no lo promete.
 
-🔴 **Esto no es un check del hook.** No corre en `PreToolUse`, no tiene presupuesto de
+🔴 **Esto no es un check del hook.** No corre en `PostToolUse`, no tiene presupuesto de
 latencia y no devuelve las tres salidas del contrato de `comun/checks/`. Es un control
 normativo: se evalua contra evidencia y devuelve su estado con el motivo.
 

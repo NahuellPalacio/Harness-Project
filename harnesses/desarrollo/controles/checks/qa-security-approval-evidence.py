@@ -7,7 +7,7 @@ Contesta si hay una aprobacion oficial de seguridad, emitida en QA por la autori
 controla la seguridad de este alcance, para ESTA aplicacion y ESTE artefacto, y si nada de lo que
 paso desde el assessment obliga a repetirlo.
 
-🔴 **Esto no es un check del hook.** No corre en `PreToolUse`, no tiene presupuesto de latencia
+🔴 **Esto no es un check del hook.** No corre en `PostToolUse`, no tiene presupuesto de latencia
 y no devuelve las tres salidas del contrato de `comun/checks/`. Es un control normativo.
 
 🔴 **Nada interno aprueba.** Ni `dev-security`, ni sus skills, ni un escaner, ni el CI, ni un check

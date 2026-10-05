@@ -4,7 +4,7 @@
 
     "Todo dato sensible no puede ser enviado en texto plano."
 
-🔴 **Esto no es un check del hook.** Es un control normativo: no corre en `PreToolUse` y no tiene
+🔴 **Esto no es un check del hook.** Es un control normativo: no corre en `PostToolUse` y no tiene
 presupuesto de latencia.
 
 🔴 **Sensible lo dice una autoridad, no un nombre de campo.** El estandar no define que es un dato

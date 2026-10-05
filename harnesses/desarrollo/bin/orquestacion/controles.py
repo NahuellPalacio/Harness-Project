@@ -7,11 +7,12 @@ La forma es la misma que la del registro de agentes, y la razon tambien: **el re
 declara y el disco diagnostica**. Un archivo que aparece solo no da de alta un control, y un
 control declarado sin archivo es un hueco que se ve.
 
-🔴 **Estos checks no son los checks del hook.** Los de `comun/checks/` corren en `PreToolUse`,
-devuelven tres salidas, salen 0 siempre y pagan latencia en cada llamada a una herramienta. Un
-check normativo se evalua contra evidencia y devuelve su estado con el motivo. Comparten la
-palabra y nada mas, y por eso no comparten registro: meterlos en el mismo cajon seria
-heredarles un contrato que no pueden cumplir.
+🔴 **Estos checks no son los checks del hook.** Los de `comun/checks/` y `checks/desarrollo/`
+corren en `PostToolUse`, devuelven avisos de texto -ocho como mucho por evento- como
+`additionalContext`, salen 0 siempre y pagan latencia en cada llamada a una herramienta.
+`PreToolUse` es solo la compuerta de secretos. Un check normativo se evalua contra evidencia y
+devuelve su estado con el motivo. Comparten la palabra y nada mas, y por eso no comparten
+registro: meterlos en el mismo cajon seria heredarles un contrato que no pueden cumplir.
 
 🔴 **Esto no dice si un control se cumple.** Dice si existe.
 """

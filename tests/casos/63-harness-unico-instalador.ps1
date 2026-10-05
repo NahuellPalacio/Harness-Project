@@ -397,9 +397,26 @@ try {
             # E-16
             $tocados = @('.claude\settings.json', '.claude\harness\run-hook.cmd', '.claude\harness\hooks\session-start.py',
                          '.claude\harness\hooks\lib\bienvenida.py', '.claude\harness\bin\desarrollo\dev-harness.py')
+            # Un cambio posterior, docs/cambios/canonical-domain-model, modifica a proposito estos
+            # archivos instalados (su tabla "Que se construye"). No son excepciones de harness-unico:
+            # se saltean para que E-16 siga cuidando lo suyo, que NADA MAS se aparto de 0.28.0.
+            # dev-harness.py tambien lo toca, y ya esta entre las cinco de arriba.
+            $huTocadosPorModeloDeDominio = @(
+                '.claude\agents\dev-orchestrator.md',
+                '.claude\harness\bin\desarrollo\contabilidad\libro.py',
+                '.claude\harness\bin\desarrollo\contexto\tarea.py',
+                '.claude\harness\bin\desarrollo\integraciones\registro.py',
+                '.claude\harness\bin\desarrollo\orquestacion\controles.py',
+                '.claude\harness\bin\desarrollo\orquestacion\plan.py',
+                '.claude\harness\bin\desarrollo\orquestacion\refutacion.py',
+                '.claude\harness\reglas\desarrollo\control-registry.json',
+                '.claude\harness\schemas\execution-accounting-event.schema.json',
+                '.claude\harness\schemas\normative-signal.schema.json',
+                '.claude\harness\schemas\orchestration-plan.schema.json')
             $distintos = @()
             foreach ($ruta in $huBRutas) {
                 if ($tocados -contains $ruta) { continue }
+                if ($huTocadosPorModeloDeDominio -contains $ruta) { continue }
                 if (-not $huAHash.ContainsKey($ruta)) { $distintos += "$ruta (no estaba)"; continue }
                 if ((Get-HuHash (Join-Path $huB $ruta)) -ne $huAHash[$ruta]) { $distintos += $ruta }
             }

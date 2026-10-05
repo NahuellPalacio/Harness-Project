@@ -1,0 +1,10 @@
+ran ['test_e16b_un_1_0_con_un_estado_que_salio_se_rechaza', 'test_e16c_otra_version_o_ninguna_se_rechaza'] in 8s: 40/60 passed
+failures by scenario: {'E-16b': 20} of {'E-16b': 36, 'E-16c': 24}
+  MAL E-16b plan DELEGATING, refute --compile: sale con 2 esperado <2> / obtenido <0>
+  MAL E-16b plan DELEGATING, refute --compile: el mensaje nombra status no contiene <status>
+  MAL E-16b plan DELEGATING, refute --compile: el mensaje nombra DELEGATING no contiene <DELEGATING>
+  MAL E-16b plan DELEGATING, refute --compile: el mensaje dice que se regenera con plan --propuesta es falso
+  MAL E-16b plan DELEGATING, refute --compile: .claude/refutaciones/<KEY>/ queda igual no esta vacio: <['modificado run.json', 'modificado units/REF-058.json', 'borrado units/REF-999.json', 'creado verdicts/REF-058.json']>
+  MAL E-16b plan DELEGATING, --replanificar: sale con 2 esperado <2> / obtenido <0>
+  MAL E-16b plan DELEGATING, --replanificar: el mensaje nombra status no contiene <status>
+  MAL E-16b plan DELEGATING, --replanificar: el mensaje nombra DELEGATING no contiene <DELEGATING>

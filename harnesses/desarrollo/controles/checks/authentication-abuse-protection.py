@@ -5,7 +5,7 @@
     "Toda pagina de autenticacion debe contener captcha o bloqueo de usuarios por intentos de
      sesion, funcionalidad que se encuentra contenida en OpenID."
 
-🔴 **Esto no es un check del hook.** No corre en `PreToolUse`, no tiene presupuesto de latencia
+🔴 **Esto no es un check del hook.** No corre en `PostToolUse`, no tiene presupuesto de latencia
 y no devuelve las tres salidas del contrato de `comun/checks/`. Es un control normativo.
 
 🔴 **Es una `o`.** Una pagina cumple con captcha activo, con bloqueo activo, o con los dos. Exigir

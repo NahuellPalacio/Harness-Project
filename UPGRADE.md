@@ -23,6 +23,53 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.29.0 → 0.30.0
+
+`-Update` alcanza para un proyecto instalado: no hay que migrar nada a mano. Si hace falta reiniciar
+Claude Code, el `-Update` lo avisa al final.
+
+Lo que hay que saber es qué pasa con los planes guardados en `.claude\planes\`, porque el contrato
+del plan sube de versión mayor.
+
+🔴 **`orchestration-plan` pasa de 1.0 a 2.0.** Es la versión del contrato del plan, no la de HARNESS.
+El plan tiene ahora tres estados, y la unidad otros tres. Salen los estados que 0.29.0 declaraba y
+nunca escribía, como `DELEGATING` en el plan y `READY` en la unidad. `plan` escribe solo 2.0, y un
+plan guardado cae en uno de estos tres casos:
+
+- **Un plan 1.0 que escribió HARNESS 0.29.0.** Sus estados existen en 2.0, así que:
+  - `refute --compile` lo sigue leyendo y no lo reescribe solo por leerlo. Compila las mismas
+    unidades que antes, con la misma `cacheKey` y los mismos veredictos;
+  - `--replanificar` lo migra: lo escribe como 2.0, con `plan_version` + 1 y la historia entera.
+
+  No hay que hacer nada.
+- **Un plan 1.0 válido para el schema viejo, pero con un estado retirado**, como `DELEGATING` o una
+  unidad en `READY`:
+  - se rechaza con código 2, y el mensaje nombra el campo y el valor;
+  - no se convierte a otro estado: no hay un estado 2.0 que signifique eso;
+  - hay que regenerarlo:
+
+    ```powershell
+    python .claude\harness\bin\desarrollo\dev-harness.py plan <KEY> --propuesta <archivo>
+    ```
+
+  HARNESS 0.29.0 nunca escribió esos estados, así que esto solo le pasa a un plan editado a mano o
+  escrito por otra herramienta.
+- **Un plan con otra versión, o sin `schema_version`.** Se rechaza con código 2, nombrando la
+  versión. Hay que regenerarlo igual.
+
+**Qué toca un rechazo.** No toca el plan, la refutación (`.claude\refutaciones\<KEY>\`) ni su caché:
+la regla de lectura corre antes de cualquier escritura. Lo que no se deshace es lo que ya escribió
+la compuerta normativa en esa misma corrida, porque no hay un rollback global.
+
+**Lo que antes se aceptaba y ahora sale con código 2, sin escribir nada:**
+
+- `seguridad` con una clave que no es una TaskKey válida (`OBRA-91` sí; `OBRA91` u `OBRA-` no);
+- `contabilidad` con una clave que no es una TaskKey ni el UUID de una sesión de Claude Code. La
+  `statusLine` no cambia;
+- `plan --propuesta` y `--replanificar` con dos unidades con el mismo id, o con una unidad de un
+  dominio que no está en `domains`. Hasta 0.29.0 el plan se escribía igual. Si un script o una
+  propuesta guardada dependía de eso, hay que corregir la propuesta.
+
 ## 0.28.0 → 0.29.0
 
 `-Update` alcanza para un proyecto instalado. Lo manual está en los scripts que pasen `-Harness`, y

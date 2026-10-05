@@ -91,10 +91,14 @@ def _correr_cli(argv):
 # -- E-01 a E-05 — el contrato -------------------------------------------------
 
 def test_e01_el_plan_valida(t):
-    """E-01 — valida contra orchestration-plan/1.0, con el validador que ya existia."""
+    """E-01 — valida contra el contrato del plan, con el validador que ya existia.
+
+    El contrato era orchestration-plan/1.0. canonical-domain-model lo subio a 2.0 (E-13, y E-17:
+    el productor escribe solo 2.0), asi que la version esperada es la nueva."""
     documento = _armar()
     t.igual("E-01 sin errores", [], c_plan.validar(documento))
-    t.igual("E-01 la version", "orchestration-plan/1.0", documento["meta"]["schema_version"])
+    # canonical-domain-model E-13 y E-17: el plan se escribe como orchestration-plan/2.0.
+    t.igual("E-01 la version", "orchestration-plan/2.0", documento["meta"]["schema_version"])
     t.igual("E-01 el id", "pln_" + CLAVE, documento["meta"]["plan_id"])
 
 

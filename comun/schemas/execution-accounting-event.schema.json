@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EXECUTION_ACCOUNTING_EVENT",
-  "description": "Un hecho de consumo del Bloque 4: tokens, tiempo o plata de una ejecucion, o una decision de presupuesto. Es la unidad del `ledger.jsonl`, que es append-only y es la unica fuente de verdad contable. Lo que falta NO es cero: un uso desconocido queda USAGE_UNRESOLVED y un costo sin tarifa queda COST_UNRESOLVED. Lo que no se pudo atribuir a una sesion, una unidad de trabajo o un agente queda sin atribuir y se ve en el resumen; nunca se reparte entre los conocidos.",
+  "description": "Un hecho de consumo del Bloque 4: lo que consumio el modelo en una sesion del Host o en una Task -tokens, plata, tiempo y la ventana de contexto-, reconstruido desde la transcripcion de Claude Code y desde el stdin de la statusLine. Hoy lo emiten dos productores: el renderer de la statusLine (bin/contabilidad/statusline.py) y `dev-harness.py contabilidad --ingerir`. Ningun orquestador emite nada. NO es estado de ejecucion: nada fuera de la contabilidad lo lee para decidir algo, y un evento de este libro no dice que una tarea, una unidad o un agente arranco o termino. Es la unidad del `ledger.jsonl`, que es append-only y es la unica fuente de verdad contable. Lo que falta NO es cero: un uso desconocido queda USAGE_UNRESOLVED y un costo sin tarifa queda COST_UNRESOLVED. Lo que no se pudo atribuir a una sesion, una unidad de trabajo o un agente queda sin atribuir y se ve en el resumen; nunca se reparte entre los conocidos.",
   "type": "object",
   "required": [
     "eventId",
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "eventType": {
-      "description": "Los catorce tipos del ciclo de vida. Un agente o una skill NUNCA llaman a la contabilidad: estos eventos los emite quien orquesta la ejecucion, no quien la hace. CONTEXT_WINDOW_OBSERVED es una foto de la ventana que informo el proveedor, no una llamada al modelo.",
+      "description": "Los catorce tipos del vocabulario. Hoy se producen tres -MODEL_CALL_COMPLETED, SESSION_COMPLETED y CONTEXT_WINDOW_OBSERVED-, y salen de reconstruir la transcripcion y el stdin de la statusLine, no de quien orquesta. Los otros once son lo que un ejecutor emitiria para que la contabilidad lo observe, y hoy no los emite nadie: un TASK_STARTED o un WORKUNIT_COMPLETED no es un estado de ejecucion. Un agente o una skill NUNCA llaman a la contabilidad. CONTEXT_WINDOW_OBSERVED es una foto de la ventana que informo el proveedor, no una llamada al modelo.",
       "enum": [
         "TASK_STARTED",
         "TASK_COMPLETED",
@@ -39,7 +39,7 @@
       "type": "string"
     },
     "taskId": {
-      "description": "La tarea a la que pertenece el libro. Es el unico identificador obligatorio: sin tarea no hay libro donde escribir.",
+      "description": "La LedgerKey: la clave del libro al que pertenece el evento. Es una TaskKey (PROYECTO-123) o, cuando no hay una tarea declarada, el `session_id` de la sesion del Host: es el libro de la Context Bar, donde la sesion es la tarea mientras nadie declare una. Es el unico identificador obligatorio: sin clave no hay libro donde escribir.",
       "type": "string"
     },
     "projectId": {

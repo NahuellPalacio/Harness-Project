@@ -618,9 +618,12 @@ def compilar_unidades(proyecto, plan, scope, desde=__file__):
                                                    "version": version_matriz,
                                                    "rule": entrada_matriz})
                                            if entrada_matriz else None),
+            # Los checks que declara la norma, esten o no en el registro; nunca un check del
+            # hook (GuardrailCheck). Los `requiredChecks` de la unidad son checks del
+            # hook, no controles: unirlos aca hacia que la unidad declarara algo que no declara,
+            # y nunca cambio una resolucion, porque cerrar por check exige la matriz.
             "declaredChecks": sorted(set(list(bloque.get("declaredChecks") or [])
-                                         + list(normativa.get("declaredChecks") or [])
-                                         + list(wu.get("requiredChecks") or []))),
+                                         + list(normativa.get("declaredChecks") or []))),
             "declaredReviews": sorted(set(list(bloque.get("declaredReviews") or [])
                                           + list(normativa.get("declaredReviews") or []))),
             "checkRefs": [],
@@ -851,7 +854,14 @@ def _leer_plan(proyecto, clave):
         raise RefutacionInvalida(
             RULE_UNRESOLVED, "no hay plan para %s%s. Corré primero `plan %s --propuesta ...`."
             % (clave, " legible (%s)" % error if error else "", clave))
-    return plan
+    # 🔴 Por la regla de lectura del plan, la misma que usa `--replanificar`, y antes de
+    # cualquier escritura: un plan de otra version, o con un estado que no existe en 2.0, no
+    # compila, y la refutacion de la tarea y la cache quedan como estaban.
+    from . import plan as _plan
+    try:
+        return _plan.aceptar_guardado(plan, clave)
+    except _plan.PlanInvalido as e:
+        raise RefutacionInvalida(RULE_UNRESOLVED, str(e))
 
 
 def _veredictos_guardados(carpeta):

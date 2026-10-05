@@ -28,7 +28,17 @@ from . import modelo                             # noqa: E402
 from . import normativa                          # noqa: E402
 from . import roster                             # noqa: E402
 
-VERSION_SCHEMA = "orchestration-plan/1.0"
+VERSION_SCHEMA = "orchestration-plan/2.0"
+
+# Los estados que existen, y son los unicos que el codigo escribe: el del plan sale de
+# `estado_de` y el de cada unidad de `_armar_unidad`. El schema 2.0 dice lo mismo, y la regla
+# de lectura de un plan guardado los toma de aca. Ninguno habla de delegar ni de ejecutar.
+ESTADOS_DEL_PLAN = ("CAPABILITY_RESOLUTION", "WAITING_FOR_HUMAN_APPROVAL", "READY_FOR_EXECUTION")
+ESTADOS_DE_UNIDAD = ("PENDING", "BLOCKED", "WAITING_FOR_HUMAN_APPROVAL")
+
+# Lo que se lee de un plan guardado. Se escribe solo 2.0; un 1.0 cuyos estados existen en 2.0
+# es un 2.0 salvo la cadena de version, se lee tal cual y pasa a 2.0 cuando se reescribe.
+VERSIONES_LEGIBLES = ("orchestration-plan/2.0", "orchestration-plan/1.0")
 
 # Que parte del contexto ve cada dominio. Lo que no figura, no viaja — y lo que no viaja se
 # declara en `omitted`, porque un aislamiento que no se puede auditar no es un aislamiento.
@@ -51,6 +61,16 @@ TODO_EL_CONTEXTO = ("acceptance_criteria", "rules", "documents", "repository")
 
 class PlanInvalido(Exception):
     """El plan no se escribe. Un plan roto con el sello puesto es peor que ninguno."""
+
+
+class PlanRechazado(PlanInvalido):
+    """Un rechazo por un invariante del modelo canonico, y la CLI lo saca con codigo 2.
+
+    Son tres y nada mas: un id de unidad repetido, una unidad de un dominio que no esta en el
+    plan, y un plan guardado que la regla de lectura no acepta. Los PlanInvalido de antes -un
+    ciclo, una dependencia rota, un plan que no valida- siguen saliendo como salian: mapearlos
+    a 2 no evita ningun artefacto y no entra por la regla de inclusion (D15).
+    """
 
 
 def ahora():
@@ -173,6 +193,33 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
     unidades_propuestas = propuesta.get("workUnits") or []
     if not unidades_propuestas:
         raise PlanInvalido("la propuesta no trae ninguna unidad de trabajo.")
+
+    # 🔴 El id es la identidad de la unidad: con el se arman las dependencias, el orden, las
+    # aprobaciones y las unidades de la refutacion. Dos unidades con el mismo id colapsaban
+    # en silencio en `orden_de_ejecucion`, y el plan escrito tenia una que nadie podia nombrar.
+    # Se normaliza como lo hace `_armar_unidad`, que es el id que se escribiria.
+    vistos, repetidos = set(), []
+    for propuesta_unidad in unidades_propuestas:
+        uid = str(propuesta_unidad.get("id") or "")
+        if uid in vistos and uid not in repetidos:
+            repetidos.append(uid)
+        vistos.add(uid)
+    if repetidos:
+        raise PlanRechazado(
+            "la propuesta repite el id de unidad %s. El id es lo que identifica a una unidad: "
+            "dos con el mismo no se pueden distinguir." % ", ".join("'%s'" % r for r in repetidos))
+
+    # El dominio de cada unidad tiene que estar entre los del plan. `domains` es lo que decide
+    # que especialistas participan (el schema lo dice): una unidad de otro dominio mete a uno
+    # que, segun el mismo plan, no participa.
+    for propuesta_unidad in unidades_propuestas:
+        dominio = str(propuesta_unidad.get("domain") or "")
+        if dominio not in dominios:
+            raise PlanRechazado(
+                "la unidad '%s' es del dominio '%s', que no esta entre los dominios del plan: "
+                "%s. Agregalo a `domains` o cambiale el dominio a la unidad." % (
+                    str(propuesta_unidad.get("id") or ""), dominio,
+                    ", ".join(dominios) or "ninguno"))
 
     politica = consumo.politica(config)
     perfiles = modelo.perfiles_declarados((config or {}).get("modelRouting"))
@@ -400,6 +447,62 @@ def escribir(documento, ruta):
     with io.open(ruta, "w", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps(documento, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     return ruta
+
+
+# -- la lectura de un plan guardado --------------------------------------------
+
+def aceptar_guardado(documento, clave=""):
+    """La regla de lectura de un plan guardado: una sola, para `refute --compile` y para
+    `--replanificar`. Devuelve el documento tal cual o levanta PlanRechazado.
+
+    Se lee un 2.0, o un 1.0 cuyo `status` y los de todas sus unidades existen en 2.0. Nada
+    se convierte, nada se escribe y el documento no se toca: el 1.0 pasa a 2.0 recien cuando
+    alguien lo reescribe.
+
+    🔴 Un estado que no existe en 2.0 no se migra. No hay un estado 2.0 que signifique
+    "delegando", y elegir uno parecido es hacerle decir al plan algo que no dice. La salida
+    es regenerarlo, y el mensaje lo dice.
+
+    `clave` es la de quien lo pide, para el mensaje: se usa si el plan no trae la suya.
+    """
+    meta = documento.get("meta") if isinstance(documento, dict) else None
+    meta = meta if isinstance(meta, dict) else {}
+    clave = str(meta.get("task_key") or clave or "<KEY>")
+    regenerar = "Hay que regenerarlo con `dev-harness.py plan %s --propuesta ...`." % clave
+
+    version = meta.get("schema_version")
+    if version in (None, ""):
+        raise PlanRechazado(
+            "el plan guardado de %s no dice su version: falta `meta.schema_version`. Se leen "
+            "%s. %s" % (clave, " y ".join(VERSIONES_LEGIBLES), regenerar))
+    if version not in VERSIONES_LEGIBLES:
+        raise PlanRechazado(
+            "el plan guardado de %s es `%s`, y se leen solo %s. %s"
+            % (clave, version, " y ".join(VERSIONES_LEGIBLES), regenerar))
+
+    # Las dos versiones pasan por aca: el 1.0 declaraba validos estados que el 2.0 ya no tiene.
+    estado = documento.get("status")
+    if estado not in ESTADOS_DEL_PLAN:
+        raise PlanRechazado(
+            "el plan guardado de %s tiene `status: %s`, un estado que no existe en %s. Los de un "
+            "plan son %s, y no se convierte a ninguno. %s" % (
+                clave, _valor(estado), VERSION_SCHEMA, ", ".join(ESTADOS_DEL_PLAN), regenerar))
+    unidades = documento.get("workUnits")
+    for i, unidad in enumerate(unidades if isinstance(unidades, list) else []):
+        unidad = unidad if isinstance(unidad, dict) else {}
+        if unidad.get("status") not in ESTADOS_DE_UNIDAD:
+            raise PlanRechazado(
+                "la unidad '%s' del plan guardado de %s tiene `workUnits[%d].status: %s`, un "
+                "estado que no existe en %s. Los de una unidad son %s, y no se convierte a "
+                "ninguno. %s" % (
+                    str(unidad.get("id") or ""), clave, i, _valor(unidad.get("status")),
+                    VERSION_SCHEMA, ", ".join(ESTADOS_DE_UNIDAD), regenerar))
+    return documento
+
+
+def _valor(valor):
+    """Un valor para el mensaje. Uno ausente se dice, no se imprime `None`."""
+    return "(vacio)" if valor in (None, "") else str(valor)
 
 
 def replanificar(documento, cambios, motivo, disparador):

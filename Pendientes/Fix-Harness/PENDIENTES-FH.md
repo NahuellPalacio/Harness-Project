@@ -1111,6 +1111,13 @@ Reproduce it: install the harness into an empty project and look for
 `docs/cambios/harness-unico/spec.md` E-55 pins this on purpose: an installed project's
 `controles.reporte()` gives the same `result` as 0.28.0 did.
 
+It also changes what a plan says. Seen on 2026-10-03 by `canonical-domain-model` E-44: with the same
+task context and proposal, the plan built in the factory has
+`normative.standards.ES0902.rules.C3.developmentStandardBaseline` `RESOLVED`, and the plan built in
+an installed project has it unresolved, because `estandar_de_desarrollo.resolver_base` requires the
+G1 shared controls `INSTALLED`. Same result with `4c6f0f3`. E-44 now pins that difference as the
+only one between the two layouts.
+
 Fix. Since `harness-unico` there is one product and no `<id>` to keep apart, and `aporta` is gone:
 the installer's map is a fixed list in `install.ps1`, and adding `controles` to it is one more
 line. What is left to decide is where the controls live once installed. `.claude\harness\controles\`
@@ -1469,6 +1476,196 @@ secret goes through.
 Not fixed here: the command text is fixed by the spec (E-01), so failing when `$?` is false is a spec
 change, and how Claude Code reports a non-zero exit from a `shell: powershell` hook has not been
 observed.
+
+## What the canonical domain model found and left open
+
+Written on 2026-10-03 while building `docs/cambios/canonical-domain-model`. Its spec, section 17,
+lists the contradictions it found: C-01 to C-55 plus the lettered C-09b and C-17b, 57 entries as of
+this writing. It fixed only the ones that pass its inclusion rule, D15:
+a behaviour change goes in only when, without it, the code can produce or accept an artifact that
+directly contradicts a canonical invariant. Everything below failed that rule on purpose. Each item
+names its contradictions by number so the spec stays the evidence. Line numbers refer to `4c6f0f3`.
+
+### The task context hash is not deterministic, and three of its fields say something else
+
+C-17, C-17b, C-18 and the case half of C-19. The hash is supposed to be stable for the same data
+(`task-context.schema.json:25`), but `sources[].retrieved_at` is wall-clock time
+(`contexto/comun.py:49`) and stays inside the hash (`contexto-armar.py:980-982`). The absolute
+`local_path` of documents enters the hash too. The schema says `local_path` is relative
+(`:177`), and the code writes an absolute path (`dev-harness.py:1119`). It also says `origin` is the
+issue key (`:168`), and the code writes `tarea` or `ficha` (`documentos.py:90`). Two attachments with
+the same name, one on the ticket and one on the Ficha, overwrite each other (`documentos.py:131`).
+`CLAVE_JIRA` accepts lowercase while the Jira probe accepts uppercase only (`jira.py:30`). And when the
+secrets catalogue is missing, the context is written without redaction and nothing says so
+(`limpieza.py:88-89`).
+
+Fix. Take `retrieved_at` and absolute paths out of the hashed content (or hash a normalized copy),
+write `local_path` relative to the project, and make the redaction failure a declared gap. Each one
+changes a persisted contract, so it needs its own spec.
+
+### Plan rebuilds lose history, and four plan fields are never read
+
+C-07, C-08, C-09b, C-22, C-23 and C-49. Re-running `plan --propuesta` on an existing plan rewrites
+it at `plan_version` 1 with the history reset, with no existence check (`dev-harness.py:1231-1244`).
+The schema calls the plan "regenerable" while regenerating it loses the history. Four fields are
+recorded and never read: `sessionBudget.maxRetries`, `modelPolicy.allowEscalation`, and the free
+strings `policies` and `applicablePolicies`. `roster.cargar()` returns `{}` without a warning even
+though its docstring says the plan declares it (`roster.py:53-66`). `dev-orchestrator.md` hardcodes
+`model: sonnet` against "perfiles, nunca nombres de modelo" (`modelo.py:3-5`). The premium budget is
+spent at planning time and resets on every rebuild (`plan.py:177`).
+
+Fix unknown as a whole. The cheapest part is to refuse `--propuesta` over an existing plan unless
+asked, which is a behaviour change with its own spec.
+
+### Six approvals exist and none can be resolved
+
+C-03. The model-tier approval in the plan is written only as `PENDING` (`consumo.py:82`), and no
+command moves it to `APPROVED`, `DOWNGRADED` or `CANCELLED`: the parser has no such choice
+(`dev-harness.py:1836-1838`). The other five meanings of "approval" are listed in the canonical model
+(`docs/dominio/modelo-canonico.md`, *Vocabulario*): budget evaluation, external security approval,
+`officialApprovalStatus`, source acceptance and tool promotion. None of them shares a record.
+
+Fix. A command that resolves a `ModelTierApproval`. It adds functionality, which is why the domain
+model change did not build it.
+
+### A source acceptance is a human decision stored in a derived, gitignored file
+
+C-31 and C-32. `harness.fuentes.json` says it "se DERIVA de la evidencia y no se escribe a mano"
+(`source-state.schema.json:5`), yet it stores `decisions`, which are human acceptances
+(`:217-276`), and `.claude/` is gitignored (`install.ps1:1976`). An acceptance is therefore per
+machine and is not shared through the repo. The welcome tells the person to "aceptar o posponer"
+(`bienvenida.py:1811`), and `fuentes` has no flag to postpone (`dev-harness.py:1885-1900`).
+
+Fix unknown. Moving acceptances to a versioned file is a decision about where a human record lives,
+and it touches how every installed project accepts sources.
+
+### The plan reports the normative matrix as unbuilt
+
+C-21. Every plan warns "26 de 26 reglas sin clasificar… la matriz normativa todavia no se construyo"
+and leaves `applicableStandards` empty (`normativa.py:53-79`), because `plan.applicableStandards`
+reads the old citation catalogue `es0901-7.1.json`, where every `conditions` is `{}`. Meanwhile the
+per-unit `normative` block uses the 24-row classified matrix.
+
+Fix. Derive `applicableStandards` from the classified matrix and drop the false warning. It changes
+the output of every plan, so it needs its own spec.
+
+### Accounting names and counts that say something else
+
+C-14, C-15, C-16, C-50, C-51 and C-54. `SESSION_COMPLETED` is emitted for every cumulative
+`cost-state` snapshot, several times per session, while `SESSION_STARTED` is never emitted
+(`contrato.py:222-227`). It is not renamed because the type is part of the `eventId` hash. "Reingerir
+no duplica" (`docs/contabilidad.md`) is false for `USAGE_UNRESOLVED` records with no dedupKey
+(`eventos.py:305`). Security ledger events hash their own timestamp, so they are not idempotent
+(`productores.py:110-131`). A transcript ingested by the CLI and by the Context Bar lands in two
+ledgers. And several counts in comments are stale: "siete claves" are 11 (`eventos.py:78-95`), "nueve
+productores" are 10 (`reporte_seguridad/libro.py:49-53`), and the item above about accounting types
+says thirteen types and two emitted, when they are 14 and 3.
+
+Fix. Each one is small, but the dedupKey and idempotency ones change persisted ids, so they need a
+spec.
+
+### Schemas that do not describe what their producers write
+
+C-29, C-30, C-33 to C-40, C-44, C-48, C-52 and C-53. In short:
+
+- `harness-installation-state` is validated at runtime against an inline copy that lacks
+  `integrationConfiguration`, and `knowledgeRefresh` is not in the schema;
+- `knowledge-refresh-state` declares `RUNNING`, `DUE` and `ERROR`, which nobody writes, and the
+  welcome emits `UNREADABLE`, which is not in the enum;
+- the plan writes `normative.standards`, and the security summary and the integrity finding write
+  fields their schemas do not declare;
+- `COMPLIANT_WITH_OBSERVATIONS` silently becomes `UNRESOLVED` in the summary;
+- `NO_SUSPICIOUS_CHANGE_FOUND` changes name between engine and summary;
+- several `$id` values do not match their file names;
+- the refutation hardcodes `docs/codebase/project-context.json` and ignores `rutaCodebase`;
+- stale docstrings and counts: `registro_fuentes.py:134-136`, `normative-review.schema.json:212`,
+  `matriz.py:20-21`, `senales.py:4-5` and `docs/normativa-7.1.md:41`;
+- the governance `.md` of Vu3 to Vu7 disagree with the matrix on `primaryAgents`;
+- `_con_desarrollo` still uses `knowledge.applies` as "desarrollo installed", a leftover of
+  composition;
+- `security-report` requires `pdfOutput` and points it at the HTML.
+
+The control checks' docstrings in `harnesses/desarrollo/controles/checks/` also still say the hook
+checks have "tres salidas"; the hook has three outputs, a check returns strings.
+
+Fix. One contract at a time. Closing the open objects is its own decision.
+
+### Capabilities that skills name and no catalog declares
+
+C-25, C-26 and C-27. Skills name capabilities that exist in no registry or roster, such as
+`filesystem.read`, `dependency.inspect` and `task-context.read`
+(`dev-backend-implementation/SKILL.md:542-559`; `dev-architecture-analysis/SKILL.md:445`), and
+nothing links an agent's `tools:` to capabilities. `tool-registry` says the Capability Registry
+consults it, and it does not (`capacidades.py:22-26`). The output that `dev-tool-builder` describes
+is not the `tool-contract`.
+
+Fix. Declare the capabilities or take them out of the skills. Editing a `SKILL.md` changes its
+fingerprint, which invalidates the refutation cache for its units, so it is not free.
+
+### Who may overwrite a project-owned rule file is read two ways
+
+C-46 and C-47. The item about project-filled `reglas/*.json` says `-Update` overwrites them silently.
+`install.ps1:2112-2229` keeps a hand-edited file and writes the new one as `.nuevo`, while another
+reading sees a `Copy-Item -Force` (`install.ps1:339`). Project inventories such as
+`security-approval-evidence.json` also live in `reglas/`, which is the factory's folder.
+
+Fix unknown until somebody runs an `-Update` over a project with a filled inventory and records what
+happened.
+
+### ADR-0011 says identifiers are English and most are Spanish
+
+C-43. ADR-0011 asks for identifiers and file names in English. The CLI subcommands, the modules, the
+state files under `.claude/` and 60 of the 61 folders of `docs/cambios/` are Spanish. The canonical
+domain model maps each Spanish name to an English canonical name and renames nothing, because a
+rename changes persisted names, fingerprints, hashes and tests.
+
+Fix unknown. Either ADR-0011 gets an explicit exception for existing identifiers, or a rename gets
+its own spec with its migration.
+
+### ADR-0006 and CLAUDE.md disagree on where SDD applies
+
+C-41. ADR-0006 makes SDD the method of the installed projects and "no… para este repositorio"
+(`docs/adr/0006…md:43, 100-103`). `CLAUDE.md` makes it the factory's method, and the product installs
+no SDD piece. ADR-0006 also promises warnings when building without a spec, and no installed check
+does that.
+
+Fix. Write down which one is true. It is a decision, not code.
+
+### The task key rule is written twice, and `plan` crashes without a key
+
+C-20 and C-55. `CLAVE_JIRA` in `dev-harness.py:92` and `CLAVE` in `refutacion.py:57` are the same
+regex written twice. `plan` does not validate its key: with an invalid one it cannot write a plan,
+because the `plan_id` pattern stops it at write time, but without any key it crashes on
+`None + ".json"` (`dev-harness.py:1197-1198`). The domain model change left both out on purpose: no
+artifact comes out wrong today, so they failed its inclusion rule. Its E-25 and E-27 pin the current
+behaviour.
+
+Fix. One TaskKey rule imported by every entry point, and `plan` exiting 2 without a key. The ledger's
+`libro.validar_clave` already takes the TaskKey rule as a parameter to avoid a third copy.
+
+### The canonical domain model closed with five loose ends in its text and tests
+
+Found on 2026-10-05 by its third verification (`docs/cambios/canonical-domain-model/verificacion.md`,
+*Tercera verificación*), which ruled `SPEC VERIFIED`. None of them blocked 0.30.0. Line numbers
+refer to the 0.30.0 tree.
+
+- **Agent, `Dónde vive`, says the plan keeps the requested `assignedAgent` id.** Not for an id
+  shaped like a credential: `_limpiar` redacts the whole plan except `meta` (`plan.py:298-299,
+  395-413`), so that id is stored as `[secreto redactado: …]`. The refuter ruled it an edge
+  imprecision; read literally, it would contradict E-02.
+- **Spec §5.1 (Catalog row) and I-21 say availability is decided by the environment validation**,
+  without "of the integrations". Local capabilities are always available (`capacidades.py:22-26`).
+  The canonical document says it right.
+- **`docs/orquestacion.md` does not state the unit-state precedence** of `plan.py:320-326`: a unit
+  with a capability gap and an approval is `WAITING_FOR_HUMAN_APPROVAL`, not `BLOCKED`.
+- **A plan is `READY_FOR_EXECUTION` with a unit whose `agentExists` is `false`,** while
+  `docs/orquestacion.md` says READY means nothing is pending. It behaves the same in `4c6f0f3`.
+- **No test covers E-19's unknown-domain case.** A unit with domain `"inventado"` or `""` exits 2
+  (it exited 1 in `4c6f0f3`). Only the refuters' reproductions hold it.
+
+Fix. The first three are text. The fifth is one assertion next to E-18b or E-19 in
+`tests/casos/64_modelo_de_dominio.py`. The fourth is a decision, not a typo: if an unregistered
+agent should hold readiness, it changes behaviour and needs its own spec.
 
 ## Verification that was not done
 
@@ -2044,6 +2241,12 @@ not-installed report, once per type.
 
 What should happen: whoever owns the ES0902 matrix splits the id, or confirms that one control
 plays both roles. Until then the double entry is correct and intentional.
+
+No production command calls `colisiones_de_id` today: the diagnostic exists, but only
+`37_es0902_seguridad.py` and `64_modelo_de_dominio.py` reach it. The docstring of `seguridad.py`
+(`:37-39`) and `docs/seguridad-es0902.md:869` say the collision "se reporta"; nothing emits it.
+Found by the canonical domain model (S3). Either a command reports it, or both texts say it is a
+diagnostic only.
 
 ### A signal name shared by the two standards is not prevented from colliding
 

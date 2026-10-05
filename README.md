@@ -187,6 +187,7 @@ El detalle completo, con las zonas del `CLAUDE.md` y sus techos, está en
 | `harnesses/desarrollo/` | El producto: la CLI, los checks, las reglas, las skills y los agentes |
 | `normativa/` | Los estándares del GCBA destilados a markdown, en `extractos/`. **Insumo, nunca se copia a un proyecto**. Los PDF originales son documentación interna del GCBA y **no se publican acá**: van en `normativa/fuentes/`, que está gitignoreada — cada quien pone los suyos |
 | `docs/adr/` | Por qué cada decisión es como es |
+| `docs/dominio/` | El modelo de dominio canónico: qué conceptos tiene el harness, qué significa cada uno y dónde termina. Está en [docs/dominio/modelo-canonico.md](docs/dominio/modelo-canonico.md) |
 | `tests/` | Payloads reales de cada evento de hook, y los casos que los verifican |
 
 ## Estado

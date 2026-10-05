@@ -9,8 +9,12 @@ olvide le entrega a un agente una tool que no funciona.
 
 El documento distingue las dos cosas a proposito:
 
-    soportada  -> el harness sabe hacerlo (lo declara el manifiesto de `desarrollo`)
-    disponible -> ademas esta validado ahora (lo decide la corrida)
+    soportada  -> el harness sabe hacerlo (lo declara la clase de integracion: `CAPACIDADES`
+                  de `IntegracionJira` y de `IntegracionGitLab`)
+    disponible -> ademas se valido ENABLED en esta maquina (lo decide la corrida)
+
+`capacidadesSoportadas` de `manifest.json` no se lee en tiempo de ejecucion: es una copia que
+un test contrasta contra las clases. Lo que corre usa las clases.
 
 Una capacidad soportada cuya integracion esta caida figura DISABLED, nunca ausente:
 una lista que se acorta no explica por que se acorto.

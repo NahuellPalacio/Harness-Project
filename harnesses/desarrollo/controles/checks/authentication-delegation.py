@@ -6,7 +6,7 @@ Contesta DOS preguntas y no una tercera: si el usuario escribe su credencial en 
 en el servicio de identidad del GCBA, y si ese servicio es el que corresponde al contexto. Que
 una aplicacion deba ser ciudadana lo decide D1; aca se toma el contexto como dato.
 
-🔴 **Esto no es un check del hook.** No corre en `PreToolUse`, no tiene presupuesto de latencia
+🔴 **Esto no es un check del hook.** No corre en `PostToolUse`, no tiene presupuesto de latencia
 y no devuelve las tres salidas del contrato de `comun/checks/`. Es un control normativo.
 
 🔴 **Delegar es donde se escribe la credencial, no quien la valida despues.** Un formulario

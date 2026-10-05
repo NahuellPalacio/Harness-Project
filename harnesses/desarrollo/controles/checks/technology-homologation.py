@@ -7,7 +7,7 @@ otro check —`technology-version-compliance`— y separarlos importa: una tecno
 una version vieja y una tecnologia que nadie evaluo son dos problemas distintos y se resuelven
 con dos personas distintas.
 
-🔴 **Esto no es un check del hook.** No corre en `PreToolUse`, no tiene presupuesto de
+🔴 **Esto no es un check del hook.** No corre en `PostToolUse`, no tiene presupuesto de
 latencia y no devuelve las tres salidas del contrato de `comun/checks/`. Es un control
 normativo: se evalua contra evidencia y devuelve el estado con su motivo.
 

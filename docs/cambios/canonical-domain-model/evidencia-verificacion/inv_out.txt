@@ -1,0 +1,16 @@
+E-18 dup old --propuesta (no plan yet): exit 0 | planes created: ['created GCBA-64.json'] |  | units written: ['dup', 'otra', 'dup'] order: ['otra', 'dup']
+E-18 dup new --propuesta (no plan yet): exit 2 | planes created: [] | harness: la propuesta repite el id de unidad 'dup'. El id es lo que identifica a una unidad: dos con el mismo no se pueden distinguir. | 
+   E-18 dup over existing plan --propuesta: exit 2, plan bytes same: True, msg has 'dup': True
+   E-18 dup --replanificar: exit 2, plan bytes same: True, msg has 'dup': True | harness: la propuesta repite el id de unidad 'dup'. El id es lo que identifica a una unidad: dos con el mismo no se pueden distinguir.
+E-19 domain old --propuesta (no plan yet): exit 0 | planes created: ['created GCBA-64.json'] |  | units written: ['a1', 'ui'] order: ['a1', 'ui']
+E-19 domain new --propuesta (no plan yet): exit 2 | planes created: [] | harness: la unidad 'ui' es del dominio 'frontend', que no esta entre los dominios del plan: backend. Agregalo a `domains` o cambiale el dominio a la unidad. | 
+   E-19 domain over existing plan --propuesta: exit 2, plan bytes same: True, msg has 'frontend': True
+   E-19 domain --replanificar: exit 2, plan bytes same: True, msg has 'frontend': True | harness: la unidad 'ui' es del dominio 'frontend', que no esta entre los dominios del plan: backend. Agregalo a `domains` o cambiale el dominio a la unidad.
+wider-rule check [declared domain without units]: new exit 0 / old exit 0 
+wider-rule check [ids differing by case]: new exit 2 / old exit 1 harness: el plan no valida contra orchestration-plan/2.0: - $.workUnits[0].id: `A1` no cumple el patron ^[a-z0-9][a-z0-9-]*$
+wider-rule check [ids with spaces differ]: new exit 2 / old exit 1 harness: el plan no valida contra orchestration-plan/2.0: - $.workUnits[1].id: `a1 ` no cumple el patron ^[a-z0-9][a-z0-9-]*$
+wider-rule check [dependency on other id]: new exit 0 / old exit 0 
+E-15/E-21/E-17 docs written (each compared new vs old): 44 | statuses seen: ['CAPABILITY_RESOLUTION', 'READY_FOR_EXECUTION', 'WAITING_FOR_HUMAN_APPROVAL']
+E-15 violations: []
+E-21 violations: []
+E-17 differences vs 4c6f0f3 (outside generated_at, timestamps, schema_version): []

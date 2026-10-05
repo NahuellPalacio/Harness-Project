@@ -1,0 +1,5 @@
+contexto (4c6f0f3 installed CLI, fake Jira): exit 0 file True 
+TaskContext validates against 4c6f0f3 task-context schema: [] | schema_version task-context/1.0 context_id tsk_OBRA-45
+plan (4c6f0f3 installed): exit 0 orchestration-plan/1.0 READY_FOR_EXECUTION pv 1
+refute --compile (4c6f0f3 installed): exit 0 units 90
+refute --record (4c6f0f3 installed): exit 0  | recorded unit REF-013

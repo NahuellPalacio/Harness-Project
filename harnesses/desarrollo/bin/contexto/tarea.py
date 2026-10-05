@@ -44,6 +44,15 @@ def resolver(jira, clave, catalogo, config, acumulador):
     campos = datos.get("fields") or {}
     acumulador.fuente("jira:" + clave, "jira_issue", clave)
 
+    # Si Jira contesta con otra clave -otras mayusculas, o un issue que se movio de proyecto-
+    # el documento va a llevar las dos, y eso se declara. No se elige ninguna: el contexto se
+    # sigue nombrando por la pedida, y `task.key` dice la que devolvio Jira.
+    devuelta = str(datos.get("key") or "")
+    if devuelta and devuelta != clave:
+        acumulador.conflicto(
+            "se pidio %s y Jira devolvio el issue %s: el contexto queda nombrado por la clave "
+            "pedida y `task.key` lleva la que devolvio Jira." % (clave, devuelta))
+
     # La redaccion no pasa por aca: la hace el ensamblador sobre el documento entero.
     # Ver ensamblador.armar — el motivo es que este archivo no puede garantizar que el
     # campo que alguien agregue manana tambien pase por la limpieza.

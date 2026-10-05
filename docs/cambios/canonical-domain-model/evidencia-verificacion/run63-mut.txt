@@ -1,0 +1,2 @@
+MAL [harness-unico - un solo producto, instalado] E-16 cada archivo tiene el contenido de 0.28.0, salvo las cinco excepciones  esperaba vacio; obtenido <.claude\harness\bin\desarrollo\orquestacion\modelo.py>
+187/188 pasaron en 188 s
