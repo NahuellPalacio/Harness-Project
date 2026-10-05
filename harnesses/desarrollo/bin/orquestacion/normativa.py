@@ -70,13 +70,19 @@ def aplicables(dominios, desde=None):
 
 
 def aviso_de_matriz(desde=None):
-    """Lo que el plan tiene que decir sobre la matriz pendiente, o "" si esta completa."""
+    """Lo que el plan tiene que decir de `applicableStandards`, o "" si cita todo.
+
+    Cuenta lo que cuenta y lo nombra (Wave 6): las reglas de `es0901-7.1.json` sin `conditions`
+    no se pueden citar en `applicableStandards`. La aplicabilidad de cada unidad no sale de ahi:
+    la decide la matriz normativa, en `normative`.
+    """
     faltan = sin_clasificar(desde)
     todas = reglas(desde)
     if not faltan:
         return ""
-    return ("%d de las %d reglas de ES0901 §7.1 estan sin clasificar y por eso no se citan: "
-            "la matriz normativa todavia no se construyo." % (len(faltan), len(todas)))
+    return ("%d de las %d reglas de ES0901 §7.1 no tienen condiciones en es0901-7.1.json y por "
+            "eso applicableStandards no las cita; la aplicabilidad de cada unidad la decide la "
+            "matriz normativa, en normative." % (len(faltan), len(todas)))
 
 
 # -- la clasificacion, que vive en la matriz -----------------------------------

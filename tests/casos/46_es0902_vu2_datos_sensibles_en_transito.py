@@ -198,7 +198,7 @@ def test_e03_los_ids(t):
 def test_e04_nada_nuevo(t):
     """E-04."""
     registro = c_reg.cargar()
-    t.igual("E-04 diez agentes", 10, len(registro["agents"]))
+    t.igual("E-04 diez agentes", 11, len(registro["agents"]))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     por_id = {a["id"]: a for a in registro["agents"]}
     t.igual("E-04 las skills de dev-security",
             ["dev-appsec-review", "dev-security-analysis", "dev-security-assessment",

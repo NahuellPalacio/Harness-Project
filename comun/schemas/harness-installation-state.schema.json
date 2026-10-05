@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "harness-installation/1.1",
   "title": "Harness Installation State",
-  "description": "El estado de la instalacion del harness en un proyecto. Vive en .claude/harness.installation.json: lo escribe install.ps1 cuando la instalacion termino bien y lo reescribe session-start.py con el estado recalculado y la marca de la bienvenida, las dos veces con comun/hooks/lib/bienvenida.py. Guarda estados, ids, fechas y huellas sha256, y nada mas: ni tokens, ni URLs con credenciales, ni el contenido del .env, ni un numero contable. Es el schema 1.1 del paquete del Bloque 1 con estas divergencias: bootstrap.pendingConditions (lo que deja el estado en PARTIAL); welcome.upgradeFrom (de que version se vino, hasta que se muestra el aviso); runtimeComponents.contextBar con sus propiedades aplanadas en un solo objeto, porque el interprete de subconjunto no lee allOf; y en contextBar commandTested, fingerprints y lastSessionId, lo que el -Update compara y la sesion que la CLI muestra como ultima vista. Un archivo harness-installation/1.0 se lee, se migra conservando todos sus campos y se escribe como 1.1. Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "description": "El estado de la instalacion del harness en un proyecto. Vive en .claude/harness.installation.json: lo escribe install.ps1 cuando la instalacion termino bien y lo reescribe session-start.py con el estado recalculado y la marca de la bienvenida, las dos veces con comun/hooks/lib/bienvenida.py. Guarda estados, ids, fechas y huellas sha256, y nada mas: ni tokens, ni URLs con credenciales, ni el contenido del .env, ni un numero contable. Es el schema 1.1 del paquete del Bloque 1 con estas divergencias: bootstrap.pendingConditions (lo que deja el estado en PARTIAL); welcome.upgradeFrom (de que version se vino, hasta que se muestra el aviso); runtimeComponents.contextBar con sus propiedades aplanadas en un solo objeto, porque el interprete de subconjunto no lee allOf; y en contextBar commandTested, fingerprints, lastSessionId y lastSessionWithData, lo que el -Update compara, la sesion que la CLI muestra como ultima vista y la ultima que dibujo con datos con la configuracion de ahora. Un archivo harness-installation/1.0 se lee, se migra conservando todos sus campos y se escribe como 1.1. Lo valida el interprete de subconjunto de contexto-armar.py.",
   "type": "object",
   "required": [
     "schema_version",
@@ -313,6 +313,13 @@
             },
             "lastSessionId": {
               "description": "El sessionId de la ultima senal de vida de la barra.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lastSessionWithData": {
+              "description": "El sessionId de la ultima sesion que dibujo la barra con datos, si esa evidencia prueba la configuracion de ahora (la huella del statusLine, la version del renderizador y el registro de la instalacion). Es evidencia historica de la integracion: no es activeInCurrentSession, y en una sesion nunca la hace ACTIVE.",
               "type": [
                 "string",
                 "null"

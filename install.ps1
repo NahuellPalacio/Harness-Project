@@ -437,6 +437,12 @@ function Test-Entorno {
         [void] $h.Add(@{ Nivel='falla'; Texto="no se encontró un intérprete de Python instalado (se probó python, py y python3). Hace falta instalar Python $requierePython o superior: los hooks del harness lo necesitan." })
     } elseif (Test-VersionMinima -Actual $verPython -Minima $requierePython) {
         [void] $h.Add(@{ Nivel='ok'; Texto="Python $verPython (mínimo $requierePython)" })
+        # Los hooks corren con el Python real; los comandos que el harness le muestra al modelo
+        # empiezan con `python`. Si ese es el alias de la Store, no corren (Wave 6).
+        $enElPath = Get-Command python -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($enElPath -and (Test-EsAliasDeLaStore ([string]$enElPath.Source))) {
+            [void] $h.Add(@{ Nivel='aviso'; Texto="``python`` en el PATH es el alias de la Microsoft Store: los comandos que muestra el harness empiezan con ``python`` y no van a correr. Desactivá el alias en Configuración > Aplicaciones > Alias de ejecución, o poné el Python real primero en el PATH." })
+        }
     } else {
         [void] $h.Add(@{ Nivel='falla'; Texto="Python $verPython es anterior al mínimo $requierePython" })
     }
@@ -1273,6 +1279,107 @@ function Get-EstadoDeLaBarra {
 }
 
 
+function Test-FormaDeLaBarra {
+    <#
+    .SYNOPSIS
+        Si lo que devolvió `bienvenida.py barra` tiene la forma de runtimeComponents.contextBar:
+        un objeto JSON con los campos requeridos de _FORMA_BARRA y la evidencia que -Doctor
+        nombra, `state` uno de ESTADOS_DE_COMPONENTE, los otros cuatro booleanos y
+        `lastSessionWithData` texto o null.
+    .DESCRIPTION
+        No es un schema propio: son las dos listas de bienvenida.py, y 66_integrity_cleanup.py
+        las compara con estas. Cada propiedad se mira por PSObject.Properties antes de leerla:
+        -Doctor corre con Set-StrictMode 2.0, y leer una que no está tira y corta el
+        diagnóstico entero (E-44, pasada 15 del refutador).
+    #>
+    param($Barra)
+    $requeridos = @('state', 'installed', 'configured', 'reloadRequired', 'activeInCurrentSession', 'lastSessionWithData')
+    $estados = @('INSTALLED', 'CONFIGURED', 'ACTIVE', 'INACTIVE', 'NOT_CONFIGURED', 'RELOAD_REQUIRED', 'ERROR', 'UNRESOLVED')
+    if (-not ($Barra -is [System.Management.Automation.PSCustomObject])) { return $false }
+    $p = $Barra.PSObject.Properties
+    foreach ($campo in $requeridos) {
+        if (-not $p[$campo]) { return $false }
+    }
+    $estado = $p['state'].Value
+    if (-not ($estado -is [string]) -or ($estados -cnotcontains $estado)) { return $false }
+    foreach ($campo in @('installed', 'configured', 'reloadRequired', 'activeInCurrentSession')) {
+        if (-not ($p[$campo].Value -is [bool])) { return $false }
+    }
+    $conDatos = $p['lastSessionWithData'].Value
+    return [bool]($null -eq $conDatos -or $conDatos -is [string])
+}
+
+
+function Get-BarraEnVivo {
+    <#
+    .SYNOPSIS
+        runtimeComponents.contextBar calculado ahora por `bienvenida.py barra` del proyecto: el
+        mismo resolvedor y la misma semántica que `dev-harness.py harness`. $null si no hay
+        Python, si el proyecto no tiene bienvenida.py, si sale con otro código que 0, o si la
+        salida no tiene la forma de la barra (Test-FormaDeLaBarra): quien llama vuelve al estado
+        guardado.
+    #>
+    param([string] $Project, [string] $Python)
+    if (-not $Python) { return $null }
+    $lib = Join-Path $Project '.claude\harness\hooks\lib\bienvenida.py'
+    if (-not (Test-Path -LiteralPath $lib -PathType Leaf)) { return $null }
+    try {
+        $salida = (& $Python $lib barra $Project 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or -not $salida) { return $null }
+        $barra = $salida | ConvertFrom-Json
+    } catch { return $null }
+    if (-not (Test-FormaDeLaBarra $barra)) { return $null }
+    return $barra
+}
+
+
+function Get-BarraDelDoctor {
+    <#
+    .SYNOPSIS
+        Lo que -Doctor dice de la Context Bar: Estado, ConDatos (la última sesión que la dibujó
+        con datos, con esta configuración) y Fuente ('vivo' o 'guardado').
+    .DESCRIPTION
+        Con Python, el estado efectivo calculado ahora (Get-BarraEnVivo): la evidencia de una
+        sesión anterior que dibujó con datos sobrevive al reinicio, y una sesión nueva que
+        todavía no dibujó datos no la borra (Wave 6, Manual B). ACTIVE ahí es la integración
+        probada, no actividad de la sesión actual.
+
+        Sin Python, el estado que quedó en harness.installation.json, tal cual: -Doctor corre
+        en la máquina rota y no inventa un ACTIVE que no está escrito.
+    #>
+    param([string] $Project, [string] $Python)
+    $vivo = Get-BarraEnVivo -Project $Project -Python $Python
+    if ($vivo) {
+        return [pscustomobject]@{ Estado = [string]$vivo.state; ConDatos = [string]$vivo.lastSessionWithData; Fuente = 'vivo' }
+    }
+    return [pscustomobject]@{ Estado = (Get-EstadoDeLaBarra -Project $Project); ConDatos = ''; Fuente = 'guardado' }
+}
+
+
+function Get-NivelDeLaBarra {
+    <#
+    .SYNOPSIS
+        Como muestra -Doctor un estado de la Context Bar: 'ok' solo si esta ACTIVE. CONFIGURED es
+        'aviso': registrada y probada, todavia sin una sesion que la haya dibujado con datos.
+        Ningun estado mas fuerte que su evidencia (Wave 6, docs/cambios/integrity-cleanup).
+    #>
+    param([string] $Estado)
+    if ($Estado -eq 'ACTIVE') { return 'ok' }
+    return 'aviso'
+}
+
+
+function Test-EsAliasDeLaStore {
+    <#
+    .SYNOPSIS
+        Si una ruta es el alias de ejecucion de la Microsoft Store: responde a Get-Command y no
+        corre Python. Los comandos que el harness le muestra al modelo empiezan con `python`.
+    #>
+    param([string] $Ruta)
+    return [bool]($Ruta -and ($Ruta -match '\\Microsoft\\WindowsApps\\'))
+}
+
+
 function Get-EtiquetaDeLaBarra {
     <# El estado de la barra como lo dice la bienvenida. Un id que no está acá sale tal cual. #>
     param([string] $Estado)
@@ -1531,13 +1638,19 @@ function Invoke-Doctor {
                     EscribirOk 'los cuatro hooks registrados en settings.json responden'
                 }
 
-                # La Context Bar, como la dejó la última instalación o la última sesión. Se lee
-                # el archivo y nada más: probar el comando escribiría la señal de vida, y
-                # -Doctor no escribe. Nunca es una falla: la barra no es una compuerta.
+                # La Context Bar, calculada ahora como la calcula `harness` (Get-BarraDelDoctor);
+                # sin Python, como la dejó la última instalación o la última sesión. No se corre
+                # el comando: escribiría la señal de vida, y -Doctor no escribe. Nunca es una
+                # falla: la barra no es una compuerta.
                 if (@($d.harness) -contains 'desarrollo') {
-                    $estadoBarra = Get-EstadoDeLaBarra -Project $Project
-                    if ($estadoBarra -in @('ACTIVE', 'CONFIGURED')) {
-                        EscribirOk "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra)"
+                    $barraDoctor = Get-BarraDelDoctor -Project $Project -Python (Resolve-Python)
+                    $estadoBarra = $barraDoctor.Estado
+                    if ($estadoBarra -and (Get-NivelDeLaBarra $estadoBarra) -eq 'ok') {
+                        $textoBarra = "Context Bar: $(Get-EtiquetaDeLaBarra $estadoBarra)"
+                        if ($barraDoctor.ConDatos) { $textoBarra += " (última sesión con datos: $($barraDoctor.ConDatos))" }
+                        EscribirOk $textoBarra
+                    } elseif ($estadoBarra -eq 'CONFIGURED') {
+                        EscribirAviso 'Context Bar: CONFIGURADA, todavía sin una sesión que la haya dibujado con datos.'
                     } elseif ($estadoBarra -eq 'RELOAD_REQUIRED') {
                         EscribirAviso 'Context Bar configurada. Reiniciá la sesión de Claude Code para activarla.'
                     } elseif ($estadoBarra) {

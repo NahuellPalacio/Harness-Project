@@ -99,6 +99,10 @@ def _arbol_de_runtime(proy):
     _json(proy / ".claude" / "settings.json", {"permissions": _DENY_ENV, "statusLine": {"type": "command", "command": comando}})
     B.escribir_senal_de_vida(str(proy), SESION, B.BLOCK4_OK, "1.0.0",
                              momento="2026-09-24T11:00:00")
+    # Pisado por docs/cambios/integrity-cleanup/spec.md (Wave 6): ACTIVE pide un libro con datos, y la prueba de la senal, el registro del instalador.
+    libro = Path(B.libro_de_la_sesion(str(proy), SESION))
+    libro.parent.mkdir(parents=True, exist_ok=True)
+    libro.write_text(json.dumps({"eventId": "e-1"}) + "\n", encoding="utf-8")
 
 
 def _proyecto(harness=("comun", "desarrollo"), version="0.20.0", jira="AVAILABLE",
@@ -140,6 +144,9 @@ def _proyecto(harness=("comun", "desarrollo"), version="0.20.0", jira="AVAILABLE
     if nombre is not None:
         _json(proy / "docs" / "codebase" / "project-context.json",
               {"project_profile": {"project_id": "x", "project_name": nombre}})
+    if runtime and "desarrollo" in harness and instalacion is None and lock:
+        # El registro que deja install.ps1 al terminar. Pisado por docs/cambios/integrity-cleanup/spec.md (Wave 6): ACTIVE pide un libro con datos, y la prueba de la senal, el registro del instalador.
+        B.registrar_instalacion(str(proy), barra_probada=True, momento="2026-09-24T10:00:00")
     return proy
 
 
@@ -618,6 +625,9 @@ def test_e18_la_actualizacion_se_avisa_una_vez(t):
     """E-18 (la mitad del hook) — con upgradeFrom y firstRunShown: true, el aviso y la linea,
     una vez, y sin la bienvenida. El -Update que lo escribe es del caso del instalador."""
     proy = _proyecto(version="0.20.0", instalacion=_instalacion_vista("0.19.0", upgrade="0.19.0"))
+    # El -Update registra la instalacion, como install.ps1 (Wave 6 (docs/cambios/integrity-cleanup/spec.md, E-16): la prueba de la senal pide ese
+    # registro).
+    B.registrar_instalacion(str(proy), barra_probada=True, momento="2026-09-24T10:00:00")
     _, mensaje, ctx, _ = _sesion(proy)
     mensaje = mensaje or ""
     lineas = mensaje.split("\n")
@@ -955,6 +965,7 @@ def test_si_no_se_puede_escribir_la_bienvenida_vuelve(t):
     """Si la marca no se pudo escribir, la bienvenida sale de nuevo: es mejor que perderla.
     Se fuerza con un directorio en el lugar del archivo."""
     proy = _proyecto()
+    (proy / ".claude" / "harness.installation.json").unlink()   # el registro del fixture (Wave 6)
     (proy / ".claude" / "harness.installation.json").mkdir()
     for n in (1, 2):
         codigo, mensaje, _, _ = _sesion(proy)
@@ -1061,6 +1072,7 @@ def test_e12_la_cli_no_imprime_el_token(t):
 def test_e13_harness_muestra_lo_de_ahora_sin_red_y_sin_tocar_la_marca(t):
     """E-13 — el estado que dan los archivos de ahora, sin red, y firstRunShown como estaba."""
     proy = _proyecto(jira="NOT_CONFIGURED", instalacion=_sin_mostrar())
+    B.registrar_instalacion(str(proy), barra_probada=True, momento="2026-09-24T10:00:00")  # Wave 6
     ruta = proy / ".claude" / "harness.installation.json"
     antes = ruta.read_bytes()
     transporte = _Transporte()

@@ -562,7 +562,8 @@ $hpsVersion = ([System.IO.File]::ReadAllText((Join-Path $script:Raiz 'VERSION'))
 $hpsMatcher = 'Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell'
 # PreToolUse alcanza además la delegación, anclada para no tocar TaskCreate y parecidos: la
 # compuerta del flujo la niega con la tarea bloqueada (docs/cambios/compuerta-del-flujo, E-64).
-$hpsMatcherPre = $hpsMatcher + '|^Agent$|^Task$'
+# Y las herramientas MCP, ancladas: pisado por docs/cambios/integrity-cleanup (Wave 6, E24-E15).
+$hpsMatcherPre = $hpsMatcher + '|^Agent$|^Task$|^mcp__'
 $hpsMatchers = @{ PreToolUse = $hpsMatcherPre; PostToolUse = $hpsMatcher }
 $hpsEventos = [ordered]@{
     SessionStart     = 'session-start'

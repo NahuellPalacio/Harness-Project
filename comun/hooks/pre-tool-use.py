@@ -7,10 +7,13 @@
 # Una sola emision por corrida. Avisar desde aca no sirve: en exito la salida va a la
 # transcripcion. Latencia: dispara antes de cada llamada, y sin estado del flujo en el proyecto
 # la compuerta es un listado de una carpeta que no existe.
+import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from lib import hook                                            # noqa: E402
 from lib.hook import invoke_hook, bloquear, preguntar          # noqa: E402
 from lib.secretos import importar_patrones, buscar_secreto, texto_de_herramienta  # noqa: E402
 
@@ -85,4 +88,28 @@ def cuerpo(e):
         preguntar("PreToolUse", hallazgo[1])
 
 
-invoke_hook("PreToolUse", cuerpo)
+_CWD_EN_EL_TEXTO = re.compile(r'"cwd"\s*:\s*("(?:[^"\\]|\\.)*")')
+
+
+def no_se_pudo_leer(falla):
+    """Un evento que no se puede leer (Wave 6, E24-E17): no se sabe que herramienta es ni que
+    hace. Si el proyecto tiene estado del flujo, falla cerrado como un fallo interno de la
+    compuerta; si no, False y sigue como cualquier falla. El proyecto sale de
+    CLAUDE_PROJECT_DIR, del `cwd` que se alcanza a leer en el texto o de la carpeta actual:
+    cualquiera con estado del flujo alcanza."""
+    candidatos = [os.environ.get("CLAUDE_PROJECT_DIR"), os.getcwd()]
+    for m in _CWD_EN_EL_TEXTO.finditer(hook.crudo[:65536]):
+        try:
+            candidatos.append(json.loads(m.group(1)))
+        except ValueError:
+            pass
+    if not any(_hay_estado_del_flujo(c) for c in candidatos):
+        return False
+    bloquear("PreToolUse", (
+        "Flujo: no se pudo leer el pedido de esta herramienta (%s) [FLOW_GATE_UNRESOLVED]. Sin "
+        "leerlo no se sabe qué hace, y en un proyecto con estado del flujo no pasa. Reformulá la "
+        "llamada con una entrada más chica o menos anidada." % type(falla).__name__))
+    return True
+
+
+invoke_hook("PreToolUse", cuerpo, al_no_leer=no_se_pudo_leer)

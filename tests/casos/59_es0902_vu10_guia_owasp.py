@@ -275,7 +275,7 @@ def test_e03_sin_check(t):
 
 def test_e04_nada_nuevo(t):
     """E-04."""
-    t.igual("E-04 diez agentes", 10, len(c_reg.cargar()["agents"]))
+    t.igual("E-04 diez agentes", 11, len(c_reg.cargar()["agents"]))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     t.igual("E-04 once archivos de agentes", 11, len(list(AGENTES.glob("*.md"))))
     t.igual("E-04 veintisiete skills", 27, len([d for d in SKILLS.iterdir() if d.is_dir()]))
     t.igual("E-04 ALGORITMOS sigue en diez", 10, len(seguridad.ALGORITMOS))
@@ -815,7 +815,24 @@ def _proyecto(scope):
     proy = Path(tempfile.gettempdir()) / ("harness-vu10-" + uuid.uuid4().hex[:8])
     shutil.copytree(str(_plantilla()), str(proy))
     _tarea(proy, CLAVE_REF, scope)
+    _caso_55()._listo_para_la_compuerta(proy, CLAVE_REF)
     return proy
+
+
+def _caso_55():
+    """La refutacion atomica, por su `_listo_para_la_compuerta` (Wave 6: `compilar` evalua la
+    compuerta tambien como biblioteca)."""
+    if "55" not in _CASOS:
+        import importlib.util as _iu
+        spec = _iu.spec_from_file_location("caso_55_compuerta", str(
+            Path(__file__).resolve().parent / "55_refutacion_atomica.py"))
+        modulo = _iu.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        _CASOS["55"] = modulo
+    return _CASOS["55"]
+
+
+_CASOS = {}
 
 
 def _unidades(proy, clave=CLAVE_REF):
@@ -920,10 +937,12 @@ def test_e49_la_huella_invalida_la_cache(t):
         u = _unidades(proy)[0]
         R.registrar(str(proy), CLAVE_REF, json.dumps(_veredicto(u)))
         _tarea(proy, "GCBA-1049", {"WU-1": _alcance()})
+        _caso_55()._listo_para_la_compuerta(proy, "GCBA-1049")
         R.compilar(str(proy), "GCBA-1049")
         t.igual("E-49 con la misma evidencia se reusa", "CACHE", _unidades(proy, "GCBA-1049")[0]["resolutionPath"])
         _escribir(proy / "src" / "subida.py", "def subir(f): pass\n")
         _tarea(proy, "GCBA-1050", {"WU-1": _alcance()})
+        _caso_55()._listo_para_la_compuerta(proy, "GCBA-1050")
         R.compilar(str(proy), "GCBA-1050")
         otra = _unidades(proy, "GCBA-1050")[0]
         t.verdadero("E-49 otra huella, otra clave", otra["cacheKey"] != u["cacheKey"])

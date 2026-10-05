@@ -47,15 +47,16 @@ def test_e01_los_diez_resuelven_del_registro(t):
     from orquestacion import normativa as c_normativa
     doc = _doc()
     informe = c_reg.validar_registro(doc)
-    t.igual("E-01 diez declarados", 10, len(doc["agents"]))
+    # Once desde la Wave 6 (docs/cambios/integrity-cleanup/spec.md): dev-iniciador-code se registro.
+    t.igual("E-01 once declarados", 11, len(doc["agents"]))
     validos = [a for a in informe["agents"].values() if a["state"] in c_reg.AGENTE_RUTEABLE]
-    t.igual("E-01 diez validos", 10, len(validos))
+    t.igual("E-01 once validos", 11, len(validos))
 
     # Y la matriz sigue sin clasificar: la existencia no dependio de ella.
     reglas = c_normativa.cargar()
     sin_clasificar = [r for r in reglas.get("rules", []) if not r.get("owners")]
     t.verdadero("E-01 la matriz sigue vacia", len(sin_clasificar) > 0)
-    t.igual("E-01 y los diez siguen existiendo", 10, len(validos))
+    t.igual("E-01 y los once siguen existiendo", 11, len(validos))
 
 
 def test_e02_un_agente_que_no_esta_declarado(t):
@@ -66,20 +67,29 @@ def test_e02_un_agente_que_no_esta_declarado(t):
     t.igual("E-02 no rutea", False, r["routable"])
 
     # La otra mitad: no declarado pero con archivo en disco es el huerfano de E-18, no
-    # AGENT_NOT_FOUND. Tampoco rutea.
+    # AGENT_NOT_FOUND. Tampoco rutea. Desde la Wave 6 dev-iniciador-code esta registrado: el no
+    # declarado se fabrica sacandolo del registro.
     t.verdadero("E-02 el archivo del no declarado esta",
                 (RAIZ / "harnesses" / "desarrollo" / "agents" / "dev-iniciador-code.md").is_file())
-    r = c_reg.resolver_ruteo("dev-iniciador-code")
+    r = c_reg.resolver_ruteo("dev-iniciador-code", documento=_sin_iniciador())
     t.igual("E-02 con archivo es huerfano", "ORPHAN_AGENT", r["result"])
     t.igual("E-02 con archivo no existe", False, r["agentExists"])
     t.igual("E-02 con archivo no rutea", False, r["routable"])
 
 
-def test_e03_un_archivo_no_declara_un_agente(t):
-    """E-03 — el disco no da de alta: dev-iniciador-code esta y no es un agente."""
+def _sin_iniciador():
+    """El registro sin dev-iniciador-code: un agente con archivo en disco y sin declarar. Desde la
+    Wave 6 (docs/cambios/integrity-cleanup/spec.md) no hay ningun huerfano real que mirar."""
     doc = _doc()
+    doc["agents"] = [a for a in doc["agents"] if a["id"] != "dev-iniciador-code"]
+    return doc
+
+
+def test_e03_un_archivo_no_declara_un_agente(t):
+    """E-03 — el disco no da de alta: un archivo sin declarar no es un agente."""
+    doc = _sin_iniciador()
     t.igual("E-03 no esta declarado", False, c_reg.hay_agente("dev-iniciador-code", doc))
-    t.igual("E-03 y no existe para el harness", False,
+    t.igual("E-03 y registrado, si existe para el harness", True,
             c_roster.existe_agente("dev-iniciador-code"))
     huerfanos = [h["id"] for h in c_reg.descubrir_huerfanos(doc)]
     t.verdadero("E-03 aparece como huerfano", "dev-iniciador-code" in huerfanos)
@@ -277,7 +287,7 @@ def test_e17_una_skill_que_el_agente_no_declara(t):
 
 def test_e18_el_huerfano(t):
     """E-18 — ORPHAN_AGENT: visible, no adoptado, no ruteable."""
-    r = c_reg.resolver_ruteo("dev-iniciador-code")
+    r = c_reg.resolver_ruteo("dev-iniciador-code", documento=_sin_iniciador())
     t.igual("E-18 el resultado", "ORPHAN_AGENT", r["result"])
     t.igual("E-18 el archivo esta", True, r["fileExists"])
     t.igual("E-18 no existe como agente", False, r["agentExists"])
@@ -285,21 +295,22 @@ def test_e18_el_huerfano(t):
 
 
 def test_e18b_conocido_es_aviso_y_nuevo_es_error(t):
-    """E-18b — el reconocimiento distingue, y no vuelve ruteable a nadie."""
-    doc = _doc()
-    conocidos = c_reg.descubrir_huerfanos(doc)
-    t.igual("E-18b hay uno", 1, len(conocidos))
-    t.igual("E-18b reconocido", True, conocidos[0]["acknowledged"])
-    t.igual("E-18b y es aviso", "WARNING", conocidos[0]["severity"])
-    t.igual("E-18b sigue sin rutear", False, conocidos[0]["routable"])
-
-    # Uno nuevo: se saca del registro un agente cuyo archivo esta en disco.
+    """E-18b — el reconocimiento distingue, y no vuelve ruteable a nadie. Desde la Wave 6 la lista
+    de reconocidos esta vacia: el reconocido se fabrica."""
+    t.vacio("E-18b con el registro real, ningun huerfano", c_reg.descubrir_huerfanos(_doc()))
+    doc = _sin_iniciador()
     doc["agents"] = [a for a in doc["agents"] if a["id"] != "dev-quality"]
-    nuevos = {h["id"]: h for h in c_reg.descubrir_huerfanos(doc)}
-    t.verdadero("E-18b aparece el nuevo", "dev-quality" in nuevos)
-    t.igual("E-18b y es error", "ERROR", nuevos["dev-quality"]["severity"])
-    t.igual("E-18b el reconocido sigue siendo aviso", "WARNING",
-            nuevos["dev-iniciador-code"]["severity"])
+    original = c_reg.huerfanos_reconocidos
+    c_reg.huerfanos_reconocidos = lambda desde=None: [{"id": "dev-iniciador-code"}]
+    try:
+        huerfanos = {h["id"]: h for h in c_reg.descubrir_huerfanos(doc)}
+    finally:
+        c_reg.huerfanos_reconocidos = original
+    t.igual("E-18b reconocido", True, huerfanos["dev-iniciador-code"]["acknowledged"])
+    t.igual("E-18b y es aviso", "WARNING", huerfanos["dev-iniciador-code"]["severity"])
+    t.igual("E-18b sigue sin rutear", False, huerfanos["dev-iniciador-code"]["routable"])
+    t.verdadero("E-18b aparece el nuevo", "dev-quality" in huerfanos)
+    t.igual("E-18b y es error", "ERROR", huerfanos["dev-quality"]["severity"])
 
 
 def test_e19_una_skill_en_disco_sin_declarar(t):
@@ -472,8 +483,9 @@ def test_e29_la_compuerta_mira_registro_contra_disco(t):
     r = c_reg.reporte()
     t.igual("E-29 el registro es valido", True, r["result"]["registryValid"])
     t.igual("E-29 sin skills sin declarar", 0, r["summary"]["undeclaredSkills"])
-    t.igual("E-29 el unico huerfano es el reconocido", 1, r["summary"]["orphanAgents"])
-    t.igual("E-29 y por eso el disco no esta limpio", False, r["result"]["filesystemClean"])
+    # Desde la Wave 6 no hay huerfanos: dev-iniciador-code quedo registrado.
+    t.igual("E-29 ningun huerfano", 0, r["summary"]["orphanAgents"])
+    t.igual("E-29 y el disco esta limpio", True, r["result"]["filesystemClean"])
     t.verdadero("E-29 ningun agente ni skill en error",
                 not any(a["severity"] == "ERROR" for a in r["agents"])
                 and not any(s["severity"] == "ERROR" for s in r["skills"]))

@@ -345,7 +345,7 @@ def test_e03_los_dos_agentes(t):
 def test_e04_nada_nuevo(t):
     """E-04."""
     registro = c_reg.cargar()
-    t.igual("E-04 diez agentes", 10, len(registro["agents"]))
+    t.igual("E-04 diez agentes", 11, len(registro["agents"]))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     t.igual("E-04 los mismos once archivos de agentes, con el refutador", 11,
             len([p for p in AGENTES.glob("*.md")]))
     t.igual("E-04 veintisiete directorios de skills", 27,
@@ -1344,7 +1344,24 @@ def _proyecto(unidades, scope):
     _escribir(proy / ".claude" / "planes" / (CLAVE_REF + ".json"), json.dumps(doc, ensure_ascii=False))
     _escribir(proy / ".claude" / "refutaciones" / CLAVE_REF / "scope.json",
               json.dumps({"schema_version": R.VERSION_ALCANCE, "workUnits": scope}))
+    _caso_55()._listo_para_la_compuerta(proy, CLAVE_REF)
     return proy
+
+
+def _caso_55():
+    """La refutacion atomica, por su `_listo_para_la_compuerta` (Wave 6: `compilar` evalua la
+    compuerta tambien como biblioteca)."""
+    if "55" not in _CASOS:
+        import importlib.util as _iu
+        spec = _iu.spec_from_file_location("caso_55_compuerta", str(
+            Path(__file__).resolve().parent / "55_refutacion_atomica.py"))
+        modulo = _iu.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        _CASOS["55"] = modulo
+    return _CASOS["55"]
+
+
+_CASOS = {}
 
 
 def _alcance(*paths, sid="roles"):

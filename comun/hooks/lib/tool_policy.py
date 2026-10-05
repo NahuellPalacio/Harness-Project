@@ -86,16 +86,27 @@ _CARPETAS_DE_AUTORIDAD = (".claude", ".git")
 _PEGADA_A_UNA_OPCION = re.compile(r"^-+[A-Za-z0-9]*\.(?:claude|git)$", re.I)
 
 
-def toca_autoridad(texto):
+def _palabras(texto, tolerante):
+    """Las palabras de un texto como las lee el shell, o None si tiene comillas sin cerrar y no es
+    `tolerante`. Una ruta o un valor de una herramienta que no es shell no pasa por un shell: una
+    comilla es un caracter mas (`Don't`, `O'Brien.py`), y se parte por los espacios."""
+    try:
+        return _tokens(texto)
+    except ValueError:
+        return texto.replace("\\", "/").split() if tolerante else None
+
+
+def toca_autoridad(texto, tolerante=False):
     """Si un texto nombra `.claude` o `.git` como tramo de una ruta: en el texto crudo y en cada
-    palabra del comando, que es como lo va a leer el shell (`cd .claude;` o `cd .claude&&echo`)."""
+    palabra del comando, que es como lo va a leer el shell (`cd .claude;` o `cd .claude&&echo`).
+    En un comando, comillas sin cerrar son «ante la duda, si»; `tolerante` es para lo que no es un
+    comando (ver `_palabras`)."""
     if not isinstance(texto, str):
         return False
     if _AUTORIDAD.search(texto.replace("\\", "/")):
         return True
-    try:
-        palabras = _tokens(texto)
-    except ValueError:
+    palabras = _palabras(texto, tolerante)
+    if palabras is None:
         return True                                    # comillas sin cerrar: ante la duda, si
     for palabra in palabras:
         for tramo in palabra.replace("\\", "/").split("/"):
@@ -121,13 +132,153 @@ def _normalizada(ruta, base):
     return os.path.normcase(ruta)
 
 
+# Lo que Python, PowerShell o git ejecutan por su cuenta en cada hook o comando, fuera de
+# .claude/ y .git/ (Wave 6): `usercustomize.py`, `sitecustomize.py`, un `.pth`, un perfil de
+# PowerShell, un `.gitconfig`. Con estado del flujo ninguna herramienta los escribe, en el
+# proyecto ni en el host. Lo plantado antes, o por fuera de las herramientas del modelo, es un
+# limite escrito (docs/cambios/flow-governance/qualification-readiness.md).
+_PERSISTENCIA = re.compile(
+    r"(?:^|[\\/\s\"'=:(;&|<>~])(?:usercustomize\.py|sitecustomize\.py|[^\\/\s\"';&|<>]*\.pth"
+    r"|[^\\/\s\"';&|<>]*profile\.ps1|\.gitconfig)(?=[\s\"');&|<>:]|$)"
+    r"|\$\{?profile\}?|(?:^|[\\/])site-packages(?=[\\/\s\"']|$)"
+    r"|\.config[\\/]git[\\/]config(?=[\s\"');&|<>:]|$)", re.I)
+
+
+_NOMBRE_CORTO = re.compile(r"~\d")
+_MSYS = re.compile(r"^/([A-Za-z])(/|$)")
+
+
+def _como_rutas(palabra):
+    """Las rutas que una palabra del comando puede abrir, en las formas que el texto deja ver: sin
+    redirecciones pegadas; el valor de una opcion pegado con `=` (`--target-directory=x`), con `:`
+    (`-Path:x`, PowerShell) o detras de una opcion corta (`-ox`, `-uox`); `/c/x` de Git Bash como
+    `c:/x` y `~` expandido."""
+    palabra = palabra.lstrip("<>&|0123456789")
+    candidatas = [palabra]
+    if palabra.startswith("-"):
+        if "=" in palabra:
+            candidatas.append(palabra.split("=", 1)[1])
+        if ":" in palabra:
+            candidatas.append(palabra.split(":", 1)[1])
+        if not palabra.startswith("--"):
+            candidatas.extend(palabra[k:] for k in range(2, min(len(palabra), 10)))
+    salida = []
+    for c in candidatas:
+        c = _MSYS.sub(lambda m: m.group(1) + ":/", c.strip("'\"").replace("\\", "/"))
+        salida.append(os.path.expanduser(c) if c.startswith("~") else c)
+    return salida
+
+
+def toca_persistencia(texto, tolerante=False):
+    """Si un texto nombra un punto de persistencia del host: un archivo que Python, PowerShell o
+    git ejecutan solos. Cada palabra pasa por la misma regla que una ruta de Write; una con un
+    nombre corto 8.3 (`GITCON~1`) se resuelve ademas contra el disco. `tolerante`, como en
+    `toca_autoridad`."""
+    if not isinstance(texto, str):
+        return False
+    if _PERSISTENCIA.search(texto.replace("\\", "/")):
+        return True
+    palabras = _palabras(texto, tolerante)
+    if palabras is None:
+        return True                                    # comillas sin cerrar: ante la duda, si
+    if _escribe_config_de_git(palabras, tolerante):
+        return True
+    return any(es_ruta_de_persistencia(c, resolver=bool(_NOMBRE_CORTO.search(c)))
+               for p in palabras for c in _como_rutas(p))
+
+
+def _planas(palabras, hondura=0, tolerante=False):
+    """Las palabras con las que van entre comillas abiertas en las suyas: `bash -c "git ..."`,
+    `Start-Process git 'config ...'`, y un arreglo de PowerShell por sus comas
+    (`-ArgumentList 'config','--global'`). Levanta ValueError con comillas sin cerrar."""
+    salida = []
+    for p in palabras:
+        if hondura < 2 and re.search(r"\s", p.strip()):
+            interiores = _palabras(p, tolerante)
+            if interiores is None:
+                raise ValueError("comillas sin cerrar")
+            salida.extend(_planas(interiores, hondura + 1, tolerante))
+        elif "," in p:
+            salida.extend(t for t in p.split(",") if t)
+        else:
+            salida.append(p)
+    return salida
+
+
+def _escribe_config_de_git(palabras, tolerante=False):
+    """Si las palabras de un comando corren un `git config` que escribe, con cualquier alcance: la
+    configuracion del repositorio es `.git/config`, autoridad del flujo desde la Wave 4, y la global,
+    la del sistema o un `--file` son persistencia del host. Sin excepcion por clave (decision del
+    02-10-2026). Usa el mismo parser que decide si `config` lee. El git
+    puede venir detras de otro programa (`cmd /c git ...`, `Start-Process git`), adentro de una
+    palabra entre comillas, o en un alias de `-c` (`alias.x=config ...`, `alias.x=!git config ...`)."""
+    try:
+        planas = _planas(palabras, tolerante=tolerante)
+    except ValueError:
+        return True                                    # comillas sin cerrar: ante la duda, si
+    for segmento in _segmentos(planas, False):
+        for n, palabra in enumerate(segmento):
+            alias = palabra.lower().startswith("alias.") and "=" in palabra
+            valor = palabra.rsplit("=", 1)[-1].lstrip("!") if alias else palabra
+            resto = None
+            if _programa(valor) == "git":
+                sub, args = _subcomando_de_git(segmento[n + 1:])
+                resto = args if sub == "config" else None
+                detras = n > 0 or alias                # otro programa lo corre: puede agregarle
+            elif alias and valor == "config":
+                resto = segmento[n + 1:]               # un alias que corre `config`
+                detras = True
+            if resto is not None:
+                clase, alcances = _config_de_git(resto, puede_crecer=detras)
+                if clase == MUTATING:                  # cualquier alcance, tambien .git/config
+                    return True
+    return False
+
+
+def _tramos(ruta):
+    """Los segmentos de una ruta como los ve el sistema: sin el stream de NTFS (`x::$DATA`,
+    `x:stream`) ni los puntos y espacios finales que Windows ignora. La letra de unidad queda."""
+    salida = []
+    for n, tramo in enumerate(t for t in ruta.replace("\\", "/").split("/") if t):
+        if not (n == 0 and re.match(r"^[A-Za-z]:$", tramo)):
+            tramo = tramo.split(":")[0]
+        salida.append(tramo.rstrip(" .").lower())
+    return [t for t in salida if t]
+
+
+def es_ruta_de_persistencia(ruta, resolver=True):
+    """Si una ruta de archivo es un punto de persistencia del host, por sus segmentos. `resolver`
+    la pasa ademas por el disco: un nombre corto 8.3 es el mismo archivo."""
+    if not isinstance(ruta, str) or not ruta.strip():
+        return False
+    rutas = [ruta]
+    if resolver:
+        try:
+            rutas.append(os.path.realpath(ruta))
+        except (OSError, ValueError):
+            pass
+    for r in rutas:
+        partes = _tramos(r)
+        if not partes:
+            continue
+        if "site-packages" in partes:                # adentro, o la carpeta como destino
+            return True
+        if partes[-3:] == [".config", "git", "config"]:
+            return True                                # la configuracion global de git, en XDG
+        nombre = partes[-1]
+        if nombre in ("usercustomize.py", "sitecustomize.py", ".gitconfig") \
+                or nombre.endswith(".pth") or nombre.endswith("profile.ps1"):
+            return True
+    return False
+
+
 def es_ruta_de_autoridad(ruta, proyecto=None, cwd=None):
     """Si una ruta de archivo cae adentro de la autoridad del flujo de `proyecto`. Mira la ruta
     normalizada, no el texto: `.claude/./runtime` o `.claude./runtime` son la misma carpeta."""
     if not isinstance(ruta, str) or not ruta.strip():
         return False
     final = _normalizada(ruta, cwd or proyecto)
-    if toca_autoridad(final) or toca_autoridad(ruta):
+    if toca_autoridad(final, tolerante=True) or toca_autoridad(ruta, tolerante=True):
         return True
     if not proyecto:
         return False
@@ -259,7 +410,12 @@ def _harness(argumentos):
     if sub == "contabilidad":
         if flags <= {"--barra", "--sesion", "--json"} and "--barra" in flags:
             return _resultado(READ_ONLY, "contabilidad --barra")
-        return _resultado(MUTATING, "contabilidad")
+        # Se evalua contra la tarea de la sesion, no contra la clave que nombra: no avanza
+        # ninguna etapa, y evaluarla por su clave dejaria a una sesion bloqueada operar sobre
+        # otra tarea. La clave viaja aparte, para que el motivo diga a que apuntaba (Wave 6).
+        salida = _resultado(MUTATING, "contabilidad")
+        salida["target"] = clave
+        return salida
     return _resultado(UNRESOLVED, "dev-harness.py %s" % sub, clave)
 
 
@@ -326,8 +482,7 @@ def _git(argumentos):
     if sub == "tag":
         return READ_ONLY if not resto or resto[0] in ("-l", "--list") else MUTATING
     if sub == "config":
-        return READ_ONLY if resto and resto[0] in ("--get", "--get-all", "--list", "-l",
-                                                   "--get-regexp") else MUTATING
+        return _config_de_git(resto)[0]
     if sub == "stash":
         return READ_ONLY if resto and resto[0] in ("list", "show") else MUTATING
     if sub == "reflog":
@@ -339,9 +494,113 @@ def _git(argumentos):
     return UNRESOLVED
 
 
+# Los alcances de `git config`. git lee una opcion larga abreviada si no hay otra que empiece
+# igual (`--glob` es `--global`), y `-f` sola o pegada a su valor (`-fx`). Una abreviatura que git
+# rechazaria por ambigua (`--g`) se lee igual como alcance: ante la duda, el alcance.
+_CONFIG_ALCANCES = ("global", "system", "local", "worktree", "file", "blob", "includes")
+_CONFIG_CON_VALOR = frozenset(("file", "blob"))
+_CONFIG_LECTURA = ("--get", "--get-all", "--list", "-l", "--get-regexp", "--get-urlmatch",
+                   "--get-color", "--get-colorbool")
+# Los subcomandos de la sintaxis nueva (git 2.46): `get` y `list` leen; los demas escriben.
+_CONFIG_SUBCOMANDOS_DE_LECTURA = ("get", "list")
+_CONFIG_SUBCOMANDOS_DE_ESCRITURA = ("set", "unset", "rename-section", "remove-section", "edit")
+# Lo que cambia como se muestra, no que se hace: no es la accion.
+_CONFIG_MODIFICADORES = frozenset(("--show-origin", "--show-scope", "--name-only", "--null", "-z",
+                                   "--fixed-value", "--no-includes", "--bool", "--int",
+                                   "--bool-or-int", "--path", "--expiry-date", "--no-type"))
+_CONFIG_MODIFICADORES_CON_VALOR = frozenset(("--type", "-t", "--default", "--comment", "--value",
+                                             "--url"))
+
+
+def _alcance_de_config(argumento):
+    """(alcance, cuantas palabras ocupa) si `argumento` es un alcance de `git config`, o (None, 0)."""
+    if argumento.startswith("--"):
+        nombre, igual, _ = argumento[2:].partition("=")
+        candidatos = [a for a in _CONFIG_ALCANCES if nombre and a.startswith(nombre.lower())]
+        if len(candidatos) != 1:
+            return None, 0
+        alcance = candidatos[0]
+        return alcance, 2 if alcance in _CONFIG_CON_VALOR and not igual else 1
+    if argumento.startswith("-") and len(argumento) > 1:
+        for n, letra in enumerate(argumento[1:]):
+            if letra == "f":                           # -f, -fx, -zf x
+                return "file", 1 if argumento[n + 2:] else 2
+            if letra == "t":                           # -t lleva el tipo pegado o despues
+                break
+    return None, 0
+
+
+def _config_de_git(resto, puede_crecer=False):
+    """(clase, alcances) de `git config <resto>`. Ni el alcance ni un modificador (`--show-origin`,
+    `--type=bool`, `-z`) dicen si lee o escribe: lo dice la accion, lo que queda. Lee con una
+    opcion de lectura (`--get`, `--list`...), con `get` o `list`, o con un nombre solo
+    (`git config user.email`); un nombre con su valor, o cualquier otra accion, escribe. Los
+    alcances se juntan de todas las palabras, porque git acepta las opciones despues de la accion.
+
+    `puede_crecer`: git corre detras de otro programa que puede agregarle argumentos al correr
+    (`xargs git config core.fsmonitor`). Ahi un nombre solo no es una lectura: el valor puede
+    venir despues."""
+    alcances, accion, i = set(), [], 0
+    while i < len(resto):
+        if resto[i] == "--":
+            accion.extend(resto[i + 1:])
+            break
+        alcance, ocupa = _alcance_de_config(resto[i])
+        if alcance:
+            alcances.add(alcance)
+            i += ocupa
+            continue
+        opcion, igual, _ = resto[i].partition("=")
+        if opcion in _CONFIG_MODIFICADORES:
+            i += 1
+            continue
+        if opcion in _CONFIG_MODIFICADORES_CON_VALOR:
+            i += 1 if igual else 2
+            continue
+        accion.append(resto[i])
+        i += 1
+    if not accion:
+        return MUTATING, alcances                      # `git config` solo no se sabe: escritura
+    primera = accion[0]
+    if primera.startswith("-"):
+        lee = primera in _CONFIG_LECTURA
+    elif primera in _CONFIG_SUBCOMANDOS_DE_LECTURA:
+        lee = True
+    elif primera in _CONFIG_SUBCOMANDOS_DE_ESCRITURA:
+        lee = False
+    else:
+        lee = len(accion) == 1 and not puede_crecer    # `git config <nombre>` lee su valor
+    return (READ_ONLY if lee else MUTATING), alcances
+
+
+def _subcomando_de_git(argumentos):
+    """(subcomando, resto) de `git <opciones globales> <subcomando> ...`, salteando las opciones
+    globales y sus valores. (None, []) si no hay subcomando."""
+    i = 0
+    while i < len(argumentos) and argumentos[i].startswith("-"):
+        opcion = argumentos[i].split("=", 1)[0]
+        i += 2 if opcion in _GIT_OPCIONES_CON_VALOR and "=" not in argumentos[i] else 1
+    if i >= len(argumentos):
+        return None, []
+    return argumentos[i], argumentos[i + 1:]
+
+
 def _opcion_corta(argumentos, letra):
     """Si `-<letra>` va sola, agrupada con otras o pegada a su valor."""
     return any(a.startswith("-") and not a.startswith("--") and letra in a[1:] for a in argumentos)
+
+
+def _posicionales(argumentos):
+    """Los argumentos que no son opciones: `-` es la entrada estandar, un posicional como
+    cualquiera, y despues de `--` todo lo es. El valor de una opcion cuenta: ante la duda, uno
+    mas."""
+    salida = []
+    for n, a in enumerate(argumentos):
+        if a == "--":
+            return salida + list(argumentos[n + 1:])
+        if a == "-" or not a.startswith("-"):
+            salida.append(a)
+    return salida
 
 
 def _segmento(palabras, powershell):
@@ -357,6 +616,10 @@ def _segmento(palabras, powershell):
     lectura = (_LECTURA_POWERSHELL | _LECTURA_BASH) if powershell else _LECTURA_BASH
     if programa not in lectura:
         return UNRESOLVED
+    # Una opcion larga de salida escribe, sea cual sea el programa de lectura (Wave 6):
+    # `--output`, `--out`, `--outfile`, `--output-file`, con `=valor` o sin el.
+    if any(a.lower().startswith("--out") for a in argumentos):
+        return MUTATING
     # Programas de lectura que tambien escriben. Una opcion corta se mira agrupada (`-uo`) y
     # pegada a su valor (`-o<ruta>`), y una larga abreviada (`--out=`): getopt las lee igual.
     if programa == "find" and any(a in ("-delete", "-exec", "-execdir", "-ok", "-okdir", "-fls")
@@ -367,8 +630,8 @@ def _segmento(palabras, powershell):
         return MUTATING
     if programa == "sort" and any(a.startswith("--com") for a in argumentos):
         return UNRESOLVED                        # --compress-program corre un programa
-    if programa == "uniq" and len([a for a in argumentos if not a.startswith("-")]) >= 2:
-        return MUTATING                          # uniq <entrada> <salida>
+    if programa == "uniq" and len(_posicionales(argumentos)) >= 2:
+        return MUTATING                          # uniq <entrada> <salida>, tambien uniq - <salida>
     if programa == "file" and (_opcion_corta(argumentos, "C") or
                                any(a.startswith("--comp") for a in argumentos)):
         return MUTATING                          # -C escribe el .mgc
@@ -406,6 +669,8 @@ def _shell(tool, comando, proyecto=None, cwd=None):
     # Una variable puede valer cualquier ruta, el .env tambien: no se sabe que lee.
     if any("$" in tok and tok.lower() != "$null" for tok in tokens):
         return _resultado(UNRESOLVED, "una variable")
+    if powershell and any(tok.startswith("@") for tok in tokens):
+        return _resultado(UNRESOLVED, "una variable")  # un splat: `git config @args`
     segmentos = _segmentos(tokens, powershell)
     if not segmentos:
         return _resultado(UNRESOLVED, "comando vacio")
@@ -433,6 +698,139 @@ def _nombra_env(entrada):
     return False
 
 
+def _una_linea(v):
+    """El texto sin los espacios ni los saltos de linea de los bordes, si es de una linea; si no,
+    None. Un salto de linea al final no convierte un comando en contenido."""
+    if not isinstance(v, str):
+        return None
+    v = v.strip()
+    return v if v and "\n" not in v else None
+
+
+def _valores_de_una_linea(valor):
+    """Los textos de una linea de un `tool_input`, a cualquier profundidad y tambien las claves de
+    un objeto (`{"files": {ruta: contenido}}`): los que pueden ser una ruta. Uno con saltos de linea
+    es un contenido, no un destino. Sin recursion: un JSON hondo no la agota."""
+    pendientes = [valor]
+    while pendientes:
+        v = pendientes.pop()
+        if isinstance(v, str):
+            linea = _una_linea(v)
+            if linea:
+                yield linea
+        elif isinstance(v, dict):
+            pendientes.extend(v.keys())
+            pendientes.extend(v.values())
+        elif isinstance(v, (list, tuple)):
+            pendientes.extend(v)
+
+
+def _secuencias(valor):
+    """Cada lista y cada objeto de un `tool_input` como la secuencia de sus palabras: los textos
+    de una linea que tiene adentro, y los de las listas que tiene adentro, en orden. Es como llega
+    un comando repartido: `["git", "config", ...]` o `{"command": "git", "args": [...]}` (E24-E18).
+    Cada palabra va entre comillas, asi que vuelve igual al partirla."""
+    pendientes = [valor]
+    while pendientes:
+        v = pendientes.pop()
+        hijos = list(v.values()) if isinstance(v, dict) else list(v) if isinstance(v, (list, tuple)) else None
+        if hijos is None:
+            continue
+        palabras = []
+        for h in hijos:
+            for x in (h if isinstance(h, (list, tuple)) else [h]):
+                linea = _una_linea(x)
+                if linea:
+                    palabras.append(shlex.quote(linea))
+        if len(palabras) > 1:
+            yield " ".join(palabras)
+        pendientes.extend(h for h in hijos if isinstance(h, (dict, list, tuple)))
+
+
+def _nombra_autoridad(entrada, proyecto, cwd):
+    """Si una herramienta que la politica no conoce nombra, en algun valor, `.claude/`, `.git/` o un
+    punto de persistencia del host (Wave 6, E24-E14): un servidor MCP que escribe archivos tiene sus
+    propios campos, y no se sabe cual es el destino. Ante la duda, cualquiera. Un valor se mira
+    tambien como comando, con la regla de Bash: un servidor MCP que corre comandos lo recibe asi
+    (E24-E16)."""
+    valores = list(_valores_de_una_linea(entrada))
+    secuencias = list(_secuencias(entrada))
+    if any(es_ruta_de_autoridad(v, proyecto, cwd)
+           or es_ruta_de_persistencia(v, resolver=bool(_NOMBRE_CORTO.search(v)))
+           or toca_persistencia(v, tolerante=True)     # un servidor MCP que corre comandos
+           for v in valores):
+        return True
+    if any(toca_autoridad(s, tolerante=True) or toca_persistencia(s, tolerante=True)
+           for s in secuencias):
+        return True
+    # La bolsa: las palabras de todos los valores, sin orden y sin comillas (E24-E20). No se puede
+    # saber como arma su comando una herramienta que no se conoce: ni en que campo va el programa
+    # ni que comillas usa. Lo que en la bolsa es la autoridad, un punto de persistencia o un
+    # `git config`, es protegido.
+    bolsa = [w for v in valores for w in _SEPARA_LA_BOLSA.split(v.replace("\\", "/")) if w]
+    if any(toca_autoridad(w, tolerante=True)
+           or any(es_ruta_de_persistencia(c, resolver=bool(_NOMBRE_CORTO.search(c)))
+                  for c in _como_rutas(w))
+           for w in bolsa):
+        return True
+    return git_config_a_la_vista(valores, valores + secuencias)
+
+
+_SEPARA_LA_BOLSA = re.compile(r"[\s'\"`;&|()<>,]+")
+
+# El guard de `git config` (Wave 6, E24-E21, decision de la persona del 04-10-2026). No se parsea
+# cada shell forma por forma: si el texto deja ver git y `config`, es una escritura de la
+# configuracion salvo que el parser pruebe que lee. INTENTIONAL_CONSERVATIVE_OVERPROTECTION: un
+# texto que nombra las dos cosas sin correr `git config` (`git commit -m "config"`) es protegido.
+# Se parte por los separadores de cualquier shell, tambien `{`, `@`, `:`, `=` y `!` (`& {git`,
+# `-FilePath:git`, `@('config'`, `alias.x=!git`). Y se lee ademas como el shell une una palabra:
+# sin las continuaciones de linea (`\`, `` ` `` o `^` y un salto) y sin lo que junta o vale vacio
+# (`g\it`, ``g`it``, `g^it`, `'gi'+'t'`, `g$'i't`, `g$()it`). Decimotercera pasada.
+_SEPARA_LA_EVIDENCIA = re.compile(r"[\s'\"`;&|()<>,{}\[\]@:=!]+")
+_SEPARA_LO_UNIDO = re.compile(r"[\s;&|<>,{}\[\]:=!]+")
+_CONTINUACION = re.compile(r"[\\`^]\r?\n")
+_ESCAPES = re.compile(r"[`^'\"+\\$()@]")
+_GIT = re.compile(r"^git(?:-config)?(?:\.(?:exe|cmd|bat|com))?$")
+# Lo que en una lectura de `git config` no se sabe que vale: una variable, una sustitucion, un
+# splat de PowerShell (`@args`), un scriptblock.
+_NO_SE_SABE = re.compile(r"[$`(){}]|^@")
+
+
+def _evidencia(texto):
+    """Las palabras de un texto en sus dos lecturas: `\\` como barra de una ruta, y como el shell
+    une cada palabra."""
+    unido = _ESCAPES.sub("", _CONTINUACION.sub("", texto))
+    return [[w.lower() for w in _SEPARA_LA_EVIDENCIA.split(texto.replace("\\", "/")) if w],
+            [w.lower() for w in _SEPARA_LO_UNIDO.split(unido) if w]]
+
+
+def git_config_a_la_vista(textos, lecturas):
+    """Si los `textos` dejan ver git y `config` (tambien `git-config`), y no estan probados como
+    una lectura: una sola `config` en cada lectura del texto, y alguna de las `lecturas`, parseada
+    estricta, es `git ... config <una lectura>` (`git config --get x`, `["git", "config",
+    "--list"]`). Ante la duda, escritura."""
+    git, configs = False, 0
+    for palabras in zip(*[_evidencia(t) for t in textos]) if textos else ():
+        palabras = [os.path.basename(w) for ws in palabras for w in ws]
+        git = git or any(_GIT.match(w) for w in palabras)
+        configs = max(configs, sum(1 for w in palabras if w == "config" or (_GIT.match(w) and "config" in w)))
+    if not git or not configs:
+        return False
+    return not (configs == 1 and any(_lee_git_config(t) for t in lecturas))
+
+
+def _lee_git_config(texto):
+    """Si un texto, parseado estricto y sin separadores ni nada que no se sepa que vale, es
+    `git ... config <una lectura>`."""
+    palabras = _palabras(texto, False)
+    if not palabras or any(p in _SEPARADORES or _NO_SE_SABE.search(p) for p in palabras):
+        return False
+    if _programa(palabras[0]) != "git":
+        return False
+    sub, args = _subcomando_de_git(palabras[1:])
+    return sub == "config" and _config_de_git(args)[0] == READ_ONLY
+
+
 def clasificar(tool_name, tool_input, proyecto=None, cwd=None):
     """{class, reason, taskKey, stage, reconcilia}. Determinista: la misma entrada, la misma clase.
 
@@ -443,14 +841,17 @@ def clasificar(tool_name, tool_input, proyecto=None, cwd=None):
     """
     entrada = tool_input if isinstance(tool_input, dict) else {}
     if tool_name in _SHELLS:
-        salida = _shell(tool_name, entrada.get("command"), proyecto, cwd)
-        if salida["class"] != READ_ONLY and not salida.get("cli") and \
-                toca_autoridad(entrada.get("command")):
+        comando = entrada.get("command")
+        salida = _shell(tool_name, comando, proyecto, cwd)
+        if salida["class"] != READ_ONLY and not salida.get("cli") and (
+                toca_autoridad(comando) or toca_persistencia(comando)
+                or (isinstance(comando, str) and git_config_a_la_vista([comando], [comando]))):
             salida.update({"class": MUTATING, "reason": "escribe la autoridad del flujo",
                            "protected": True, "humanIntent": None})
         return salida
     if tool_name in _HERRAMIENTAS_QUE_ESCRIBEN and any(
-            es_ruta_de_autoridad(entrada.get(c), proyecto, cwd) for c in ("file_path", "notebook_path")):
+            es_ruta_de_autoridad(entrada.get(c), proyecto, cwd) or es_ruta_de_persistencia(entrada.get(c))
+            for c in ("file_path", "notebook_path")):
         salida = _resultado(MUTATING, "escribe la autoridad del flujo")
         salida["protected"] = True
         return salida
@@ -462,4 +863,8 @@ def clasificar(tool_name, tool_input, proyecto=None, cwd=None):
         return _resultado(MUTATING, tool_name)
     if tool_name in _DELEGACION:
         return _resultado(WORKFLOW_ADVANCING, "delegacion", etapa="EXECUTION")
+    if _nombra_autoridad(entrada, proyecto, cwd):
+        salida = _resultado(MUTATING, "escribe la autoridad del flujo")
+        salida["protected"] = True
+        return salida
     return _resultado(UNRESOLVED, str(tool_name or "sin nombre"))

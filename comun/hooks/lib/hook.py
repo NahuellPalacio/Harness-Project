@@ -16,6 +16,8 @@ DIR_ESTADO = os.path.join(tempfile.gettempdir(), "gcba-harness")
 # el parseo de Claude Code y se llevan puesto el primer aviso, que ya era valido:
 # gana la primera escritura, cualquier otra se descarta en silencio.
 _ya_emitido = False
+# El texto del evento tal como llego, para un hook que tiene que decidir aunque no se pueda leer.
+crudo = ""
 
 
 def leer_evento():
@@ -24,6 +26,7 @@ def leer_evento():
     Se lee del buffer binario y se decodifica con utf-8-sig: si el BOM viene, se
     descarta en vez de romper el parseo.
     """
+    global crudo
     crudo = sys.stdin.buffer.read().decode("utf-8-sig", errors="replace")
     if not crudo.strip():
         return None
@@ -137,12 +140,21 @@ def mensaje_de_sistema(texto, session_id="sin-sesion", clave="general"):
         pass
 
 
-def invoke_hook(evento_nombre, cuerpo):
-    """Envoltorio de todo hook. Garantiza salida 0 pase lo que pase."""
+def invoke_hook(evento_nombre, cuerpo, al_no_leer=None):
+    """Envoltorio de todo hook. Garantiza salida 0 pase lo que pase.
+
+    `al_no_leer(falla)`: lo que hace el hook con un evento que no se puede leer (un JSON roto, o
+    tan hondo que json.loads no lo aguanta). Si devuelve True ya emitio su decision; si no, el
+    evento se trata como cualquier falla."""
     evento = None
     session_id = "sin-sesion"
     try:
-        evento = leer_evento()
+        try:
+            evento = leer_evento()
+        except (ValueError, RecursionError) as falla:
+            if al_no_leer is not None and al_no_leer(falla):
+                sys.exit(0)
+            raise
         if evento is None:
             sys.exit(0)
         session_id = campo(evento, "session_id", "sin-sesion")

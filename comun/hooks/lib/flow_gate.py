@@ -189,10 +189,12 @@ def decidir(evento):
             gobernado = True
         if gobernado:
             return _negar(salida, AUTHORITY_PROTECTED, (
-                "Flujo: esta herramienta escribiría en .claude/ o en .git/ [%s]. Ahí están la "
+                "Flujo: esta herramienta escribiría en .claude/ o en .git/, o en un archivo que "
+                "Python, PowerShell o git ejecutan solos (usercustomize.py, sitecustomize.py, un "
+                ".pth, un perfil de PowerShell, un .gitconfig) [%s]. Ahí están la "
                 "autoridad del flujo y lo que ejecuta código por su cuenta (la CLI y los hooks del "
                 "Harness, los settings, la configuración y los hooks de git): lo escriben los hooks, "
-                "la CLI del Harness y git, nunca una herramienta. Una decisión humana la escribe la "
+                "la CLI del Harness, git o la persona, nunca una herramienta. Una decisión humana la escribe la "
                 "persona en el chat (HARNESS ...); una propuesta para `plan --propuesta` va fuera de "
                 ".claude/." % AUTHORITY_PROTECTED))
     if hook.campo(evento, "tool_name", "") in _SHELLS and clase["class"] in (
@@ -220,12 +222,22 @@ def decidir(evento):
             _vincular_por_comando(evento, clase["taskKey"])
         return salida
     try:
-        return _evaluar(evento, clase, salida)
+        return _con_objetivo(_evaluar(evento, clase, salida), clase)
     except Exception as e:                             # noqa: BLE001 - fallar cerrado
         return _negar(salida, GATE_UNRESOLVED, (
             "Flujo: no se pudo evaluar la compuerta (%s) [%s]. Una herramienta que modifica o "
             "avanza el proyecto no pasa sin evaluarla; la lectura y `flujo <KEY> --status` sí."
             % (type(e).__name__, GATE_UNRESOLVED)))
+
+
+def _con_objetivo(salida, clase):
+    """Si el comando nombra otra tarea que la que se evaluo, el motivo dice las dos (Wave 6). La
+    decision no cambia: se evaluo la tarea de la sesion."""
+    objetivo = clase.get("target")
+    if salida.get("decision") == "deny" and objetivo and objetivo != salida.get("taskKey"):
+        salida["reason"] += (" El comando apunta a %s; se evaluó %s, la tarea de esta sesión, y "
+                             "es la que no deja pasar." % (objetivo, salida.get("taskKey") or "—"))
+    return salida
 
 
 def _esperando_a_una_persona(proyecto):

@@ -339,7 +339,7 @@ def test_e02_los_ids(t):
 def test_e03_nada_nuevo(t):
     """E-03."""
     registro = c_reg.cargar()
-    t.igual("E-03 diez agentes", 10, len(registro["agents"]))
+    t.igual("E-03 diez agentes", 11, len(registro["agents"]))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     t.igual("E-03 los mismos once archivos de agentes, con el refutador", 11,
             len([p for p in AGENTES.glob("*.md")]))
     t.igual("E-03 veintisiete directorios de skills", 27,
@@ -1100,7 +1100,24 @@ def _proyecto(unidades, scope):
     proy = Path(tempfile.gettempdir()) / ("harness-vu9-" + uuid.uuid4().hex[:8])
     shutil.copytree(str(_plantilla()), str(proy))
     _tarea(proy, CLAVE_REF, unidades, scope)
+    _caso_55()._listo_para_la_compuerta(proy, CLAVE_REF)
     return proy
+
+
+def _caso_55():
+    """La refutacion atomica, por su `_listo_para_la_compuerta` (Wave 6: `compilar` evalua la
+    compuerta tambien como biblioteca)."""
+    if "55" not in _CASOS:
+        import importlib.util as _iu
+        spec = _iu.spec_from_file_location("caso_55_compuerta", str(
+            Path(__file__).resolve().parent / "55_refutacion_atomica.py"))
+        modulo = _iu.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        _CASOS["55"] = modulo
+    return _CASOS["55"]
+
+
+_CASOS = {}
 
 
 def _alcance(*paths, sid="gateway"):
@@ -1231,11 +1248,13 @@ def test_e54_la_huella_invalida_la_cache(t):
         u = _unidades(proy)[0]
         R.registrar(str(proy), CLAVE_REF, json.dumps(_veredicto(u)))
         _tarea(proy, OTRA_TAREA, {"WU-1": _bloque(["Vu9"])}, {"WU-1": _alcance("config/gateway.yml")})
+        _caso_55()._listo_para_la_compuerta(proy, OTRA_TAREA)
         R.compilar(str(proy), OTRA_TAREA)
         t.igual("E-54 con la misma evidencia se reusa", "CACHE", _unidades(proy, OTRA_TAREA)[0]["resolutionPath"])
         _escribir(proy / "config" / "gateway.yml", "politica: ninguna\n")
         tercera = "GCBA-9055"
         _tarea(proy, tercera, {"WU-1": _bloque(["Vu9"])}, {"WU-1": _alcance("config/gateway.yml")})
+        _caso_55()._listo_para_la_compuerta(proy, tercera)
         R.compilar(str(proy), tercera)
         otra = _unidades(proy, tercera)[0]
         t.verdadero("E-54 otra evidencia, otra huella", otra["evidenceFingerprint"] != u["evidenceFingerprint"])

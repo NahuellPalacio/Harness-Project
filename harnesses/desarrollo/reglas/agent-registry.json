@@ -295,6 +295,16 @@
       "status": "INSTALLED",
       "skills": [],
       "skillValidation": "VALID_WITH_ZERO_SKILLS"
+    },
+    {
+      "id": "dev-iniciador-code",
+      "type": "INFRASTRUCTURE_AGENT",
+      "domain": "codebase",
+      "declared": true,
+      "agentFile": "agents/dev-iniciador-code.md",
+      "status": "INSTALLED",
+      "skills": [],
+      "skillValidation": "VALID_WITH_ZERO_SKILLS"
     }
   ]
 }

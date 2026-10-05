@@ -94,6 +94,11 @@ def _proyecto(unidades=None, scope="por-defecto", git=True, clave=CLAVE, proy=No
     if scope is not None:
         _escribir(proy / ".claude" / "refutaciones" / clave / "scope.json",
                   json.dumps({"schema_version": R.VERSION_ALCANCE, "workUnits": scope}))
+    if git:
+        # Pisado por docs/cambios/integrity-cleanup/spec.md (Wave 6): `compilar` evalua la
+        # compuerta de REFUTATION tambien como biblioteca. El proyecto de prueba la pasa; lo que
+        # cada test afirma de la refutacion no cambia.
+        _listo_para_la_compuerta(proy, clave)
     return proy
 
 
@@ -149,7 +154,9 @@ def _listo_para_la_compuerta(proy, clave=CLAVE):
     plan["flowPreconditions"] = orq_plan._precondiciones(FLUJO_LISTO, plan["workUnits"])
     plan["status"] = orq_plan.estado_de(plan)
     _escribir(ruta, json.dumps(plan, ensure_ascii=False))
-    _git(proy, "remote", "add", "origin", URL_DEL_REPO + ".git")
+    if "origin" not in subprocess.run(["git", "-C", str(proy), "remote"], stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE).stdout.decode("utf-8", "replace").split():
+        _git(proy, "remote", "add", "origin", URL_DEL_REPO + ".git")
 
 
 def _unidades(proy, clave=CLAVE):
@@ -252,6 +259,7 @@ def test_e04_el_plan_no_cambia(t):
                                "task": {"title": "t"}}, {}, {})
         t.igual("E-04 un plan de plan.armar valida", [], orq_plan.validar(real))
         _escribir(ruta, json.dumps(real))
+        _listo_para_la_compuerta(proy)                 # Wave 6: compilar evalua la compuerta
         antes = ruta.read_bytes()
         R.compilar(str(proy), CLAVE)
         t.igual("E-04 compilar no toca el plan", antes, ruta.read_bytes())

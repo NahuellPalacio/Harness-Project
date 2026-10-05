@@ -9,7 +9,9 @@
     "arranque de un proceso a CADA llamada a herramienta. PowerShell va en los dos: es la",
     "herramienta que usa Claude Code en Windows para correr comandos. PreToolUse alcanza ademas",
     "la delegacion (Agent, y Task, su nombre anterior), anclada para no tocar TaskCreate y",
-    "parecidos: la compuerta del flujo la niega con la tarea bloqueada."
+    "parecidos: la compuerta del flujo la niega con la tarea bloqueada. Y las herramientas MCP",
+    "(^mcp__, anclado): un servidor MCP puede escribir archivos, y sin el hook no lo ve ni la",
+    "compuerta ni la autoridad protegida (Wave 6, docs/cambios/integrity-cleanup, E24-E15)."
   ],
   "hooks": {
     "SessionStart": [
@@ -29,7 +31,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell|^Agent$|^Task$",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell|^Agent$|^Task$|^mcp__",
         "hooks": [
           { "type": "command", "shell": "powershell", "command": "{{SHIM}} pre-tool-use; exit $LASTEXITCODE" }
         ]

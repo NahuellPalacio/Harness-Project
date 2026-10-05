@@ -360,7 +360,7 @@ def seccion_de_runtime(b, doc, proyecto):
         comp = rc.get(clave) or {}
         marca = "✓ " if comp.get("state") == b.ACTIVE else ""
         texto = b.etiqueta_de_componente(clave, comp)
-        vista = comp.get("lastSessionId")
+        vista = comp.get("lastSessionWithData") or comp.get("lastSessionId")
         if comp.get("state") == b.ACTIVE and not comp.get("activeInCurrentSession") and vista:
             texto += " (última sesión: %s)" % str(vista)[:8]
         lineas.append("  %s%s%s" % (nombre.ljust(ancho), marca, texto))
@@ -1305,17 +1305,16 @@ def refutar(args, proyecto, consola):
     if accion == "compile":
         # La compuerta de REFUTATION va antes de tocar nada: si no pasa, no se crea ni se
         # cambia run.json (docs/cambios/flujo-precondiciones/spec.md).
-        compuerta = flujo_precondiciones.compuerta_de_refutacion(
-            proyecto, clave, gitlab_de_entorno(rutas_de(proyecto)))
-        faltan = flujo_precondiciones.bloqueantes(compuerta)
-        if faltan:
+        # La compuerta la evalua compilar mismo, con su propia lectura del .env (Wave 6): aca
+        # solo se convierte el rechazo en el mensaje de siempre.
+        try:
+            doc = orq_refutacion.compilar(proyecto, clave)
+        except orq_refutacion.CompuertaCerrada as cerrada:
             # El estado dice por que no se compilo antes de que el comando salga.
             reconciliar_estado(consola, proyecto, rutas_de(proyecto), clave)
             raise FallaDelHarness(
                 "no se compila la refutacion de %s: %s. Resolvé eso y volvé a correr "
-                "`refute %s --compile`." % (
-                    clave, ", ".join(sorted(set(p["failureCode"] for p in faltan))), clave))
-        doc = orq_refutacion.compilar(proyecto, clave)
+                "`refute %s --compile`." % (clave, ", ".join(cerrada.codigos), clave))
         consola.evento("refutacion.compilada", unidades=doc["counts"]["units"],
                        estado=doc["status"])
         reconciliar_estado(consola, proyecto, rutas_de(proyecto), clave)
@@ -1676,7 +1675,8 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             seg_libro.EventoInvalido, seg_libro.TareaInvalida,
             seg_productores.ProductorInvalido, seg_resumen.ResumenInvalido,
             orq_refutacion.RefutacionInvalida, flujo_requeridos.RegistroInvalido,
-            flujo_estado.ErrorDeEstado, estado_decisiones.ErrorDeDecision) as e:
+            flujo_estado.ErrorDeEstado, estado_decisiones.ErrorDeDecision,
+            orq_plan.PlanInvalido) as e:
         sys.stderr.write("harness: %s\n" % e)
         return 2
     except KeyboardInterrupt:

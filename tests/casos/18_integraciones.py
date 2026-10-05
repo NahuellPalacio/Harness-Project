@@ -61,6 +61,20 @@ def _almacen(raiz, entorno=None):
     return AlmacenSecretos(os.path.join(raiz, ".env"), {} if entorno is None else entorno)
 
 
+def _sembrar(raiz, nombre, valor):
+    """Escribe una variable en el .env de prueba, como lo haria la persona. El almacen ya no
+    escribe (Wave 6, docs/cambios/integrity-cleanup/spec.md)."""
+    ruta = os.path.join(raiz, ".env")
+    lineas = []
+    if os.path.isfile(ruta):
+        with open(ruta, encoding="utf-8") as f:
+            lineas = [l for l in f.read().splitlines()
+                      if not re.match(r"^\s*(?:export\s+)?%s\s*=" % re.escape(nombre), l)]
+    lineas.append("%s=%s" % (nombre, valor))
+    with open(ruta, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lineas) + "\n")
+
+
 def _lock(raiz, harness=("comun", "desarrollo")):
     """El lockfile que deja install.ps1. Sin el, el resolvedor del estado general dice
     BLOQUEADO por falta de instalacion, y E-24 no podria distinguir "una integracion caida
@@ -100,18 +114,18 @@ def _jira(raiz, transporte, config=None, token=TOKEN):
     documento = config if config is not None else {
         "jira": {"enabled": True, "baseUrl": "https://ejemplo.atlassian.net",
                  "usuario": "alguien@buenosaires.gob.ar"}}
-    almacen = _almacen(raiz)
     if token:
-        almacen.set("JIRA_TOKEN", token)
+        _sembrar(raiz, "JIRA_TOKEN", token)
+    almacen = _almacen(raiz)
     return IntegracionJira(_config(raiz, documento).de("jira"), almacen, 5, transporte)
 
 
 def _gitlab(raiz, transporte, config=None, token=TOKEN):
     documento = config if config is not None else {
         "gitlab": {"enabled": True, "baseUrl": "https://gitlab.ejemplo.gob.ar"}}
-    almacen = _almacen(raiz)
     if token:
-        almacen.set("GITLAB_TOKEN", token)
+        _sembrar(raiz, "GITLAB_TOKEN", token)
+    almacen = _almacen(raiz)
     return IntegracionGitLab(_config(raiz, documento).de("gitlab"), almacen, 5, transporte)
 
 
@@ -183,45 +197,43 @@ def test_e02_el_entorno_le_gana_al_archivo(t):
     t.igual("E-02", "el-del-entorno", a.get("JIRA_TOKEN"))
 
 
+def _levanta(accion):
+    try:
+        accion()
+    except ErrorDeAlmacen as e:
+        return str(e)
+    return None
+
+
 def test_e03_set_no_mueve_el_resto_del_archivo(t):
-    """E-03 — set sobre una clave existente reescribe solo esa linea."""
+    """E-03 — pisado por la Wave 6 (docs/cambios/integrity-cleanup/spec.md, E-09): set no
+    escribe. El archivo de la persona no se mueve en absoluto."""
     raiz = _proyecto()
     a = _almacen(raiz)
-    a.set("JIRA_TOKEN", "otro-valor")
-    texto = open(os.path.join(raiz, ".env"), encoding="utf-8").read()
-    t.contiene("E-03 el comentario sigue", "# Un comentario que tiene que sobrevivir.", texto)
-    t.contiene("E-03 el segundo comentario sigue", "# Otro comentario, con una linea vacia arriba.",
-               texto)
-    t.contiene("E-03 la variable ajena sigue", "OTRA_COSA=valor-ajeno", texto)
-    t.no_contiene("E-03 el valor viejo se fue", TOKEN, texto)
-    t.igual("E-03 el valor nuevo esta", "otro-valor", a.get("JIRA_TOKEN"))
-    t.igual("E-03 no se duplico ninguna linea", 6, len(texto.splitlines()))
-    orden = [l.split("=")[0] for l in texto.splitlines() if "=" in l]
-    t.igual("E-03 el orden de las variables no cambia",
-            ["JIRA_TOKEN", "GITLAB_TOKEN", "OTRA_COSA"], orden)
+    antes = open(os.path.join(raiz, ".env"), "rb").read()
+    t.verdadero("E-03 set levanta", _levanta(lambda: a.set("JIRA_TOKEN", "otro-valor")) is not None)
+    t.igual("E-03 el archivo no cambio", antes, open(os.path.join(raiz, ".env"), "rb").read())
+    t.igual("E-03 el valor sigue siendo el de la persona", TOKEN, a.get("JIRA_TOKEN"))
 
 
 def test_e04_set_de_una_clave_nueva_la_agrega(t):
-    """E-04 — set sobre una clave ausente la agrega y el resto no se mueve."""
+    """E-04 — pisado por la Wave 6: set de una clave nueva tampoco escribe."""
     raiz = _proyecto()
     a = _almacen(raiz)
-    antes = open(os.path.join(raiz, ".env"), encoding="utf-8").read()
-    a.set("OPENSHIFT_TOKEN", "otro")
-    despues = open(os.path.join(raiz, ".env"), encoding="utf-8").read()
-    t.igual("E-04 lo viejo esta intacto", antes.strip(),
-            despues.replace("OPENSHIFT_TOKEN=otro", "").strip())
-    t.igual("E-04 se puede leer", "otro", a.get("OPENSHIFT_TOKEN"))
+    antes = open(os.path.join(raiz, ".env"), "rb").read()
+    t.verdadero("E-04 set levanta", _levanta(lambda: a.set("OPENSHIFT_TOKEN", "otro")) is not None)
+    t.igual("E-04 el archivo no cambio", antes, open(os.path.join(raiz, ".env"), "rb").read())
+    t.igual("E-04 no aparece", None, a.get("OPENSHIFT_TOKEN"))
 
 
 def test_e05_remove_borra_la_linea(t):
-    """E-05 — remove borra la linea y exists devuelve falso despues."""
+    """E-05 — pisado por la Wave 6: remove no borra nada."""
     raiz = _proyecto()
     a = _almacen(raiz)
-    t.igual("E-05 borro algo", True, a.remove("JIRA_TOKEN"))
-    t.igual("E-05 exists despues", False, a.exists("JIRA_TOKEN"))
-    t.igual("E-05 borrar lo que no esta", False, a.remove("JIRA_TOKEN"))
-    t.contiene("E-05 el resto quedo", "OTRA_COSA=valor-ajeno",
-               open(os.path.join(raiz, ".env"), encoding="utf-8").read())
+    antes = open(os.path.join(raiz, ".env"), "rb").read()
+    t.verdadero("E-05 remove levanta", _levanta(lambda: a.remove("JIRA_TOKEN")) is not None)
+    t.igual("E-05 el archivo no cambio", antes, open(os.path.join(raiz, ".env"), "rb").read())
+    t.verdadero("E-05 exists sigue", a.exists("JIRA_TOKEN"))
 
 
 def test_e06_el_almacen_no_muestra_el_valor(t):
@@ -237,7 +249,7 @@ def test_e06_el_almacen_no_muestra_el_valor(t):
         roto.set("JIRA_TOKEN", TOKEN)
     except ErrorDeAlmacen as e:
         texto = str(e)
-    t.verdadero("E-06 la escritura imposible levanta ErrorDeAlmacen", texto != "")
+    t.verdadero("E-06 la escritura levanta ErrorDeAlmacen", texto != "")
     t.no_contiene("E-06 la excepcion no lleva el valor", TOKEN, texto)
 
 

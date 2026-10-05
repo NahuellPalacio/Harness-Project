@@ -547,7 +547,9 @@ def test_e27_una_regla_con_condicion_se_cita(t):
 def test_e28_el_plan_declara_la_matriz_pendiente(t):
     """E-28 — cuantas quedan sin clasificar, en cada corrida."""
     documento = _armar()
-    avisos = [w for w in documento["warnings"] if "sin clasificar" in w]
+    # Pisado por docs/cambios/integrity-cleanup/spec.md (Wave 6, E-15): el aviso nombra el
+    # archivo que cuenta en vez de decir que las reglas estan "sin clasificar".
+    avisos = [w for w in documento["warnings"] if "es0901-7.1.json" in w]
     t.igual("E-28 el aviso esta", 1, len(avisos))
     t.contiene("E-28 dice cuantas", "26 de las 26", avisos[0])
 

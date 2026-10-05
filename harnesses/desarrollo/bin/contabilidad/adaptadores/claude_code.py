@@ -131,8 +131,12 @@ def leer(ruta, rapido=False, desde_linea=0):
         if not mid or mid in vistos:
             continue
         vistos.add(mid)
-        uso = mensaje.get("usage") or {}
-        registros.append(contrato.registro(
+        uso = mensaje.get("usage") if isinstance(mensaje.get("usage"), dict) else {}
+        # Un mensaje sin ningun numero de uso -sin las claves, o con ellas en null o en texto-
+        # no es un uso resuelto en cero: es un uso que la fuente no trajo. Queda
+        # USAGE_UNRESOLVED, con su clave, y llega al libro (Wave 6).
+        sin_uso = not any(type(uso.get(campo)) is int for _, campo in DE_USO)
+        reg = contrato.registro(
             provider=PROVEEDOR,
             model=mensaje.get("model"),
             tokens=_tokens_de(uso, DE_USO),
@@ -140,12 +144,19 @@ def leer(ruta, rapido=False, desde_linea=0):
             dedup_key="msg|" + mid,
             reference="%s#L%d" % (archivo, numero),
             timestamp=dato.get("timestamp"),
-        ))
+            state=contrato.SIN_RESOLVER if sin_uso else contrato.RESUELTO,
+        )
+        if sin_uso:
+            reg["reason"] = "el mensaje del asistente no trae usage"
+        registros.append(reg)
 
     if desde_linea and cuenta and cuenta[0] < desde_linea:
         return leer(ruta, rapido)
     if ultimo_costo is not None:
         registros.extend(_del_estado_de_costo(ultimo_costo, archivo))
+    if not registros and desde_linea:
+        # Nada nuevo desde donde ya se leyo no es un uso sin resolver: no paso nada.
+        return []
     if not registros:
         return [contrato.sin_resolver(
             reference=archivo,

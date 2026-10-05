@@ -116,17 +116,31 @@ def _proyecto(harness=("comun", "desarrollo"), version="0.22.0", fuentes=None, r
             _escribir(ruta, instalacion)
         else:
             _json(ruta, instalacion)
+    if senal is not None and instalacion is None and registrada:
+        # Una senal es de una barra instalada: con el registro que deja install.ps1. Pisado por docs/cambios/integrity-cleanup/spec.md (Wave 6): ACTIVE pide un libro con datos, y la prueba de la senal, el registro del instalador.
+        B.registrar_instalacion(str(proy), barra_probada=True, momento="2026-09-24T10:00:00")
     if senal is not None:
         _senal(proy, **senal) if isinstance(senal, dict) else _escribir(
             claude / "runtime" / "contextbar.json", senal)
     return proy
 
 
+def _con_datos(proy, sesion):
+    """El libro de la sesion con un evento: lo que deja un dibujo que conto algo. Pisado por docs/cambios/integrity-cleanup/spec.md (Wave 6): ACTIVE pide un libro con datos, y la prueba de la senal, el registro del instalador."""
+    libro = Path(B.libro_de_la_sesion(str(proy), sesion))
+    libro.parent.mkdir(parents=True, exist_ok=True)
+    if not libro.exists():
+        libro.write_text(json.dumps({"eventId": "e-%s" % sesion}) + "\n", encoding="utf-8")
+
+
 def _senal(proy, sesion=SESION, block4=B.BLOCK4_OK, version=VERSION_BARRA,
-           momento="2099-01-01T00:00:00", **de_mas):
+           momento="2099-01-01T00:00:00", con_datos=True, **de_mas):
     """Una senal de vida como la escribe la barra, con escribir_senal_de_vida. `momento` por
-    defecto es posterior a cualquier registro de la instalacion."""
+    defecto es posterior a cualquier registro de la instalacion. Con block4 OK, el libro de la
+    sesion tiene lo que conto el dibujo (`con_datos`)."""
     B.escribir_senal_de_vida(str(proy), sesion, block4, version, momento=momento)
+    if con_datos and block4 == B.BLOCK4_OK:
+        _con_datos(proy, sesion)
     if de_mas:
         ruta = proy / ".claude" / "runtime" / "contextbar.json"
         doc = json.loads(ruta.read_text(encoding="utf-8"))
@@ -314,7 +328,8 @@ def test_e03_despues_de_instalar_los_tres_componentes_tienen_estado(t):
                         estado in B.ESTADOS_DE_COMPONENTE)
             t.verdadero("E-03 %s: %s no usa AVAILABLE" % (rotulo, clave), estado != "AVAILABLE")
     doc = B.registrar_instalacion(str(_proyecto()), barra_probada=True)
-    t.igual("E-03 con desarrollo: Block 4 ACTIVE", "ACTIVE",
+    # Pisado por la Wave 6 (docs/cambios/integrity-cleanup/spec.md, E-16): recien instalado, sin nada contado, es CONFIGURED.
+    t.igual("E-03 con desarrollo: Block 4 CONFIGURED", "CONFIGURED",
             doc["runtimeComponents"]["block4Accounting"]["state"])
     t.igual("E-03 con desarrollo: Security Reporting ACTIVE", "ACTIVE",
             doc["runtimeComponents"]["securityReporting"]["state"])
@@ -412,7 +427,7 @@ def test_e09_block4_no_disponible_es_error(t):
     # El libro de la sesion que vio la barra existe y no se abre: el Bloque 4 esta en ERROR, y
     # una senal OK de la barra no alcanza.
     proy = _registrado_y_visto()
-    _senal(proy, sesion=SESION)
+    _senal(proy, sesion=SESION, con_datos=False)
     (proy / ".claude" / "runtime" / "accounting" / SESION / "ledger.jsonl").mkdir(parents=True)
     doc = B.resolver(str(proy), sesion=SESION)
     t.igual("E-09 libro ilegible: Block 4 ERROR", ("ERROR", "BLOCK4_LEDGER_UNREADABLE"),
@@ -917,8 +932,12 @@ def test_e10_la_barra_escribe_solo_el_libro_y_la_senal(t):
             tocados)
     t.igual("E-10 y no borro nada", [], sorted(k for k in antes if k not in despues))
     senal = _senal_de(proy)
-    t.igual("E-10 la senal tiene los cinco campos del contrato",
-            sorted(B.CONTRATO_SENAL["required"]), sorted(senal or {}))
+    # Pisado por docs/cambios/integrity-cleanup/spec.md (Wave 6, Manual B): un dibujo con datos
+    # agrega la evidencia lastSessionWithData, y nada mas.
+    t.igual("E-10 la senal tiene los cinco campos del contrato y la evidencia de este dibujo",
+            sorted(B.CONTRATO_SENAL["required"] + ["lastSessionWithData"]), sorted(senal or {}))
+    t.igual("E-10 la evidencia es de esta sesion", sesion,
+            ((senal or {}).get("lastSessionWithData") or {}).get("sessionId"))
     t.igual("E-10 y ningun numero", [], [k for k, v in (senal or {}).items()
                                          if isinstance(v, (int, float)) and not isinstance(v, bool)])
     t.vacio("E-10 la senal cumple el contrato", [] if B.cumple(senal, B.CONTRATO_SENAL) else ["no"])
@@ -1359,7 +1378,8 @@ def test_e18_harness_muestra_los_tres_el_reinicio_y_la_ultima_sesion(t):
     t.igual("E-18 la seccion esta una vez", 1, salida.count("Runtime / Observabilidad"))
     t.igual("E-18 y la bienvenida no repite el bloque Observabilidad", 0,
             len([l for l in salida.split("\n") if l.strip() == "Observabilidad"]))
-    for nombre, esperado in (("Block 4 Accounting", "✓ ACTIVO"), ("Context Bar", "REQUIERE REINICIO"),
+    # Pisado por la Wave 6 (docs/cambios/integrity-cleanup/spec.md, E-16): recien instalado, el Bloque 4 todavia no conto nada.
+    for nombre, esperado in (("Block 4 Accounting", "CONFIGURADO"), ("Context Bar", "REQUIERE REINICIO"),
                              ("Security Reporting", "✓ ACTIVO")):
         t.verdadero("E-18 %s: %s" % (nombre, esperado), _fila(seccion, nombre).endswith(esperado))
     t.verdadero("E-18 el reinicio pendiente", _fila(seccion, "Reinicio de Claude Code").endswith("hace falta")
@@ -1607,8 +1627,12 @@ def test_e41_la_huella_de_la_senal_es_la_del_comando_que_corrio(t):
         B.registrar_instalacion(str(proy), barra_probada=True, momento=momento)
         return huella
 
+    transcripcion = _transcripcion(Path(tempfile.mkdtemp(prefix="cb53-41-")) / "t.jsonl", sesion)
+
     def correr(*argumentos):
-        return _dibujar({"session_id": sesion},
+        # Con una transcripcion que trae consumo: ACTIVE pide que el Bloque 4 haya contado algo
+        # (Wave 6 (docs/cambios/integrity-cleanup/spec.md, E-16)).
+        return _dibujar({"session_id": sesion, "transcript_path": transcripcion},
                         comando=[sys.executable, str(renderizador)] + list(argumentos))
 
     vieja = registrar(base)

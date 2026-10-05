@@ -4,16 +4,9 @@
     "existe, nada de aca rutea. Es deuda tecnica reconocida, y lo unico que compra es que",
     "un huerfano ya conocido sea aviso y no error, para que uno NUEVO se distinga.",
     "",
-    "Clasificar dev-iniciador-code -adoptarlo o borrarlo- es otro cambio."
+    "dev-iniciador-code se clasifico en la Wave 6 de Flow Governance: quedo registrado en",
+    "agent-registry.json como INFRASTRUCTURE_AGENT (docs/cambios/integrity-cleanup/spec.md)."
   ],
   "version": "1.0.0",
-  "acknowledgedOrphans": [
-    {
-      "id": "dev-iniciador-code",
-      "file": "agents/dev-iniciador-code.md",
-      "severity": "WARNING",
-      "action": "REQUIRES_CLASSIFICATION",
-      "seenIn": "0.19.0"
-    }
-  ]
+  "acknowledgedOrphans": []
 }

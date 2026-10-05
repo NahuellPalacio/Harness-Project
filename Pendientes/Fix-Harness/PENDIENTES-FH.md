@@ -1917,60 +1917,108 @@ the shape of thing to look for if anything else in that file reads wrong.
 What should happen: somebody who knows what the file said reads it once against the five specs it
 documents. Until then it is an honest reconstruction and not a restoration.
 
-### Block 4 still loses the unresolved marker on ingest, and installation states paint OK
+### Closed by Flow Governance Wave 6, waiting for its version note
 
-Found while building Flow Governance Wave 5 (`docs/cambios/fail-closed-hardening/`), on
-2026-10-01, and deferred to Wave 6 on purpose: Wave 5 fixed how an unresolved metric is *shown*
-(`N/D`, never `0`), not how it is *recorded*.
-- **The Claude Code adapter records a message without `usage` as `RESOLVED`,** with `None` tokens
-  (`contabilidad/adaptadores/claude_code.py`, around line 134). It sums as zero and
-  `USAGE_UNRESOLVED` is never raised, so the presentation has nothing to turn into `N/D`. Decide
-  first whether a message without `usage` is unmeasured or simply not a model call.
-- **The bar drops `USAGE_UNRESOLVED` records before they reach the ledger**
-  (`contabilidad/statusline.py`, around line 167). The marker the bar checks can therefore never
-  fire on the live path.
-- **Installation and runtime states that say OK without resolving anything:** `block4: OK` right
-  after an ingest with no events (already listed above, under the Context Bar), `_block4` ACTIVE
-  before any session (`bienvenida.py`, `_libro_legible(None)` is `True`), Block 4 "installed" when
-  three of its files exist, `-Doctor` printing green `OK` for `CONFIGURED`, and the proof check
-  passing when `integrationVersion` or `lastValidatedAt` is missing.
-- **The budget decision is computed on a floor.** With a partial cost (`COST_UNRESOLVED`, part of
-  it priced), `presupuesto.evaluar` still returns `WITHIN_BUDGET` on the priced part. Wave 5 shows
-  the amounts as `N/D`, but the status is a decision taken on a number nobody can call the total.
-  Block 4 does not govern, so nothing is gated on it; it is still evidence that reads better than
-  it is. Found by the refuter on 2026-10-02.
-- **A partial time or cost inside the `--barra --json` and `contabilidad --json` documents** is still
-  a number with its state beside it. That is the contract for a program; it is listed here only so
-  nobody reads those documents as a presentation.
+The two entries «Block 4 still loses the unresolved marker on ingest, and installation states paint
+OK» and «Three inconsistencies the Wave 5 manual acceptance surfaced» were closed by
+`docs/cambios/integrity-cleanup/` (uncommitted on top of `556c7bd`, no release). What closed is in
+its `verificacion.md`. This stub leaves the file when `close-a-version` writes the version note that
+receives them.
+- A message without `usage` is `USAGE_UNRESOLVED`, and the bar no longer drops it before the ledger.
+- The budget does not decide on a floor: a partial cost is `COST_UNRESOLVED`.
+- Block 4 is not `ACTIVE` without a ledger with data, the bar with a healthy signal is `CONFIGURED`
+  until then, `-Doctor` does not print `CONFIGURED` as `OK`, and the proof check needs the
+  installer's `integrationVersion` and a well-formed `lastValidatedAt`.
+- `contabilidad <KEY>` keeps its key in the flow gate; the decision is still the session task's, and
+  the reason names both tasks.
+- `workUnits[].context.repository` reads the flow identity, and the ES0901 warning names the file it
+  counts.
+- Decided by the person on 2026-10-02 and closed in Wave 6: `UNRESOLVED_TOOL_CLASS` keeps the
+  Wave 3/4 contract (never `READ_ONLY`, `MUTATING`'s restrictions, may pass with a healthy task);
+  claim 7 was a SPEC_OVERSTATEMENT and was reworded. Every mutating `git config`, local scope
+  included, is protected authority (E24-E13), also behind `xargs` (E24-E13j). `-Doctor` no longer
+  reads only the state SessionStart saved: it computes the bar live and keeps the last session that
+  drew with data, so it reaches `ACTIVE` after a restart (E-36 to E-46, manual B PASS on 2026-10-05). Claim 7 was then made
+  precise: the pending decision is the governed task's; a decision pending on another task still
+  stops only the shell (Wave 4). An unknown non-shell tool (an MCP server) naming `.claude/`, `.git/`
+  or a host persistence point in a one-line value of its `tool_input` is protected (E24-E14).
+- Still open from those entries: the partial numbers inside `--barra --json` and
+  `contabilidad --json` stay a number with its state beside it, as the program contract says.
 
-What should happen: one change for the ingest (a spec scenario per adapter), and one for the
-installation states, each with the state that is actually reachable written next to the one that is
-declared.
+### Wave 6 leftovers: what the refuter and the manual dry run saw outside the letter
 
-### Three inconsistencies the Wave 5 manual acceptance surfaced, all older than Wave 5
-
-Found on 2026-10-02 during the Wave 5 manual acceptance, and checked against the baseline `2c33fba`
-in a separate worktree: the same output there. None changes a gate decision.
-- **`contabilidad <KEY>` loses its key in the flow gate.** `tool_policy._harness` parses the key and
-  then returns `_resultado(MUTATING, "contabilidad")` without it (since Wave 3, `2b43a77`), so the
-  gate evaluates the command against the session's bound task instead of the key it names.
-  `seguridad <KEY>` keeps it. The Wave 3 spec says a Harness command with a key is evaluated against
-  *its* key. The outcome is still a deny when the session's task is blocked, because the named task
-  with no flow state is `TASK_FLOW_STATE_MISSING`; what is wrong is the reason the person reads.
-- **`workUnits[].context.repository` is empty while `flowPreconditions.repository` is `MATCHED`.**
-  The unit context reads `task_context.repository.project.name`; the flow preconditions resolve the
-  repository from the Ficha (`Repo: …`) and the remotes. Two sources for one fact, and a TaskContext
-  without a GitLab project leaves the unit saying nothing.
-- **The plan warns «26 de las 26 reglas de ES0901 §7.1 estan sin clasificar … la matriz normativa
-  todavia no se construyo»** while every unit carries the normative matrix's resolution (7
-  applicable, 17 unresolved in the fixture). The warning counts the rules of `es0901-7.1.json` with
-  no `conditions` (what `applicableStandards` cites); the units read
-  `es0901-7.1-normative-matrix.json`. The matrix does exist, so the sentence says the opposite of what
-  the plan shows.
-
-What should happen: pass the key in `contabilidad` with a scenario in `63_compuerta_del_flujo`, give
-the unit context and the preconditions one repository source, and reword the warning so it names
-the file it counts.
+Found on 2026-10-02 while verifying `docs/cambios/integrity-cleanup/`. None changes a gate decision
+today.
+- **E-24 waits for the independent reviewer to repeat its probes.** After the refuter's fourth pass,
+  an independent adversarial review contradicted it with nine inputs in three classes (a
+  `site-packages` directory as the final destination, `git config --glob|--sys|--fil|-f<path>`,
+  `uniq - <out>`). They are fixed (E24-E1..E24-E9), as are the three forms of the refuter's fifth
+  pass (E24-E10..E24-E12) and every mutating `git config`, local scope included (E24-E13, decided
+  by the person on 2026-10-02). E-24 is MUST_FIX_BEFORE_QUALIFICATION until the same reviewer, with
+  probes unchanged, sustains it on the final tree. The boundary written in the spec stays.
+- **The `git config` guard over-protects any command that shows `git` and `config` without
+  running `git config`.** Since E24-E21 (decided by the person on 2026-10-04) a shell command the
+  parser does not prove `READ_ONLY` is protected when its text shows git and `config`, so `git commit
+  -m "update config"`, `echo git config x > notes.txt` and `git config --get-regexp 'x$'` are denied
+  as protected. INTENTIONAL_CONSERVATIVE_OVERPROTECTION: it replaced parsing each shell syntax, which
+  every refuter pass beat with a new form. The cost is `git commit -F <file>` or rewording.
+- **An unknown non-shell tool whose text only mentions `git` and `config` is denied too.** E24-E20
+  reads the words of an unknown tool as an unordered bag, so a Jira or Slack MCP comment such as
+  "please run git config user.name" is `FLOW_AUTHORITY_PROTECTED`. Fail-safe on purpose: the policy
+  cannot tell how an unknown tool assembles a command; rewording the message is the cost.
+- **An unknown non-shell tool that only reads or mentions the flow authority is denied too.** E24-E14
+  looks at every one-line value of the `tool_input` of a tool the policy does not know, so an MCP
+  `read_file` on `.claude/settings.json`, or a one-line field that merely mentions `.git/`, is
+  `FLOW_AUTHORITY_PROTECTED`. Fail-safe on purpose: the policy cannot tell an MCP server's reads from
+  its writes.
+- **Block 4 accepts negative token counts** as `RESOLVED`. The int check of E-01 says nothing about
+  sign. A 10**30 count still aborts the whole ingest (see «One absurd number from a provider aborts
+  the whole accounting ingest», above).
+- **`contextBar.lastValidatedAt` is named for what it is not.** In the Context Bar it is the moment
+  the configuration was registered, and it moves only when one of the four fingerprints
+  (`statusLine`, `renderer`, `block4Adapter`, `sessionStart`) changes; an identical `-Update`
+  leaves it alone. It is not a validation of anything. Seen on 2026-10-05 while fixing manual
+  acceptance B4; it was not the cause of that defect and its semantics were kept. Renaming it
+  (e.g. `registeredAt`) is a schema change of `harness-installation/1.1` and waits for a release
+  that can carry a migration.
+- **`_MOMENTO` accepts `0000-00-00T00:00:00`.** It checks the shape, not the calendar. A forged
+  installation document with that timestamp lets any later signal prove; forging it needs write
+  access to `.claude/`, which the flow gate already protects.
+- **`ConfigIntegraciones.guardar` still writes `harness.integraciones.json`.** Nothing calls it on a
+  live path today; it is the same class of latent writer that `AlmacenSecretos.set` was.
+- **`refute --unit` and `refute --record` have no gate of their own**, since Wave 1. Only
+  `--compile` and the library `compilar` evaluate the refutation gate.
+- **`22_registro_agentes` E-03 no longer exercises `roster.existe_agente` for an undeclared agent**:
+  the fixture fabricates the orphan through `huerfanos_reconocidos`. A regression in that one
+  function would not turn E-03 red.
+- **`contabilidad --ingerir` from a source with no consumption, or from Codex, writes one keyless
+  event per run.** Keyless records are not deduplicated by design; running it twice counts twice.
+- **`-Doctor` breaks on a project whose harness paths exceed MAX_PATH**: `Get-FileHash` fails on an
+  ES0902 rule file and the doctor prints «No se encuentra la propiedad 'Hash'». Older than Wave 6
+  (`install.ps1`, the hash helper near line 108); seen only from a deep temp directory.
+- **`Test-FormaDeLaBarra` matches property names without regard to case.** HARDENING / LOW /
+  NON-BLOCKING. `PSObject.Properties[...]` is case-insensitive, so a `bienvenida.py barra` that
+  prints `{"STATE":"ACTIVE","INSTALLED":true,"CONFIGURED":true,"RELOADREQUIRED":false,
+  "ACTIVEINCURRENTSESSION":false,"LASTSESSIONWITHDATA":"s-x"}` with exit 0 is taken as live, and
+  `-Doctor` prints `OK Context Bar: ACTIVA (última sesión con datos: s-x)`. Seen on 2026-10-05 in
+  refuter pass 16 of Wave 6, which sustained E-44 anyway. Python never prints those keys, and a
+  tampered `bienvenida.py` can lie just as well with the right ones, so it opens no new hole. The
+  values are already checked case-sensitively (`-cnotcontains`); the names are not. A case-sensitive
+  name check would close it; not tried.
+- **A valid `bienvenida.py barra` that writes anything to stderr falls back to the saved state.**
+  CONSERVATIVE_FALLBACK / NON-BLOCKING. `Get-BarraEnVivo` runs the call with `2>$null` under the
+  script's `$ErrorActionPreference = 'Stop'`; in Windows PowerShell 5.1 a stderr line becomes a
+  terminating error, the `catch` returns `$null`, and `-Doctor` shows the saved state with
+  `Fuente=guardado` even though stdout held a valid bar and the exit was 0. Seen on 2026-10-05 in
+  refuter pass 16: a valid ACTIVE plus one stderr line gave `CONFIGURED|guardado`. It fails closed,
+  and the real `barra` writes to stderr only when it exits 1; a Python warning on a person's machine
+  would hide a live `ACTIVE` behind the saved state, never invent one.
+- **`presupuesto.consumido` treats a cost with no `state` as resolved.** Unreachable today:
+  `costos.sumar` always sets it.
+- **The hooks still do not run with `python -I`.** Deferred: it changes the output encoding of the
+  hooks and no test would see it.
+- **`CLAUDE.md` says 24875 tests; the gate runs 39080.** The ceiling of that file belongs to
+  `harness-budget-auditor`.
 
 ## Outside the harness, written down so it is not lost
 

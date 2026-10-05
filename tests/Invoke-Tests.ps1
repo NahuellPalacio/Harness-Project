@@ -239,7 +239,12 @@ if ($Detallado) { $argsPython += '--detallado' }
 
 $python = $null
 foreach ($c in @('python', 'py', 'python3')) {
-    if (Get-Command $c -ErrorAction SilentlyContinue) { $python = $c; break }
+    # El alias de la Microsoft Store tambien responde a Get-Command y no corre nada: el candidato
+    # vale si corre y dice donde esta, como Resolve-Python en install.ps1 (Wave 6).
+    try {
+        $ruta = (& $c -c "import sys; print(sys.executable)" 2>$null | Out-String).Trim()
+        if ($ruta -and (Test-Path $ruta)) { $python = $ruta; break }
+    } catch { }
 }
 
 if (-not $python) {

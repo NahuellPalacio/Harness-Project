@@ -737,11 +737,11 @@ def test_e27_no_se_crea_ningun_agente_ni_skill(t):
     """E-27 (O1-19) — los mismos diez agentes, las mismas cuatro skills de dev-security."""
     registro = c_reg.cargar()
     ids = sorted(a["id"] for a in registro["agents"])
-    t.igual("E-27 siguen siendo diez", 10, len(ids))
+    t.igual("E-27 siguen siendo diez", 11, len(ids))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     t.igual("E-27 y son los mismos",
-            ["dev-architecture", "dev-backend", "dev-devops", "dev-frontend", "dev-integration",
-             "dev-orchestrator", "dev-quality", "dev-refutador", "dev-security",
-             "dev-tool-builder"], ids)
+            ["dev-architecture", "dev-backend", "dev-devops", "dev-frontend",
+             "dev-iniciador-code", "dev-integration", "dev-orchestrator", "dev-quality",
+             "dev-refutador", "dev-security", "dev-tool-builder"], ids)
     de_security = [a for a in registro["agents"] if a["id"] == "dev-security"][0]
     t.igual("E-27 las cuatro skills de dev-security",
             ["dev-appsec-review", "dev-security-analysis", "dev-security-assessment",

@@ -71,6 +71,8 @@ VERSION_PROYECCION = "integration-projection/1.0"
 # Las dos reglas de permissions.deny que dejan el .env del lado de la persona.
 REGLAS_DEL_ENV = ("Read(./.env)", "Read(./.env.*)")
 _NOMBRE_DE_VARIABLE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+# El momento como lo escribe ahora(): una prueba de la senal compara contra esto y nada mas.
+_MOMENTO = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$")
 # Una integracion que ningun `setup` verifico. Es el UNRESOLVED del paquete del Bloque 1.
 NUNCA_VERIFICADA = "UNRESOLVED"
 
@@ -154,12 +156,21 @@ FUENTE_DE_LA_BARRA = "block4"
 #                                    argumento: huella_statusline() de su bloque> | null",
 #       "integrationVersion":       "<INTEGRATION_VERSION del renderizador>",
 #       "lastRenderedAt":           "<ahora(): YYYY-MM-DDTHH:MM:SS, hora local>",
-#       "block4":                   "OK" | "SOURCE_UNAVAILABLE"
+#       "block4":                   "OK" | "SOURCE_UNAVAILABLE",
+#       "lastSessionWithData": {    opcional: la ultima sesion que dibujo CON datos
+#         "sessionId", "renderedAt", "configurationFingerprint", "integrationVersion"
+#       }
 #     }
 #
-# 🔴 Esos cinco campos y ninguno mas: additionalProperties false. Un numero contable (tokens,
-# costo, contexto) no entra aca, vive en el libro del Bloque 4. Una senal con otra forma no se
-# toma por buena: la barra queda UNRESOLVED.
+# 🔴 Esos cinco campos, la evidencia opcional y ninguno mas: additionalProperties false. Un
+# numero contable (tokens, costo, contexto) no entra aca, vive en el libro del Bloque 4. Una
+# senal con otra forma no se toma por buena: la barra queda UNRESOLVED.
+#
+# 🔴 Los cinco campos son el ultimo dibujo; la evidencia es historica. Un dibujo con datos la
+# avanza a su sesion, y uno sin datos la conserva tal cual: el primer dibujo vacio de una sesion
+# nueva no borra la prueba de que otra ya dibujo datos (Wave 6, Manual B). La evidencia queda
+# atada a la configuracion con la que se dibujo: prueba algo solo con la huella, la version y
+# el registro de ahora (_prueba), y nunca hace activa a la sesion actual.
 #
 # La forma de escribirla sin equivocarse es `escribir_senal_de_vida`, con la huella que trajo el
 # comando, y escribe con .tmp + os.replace. Quien la escribe a mano tiene que respetar el orden
@@ -169,6 +180,8 @@ FUENTE_DE_LA_BARRA = "block4"
 SENAL_DE_VIDA = (".claude", "runtime", "contextbar.json")
 BLOCK4_OK = "OK"
 BLOCK4_SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE"
+_HUELLA_O_NULL = {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+_MOMENTO_DE_LA_SENAL = {"type": "string", "pattern": r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$"}
 CONTRATO_SENAL = {
     "type": "object",
     "required": ["sessionId", "configurationFingerprint", "integrationVersion",
@@ -176,11 +189,19 @@ CONTRATO_SENAL = {
     "additionalProperties": False,
     "properties": {
         "sessionId": {"type": "string", "pattern": "."},
-        "configurationFingerprint": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "configurationFingerprint": _HUELLA_O_NULL,
         "integrationVersion": {"type": "string"},
-        "lastRenderedAt": {"type": "string",
-                           "pattern": r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$"},
+        "lastRenderedAt": _MOMENTO_DE_LA_SENAL,
         "block4": {"type": "string", "enum": [BLOCK4_OK, BLOCK4_SOURCE_UNAVAILABLE]},
+        "lastSessionWithData": {
+            "type": "object",
+            "required": ["sessionId", "renderedAt", "configurationFingerprint",
+                         "integrationVersion"],
+            "additionalProperties": False,
+            "properties": {"sessionId": {"type": "string", "pattern": "."},
+                           "renderedAt": _MOMENTO_DE_LA_SENAL,
+                           "configurationFingerprint": _HUELLA_O_NULL,
+                           "integrationVersion": {"type": "string"}}},
     },
 }
 
@@ -332,6 +353,7 @@ _FORMA_BARRA = {
         "reloadRequired": _B, "activeInCurrentSession": _B,
         "configurationFingerprint": _SN, "integrationVersion": _SN,
         "commandTested": {"type": ["boolean", "null"]}, "lastSessionId": _SN,
+        "lastSessionWithData": _SN,
         "fingerprints": {"type": ["object", "null"], "properties": {
             "statusLine": _SN, "renderer": _SN, "block4Adapter": _SN, "sessionStart": _SN}},
     }),
@@ -688,7 +710,7 @@ _DE_SETTINGS = object()
 
 
 def escribir_senal_de_vida(proyecto, session_id, block4, integration_version, momento=None,
-                           huella=_DE_SETTINGS):
+                           huella=_DE_SETTINGS, con_datos=False):
     """Lo que llama la barra despues de dibujar. `block4` es BLOCK4_OK o
     BLOCK4_SOURCE_UNAVAILABLE. Levanta ValueError con algo fuera del contrato, y OSError si no
     pudo escribir: la barra decide, y nunca por eso deja de dibujar.
@@ -697,15 +719,27 @@ def escribir_senal_de_vida(proyecto, session_id, block4, integration_version, mo
     tal cual (None si el comando no traia ninguna). Calcularla del settings.json de ahora
     haria que un comando viejo, todavia corriendo en una sesion sin reiniciar, probara la
     configuracion nueva (E-41). Sin el argumento se lee settings.json: es para quien escribe
-    una senal sin ser un comando registrado, como la suite."""
+    una senal sin ser un comando registrado, como la suite.
+
+    `con_datos` es que este dibujo mostro datos del Bloque 4: la evidencia pasa a esta sesion.
+    Sin datos, la evidencia de la senal anterior se conserva tal cual (Wave 6, Manual B)."""
     if huella is _DE_SETTINGS:
         bloque, _ = leer_statusline(proyecto)
         huella = huella_statusline(bloque)
+    momento = momento or ahora()
     senal = {"sessionId": str(session_id or ""),
              "configurationFingerprint": huella,
              "integrationVersion": str(integration_version or ""),
-             "lastRenderedAt": momento or ahora(),
+             "lastRenderedAt": momento,
              "block4": block4}
+    if con_datos and block4 == BLOCK4_OK:
+        evidencia = {"sessionId": senal["sessionId"], "renderedAt": momento,
+                     "configurationFingerprint": huella,
+                     "integrationVersion": senal["integrationVersion"]}
+    else:
+        evidencia = (leer_senal_de_vida(proyecto)[0] or {}).get("lastSessionWithData")
+    if evidencia:
+        senal["lastSessionWithData"] = evidencia
     if not _cumple_o_falso(senal, CONTRATO_SENAL):
         raise ValueError("la senal de vida no cumple el contrato de bienvenida.CONTRATO_SENAL")
     return escribir_estado(ruta_de_la_senal(proyecto), senal)
@@ -779,6 +813,27 @@ def _libro_legible(ruta):
     return True
 
 
+def _libro_con_datos(ruta):
+    """Si el libro tiene al menos un registro: una linea que es un objeto JSON con algo adentro.
+    Un salto de linea, un espacio o una linea rota no son un registro. Se lee solo el principio:
+    el primer registro alcanza para saber que el Bloque 4 ya conto algo en esa sesion."""
+    try:
+        if ruta is None or not os.path.isfile(ruta):
+            return False
+        with open(ruta, "rb") as f:
+            principio = f.read(65536)
+    except OSError:
+        return False
+    for linea in principio.decode("utf-8", "replace").splitlines():
+        try:
+            registro = json.loads(linea)
+        except ValueError:
+            continue
+        if isinstance(registro, dict) and registro:
+            return True
+    return False
+
+
 def _se_puede_escribir(carpeta):
     """La carpeta, o la primera que existe hacia arriba, es un directorio escribible."""
     d = carpeta
@@ -790,10 +845,15 @@ def _se_puede_escribir(carpeta):
     return os.path.isdir(d) and os.access(d, os.W_OK)
 
 
-def _block4(proyecto, rt, version, previo_rc, momento, sesion_vista):
+def _block4(proyecto, rt, version, previo_rc, momento, sesion_vista, historica=None):
     """ERROR si el libro de la ultima sesion que vio la barra existe y no se abre. Mirar todos
     los libros costaria una apertura por sesion vieja -la carpeta crece una por sesion, y 300
-    son 43 ms en SessionStart-, y el que la barra lee es ese."""
+    son 43 ms en SessionStart-, y el que la barra lee es ese.
+
+    ACTIVE solo con ese libro con datos (Wave 6): instalado y escribible, sin nada contado
+    todavia, es CONFIGURED. Un estado no dice mas que su evidencia. `historica` es la ultima
+    sesion que dibujo con datos, ya validada contra la configuracion y con su libro con datos
+    (_evidencia_valida): solo la pasa la CLI, que mira la integracion y no una sesion."""
     clave = "block4Accounting"
     instalado = all(os.path.isfile(os.path.join(rt["contabilidad"], n)) for n in _CONTABILIDAD)
     carpeta = os.path.join(proyecto, *_LIBROS)
@@ -804,6 +864,9 @@ def _block4(proyecto, rt, version, previo_rc, momento, sesion_vista):
     elif not _libro_legible(libro_de_la_sesion(proyecto, sesion_vista) if sesion_vista
                             else None):
         estado, codigo = ERROR, "BLOCK4_LEDGER_UNREADABLE"
+    elif not ((sesion_vista and _libro_con_datos(libro_de_la_sesion(proyecto, sesion_vista)))
+              or historica):
+        estado, codigo = CONFIGURED, None
     else:
         estado, codigo = ACTIVE, None
     return _componente(estado, instalado, True, version,
@@ -838,15 +901,54 @@ def _guardado_de_la_barra(previo):
             "lastValidatedAt": barra.get("lastValidatedAt")}
 
 
-def _barra(proyecto, rt, version, guardado, sesion, block4_activo, lectura):
+def _prueba(huella_dibujada, version_dibujada, dibujado_en, huella, guardado):
+    """Si un dibujo prueba ESTA configuracion: la huella de ahora, la version que registro el
+    instalador, y despues de ese registro. Sin la version o sin el momento que registro el
+    instalador no prueba nada (Wave 6): no hay contra que compararlo. Es la misma regla para la
+    senal del ultimo dibujo y para la evidencia historica."""
+    version_esperada = guardado.get("integrationVersion")
+    desde = guardado.get("lastValidatedAt")
+    return huella_dibujada == huella \
+        and isinstance(version_esperada, str) and bool(version_esperada.strip()) \
+        and version_dibujada == version_esperada \
+        and isinstance(desde, str) and bool(_MOMENTO.match(desde)) \
+        and dibujado_en > desde
+
+
+def _evidencia_valida(proyecto, senal, bloque, guardado):
+    """El sessionId de la ultima sesion que dibujo con datos, si esa evidencia prueba la
+    configuracion de ahora (_prueba) y su libro sigue teniendo datos; si no, None.
+
+    🔴 La evidencia es de la integracion, no de una sesion: dice que la barra, con esta
+    configuracion, ya dibujo datos. Otra huella, otra version del renderizador o un registro
+    posterior la invalidan, aunque siga escrita en la senal."""
+    evidencia = (senal or {}).get("lastSessionWithData")
+    if not isinstance(evidencia, dict) or not es_la_barra_del_harness(bloque):
+        return None
+    if guardado.get("commandTested") is False:
+        return None
+    if not _prueba(evidencia["configurationFingerprint"], evidencia["integrationVersion"],
+                   evidencia["renderedAt"], huella_statusline(bloque), guardado):
+        return None
+    if not _libro_con_datos(libro_de_la_sesion(proyecto, evidencia["sessionId"])):
+        return None
+    return evidencia["sessionId"]
+
+
+def _barra(proyecto, rt, version, guardado, sesion, block4_estado, lectura, statusline,
+           con_datos):
     """El estado de la Context Bar. `sesion` es el session_id del SessionStart; None es la CLI,
     que no tiene sesion y mira la ultima vista.
 
-    🔴 ACTIVE solo con una senal de vida de la sesion actual, con la huella del bloque que esta
-    registrado y block4 OK. Nada de lo que hay en disco, solo, alcanza.
+    🔴 ACTIVE en una sesion solo con una senal de vida de esa sesion, con la huella del bloque
+    que esta registrado y block4 OK. Nada de lo que hay en disco, solo, alcanza.
+
+    `con_datos` es la ultima sesion que dibujo con datos, ya validada (_evidencia_valida). En
+    la CLI -que informa la integracion, no una sesion- alcanza para ACTIVE aunque el ultimo
+    dibujo haya sido vacio; en una sesion solo se informa, y nunca la hace activa.
     """
     def salida(estado, codigo=None, instalado=True, configurado=True, recarga=False,
-               activa=False, huella=None, sesion_vista=None):
+               activa=False, huella=None, sesion_vista=None, sesion_con_datos=None):
         doc = _componente(estado, instalado, configurado, version,
                           guardado.get("lastValidatedAt"), codigo)
         doc.update({"renderer": RENDERER, "source": FUENTE_DE_LA_BARRA,
@@ -855,11 +957,12 @@ def _barra(proyecto, rt, version, guardado, sesion, block4_activo, lectura):
                     "integrationVersion": guardado.get("integrationVersion"),
                     "fingerprints": guardado.get("fingerprints"),
                     "commandTested": guardado.get("commandTested"),
-                    "lastSessionId": sesion_vista})
+                    "lastSessionId": sesion_vista,
+                    "lastSessionWithData": sesion_con_datos})
         return doc
 
     en_disco = os.path.isfile(rt["renderizador"])
-    bloque, problema = leer_statusline(proyecto)
+    bloque, problema = statusline
     if problema == _ROTO:
         return salida(UNRESOLVED, "CONTEXT_BAR_VALIDATION_UNRESOLVED", en_disco, False,
                       huella=guardado.get("configurationFingerprint"))
@@ -881,26 +984,33 @@ def _barra(proyecto, rt, version, guardado, sesion, block4_activo, lectura):
                       huella=guardado.get("configurationFingerprint") or huella)
     vista = senal.get("sessionId") if senal else None
 
-    # La senal prueba ESTA configuracion si trae la huella de ahora, la version que registro
-    # el instalador, y se dibujo despues de ese registro.
-    version_esperada = guardado.get("integrationVersion")
-    desde = guardado.get("lastValidatedAt")
-    prueba = bool(senal) and senal["configurationFingerprint"] == huella \
-        and (version_esperada is None or senal["integrationVersion"] == version_esperada) \
-        and (not isinstance(desde, str) or senal["lastRenderedAt"] > desde)
+    prueba = bool(senal) and _prueba(senal["configurationFingerprint"],
+                                     senal["integrationVersion"], senal["lastRenderedAt"],
+                                     huella, guardado)
+    # En la CLI la evidencia historica prueba la integracion; en una sesion, nunca.
+    historica = con_datos if sesion is None else None
     cambio = guardado.get("reloadRequired") or guardado.get("configurationFingerprint") != huella
-    if cambio and not prueba:
+    if cambio and not (prueba or historica):
         return salida(RELOAD_REQUIRED, None, recarga=True,
                       huella=guardado.get("configurationFingerprint"), sesion_vista=vista)
 
     de_esta_sesion = bool(senal) and (sesion is None or senal["sessionId"] == sesion)
     if de_esta_sesion and prueba:
-        if senal["block4"] != BLOCK4_OK or not block4_activo:
+        if senal["block4"] != BLOCK4_OK or block4_estado == ERROR:
             return salida(ERROR, "CONTEXT_BAR_BLOCK4_SOURCE_UNAVAILABLE", huella=huella,
-                          sesion_vista=vista)
+                          sesion_vista=vista, sesion_con_datos=con_datos)
+        if block4_estado != ACTIVE:
+            # La barra se dibuja y el Bloque 4 respondio, pero todavia no conto nada: no es
+            # ACTIVE (Wave 6). CONFIGURED no suma condicion, como siempre.
+            return salida(CONFIGURED, None, huella=huella, sesion_vista=vista,
+                          sesion_con_datos=con_datos)
         return salida(ACTIVE, None, activa=sesion is not None, huella=huella,
-                      sesion_vista=vista)
-    return salida(CONFIGURED, None, huella=huella, sesion_vista=vista)
+                      sesion_vista=vista, sesion_con_datos=con_datos)
+    if historica and block4_estado == ACTIVE:
+        return salida(ACTIVE, None, huella=huella, sesion_vista=vista,
+                      sesion_con_datos=con_datos)
+    return salida(CONFIGURED, None, huella=huella, sesion_vista=vista,
+                  sesion_con_datos=con_datos)
 
 
 def _sin_desarrollo(version):
@@ -910,7 +1020,7 @@ def _sin_desarrollo(version):
     barra.update({"renderer": None, "source": None, "reloadRequired": False,
                   "activeInCurrentSession": False, "configurationFingerprint": None,
                   "integrationVersion": None, "fingerprints": None, "commandTested": None,
-                  "lastSessionId": None})
+                  "lastSessionId": None, "lastSessionWithData": None})
     return {"block4Accounting": _componente(NOT_CONFIGURED, False, False, version, None, None),
             "contextBar": barra,
             "securityReporting": _componente(NOT_CONFIGURED, False, False, version, None, None)}
@@ -923,11 +1033,14 @@ def _runtime(proyecto, desarrollo, version, previo, guardado, sesion, momento):
     previo_rc = (previo or {}).get("runtimeComponents")
     lectura = leer_senal_de_vida(proyecto)
     senal = lectura[0]
+    statusline = leer_statusline(proyecto)
+    con_datos = _evidencia_valida(proyecto, senal, statusline[0], guardado)
     block4 = _block4(proyecto, rt, version, previo_rc, momento,
-                     senal.get("sessionId") if senal else None)
+                     senal.get("sessionId") if senal else None,
+                     con_datos if sesion is None else None)
     return {"block4Accounting": block4,
             "contextBar": _barra(proyecto, rt, version, guardado, sesion,
-                                 block4["state"] == ACTIVE, lectura),
+                                 block4["state"], lectura, statusline, con_datos),
             "securityReporting": _seguridad(rt, version, previo_rc, momento)}
 
 
@@ -958,8 +1071,10 @@ def resolver(proyecto, ruta_codebase=None, momento=None, sesion=None):
     harness-installation-state.schema.json. La marca de la bienvenida (`welcome`) sale del
     archivo anterior si se pudo leer; si no, es una primera vez.
 
-    `sesion` es el session_id del evento SessionStart. Sin sesion -la CLI- la sesion actual es
-    la ultima vista, y la barra puede salir ACTIVE pero nunca `activeInCurrentSession`.
+    `sesion` es el session_id del evento SessionStart. Sin sesion -la CLI y -Doctor- la sesion
+    actual es la ultima vista, y la barra puede salir ACTIVE pero nunca
+    `activeInCurrentSession`: ACTIVE ahi es la integracion probada, por el ultimo dibujo o por
+    la ultima sesion que dibujo con datos con esta misma configuracion (`lastSessionWithData`).
     """
     return _resolver(proyecto, ruta_codebase, momento, sesion, None)
 
@@ -1257,8 +1372,9 @@ def etiqueta_de_componente(clave, componente):
 
 
 def _ultima_sesion(componente):
-    """ACTIVE en la CLI es de la ultima sesion vista, y se dice cual."""
-    vista = componente.get("lastSessionId")
+    """ACTIVE en la CLI es de la ultima sesion que dibujo con datos -o, sin esa evidencia, de la
+    ultima vista-, y se dice cual."""
+    vista = componente.get("lastSessionWithData") or componente.get("lastSessionId")
     if componente.get("state") == ACTIVE and not componente.get("activeInCurrentSession") \
             and isinstance(vista, str) and vista:
         return " (última sesión: %s)" % vista[:8]
@@ -1534,6 +1650,9 @@ def renderizar(doc):
 # El instalador es PowerShell: llama a este archivo por ruta, sin paquete ni sys.path.
 #     python .claude/harness/hooks/lib/bienvenida.py registrar <proyecto> [--barra-probada|--barra-invalida]
 #     python .claude/harness/hooks/lib/bienvenida.py huella <proyecto>
+#     python .claude/harness/hooks/lib/bienvenida.py barra <proyecto>
+# `barra` es lo que usa -Doctor: runtimeComponents.contextBar calculado ahora, sin sesion, como
+# lo calcula `dev-harness.py harness`. No escribe nada.
 _BARRA_PROBADA = {"--barra-probada": True, "--barra-invalida": False}
 
 if __name__ == "__main__":
@@ -1550,6 +1669,15 @@ if __name__ == "__main__":
         bloque, _ = leer_statusline(os.path.abspath(argv[1]))
         sys.stdout.write((huella_statusline(bloque) or "") + "\n")
         sys.exit(0)
+    if len(argv) == 2 and argv[0] == "barra":
+        try:
+            barra = resolver(os.path.abspath(argv[1]))["runtimeComponents"]["contextBar"]
+        except Exception as e:           # noqa: BLE001 - -Doctor vuelve al estado guardado
+            sys.stderr.write("no se pudo calcular la Context Bar: %s\n" % e)
+            sys.exit(1)
+        sys.stdout.write(json.dumps(barra) + "\n")
+        sys.exit(0)
     sys.stderr.write("uso: bienvenida.py registrar <proyecto> [--barra-probada|--barra-invalida]\n"
-                     "     bienvenida.py huella <proyecto>\n")
+                     "     bienvenida.py huella <proyecto>\n"
+                     "     bienvenida.py barra <proyecto>\n")
     sys.exit(2)

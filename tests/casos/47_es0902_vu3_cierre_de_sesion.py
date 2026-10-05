@@ -200,7 +200,7 @@ def test_e02_los_ids(t):
 def test_e03_nada_nuevo(t):
     """E-03 (VU3-03)."""
     registro = c_reg.cargar()
-    t.igual("E-03 diez agentes", 10, len(registro["agents"]))
+    t.igual("E-03 diez agentes", 11, len(registro["agents"]))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     t.igual("E-03 veintisiete directorios de skills", 27,
             len([d for d in SKILLS.iterdir() if d.is_dir()]))
     t.igual("E-03 cero reviews", [], seguridad.regla("Vu3", MATRIZ)["reviews"])

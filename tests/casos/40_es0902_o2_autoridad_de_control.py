@@ -720,7 +720,7 @@ def test_e28_no_se_crea_ningun_agente_y_los_controles_quedan(t):
     """E-28 — los mismos diez agentes, las mismas cuatro skills, 60 controles."""
     registro = c_reg.cargar()
     ids = sorted(a["id"] for a in registro["agents"])
-    t.igual("E-28 siguen siendo diez", 10, len(ids))
+    t.igual("E-28 siguen siendo diez", 11, len(ids))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     de_security = [a for a in registro["agents"] if a["id"] == "dev-security"][0]
     t.igual("E-28 las cuatro skills de dev-security",
             ["dev-appsec-review", "dev-security-analysis", "dev-security-assessment",

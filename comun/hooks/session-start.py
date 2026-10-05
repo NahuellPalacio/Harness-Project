@@ -51,7 +51,9 @@ def _hay_fichas(directorio):
 
 def _git(proyecto, *args):
     try:
-        r = subprocess.run(["git", "-C", proyecto] + list(args),
+        # Sin core.fsmonitor: un `git status` no corre lo que alguien planto en ~/.gitconfig
+        # (Wave 6, docs/cambios/integrity-cleanup/spec.md).
+        r = subprocess.run(["git", "-c", "core.fsmonitor=false", "-C", proyecto] + list(args),
                            capture_output=True, text=True, encoding="utf-8", errors="replace")
         return r.stdout
     except OSError:

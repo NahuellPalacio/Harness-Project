@@ -105,6 +105,12 @@ def consumido(resumen, politica):
     """
     total = (resumen or {}).get("cost") or {}
     modo = str((politica or {}).get("billingMode") or costos.DESCONOCIDO)
+    if total.get("state") not in (None, costos.RESUELTO):
+        # Un total con algo sin resolver adentro es un piso: no hay consumido que comparar, y
+        # `evaluar` lo dice como COST_UNRESOLVED. Nunca WITHIN_BUDGET sobre un piso (Wave 6).
+        campo = "actual" if modo == costos.API else (
+            "apiEquivalentEstimated" if modo in costos.MODOS_DE_PLAN else "unknown")
+        return None, campo
     if modo == costos.API:
         return total.get("actual"), "actual"
     if modo in costos.MODOS_DE_PLAN:

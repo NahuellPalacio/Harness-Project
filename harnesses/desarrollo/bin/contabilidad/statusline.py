@@ -152,9 +152,12 @@ def ingerir(b4, proyecto, sesion, transcripcion, politica):
 
     Se saltea antes de convertir lo que el libro ya tiene: el id del evento se sabe desde el
     registro, y convertir y validar cientos de registros viejos en cada mensaje era lo que
-    hacia lenta a la barra. Un registro sin resolver -la transcripcion todavia no tiene
-    consumo- no se escribe: su id se inventa en cada corrida, y la barra dejaria uno por
-    mensaje.
+    hacia lenta a la barra.
+
+    Un mensaje sin uso -USAGE_UNRESOLVED, con su clave- se escribe como cualquier otro: la barra
+    lo oculta, el libro lo conserva (Wave 6). Lo unico que no se escribe es un registro SIN
+    clave: no es un mensaje sino "la fuente todavia no trae nada", y su id se inventaria en cada
+    dibujo.
     """
     libro, contrato, registro = b4["libro"], b4["contrato"], b4["registro"]
     ruta = libro.ruta_de(proyecto, sesion)
@@ -166,7 +169,7 @@ def ingerir(b4, proyecto, sesion, transcripcion, politica):
             transcripcion, rapido=True,
             desde_linea=ultima_linea(leidos, os.path.basename(transcripcion)))
         nuevos = [r for r in leidas
-                  if r.get("state") != contrato.SIN_RESOLVER
+                  if r.get("dedupKey")
                   and contrato.id_de(r, adaptador) not in conocidos]
         if nuevos:
             eventos_ = contrato.a_eventos(nuevos, sesion, adaptador, politica, sessionId=sesion)
@@ -287,7 +290,7 @@ def correr(crudo, proyecto, momento=None, huella=None):
     if not proyecto or not sesion:
         return LINEA_SIN_DATOS, None
 
-    linea, block4 = LINEA_SIN_DATOS, "SOURCE_UNAVAILABLE"
+    linea, block4, con_datos = LINEA_SIN_DATOS, "SOURCE_UNAVAILABLE", False
     try:
         b4 = _bloque4()
         # El session_id se vuelve el nombre de una carpeta del libro y queda en la senal de
@@ -305,12 +308,15 @@ def correr(crudo, proyecto, momento=None, huella=None):
         if b4["barra"].de_sesion(libro_leido, sesion):
             estado = b4["barra"].de(libro_leido, sesion, politica)
             linea = dibujar(estado, b4, politica_ilegible)
+            con_datos = linea != LINEA_SIN_DATOS
     except Exception:                   # noqa: BLE001 - la barra no se cae nunca
-        linea = LINEA_SIN_DATOS
+        linea, con_datos = LINEA_SIN_DATOS, False
 
+    # Con datos, la senal pasa a ser la evidencia de que la barra dibuja; sin datos, la
+    # evidencia anterior queda como estaba (Wave 6, Manual B).
     try:
         bienvenida().escribir_senal_de_vida(proyecto, sesion, block4, INTEGRATION_VERSION,
-                                            momento=momento, huella=huella)
+                                            momento=momento, huella=huella, con_datos=con_datos)
     except Exception:                   # noqa: BLE001 - sin senal la barra dibuja igual
         block4 = None
     return linea, block4

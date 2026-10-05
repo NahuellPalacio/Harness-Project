@@ -1686,11 +1686,11 @@ def test_e63_no_se_crea_ningun_agente(t):
     """E-63 (S-44) — los mismos diez, y `dev-security` sigue siendo el unico de seguridad."""
     registro = c_reg.cargar()
     ids = sorted(a["id"] for a in registro["agents"])
-    t.igual("E-63 siguen siendo diez", 10, len(ids))
+    t.igual("E-63 siguen siendo diez", 11, len(ids))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     t.igual("E-63 y son los mismos",
-            ["dev-architecture", "dev-backend", "dev-devops", "dev-frontend", "dev-integration",
-             "dev-orchestrator", "dev-quality", "dev-refutador", "dev-security",
-             "dev-tool-builder"], ids)
+            ["dev-architecture", "dev-backend", "dev-devops", "dev-frontend",
+             "dev-iniciador-code", "dev-integration", "dev-orchestrator", "dev-quality",
+             "dev-refutador", "dev-security", "dev-tool-builder"], ids)
     seguridad_ids = [i for i in ids if "security" in i or "seguridad" in i]
     t.igual("E-63 uno solo de seguridad", ["dev-security"], seguridad_ids)
 

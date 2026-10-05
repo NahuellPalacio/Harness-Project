@@ -213,7 +213,7 @@ def test_e03_agente_policy_check(t):
 def test_e04_nada_inventado(t):
     """E-04 (C2-04)."""
     registro = c_reg.cargar()
-    t.igual("E-04 diez agentes", 10, len(registro["agents"]))
+    t.igual("E-04 diez agentes", 11, len(registro["agents"]))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     de_security = [a for a in registro["agents"] if a["id"] == "dev-security"][0]
     t.igual("E-04 las cuatro skills de dev-security",
             ["dev-appsec-review", "dev-security-analysis", "dev-security-assessment",

@@ -209,6 +209,14 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
 
     orden = orden_de_ejecucion(unidades)
     precondiciones_del_flujo = _precondiciones(precondiciones, unidades)
+    if precondiciones is not None:
+        # Una fuente para el repositorio de la tarea (Wave 6): la identidad del flujo, la que usa
+        # la compuerta y la que resuelve conflictos y elecciones de la persona. Sin identidad
+        # resuelta, nada: no se completa con un nombre que la identidad no confirmo.
+        repositorio = (precondiciones_del_flujo.get("repository") or {}).get("taskRepository")
+        for unidad in unidades:
+            if "repository" in (unidad.get("context") or {}):
+                unidad["context"]["repository"] = str(repositorio or "")
 
     avisos = roster.huecos(agentes, skills, checks)
     aviso_matriz = normativa.aviso_de_matriz()

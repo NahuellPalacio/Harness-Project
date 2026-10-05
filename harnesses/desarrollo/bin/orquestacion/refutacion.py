@@ -139,6 +139,17 @@ class RefutacionInvalida(Exception):
         self.codigo = codigo
 
 
+class CompuertaCerrada(RefutacionInvalida):
+    """La compuerta de REFUTATION no pasa: no se compila ni se escribe nada. `codigos` son los
+    failureCode de lo que falta, los mismos que la CLI muestra."""
+
+    def __init__(self, clave, codigos):
+        self.codigos = sorted(set(codigos))
+        RefutacionInvalida.__init__(self, self.codigos[0] if self.codigos else "FLOW_GATE_UNRESOLVED",
+                                    "no se compila la refutacion de %s: %s." % (
+                                        clave, ", ".join(self.codigos)))
+
+
 # -- utilidades ----------------------------------------------------------------
 
 def ahora():
@@ -915,13 +926,35 @@ def _sincronizar(carpeta, subdir, docs):
                 os.remove(os.path.join(destino, nombre))
 
 
+def compuerta(proyecto, clave):
+    """La compuerta de REFUTATION de la Wave 1, evaluada aca y no solo en la CLI (Wave 6).
+
+    Las reglas viven en `flujo.precondiciones.compuerta_de_refutacion`: esto solo la llama.
+    Levanta CompuertaCerrada si algo falta. La configuracion publica de GitLab se lee siempre del
+    `.env`, con el lector de solo lectura del estado del flujo: quien llama no la pasa, y asi no
+    la puede armar a su gusto.
+    """
+    from flujo import estado as flujo_estado
+    from flujo import precondiciones
+    gitlab, _ = flujo_estado._entorno(proyecto, None)
+    evaluacion = precondiciones.compuerta_de_refutacion(proyecto, clave, gitlab)
+    faltan = precondiciones.bloqueantes(evaluacion)
+    if faltan:
+        raise CompuertaCerrada(clave, [p["failureCode"] for p in faltan])
+    return evaluacion
+
+
 def compilar(proyecto, clave, desde=__file__):
     """Compila, resuelve por checks y por cache, y escribe. Devuelve la corrida.
+
+    🔴 Primero la compuerta de REFUTATION: llamada como biblioteca tampoco se compila sobre un
+    plan que no esta listo, un TaskContext que cambio o un checkout que no es el de la tarea.
 
     Un veredicto ya registrado sobrevive si su unidad sigue teniendo la misma clave de cache;
     si no, deja de valer y se avisa. Dos compilaciones seguidas dejan los mismos bytes.
     """
     clave = validar_clave(clave)
+    compuerta(proyecto, clave)
     carpeta = carpeta_de(proyecto, clave)
     plan = _leer_plan(proyecto, clave)
     scope, resultados, avisos = _entradas_de(proyecto, clave, desde)

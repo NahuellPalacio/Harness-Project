@@ -1,6 +1,7 @@
 """El almacen de secretos. Una interfaz, un backend, y la promesa de que el valor no sale.
 
-    get(nombre) / set(nombre, valor) / exists(nombre) / remove(nombre)
+    get(nombre) / exists(nombre)          leen
+    set(nombre, valor) / remove(nombre)   levantan: el `.env` es de la persona (Wave 6)
 
 El resto del harness depende de esta interfaz y no sabe donde viven fisicamente los
 secretos. Hoy el backend es el `.env` de la raiz del proyecto, que ya viene protegido
@@ -127,45 +128,19 @@ class AlmacenSecretos(object):
         return self.get(nombre) is not None
 
     # -- escritura -------------------------------------------------------------
-
-    def _escribir(self, lineas):
-        try:
-            with open(self.ruta, "w", encoding="utf-8", newline="\n") as f:
-                f.write("\n".join(lineas))
-                if lineas:
-                    f.write("\n")
-        except OSError as e:
-            raise ErrorDeAlmacen("no se pudo escribir %s (%s)" % (self.ruta, e.strerror))
+    #
+    # 🔴 El harness no escribe la configuracion de la persona (entorno primero, 0.26.0). Desde
+    # entonces nadie llamaba a set ni a remove; la Wave 6 los cierra para que tampoco los pueda
+    # llamar nadie despues. Levantan sin abrir el archivo, y el mensaje no lleva el valor.
 
     def set(self, nombre, valor):
-        """Reescribe solo la linea de esa variable. El resto del archivo no se mueve.
-
-        Comentarios, orden y variables ajenas quedan como estaban: el `.env` es de la
-        persona, y un archivo reordenado por una herramienta es un archivo que la
-        persona deja de reconocer.
-        """
-        if valor is None:
-            raise ErrorDeAlmacen("no se puede guardar un valor vacio en %s" % nombre)
-        lineas = self._lineas()
-        escrito = False
-        for i, linea in enumerate(lineas):
-            m = _LINEA.match(linea)
-            if m and m.group(1) == nombre:
-                lineas[i] = "%s=%s" % (nombre, valor)
-                escrito = True
-                break
-        if not escrito:
-            lineas.append("%s=%s" % (nombre, valor))
-        self._escribir(lineas)
+        raise ErrorDeAlmacen(
+            "el harness no escribe %s: el .env es de la persona. Editalo vos y retomá con "
+            "`flujo <KEY> --resume`." % nombre)
 
     def remove(self, nombre):
-        """Saca la linea. Devuelve si habia algo que sacar."""
-        lineas = self._lineas()
-        quedan = [l for l in lineas if not (_LINEA.match(l) and _LINEA.match(l).group(1) == nombre)]
-        if len(quedan) == len(lineas):
-            return False
-        self._escribir(quedan)
-        return True
+        raise ErrorDeAlmacen(
+            "el harness no borra %s: el .env es de la persona. Editalo vos." % nombre)
 
     def __repr__(self):
         return "AlmacenSecretos(%s)" % os.path.basename(self.ruta)

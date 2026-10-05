@@ -262,7 +262,7 @@ def test_e07_los_dos_checks(t):
 def test_e08_ningun_agente_ni_skill_nuevos(t):
     """E-08 (C1-08)."""
     registro = c_reg.cargar()
-    t.igual("E-08 siguen siendo diez agentes", 10, len(registro["agents"]))
+    t.igual("E-08 siguen siendo diez agentes", 11, len(registro["agents"]))  # once desde la Wave 6: dev-iniciador-code se registro (integrity-cleanup, E-21)
     por_id = {a["id"]: a for a in registro["agents"]}
     t.igual("E-08 las skills de dev-security",
             ["dev-appsec-review", "dev-security-analysis", "dev-security-assessment",
