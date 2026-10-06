@@ -1,8 +1,12 @@
 """Del libro al `summary.json`. Deterministico, y con las tres reglas que lo hacen serio.
 
     1. Un hecho observado dos veces cuenta una vez      -> `dedupKey`
-    2. La foto de la ventana no se suma                 -> `contextTokens`
+    2. La foto de la ventana no se suma                 -> `contextTokens`, CONTEXT_WINDOW_OBSERVED
     3. Lo que no se pudo atribuir no se reparte         -> `unattributed`
+
+Una CONTEXT_WINDOW_OBSERVED no es consumo: queda afuera de las sumas, de `events.counted`, de
+las filas, de la conciliacion y de lo no atribuido. Lo unico que hace es decir cuanto ocupa la
+ventana, y el contexto del resumen es la ULTIMA del libro, nunca la suma ni la mayor.
 
 La invariante que todo reporte tiene que cumplir, y que se puede contar a mano:
 
@@ -41,6 +45,12 @@ SIN_CONCILIAR = "USAGE_RECONCILIATION_UNRESOLVED"
 ESCALAMIENTO = "MODEL_ESCALATION_REQUESTED"
 DECISION = "BUDGET_DECISION_RECORDED"
 
+# De donde sale el contexto del resumen. El de una foto lo declara la foto -lo escribe el
+# adaptador que la leyo-; estos dos son los que no dependen de ningun proveedor.
+FUENTE_TRANSCRIPCION = "TRANSCRIPT_ONLY"
+SIN_FUENTE = "UNRESOLVED"
+VENTANA_INCONSISTENTE = eventos.VENTANA_INCONSISTENTE
+
 
 def _cero():
     return dict((c, 0) for c in CLASES)
@@ -66,7 +76,8 @@ def _agregado_del_proveedor(evento):
 def _utiles(libro):
     """Los eventos que entran en la suma, en orden, ya deduplicados y corregidos.
 
-    Devuelve (contables, conteos, agregados_del_proveedor).
+    Devuelve (contables, conteos, agregados_del_proveedor, fotos). Las fotos de la ventana van
+    aparte y en el orden del libro: no son contables y no se cuentan como tales.
     """
     corregidos = set()
     for evento in libro:
@@ -75,11 +86,13 @@ def _utiles(libro):
 
     contables = []
     agregados = []
+    fotos = []
     vistas = set()
+    vistas_fotos = set()
     ids = set()
     conteos = {"total": len(libro), "counted": 0, "duplicates": 0,
                "corrections": 0, "corrected": 0, "unreadable": 0,
-               "providerAggregates": 0}
+               "providerAggregates": 0, "contextSnapshots": 0}
 
     for evento in libro:
         if (evento.get("metadata") or {}).get("unreadable"):
@@ -92,6 +105,16 @@ def _utiles(libro):
         ids.add(eid)
         if eid in corregidos:
             conteos["corrected"] += 1
+            continue
+        if evento.get("eventType") == eventos.FOTO_DE_VENTANA:
+            clave = evento.get("dedupKey")
+            if clave and clave in vistas_fotos:
+                conteos["duplicates"] += 1
+                continue
+            if clave:
+                vistas_fotos.add(clave)
+            conteos["contextSnapshots"] += 1
+            fotos.append(evento)
             continue
         if evento.get("eventType") == eventos.CORRECCION:
             conteos["corrections"] += 1
@@ -108,7 +131,7 @@ def _utiles(libro):
         contables.append(evento)
         conteos["counted"] += 1
 
-    return contables, conteos, _el_ultimo_de_cada_medicion(agregados)
+    return contables, conteos, _el_ultimo_de_cada_medicion(agregados), fotos
 
 
 def _medicion(evento):
@@ -193,12 +216,25 @@ def _filas_por_modelo(contables):
     return salida
 
 
-def _foto_de_contexto(contables):
+def _foto_valida(evento):
+    """La `contextWindow` de una CONTEXT_WINDOW_OBSERVED que dice cuantos tokens hay, o None."""
+    foto = evento.get("contextWindow")
+    if not isinstance(foto, dict) or not eventos.entero_no_negativo(foto.get("contextTokens")):
+        return None
+    return foto
+
+
+def _foto_de_contexto(contables, fotos=()):
     """La ULTIMA foto de la ventana, nunca la suma de todas.
 
     🔴 Sumar fotos de contexto es la forma mas facil de reportar un numero enorme y falso:
     cada llamada vuelve a mandar la conversacion entera, asi que la suma de las fotos crece
     como el cuadrado de los turnos y no significa nada.
+
+    Si hay alguna CONTEXT_WINDOW_OBSERVED valida, gana la ultima en el orden del libro, con la
+    fuente que declara. Si no, la ultima llamada al modelo que trae `contextTokens`, como
+    siempre: TRANSCRIPT_ONLY. Sin ninguna de las dos, UNRESOLVED. El modelo es siempre el de la
+    ultima llamada: una foto dice cuanto ocupa la ventana, no quien la llena.
     """
     ultima = None
     for evento in contables:
@@ -209,10 +245,35 @@ def _foto_de_contexto(contables):
                   "contextLimit": uso.get("contextLimit"),
                   "sessionId": evento.get("sessionId"),
                   "model": uso.get("model"),
-                  "at": evento.get("timestamp")}
+                  "at": evento.get("timestamp"),
+                  "source": FUENTE_TRANSCRIPCION,
+                  "reportedUsedPercentage": None,
+                  "reportedRemainingPercentage": None}
+
+    de_la_foto = None
+    for evento in fotos:
+        foto = _foto_valida(evento)
+        if foto is None:
+            continue
+        limite = foto.get("contextLimit")
+        de_la_foto = {"contextTokens": int(foto["contextTokens"]),
+                      "contextLimit": limite if eventos.entero_no_negativo(limite) and limite
+                      else None,
+                      "sessionId": evento.get("sessionId"),
+                      "model": (ultima or {}).get("model"),
+                      "at": evento.get("timestamp"),
+                      "source": str(foto.get("source") or SIN_FUENTE),
+                      "reportedUsedPercentage": foto.get("reportedUsedPercentage"),
+                      "reportedRemainingPercentage": foto.get("reportedRemainingPercentage")}
+    if de_la_foto is not None:
+        ultima = de_la_foto
+
     if ultima is None:
         return {"contextTokens": None, "contextLimit": None, "sessionId": None,
-                "model": None, "at": None}
+                "model": None, "at": None, "source": SIN_FUENTE, "diagnostic": None,
+                "reportedUsedPercentage": None, "reportedRemainingPercentage": None}
+    ultima["diagnostic"] = eventos.diagnostico_de_ventana(ultima["contextTokens"],
+                                                          ultima["contextLimit"])
     return ultima
 
 
@@ -263,9 +324,11 @@ def _elegir(reportado, derivado, resuelto):
     return derivado, DERIVADO
 
 
-def _sin_resolver(contables, tokens_tiempo, costo, no_atribuido, conciliacion):
+def _sin_resolver(contables, tokens_tiempo, costo, no_atribuido, conciliacion, contexto=None):
     """Los estados que quedaron abiertos, ordenados y sin repetir."""
     abiertos = set()
+    if (contexto or {}).get("diagnostic") == VENTANA_INCONSISTENTE:
+        abiertos.add(VENTANA_INCONSISTENTE)
     for evento in contables:
         if (evento.get("usage") or {}).get("state") == SIN_USO:
             abiertos.add(SIN_USO)
@@ -289,7 +352,7 @@ def _sin_resolver(contables, tokens_tiempo, costo, no_atribuido, conciliacion):
 
 def resumir(libro, task_id="", project_id=None, presupuesto=None):
     """El `summary.json` de un libro. Mismo libro, mismo resumen, byte a byte."""
-    contables, conteos, agregados = _utiles(libro)
+    contables, conteos, agregados, fotos = _utiles(libro)
 
     tokens = _cero()
     for evento in contables:
@@ -322,7 +385,7 @@ def resumir(libro, task_id="", project_id=None, presupuesto=None):
         "window": {"startedAt": marcas[0] if marcas else None,
                    "completedAt": marcas[-1] if marcas else None},
         "tokens": tokens,
-        "context": _foto_de_contexto(contables),
+        "context": _foto_de_contexto(contables, fotos),
         "time": total_tiempo,
         "timeSource": fuente_tiempo,
         "cost": total_costo,
@@ -339,7 +402,7 @@ def resumir(libro, task_id="", project_id=None, presupuesto=None):
         "budget": presupuesto or {},
     }
     resumen["unresolved"] = _sin_resolver(
-        contables, total_tiempo, total_costo, no_atribuido, conciliacion)
+        contables, total_tiempo, total_costo, no_atribuido, conciliacion, resumen["context"])
     # Que familia esta resuelta, para quien muestra un numero y no puede importar la regla
     # (el reporte de seguridad). Un 0 de una familia sin resolver no es un cero medido.
     resumen["resolved"] = presentacion.resuelto(resumen)

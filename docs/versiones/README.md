@@ -38,6 +38,8 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.28.0](0.28.0.md) | 01-10-2026 | Bloque 1: la Context Bar muestra `Ctx NN%` desde la instalación, con una política solo de contexto y la ventana que manda Claude Code; `harness --verbose` dice por qué puede pintar o no |
+| [0.27.0](0.27.0.md) | 30-09-2026 | Bloque 1: el conocimiento se vuelve a mirar solo, en momentos controlados y sin aceptar nada; la Context Bar muestra en color el nivel del Bloque 4 |
 | [0.26.0](0.26.0.md) | 28-09-2026 | Bloque 1: la configuración de las integraciones sale del `.env`; el JSON pasa a ser una proyección generada y `setup` deja de preguntar |
 | [0.25.0](0.25.0.md) | 28-09-2026 | ES0902 Vu9, el control de uso de lo público sin autenticación, y Vu10, la guía OWASP que aplica; queda completa la parte Vu de ES0902 |
 | [0.24.0](0.24.0.md) | 25-09-2026 | Un proyecto instalado acepta sus fuentes oficiales; la sonda de Jira acotada; los adjuntos de Jira Cloud se bajan; ES0902 Vu8 |

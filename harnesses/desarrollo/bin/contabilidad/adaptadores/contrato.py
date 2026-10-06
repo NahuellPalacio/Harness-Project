@@ -9,10 +9,16 @@ costo- pasa acá, del lado que no conoce ningun proveedor.
     time     wallMs, modelMs, toolMs
     session  providerSessionId
     dedupKey la clave de idempotencia del hecho
-    kind     USAGE (un hecho) o PROVIDER_AGGREGATE (otra medicion del mismo periodo)
+    kind     USAGE (un hecho), PROVIDER_AGGREGATE (otra medicion del mismo periodo) o
+             CONTEXT_SNAPSHOT (una foto de la ventana, que no es consumo)
 
 🔴 `context` no es facturable y no se suma. Va en el registro porque la barra lo necesita;
 la agregacion sabe que es una foto.
+
+🔴 Un CONTEXT_SNAPSHOT se escribe como CONTEXT_WINDOW_OBSERVED, con sus numeros en
+`contextWindow` y sin `usage`, `time` ni `cost`: una foto no es una llamada al modelo, y un
+evento de uso con ceros entraria a los conteos, a la conciliacion y a la atribucion. Lo arma
+el adaptador con `foto(...)`; aca no se sabe de donde salio ni como se llaman sus campos.
 """
 from .. import costos
 from .. import eventos
@@ -20,7 +26,8 @@ from .. import tiempo
 
 USO = "USAGE"
 AGREGADO = "PROVIDER_AGGREGATE"
-CLASES = (USO, AGREGADO)
+FOTO = "CONTEXT_SNAPSHOT"
+CLASES = (USO, AGREGADO, FOTO)
 
 RESUELTO = "RESOLVED"
 SIN_RESOLVER = eventos.SIN_RESOLVER
@@ -65,6 +72,24 @@ def registro(provider=None, model=None, tokens=None, time=None, session=None,
     }
 
 
+def foto(provider=None, model=None, context=None, limit=None, reported_used=None,
+         reported_remaining=None, source=None, session=None, dedup_key=None, reference=None,
+         timestamp=None):
+    """Una foto de la ventana: cuanto ocupa y de cuanto es, segun el proveedor.
+
+    `context` tiene que ser un entero ya resuelto: una foto sin tokens no es una foto, y el
+    adaptador devuelve "sin observacion" en vez de armarla. `limit` puede faltar -None-, y
+    los dos porcentajes van como los mando el proveedor: son evidencia, no el calculo.
+    """
+    reg = registro(provider=provider, model=model,
+                   tokens={"context": context, "contextLimit": limit},
+                   session=session, dedup_key=dedup_key, reference=reference,
+                   timestamp=timestamp, kind=FOTO)
+    reg["window"] = {"source": source, "usedPercentage": reported_used,
+                     "remainingPercentage": reported_remaining}
+    return reg
+
+
 def sin_resolver(reference="", motivo="", provider=None, model=None):
     """El registro de una fuente que no pudo reportar consumo.
 
@@ -98,6 +123,13 @@ def validar_registro(reg):
         errores.append(
             "un registro de uso resuelto sin `dedupKey` no se puede deduplicar, y lo que "
             "no se puede deduplicar se cuenta dos veces")
+    if reg.get("kind") == FOTO:
+        if not eventos.entero_no_negativo((reg.get("tokens") or {}).get("context")):
+            errores.append("una foto sin `tokens.context` no es una foto de la ventana")
+        if not reg.get("dedupKey"):
+            errores.append(
+                "una foto sin `dedupKey` tendria un id nuevo en cada dibujo, y el libro creceria "
+                "con la misma observacion")
     return errores
 
 
@@ -123,6 +155,8 @@ def a_evento(reg, task_id, adaptador, politica=None, tipo="MODEL_CALL_COMPLETED"
     if errores:
         raise ContratoInvalido(
             "el registro no cumple el contrato:\n  - %s" % "\n  - ".join(errores[:5]))
+    if reg.get("kind") == FOTO:
+        return _evento_de_foto(reg, task_id, adaptador, **atribucion)
 
     uso = _uso_de(reg)
     crudo = reg.get("time") or {}
@@ -156,8 +190,40 @@ def a_evento(reg, task_id, adaptador, politica=None, tipo="MODEL_CALL_COMPLETED"
     return eventos.nuevo(tipo, task_id, adaptador, **campos)
 
 
+def _evento_de_foto(reg, task_id, adaptador, **atribucion):
+    """CONTEXT_WINDOW_OBSERVED: la foto en `contextWindow`, y nada de uso, tiempo ni plata.
+
+    El diagnostico sale de los numeros, no de lo que diga el adaptador: con mas tokens que
+    ventana la foto lo lleva escrito, y el resumen lo vuelve a calcular igual."""
+    tokens = reg.get("tokens") or {}
+    ventana = reg.get("window") or {}
+    foto_ = {"contextTokens": tokens.get("context"),
+             "contextLimit": tokens.get("contextLimit"),
+             "reportedUsedPercentage": ventana.get("usedPercentage"),
+             "reportedRemainingPercentage": ventana.get("remainingPercentage")}
+    if ventana.get("source"):
+        foto_["source"] = ventana["source"]
+    diagnostico = eventos.diagnostico_de_ventana(foto_["contextTokens"], foto_["contextLimit"])
+    if diagnostico:
+        foto_["diagnostic"] = diagnostico
+    campos = dict(atribucion)
+    campos.pop("metadata", None)
+    campos.setdefault("sessionId", (reg.get("session") or {}).get("providerSessionId"))
+    campos.update({
+        "dedupKey": reg.get("dedupKey"),
+        "rawReference": reg.get("reference"),
+        "contextWindow": foto_,
+    })
+    if reg.get("timestamp"):
+        campos["timestamp"] = reg["timestamp"]
+    return eventos.nuevo(eventos.FOTO_DE_VENTANA, task_id, adaptador, **campos)
+
+
 def tipo_de(reg):
-    """El tipo de evento que le toca a un registro: un agregado cierra la sesion."""
+    """El tipo de evento que le toca a un registro: un agregado cierra la sesion, y una foto
+    es una observacion de la ventana."""
+    if reg.get("kind") == FOTO:
+        return eventos.FOTO_DE_VENTANA
     return "SESSION_COMPLETED" if reg.get("kind") == AGREGADO else "MODEL_CALL_COMPLETED"
 
 

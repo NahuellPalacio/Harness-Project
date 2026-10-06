@@ -361,7 +361,11 @@ def test_e01_el_evento_valida_contra_su_contrato(t):
                 _levanta(lambda: _ev(tipo="TASK_EXPLODED")))
     t.verdadero("E-01 sin tarea se rechaza",
                 _levanta(lambda: _ev(tarea="")))
-    t.igual("E-01 son trece tipos", 13, len(c_eventos.TIPOS))
+    # Eran trece. pisado por docs/cambios/context-bar-consumo-desde-instalacion/spec.md: el
+    # catorce es CONTEXT_WINDOW_OBSERVED, la foto de la ventana, que no es consumo.
+    t.igual("E-01 son catorce tipos", 14, len(c_eventos.TIPOS))
+    t.igual("E-01 y el catorce es la foto de la ventana", "CONTEXT_WINDOW_OBSERVED",
+            c_eventos.TIPOS[-1])
 
 
 def _levanta(fn):
@@ -1790,7 +1794,11 @@ def test_e37_el_libro_no_guarda_ni_prompts_ni_secretos(t):
         # cuenta de 26 campos.
         # Re-medido el 25-09-2026 con las cuatro claves acotadas de la refutacion:
         # 9643 + 82 de sus nombres y sus valores mas largos.
-        t.igual("E-37 el techo medido el 25-09-2026", 9725, techo)
+        # Re-medido el 30-09-2026, pisado por docs/cambios/context-bar-consumo-desde-instalacion/
+        # spec.md: 9725 + 161 de `contextWindow`, que son sus siete nombres de clave, el valor de
+        # `source` y el de `diagnostic`. Ninguno es texto libre: los dos valores son un enum, y la
+        # cuenta de 26 campos de texto de abajo no cambia.
+        t.igual("E-37 el techo medido el 30-09-2026", 9886, techo)
         t.verdadero("E-37 y esta debajo de los 10.000 que publica la spec", techo < 10000)
 
         maximo = _maximo_del_contrato()

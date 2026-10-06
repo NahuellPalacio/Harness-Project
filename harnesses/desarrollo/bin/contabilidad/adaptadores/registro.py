@@ -28,6 +28,17 @@ PROVEEDORES = tuple(sorted(set(
 DE_LA_BARRA = claude_code.NOMBRE
 
 
+def contexto_de_la_barra(entrada, sesion=None, cursor=0):
+    """La foto de la ventana que el cliente le mando a la barra por stdin, o None.
+
+    La barra le pasa el stdin entero, ya parseado, y no sabe como se llama ningun campo: eso
+    lo sabe el adaptador de DE_LA_BARRA. Un adaptador sin foto de ventana devuelve None, que es
+    "sin observacion", no cero.
+    """
+    leer = getattr(resolver(DE_LA_BARRA), "contexto_de_statusline", None)
+    return leer(entrada, sesion=sesion, cursor=cursor) if leer else None
+
+
 def nombres():
     return tuple(sorted(ADAPTADORES))
 

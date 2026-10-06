@@ -1,0 +1,14 @@
+{
+  "policyId": "gcba-harness-context-bar-default",
+  "currency": "USD",
+  "billingMode": "UNKNOWN",
+  "task": null,
+  "project": null,
+  "premiumModel": null,
+  "statusBar": {
+    "warningAt": null,
+    "errorAt": null,
+    "contextWarningAt": 0.7,
+    "contextErrorAt": 0.9
+  }
+}

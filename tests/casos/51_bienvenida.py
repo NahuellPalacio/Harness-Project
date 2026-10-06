@@ -487,9 +487,14 @@ def test_e09_el_conocimiento_sale_del_state_de_cada_fuente(t):
     t.verdadero("E-09 no importa frescura", not any("frescura" in n for n in _importados(LIB)))
     # "sha256" a secas ya no: desde bloque-1-context-bar el modulo calcula la huella del bloque
     # statusLine. Lo que no lee es la evidencia de frescura, que son estos nombres.
-    for campo in ("observed_version", "registry_version", "observed_sha256", "registry_sha256",
-                  "attachmentId", "evidence"):
+    #
+    # Desde conocimiento-auto-refresco la bienvenida MUESTRA la version aceptada y la observada, y
+    # arma la huella de notificacion con la identidad del adjunto (observed_version,
+    # registry_version, observed_sha256, attachmentId): se copian, no se comparan. Lo que sigue sin
+    # leer es lo que haria falta para RESOLVER un estado: el hash de fabrica y la evidencia.
+    for campo in ("registry_sha256", "evidence"):
         t.no_contiene("E-09 no lee %s" % campo, campo, fuente)
+    t.verdadero("E-09 no compara versiones", "comparar(" not in fuente)
 
 
 # -- E-10 — una alerta de integridad ------------------------------------------------------

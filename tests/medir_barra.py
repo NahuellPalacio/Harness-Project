@@ -18,6 +18,11 @@ Arma un proyecto descartable en el temporal con el arbol que copia install.ps1 -
 schemas, bin y bin/desarrollo-, compilado como lo deja install.ps1, y lo borra al terminar. No
 toca ningun proyecto de nadie. El proceso se lanza directo, sin shell: lo que agrega Git Bash o
 PowerShell alrededor no es de la barra.
+
+Cada dibujo lleva en el stdin el `context_window` que el cliente manda siempre: el mismo
+mientras no hay un mensaje nuevo, y otro con cada uno. Con un mensaje nuevo la barra anota una
+foto de la ventana en el libro, y ese es el costo que se mide en `conMensajeNuevoP50Ms`
+(docs/cambios/context-bar-consumo-desde-instalacion, en Riesgos).
 """
 import argparse
 import json
@@ -95,6 +100,18 @@ def transcripcion(ruta, bytes_objetivo, sesion=SESION):
     return n
 
 
+def entrada_de(ruta, n, sesion=SESION):
+    """El stdin del dibujo despues del turno `n`: la sesion, la transcripcion y la ventana de ese
+    turno. Una ventana de un millon, para que ninguna transcripcion de prueba la llene."""
+    return json.dumps({"session_id": sesion, "transcript_path": ruta, "context_window": {
+        "context_window_size": 10 ** 6,
+        "total_input_tokens": 40912 + 50 * n, "total_output_tokens": 300 + n % 97,
+        "used_percentage": 4, "remaining_percentage": 96,
+        "current_usage": {"input_tokens": 12, "output_tokens": 300 + n % 97,
+                          "cache_creation_input_tokens": 900,
+                          "cache_read_input_tokens": 40000 + 50 * n}}}).encode("utf-8")
+
+
 def _dibujar(renderizador, entrada):
     t = time.perf_counter()
     r = subprocess.run([sys.executable, renderizador], input=entrada,
@@ -109,7 +126,7 @@ def medir(corridas=11, mb=5.0):
         renderizador = armar(proyecto)
         ruta = os.path.join(base, "sesion.jsonl")
         turnos = transcripcion(ruta, int(mb * 1024 * 1024))
-        entrada = json.dumps({"session_id": SESION, "transcript_path": ruta}).encode("utf-8")
+        entrada = entrada_de(ruta, turnos)
 
         primera, linea = _dibujar(renderizador, entrada)
         quietas = [_dibujar(renderizador, entrada)[0] for _ in range(max(1, corridas))]
@@ -117,7 +134,7 @@ def medir(corridas=11, mb=5.0):
         for i in range(max(1, corridas)):
             with open(ruta, "a", encoding="utf-8", newline="\n") as f:
                 f.write(_mensaje(turnos + 1 + i, SESION))
-            nuevas.append(_dibujar(renderizador, entrada)[0])
+            nuevas.append(_dibujar(renderizador, entrada_de(ruta, turnos + 1 + i))[0])
         return {"primeraMs": round(primera), "p50Ms": round(statistics.median(quietas)),
                 "conMensajeNuevoP50Ms": round(statistics.median(nuevas)),
                 "corridas": max(1, corridas), "bytes": os.path.getsize(ruta),

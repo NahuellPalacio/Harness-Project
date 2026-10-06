@@ -1324,6 +1324,12 @@ def _evidencia(proy):
     return (M53._senal_de(proy) or {}).get("lastSessionWithData") or {}
 
 
+def _version_del_renderizador(ruta):
+    """La INTEGRATION_VERSION que declara el renderizador instalado en `ruta`."""
+    m = re.search(r'^INTEGRATION_VERSION = "([^"]+)"', Path(ruta).read_text(encoding="utf-8"), re.M)
+    return m.group(1) if m else None
+
+
 def _doctor(proy, lib=None):
     """Lo que corre -Doctor con Python: bienvenida.py barra <proyecto>, del arbol instalado. (codigo,
     contextBar o None, stderr)."""
@@ -1365,7 +1371,10 @@ def test_e36_un_dibujo_con_datos_deja_evidencia(t):
         t.igual("E-36 la evidencia es de S1", S1, ev.get("sessionId"))
         t.igual("E-36 con la huella del comando que corrio", comando[-1],
                 ev.get("configurationFingerprint"))
-        t.igual("E-36 con la version del renderizador", "1.0.0", ev.get("integrationVersion"))
+        # La version sale del renderizador instalado, no de un literal: la integracion con 0.28.0
+        # la paso de 1.0.0 a 1.2.0 (docs/cambios/flow-governance/integracion-0.28.md).
+        t.igual("E-36 con la version del renderizador", _version_del_renderizador(comando[1]),
+                ev.get("integrationVersion"))
         t.verdadero("E-36 con el momento del dibujo",
                     bool(re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$", ev.get("renderedAt") or "")))
         senal = M53._senal_de(proy)
@@ -1486,22 +1495,31 @@ def test_e40_otra_configuracion_invalida_la_evidencia(t):
 
 
 def test_e41_otra_version_de_la_integracion_invalida_la_evidencia(t):
-    """E-41 — con otra version del renderizador, la evidencia de S1 (version 1.0.0) no prueba
-    nada."""
+    """E-41 — con otra version del renderizador, la evidencia de S1 (la version instalada) no
+    prueba nada.
+
+    La version se lee del renderizador instalado y la nueva se deriva de ella: el literal 1.0.0
+    dejo de ser la version con la integracion de 0.28.0, que la pasa a 1.2.0, y el reemplazo no
+    cambiaba nada (docs/cambios/flow-governance/integracion-0.28.md)."""
     base, proy, comando = _s1_con_datos_y_s2_vacia()
     try:
         renderizador = Path(comando[1])
-        renderizador.write_text(renderizador.read_text(encoding="utf-8").replace(
-            'INTEGRATION_VERSION = "1.0.0"', 'INTEGRATION_VERSION = "1.0.1"'), encoding="utf-8")
+        vieja = _version_del_renderizador(renderizador)
+        nueva = vieja + ".1"
+        texto = renderizador.read_text(encoding="utf-8")
+        cambiado = texto.replace('INTEGRATION_VERSION = "%s"' % vieja,
+                                 'INTEGRATION_VERSION = "%s"' % nueva)
+        t.verdadero("E-41 el renderizador instalado cambio de version", cambiado != texto)
+        renderizador.write_text(cambiado, encoding="utf-8")
         M53.B.registrar_instalacion(str(proy), barra_probada=True, momento="2026-10-01T11:00:00")
         _, barra, _ = _doctor(proy)
         t.verdadero("E-41 version nueva sin dibujar: no es ACTIVE",
                     (barra or {}).get("state") not in (None, "ACTIVE"))
         _dibuja(proy, comando, S3, False)
-        t.igual("E-41 la evidencia vieja sigue con 1.0.0", "1.0.0",
+        t.igual("E-41 la evidencia vieja sigue con la version vieja", vieja,
                 _evidencia(proy).get("integrationVersion"))
         _, barra, _ = _doctor(proy)
-        t.igual("E-41 S3 vacia con 1.0.1: CONFIGURED, no ACTIVE", "CONFIGURED",
+        t.igual("E-41 S3 vacia con la version nueva: CONFIGURED, no ACTIVE", "CONFIGURED",
                 (barra or {}).get("state"))
         t.igual("E-41 ni la nombra", None, (barra or {}).get("lastSessionWithData"))
     finally:

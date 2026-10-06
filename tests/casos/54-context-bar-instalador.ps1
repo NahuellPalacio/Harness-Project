@@ -1,4 +1,5 @@
-# E-07, E-08, E-26, E-31, E-32 y E-36 de docs/cambios/bloque-1-context-bar/spec.md.
+# E-07, E-08, E-26, E-31, E-32 y E-36 de docs/cambios/bloque-1-context-bar/spec.md, y E-19 de
+# docs/cambios/context-bar-colores/spec.md.
 #
 # Sin acentos a proposito: un .ps1 con caracteres no ASCII necesita BOM (ver
 # 00-encoding-fuentes.ps1). Los textos del instalador se comparan por su parte ASCII.
@@ -33,6 +34,11 @@ function Invoke-ShellCb {
     $psi.StandardOutputEncoding = New-Object System.Text.UTF8Encoding $false
     if ($psi.EnvironmentVariables.ContainsKey('CLAUDE_PROJECT_DIR')) {
         $psi.EnvironmentVariables.Remove('CLAUDE_PROJECT_DIR')
+    }
+    # La suite puede correr bajo Claude Code, que le pone NO_COLOR a los comandos de sus
+    # herramientas. E-19 prueba que los colores pasan por el shell: sin NO_COLOR.
+    if ($psi.EnvironmentVariables.ContainsKey('NO_COLOR')) {
+        $psi.EnvironmentVariables.Remove('NO_COLOR')
     }
     $p = [System.Diagnostics.Process]::Start($psi)
     $salida = $p.StandardOutput.ReadToEndAsync()
@@ -88,8 +94,13 @@ try {
         'Context Bar configurada. Reinici' $r.Salida
     Assert-Verdadero 'E-26 no hay senal de vida: la prueba del instalador no dejo ninguna' `
         (-not (Test-Path -LiteralPath $rutaSenal))
+    # El libro del Bloque 4 vive en runtime\accounting. Desde conocimiento-auto-refresco la
+    # instalacion deja en runtime\ la agenda de la revision de fuentes, que no es un libro.
     Assert-Verdadero 'E-26 ni un libro de la prueba' `
-        (-not (Test-Path -LiteralPath (Join-Path $demoCb '.claude\runtime')))
+        (-not (Test-Path -LiteralPath (Join-Path $demoCb '.claude\runtime\accounting')))
+    Assert-Verdadero 'E-26 ni otra cosa en runtime que la agenda de fuentes' `
+        (@(Get-ChildItem -LiteralPath (Join-Path $demoCb '.claude\runtime') -Force -ErrorAction SilentlyContinue |
+           Where-Object { $_.Name -ne 'knowledge-refresh.json' }).Count -eq 0)
     $estado = Read-EstadoCb $demoCb
     Assert-Igual 'E-26 la barra queda RELOAD_REQUIRED' 'RELOAD_REQUIRED' $estado.runtimeComponents.contextBar.state
     Assert-Igual 'E-26 con reloadRequired' 'True' ([string]$estado.runtimeComponents.contextBar.reloadRequired)
@@ -129,15 +140,55 @@ try {
                      Exe = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
                      Previos = @('-NoProfile', '-Command') })
     if ($bashCb) { $shellsCb += @{ Nombre = 'bash -c'; Exe = $bashCb; Previos = @('-c') } }
+    # -- E-19 de docs/cambios/context-bar-colores/spec.md: el ERROR llega en rojo por los dos shells --
+    # Otra sesion, con una politica y un costo que dejan el presupuesto en ERROR. Va antes de
+    # E-36, que despues deja la senal de vida de $sesionCb para lo que sigue.
+    $rutaPoliticaCb = Join-Path $demoCb '.claude\harness.presupuesto.json'
+    [System.IO.File]::WriteAllText($rutaPoliticaCb, ('{"policyId":"gcba","currency":"USD","billingMode":"SUBSCRIPTION",' +
+        '"task":{"softLimit":1.0,"hardLimit":2.0},' +
+        '"premiumModel":{"requiresHumanApproval":true,"projectedOverrunRequiresApproval":true},' +
+        '"statusBar":{"warningAt":0.5,"errorAt":0.9,"contextWarningAt":0.7,"contextErrorAt":0.9}}'),
+        (New-Object System.Text.UTF8Encoding $false))
+    $sesionRojo = 's-cb54-rojo-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8)
+    $fuenteRojo = Join-Path $baseCb 'sesion-rojo.jsonl'
+    $costoRojo = '{"type":"cost-state","sessionId":"' + $sesionRojo + '","totalDuration":61000,' +
+                 '"totalAPIDuration":30000,"totalToolDuration":9000,"hasUnknownModelCost":false,"startTime":1,' +
+                 '"modelUsage":{"m-cb54":{"inputTokens":10,"outputTokens":100,"cacheReadInputTokens":5000,' +
+                 '"cacheCreationInputTokens":200,"costUSD":1.95}}}'
+    [System.IO.File]::WriteAllText($fuenteRojo, ($lineaCb.Replace($sesionCb, $sesionRojo) + "`n" + $costoRojo + "`n"),
+                                   (New-Object System.Text.UTF8Encoding $false))
+    $jsonRojo = '{"session_id":"' + $sesionRojo + '","transcript_path":"' + ($fuenteRojo -replace '\\', '/') + '"}'
+    $esc = [string][char]27
+    try {
+        foreach ($sh in $shellsCb) {
+            $x = Invoke-ShellCb -Exe $sh.Exe -Previos $sh.Previos -Comando $comando -Json $jsonRojo
+            $lineas = @(($x.Salida -split "`r?`n") | Where-Object { $_.Trim() })
+            Assert-Igual "colores E-19 $($sh.Nombre): sale 0" 0 $x.Codigo
+            Assert-Igual "colores E-19 $($sh.Nombre): dibuja una linea" 1 $lineas.Count
+            Assert-Contiene "colores E-19 $($sh.Nombre): el ERROR llega con ESC[31m" ($esc + '[31mERROR' + $esc + '[0m') $x.Salida
+            Assert-Contiene "colores E-19 $($sh.Nombre): y HARNESS en negrita" ($esc + '[1mHARNESS' + $esc + '[0m | ') $x.Salida
+            $senalRojo = [System.IO.File]::ReadAllText($rutaSenal) | ConvertFrom-Json
+            Assert-Igual "colores E-19 $($sh.Nombre): con su senal de vida" $sesionRojo $senalRojo.sessionId
+            Assert-Igual "colores E-19 $($sh.Nombre): con la huella del comando" `
+                $estado.runtimeComponents.contextBar.configurationFingerprint $senalRojo.configurationFingerprint
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $rutaPoliticaCb -Force -ErrorAction SilentlyContinue
+    }
+
     # Una senal del mismo segundo que el registro no prueba nada (E-41): se deja pasar el segundo.
     Start-Sleep -Milliseconds 1100
     foreach ($sh in $shellsCb) {
         $x = Invoke-ShellCb -Exe $sh.Exe -Previos $sh.Previos -Comando $comando -Json $jsonCb
         $lineas = @(($x.Salida -split "`r?`n") | Where-Object { $_.Trim() })
+        # Desde context-bar-colores HARNESS va en negrita: se compara el texto sin las secuencias.
+        $plana = ''
+        if ($lineas.Count -eq 1) { $plana = $lineas[0] -replace '\x1b\[[0-9;]*m', '' }
         Assert-Igual "E-36 $($sh.Nombre): sale 0" 0 $x.Codigo
         Assert-Igual "E-36 $($sh.Nombre): dibuja una linea" 1 $lineas.Count
         Assert-Verdadero "E-36 $($sh.Nombre): con lo que ingirio el Bloque 4, no el aviso sin datos" `
-            ($lineas.Count -eq 1 -and $lineas[0].StartsWith('HARNESS | m-cb54 | ')) $x.Salida
+            ($plana.StartsWith('HARNESS | m-cb54 | ')) $x.Salida
     }
     $senal = [System.IO.File]::ReadAllText($rutaSenal) | ConvertFrom-Json
     Assert-Igual 'E-36 y dejo la senal de vida de esa sesion' $sesionCb $senal.sessionId

@@ -9,6 +9,7 @@
     python .claude/harness/bin/desarrollo/dev-harness.py refute GCBA-1234 --compile|--status|--unit REF-001|--record <v.json>|--summary
     python .claude/harness/bin/desarrollo/dev-harness.py flujo GCBA-1234 --status [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py harness [--json] [--verbose] [--reiniciar-bienvenida]
+    python .claude/harness/bin/desarrollo/dev-harness.py presupuesto [--context-defaults]
 
 Los tres primeros son el Bloque 1 y contestan una sola pregunta: que integraciones hay
 configuradas, cuales funcionan y que capacidades se pueden usar. La configuracion sale del
@@ -69,10 +70,14 @@ from flujo import estado as flujo_estado                          # noqa: E402
 from estado_de_tarea import persistencia as estado_persistencia   # noqa: E402
 from estado_de_tarea import decisiones as estado_decisiones       # noqa: E402
 
+from integraciones import http as int_http                        # noqa: E402
+
+from orquestacion import auto_refresh as orq_refresco             # noqa: E402
 from orquestacion import frescura as orq_frescura                # noqa: E402
 from orquestacion import plan as orq_plan                         # noqa: E402
 from orquestacion import refutacion as orq_refutacion             # noqa: E402
 from orquestacion import registro_fuentes as orq_fuentes         # noqa: E402
+from orquestacion import roster as orq_roster                     # noqa: E402
 
 from contabilidad import agregacion as cont_agregacion            # noqa: E402
 from contabilidad import barra as cont_barra                      # noqa: E402
@@ -133,8 +138,9 @@ def rutas_de(proyecto):
         "capacidades": os.path.join(claude, "harness.capacidades.json"),
         "harness_config": os.path.join(claude, "harness.config.json"),
         "lock": os.path.join(claude, "harness.lock.json"),
-        # El presupuesto es un archivo aparte y NO tiene default en el manifiesto. Que no
-        # exista es la respuesta correcta hasta que alguien declare uno: BUDGET_UNDEFINED.
+        # El presupuesto es un archivo aparte y NO tiene default en el manifiesto. install.ps1
+        # siembra, si falta, la politica por defecto de la Context Bar: solo umbrales de
+        # contexto, ningun limite de plata. Sin limite declarado el gate sigue en BUDGET_UNDEFINED.
         "presupuesto": os.path.join(claude, "harness.presupuesto.json"),
     }
 
@@ -402,16 +408,46 @@ def detalle_verbose(b, doc, proyecto, rutas):
     if conocimiento.get("applies"):
         lineas.append("  Conocimiento        verificado: %s" % (conocimiento.get("verifiedAt") or "nunca"))
         for f in conocimiento.get("sources") or []:
-            lineas.append("  Fuente              %s %s" % (f["id"], f["state"]))
+            lineas.append("  Fuente              %s %s, aceptada %s, observada %s"
+                          % (f["id"], f["state"], f.get("acceptedVersion") or "—",
+                             f.get("observedVersion") or "—"))
+    lineas += _detalle_de_refresco(doc)
     lineas += _detalle_de_runtime(b, doc, proyecto)
+    lineas += _detalle_de_consumo(b, doc, proyecto, rutas)
     archivos = b.rutas(proyecto, _json_o_vacio(rutas["harness_config"]).get("rutaCodebase"))
     lineas.append("Archivos leídos")
     leidos = [archivos[c] for c in ("lock", "installation", "capacidades", "fuentes", "contexto")]
     if (doc.get("knowledge") or {}).get("applies"):
-        leidos += [os.path.join(proyecto, ".claude", "settings.json"), b.ruta_de_la_senal(proyecto)]
+        # El libro de la sesion no se lista: su ruta lleva el sessionId de la senal, que llega por
+        # stdin y nadie eligio, y esta lista no pasa por el catalogo de secretos.
+        leidos += [os.path.join(proyecto, ".claude", "settings.json"), b.ruta_de_la_senal(proyecto),
+                   b.ruta_de_la_agenda(proyecto), rutas["presupuesto"]]
     for ruta in leidos:
         lineas.append("  %s%s" % (os.path.normpath(ruta), "" if os.path.isfile(ruta) else "  (no existe)"))
     return "\n".join(lineas)
+
+
+def _detalle_de_refresco(doc):
+    """La agenda de la revision automatica: modo, fechas, disparador y error. Son ids y fechas;
+    el canal es una clave de Ficha o un directorio, y pasa por el catalogo de secretos igual."""
+    kr = doc.get("knowledgeRefresh")
+    if not isinstance(kr, dict):
+        return []
+    lineas = [
+        "  %-19s %s%s" % ("Revisión: modo", kr.get("mode") or "desconocido",
+                          " (%s)" % kr["policyError"] if kr.get("policyError") else ""),
+        "  %-19s %s" % ("Red en SessionStart", "sí" if kr.get("sessionStartNetwork") else "no"),
+        "  %-19s %s" % ("Estado de revisión", kr.get("state") or "NEVER_CHECKED"),
+        "  %-19s %s" % ("Vencida", "sí" if kr.get("due") else "no"),
+        "  %-19s %s" % ("Última que salió", kr.get("lastSuccessfulCheckAt") or "nunca"),
+        "  %-19s %s" % ("Último intento", kr.get("lastAttemptAt") or "nunca"),
+        "  %-19s %s" % ("Próxima", kr.get("nextCheckDueAt") or "a pedido"),
+        "  %-19s %s" % ("Disparador", kr.get("trigger") or "ninguno"),
+        "  %-19s %s" % ("Error de revisión", kr.get("errorCode") or "ninguno"),
+        "  %-19s %s" % ("Canal", kr.get("channel") or "ninguno"),
+    ]
+    catalogo = limpieza.cargar_catalogo()
+    return [limpieza.redactar(l, catalogo, "harness --verbose")[0] for l in lineas]
 
 
 def _detalle_de_runtime(b, doc, proyecto):
@@ -449,6 +485,204 @@ def _detalle_de_runtime(b, doc, proyecto):
     # El sessionId de la senal llega por stdin a la barra y nadie lo eligio: pasa por el
     # catalogo de secretos como todo lo que se imprime sin haberlo escrito el harness. El
     # comando registrado no se imprime nunca: su huella alcanza para saber si cambio.
+    catalogo = limpieza.cargar_catalogo()
+    return [limpieza.redactar(l, catalogo, "harness --verbose")[0] for l in lineas]
+
+
+# -- la politica de la Context Bar -----------------------------------------------
+#
+# docs/cambios/context-bar-consumo-desde-instalacion. `setup`, `estado` y `harness` la leen y
+# no la escriben nunca; el unico que escribe es `presupuesto --context-defaults`.
+
+_CLI_INSTALADA = "python .claude/harness/bin/desarrollo/dev-harness.py"
+_SESION_DE_LA_BARRA = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+# El id del resumen, y como lo lee una persona.
+_FUENTES_DE_CONTEXTO = {cont_agregacion.SIN_FUENTE: "SIN RESOLVER"}
+_ANSI = {"ENABLED": "HABILITADO", "DISABLED_NO_COLOR": "DESHABILITADO POR NO_COLOR",
+         "UNVERIFIED": "SIN VERIFICAR"}
+_NIVEL_DE = {"contextWarningAt": "WARNING", "contextErrorAt": "ERROR"}
+LISTA_PARA_CONSUMO = "La barra está lista para mostrar consumo porcentual y alertas."
+
+
+def _porciento(valor):
+    return "%d%%" % int(round(float(valor) * 100))
+
+
+def plantilla_de_contexto():
+    """(ruta, politica) de la plantilla de la politica por defecto, o (ruta o None, None)."""
+    ruta = orq_roster.ruta_de_regla(cont_presupuesto.PLANTILLA_DE_CONTEXTO)
+    if not ruta:
+        return None, None
+    try:
+        return ruta, cont_presupuesto.cargar(ruta)
+    except (ValueError, OSError, cont_presupuesto.PoliticaInvalida):
+        return ruta, None
+
+
+def politica_de_la_barra(rutas):
+    """(clase, politica o None, motivo, umbrales que faltan) de la politica instalada."""
+    _, plantilla = plantilla_de_contexto()
+    clase, politica, motivo = cont_presupuesto.clase_de_politica(rutas["presupuesto"], plantilla)
+    faltan = list(cont_presupuesto.UMBRALES_DE_CONTEXTO)
+    if politica is not None:
+        faltan = cont_presupuesto.umbrales_de_contexto_que_faltan(politica)
+    return clase, politica, motivo, faltan
+
+
+def _motivo_en_una_linea(motivo):
+    """El error de validacion, que trae una linea por campo, en una sola y recortada."""
+    texto = " ".join(str(motivo or "").split())
+    return texto if len(texto) <= 240 else texto[:237] + "..."
+
+
+def _plata_declarada(politica):
+    """'SIN CONFIGURAR', o los limites de plata que declara la politica, por ambito."""
+    partes = []
+    for ambito in ("task", "project"):
+        if not cont_presupuesto.declarada(politica, ambito):
+            continue
+        limites = (politica or {}).get(ambito) or {}
+        partes.append("%s: blando %s / duro %s" % (ambito, *(
+            "sin declarar" if limites.get(k) is None
+            else "%s %.2f" % ((politica or {}).get("currency") or "", float(limites[k]))
+            for k in ("softLimit", "hardLimit"))))
+    return "CONFIGURADO (%s)" % "; ".join(partes) if partes else "SIN CONFIGURAR"
+
+
+def clase_en_texto(clase, motivo):
+    """Lo que sigue a `política` en `setup` y en `harness --verbose`: la clase que dio
+    `politica_de_la_barra`, y el por que cuando hace falta. Una sola, para que los dos no digan
+    cosas distintas del mismo archivo."""
+    if clase == cont_presupuesto.POLITICA_DEFAULT:
+        return "DEFAULT (la del harness: umbrales de contexto y nada más)"
+    if clase == cont_presupuesto.POLITICA_AUSENTE:
+        return "MISSING (no existe .claude/harness.presupuesto.json)"
+    if clase == cont_presupuesto.POLITICA_INVALIDA:
+        return "INVALID: %s" % _motivo_en_una_linea(motivo)
+    return "PROJECT"
+
+
+def lineas_de_la_politica(rutas):
+    """El bloque `Context Bar` de `setup`: que politica hay, sus umbrales de contexto y si hay
+    plata. Informa; no pregunta y no escribe."""
+    clase, politica, motivo, faltan = politica_de_la_barra(rutas)
+    lineas = ["política %s" % clase_en_texto(clase, motivo)]
+    barra = (politica or {}).get("statusBar") or {}
+    for clave in cont_presupuesto.UMBRALES_DE_CONTEXTO:
+        if clase == cont_presupuesto.POLITICA_INVALIDA:
+            lineas.append("contexto %s SIN RESOLVER (la política no valida)" % _NIVEL_DE[clave])
+        elif clave in faltan:
+            lineas.append("contexto %s SIN CONFIGURAR (falta statusBar.%s)"
+                          % (_NIVEL_DE[clave], clave))
+        else:
+            lineas.append("contexto %s %s" % (_NIVEL_DE[clave], _porciento(barra[clave])))
+    if clase == cont_presupuesto.POLITICA_INVALIDA:
+        lineas.append("presupuesto monetario SIN RESOLVER (la política no valida)")
+        lineas.append("La barra dibuja `presupuesto ilegible` hasta que la política valide. "
+                      "Se arregla a mano: el harness no la reescribe.")
+    else:
+        lineas.append("presupuesto monetario %s" % _plata_declarada(politica))
+    if clase == cont_presupuesto.POLITICA_AUSENTE:
+        lineas.append("Para crear la política por defecto: %s presupuesto --context-defaults"
+                      % _CLI_INSTALADA)
+    elif clase != cont_presupuesto.POLITICA_INVALIDA and faltan:
+        lineas.append("Sin esos umbrales Ctx no toma color. Para agregarlos sin tocar el resto "
+                      "de la política: %s presupuesto --context-defaults" % _CLI_INSTALADA)
+    catalogo = limpieza.cargar_catalogo()
+    return [limpieza.redactar(l, catalogo, "setup")[0] for l in lineas]
+
+
+def mostrar_politica_de_la_barra(consola, rutas):
+    consola.linea("")
+    consola.linea("Context Bar")
+    consola.linea("-" * 48)
+    for linea in lineas_de_la_politica(rutas):
+        consola.linea("  " + linea)
+
+
+def _campo_del_limite():
+    adaptador = cont_registro.resolver(cont_registro.DE_LA_BARRA)
+    return getattr(adaptador, "CAMPO_DEL_LIMITE", None) or "el tamaño de la ventana"
+
+
+def _detalle_de_consumo(b, doc, proyecto, rutas):
+    """Por que la barra puede, o no, mostrar un porcentaje y colores: su estado, de donde sale el
+    contexto, el limite, los umbrales y el color que vio el proceso de la statusLine.
+
+    La sesion es la de la ultima senal de vida: `harness` no tiene una. Ningun numero de la
+    transcripcion ni ningun texto de la sesion se imprime: el estado, la fuente, el limite y los
+    umbrales, y nada mas.
+    """
+    rc = doc.get("runtimeComponents") or {}
+    if not rc or not (doc.get("knowledge") or {}).get("applies"):
+        return []
+    comp = rc.get("contextBar") or {}
+    senal, _ = b.leer_senal_de_vida(proyecto)
+    ansi = b.ansi_de_la_senal(senal)
+    clase, politica, motivo, faltan = politica_de_la_barra(rutas)
+    sesion = senal.get("sessionId") if isinstance(senal, dict) else None
+
+    contexto = {}
+    if isinstance(sesion, str) and _SESION_DE_LA_BARRA.match(sesion) and sesion not in (".", ".."):
+        try:
+            libro_leido = cont_libro.leer(cont_libro.ruta_de(proyecto, sesion))
+            if cont_barra.de_sesion(libro_leido, sesion):
+                contexto = cont_barra.de(libro_leido, sesion, politica)["context"]
+        except (ValueError, OSError):
+            contexto = {}
+    fuente = contexto.get("source") or cont_agregacion.SIN_FUENTE
+    limite = contexto.get("limit")
+    inconsistente = contexto.get("diagnostic") == cont_agregacion.VENTANA_INCONSISTENTE
+
+    # La misma clase que muestra `setup` (E-43), del mismo `politica_de_la_barra`: solo lee.
+    lineas = ["Consumo de la Context Bar",
+              "  Estado %s" % b.etiqueta_de_componente("contextBar", comp),
+              "  Política %s" % clase_en_texto(clase, motivo),
+              "  Fuente de contexto %s" % _FUENTES_DE_CONTEXTO.get(fuente, fuente)]
+    if limite:
+        lineas.append("  Límite de ventana %d" % int(limite))
+    else:
+        lineas.append("  Límite de ventana SIN RESOLVER: el proveedor todavía no informó %s en "
+                      "la statusLine, y el harness no tiene una tabla de modelos para inventarlo. "
+                      "Sin límite, Ctx se muestra en tokens." % _campo_del_limite())
+    if inconsistente:
+        lineas.append("  Ventana %s: el proveedor informó más tokens que la ventana. La barra "
+                      "muestra tokens, sin porcentaje ni color." % cont_agregacion.VENTANA_INCONSISTENTE)
+    barra = (politica or {}).get("statusBar") or {}
+    for clave in cont_presupuesto.UMBRALES_DE_CONTEXTO:
+        if clase == cont_presupuesto.POLITICA_INVALIDA:
+            lineas.append("  Umbral %s SIN CONFIGURAR (la política no valida)" % _NIVEL_DE[clave])
+        elif clave in faltan:
+            lineas.append("  Umbral %s SIN CONFIGURAR (falta %s)" % (_NIVEL_DE[clave], clave))
+        else:
+            lineas.append("  Umbral %s %s" % (_NIVEL_DE[clave], _porciento(barra[clave])))
+    if clase != cont_presupuesto.POLITICA_INVALIDA and faltan:
+        lineas.append("  Para agregar los umbrales que faltan: %s presupuesto --context-defaults"
+                      % _CLI_INSTALADA)
+    texto_ansi = "  Color ANSI %s" % _ANSI.get(ansi, _ANSI["UNVERIFIED"])
+    if ansi == "DISABLED_NO_COLOR":
+        texto_ansi += ": NO_COLOR está definido en el proceso de la statusLine, y la barra sale sin colores."
+    elif ansi != "ENABLED" and not isinstance(senal, dict):
+        texto_ansi += ": ninguna sesión dibujó la barra todavía."
+    elif ansi != "ENABLED":
+        texto_ansi += ": la última señal de vida no dice si el proceso de la statusLine tiene NO_COLOR."
+    lineas.append(texto_ansi)
+
+    falta = []
+    if comp.get("state") != b.ACTIVE:
+        falta.append("que la barra esté ACTIVA")
+    if not limite:
+        falta.append("el límite de la ventana")
+    if inconsistente:
+        falta.append("una ventana coherente")
+    if clase == cont_presupuesto.POLITICA_INVALIDA or faltan:
+        falta.append("los umbrales de contexto")
+    if ansi not in ("ENABLED", "DISABLED_NO_COLOR"):
+        falta.append("saber si hay colores")
+    if falta:
+        lineas.append("  Para mostrar consumo porcentual y alertas falta: %s." % ", ".join(falta))
+    else:
+        lineas.append("  " + LISTA_PARA_CONSUMO)
     catalogo = limpieza.cargar_catalogo()
     return [limpieza.redactar(l, catalogo, "harness --verbose")[0] for l in lineas]
 
@@ -542,20 +776,21 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
 
     🔴 Sin canal que consultar -ni una clave de Jira ni un directorio local- no se declara
     que este todo bien: se declara que no se pudo verificar, que es otra cosa.
+
+    Con --auto o --si-vence es el refresco controlado (orquestacion/auto_refresh.py): mismo
+    camino de observacion y resolucion, con la agenda, las capacidades y sin escribir nada si el
+    canal no contesta.
     """
+    if args.auto or args.si_vence:
+        return refrescar_fuentes(args, proyecto, rutas, consola, transporte, transporte_bytes)
     try:
         registro = orq_fuentes.cargar()
+        entradas, destino, previo, decisiones = orq_refresco.contexto_de_fuentes(proyecto)
     except orq_fuentes.RegistroInvalido as e:
         # Un registro que no se puede leer entero no se lee a medias: es lo que la persona
         # tiene que arreglar antes de seguir, y por eso sale 2 y no 0.
         raise FallaDelHarness(str(e))
-    entradas = orq_fuentes.gestionadas(registro)
     hallazgos = orq_fuentes.hallazgos(registro)
-
-    destino = orq_frescura.ruta_por_defecto(proyecto)
-    anterior = orq_frescura.leer(destino)
-    previo = anterior.get("sources") or {}
-    decisiones = anterior.get("decisions") or {}
 
     canal = None
     observaciones = []
@@ -588,11 +823,12 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
         # Antes de escribir nada: si una no se puede aceptar, no se acepta ninguna.
         aceptadas = _aceptar(args, rutas, entradas, observaciones, canal, decisiones)
 
-    documento = orq_frescura.documento(entradas, observaciones, canal, decisiones)
     try:
-        orq_frescura.escribir(documento, destino)
+        documento = orq_refresco.resolver_y_escribir(entradas, observaciones, canal, decisiones,
+                                                     destino)
     except (ValueError, OSError) as e:
         raise FallaDelHarness(str(e))
+    _anotar_agenda(proyecto, consola, documento, canal)
     # El aviso de fabrica "no tiene hash aceptado" no se repite para una fuente que el proyecto
     # ya acepto: la referencia de esa fuente ahora es la aceptacion, y el aviso diria lo contrario.
     con_aceptacion = [sid for sid, f in documento["sources"].items() if f.get("acceptance")]
@@ -716,6 +952,154 @@ def mostrar_fuentes(consola, documento, destino):
         consola.linea("Las %d fuentes estan verificadas contra el canal configurado."
                       % len(documento["sources"]))
     consola.linea("Estado en %s" % destino)
+
+
+# -- el refresco controlado del conocimiento --------------------------------------
+
+def _anotar_agenda(proyecto, consola, documento, canal):
+    """`fuentes` a mano deja la agenda como EXPLICIT_SOURCES_COMMAND. Sin canal que contestara es
+    un intento que no salio bien: no mueve la ultima revision. Si la agenda no se puede escribir
+    se avisa y el comando sigue: harness.fuentes.json ya quedo escrito."""
+    politica, _ = orq_refresco.cargar_politica(proyecto)
+    disponible = bool(canal) and bool(canal.get("reachable", True))
+    codigo = None if disponible else orq_refresco.SIN_CANAL
+    try:
+        orq_refresco.registrar(proyecto, orq_frescura.ahora(),
+                               orq_refresco.EXPLICIT_SOURCES_COMMAND, politica, codigo,
+                               documento)
+    except (OSError, ValueError) as e:
+        consola.linea("  aviso: no se pudo escribir la agenda de revisión (%s): %s"
+                      % (orq_refresco.AGENDA_SIN_ESCRIBIR, e))
+
+
+def _observar_ficha_directa(jira, clave_ficha, rutas):
+    """La Ficha leida por su clave: sus adjuntos y su descripcion. Es el canal que dejo la ultima
+    corrida, y se lee con el mismo `fuentes.observar` que `_observar_por_ficha`."""
+    respuesta = jira.issue(clave_ficha)
+    if not respuesta.ok:
+        codigo = (orq_refresco.TIMEOUT if respuesta.error == int_http.ERROR_TIMEOUT
+                  else orq_refresco.SIN_CANAL)
+        raise orq_refresco.ObservacionFallida(codigo, "Jira contesto %d" % respuesta.codigo)
+    campos = (respuesta.datos() or {}).get("fields") or {}
+    return campos
+
+
+def _observador_de_jira(args, proyecto, rutas, consola, transporte, transporte_bytes):
+    """El observador que el refresco inyecta: el adaptador de Jira que arma `armar`, con la
+    configuracion del .env que resuelve `resolver_configuracion`. Se arma recien cuando hace
+    falta salir al canal: un refresco que no vence no toca la configuracion."""
+    def observar(canal, entradas, previo):
+        config = resolver_configuracion(rutas)
+        almacen = AlmacenSecretos(rutas["env"])
+        timeout = timeout_de(rutas)
+        if canal["kind"] == "jira-tarea":
+            try:
+                canal_doc, observaciones = _observar_por_ficha(
+                    canal["key"], args, proyecto, rutas, config, almacen, timeout, consola,
+                    transporte, transporte_bytes, entradas, previo)
+            except FallaDelHarness as e:
+                raise orq_refresco.ObservacionFallida(orq_refresco.OBSERVACION_FALLIDA, str(e))
+            return canal_doc, observaciones
+        jira = armar(IntegracionJira, config, almacen, timeout, transporte)
+        jira.transporte_bytes = transporte_bytes
+        campos = _observar_ficha_directa(jira, canal["key"], rutas)
+        adjuntos = [a for a in (campos.get("attachment") or []) if isinstance(a, dict)]
+        texto = contexto_comun.texto_de_adf(campos.get("description"))
+        descargas = os.path.join(proyecto, ".claude", "conocimiento", "fuentes")
+        observaciones = int_fuentes.observar(entradas, adjuntos, previo, jira.bajar_adjunto,
+                                             descargas, texto)
+        tipo = str(_config_harness(rutas).get("fichaTipoDeIssue")
+                   or contexto_proyecto.TIPO_POR_DEFECTO)
+        return {"key": canal["key"], "issue_type": tipo, "reachable": True,
+                "channel": "jira:%s" % canal["key"]}, observaciones
+    return observar
+
+
+def _capacidades(rutas):
+    return _json_o_vacio(rutas["capacidades"]).get("capacidades") or {}
+
+
+def _refresco_de(args, proyecto, rutas, consola, transporte, transporte_bytes, disparador,
+                 clave=None):
+    canal = orq_refresco.canal_previsto(proyecto, clave, getattr(args, "archivo", "") or None)
+    return orq_refresco.refrescar(
+        proyecto, disparador,
+        _observador_de_jira(args, proyecto, rutas, consola, transporte, transporte_bytes),
+        _capacidades(rutas), canal)
+
+
+def refrescar_fuentes(args, proyecto, rutas, consola, transporte, transporte_bytes):
+    """`fuentes --auto [--disparador X]` y `fuentes --si-vence`. Sale 0 aunque no se haya podido
+    mirar: no poder mirar es un estado que se informa, no una falla del harness."""
+    if args.si_vence:
+        disparador = orq_refresco.PRE_NORMATIVE_OPERATION_IF_STALE
+    else:
+        disparador = args.disparador or orq_refresco.EXPLICIT_SOURCES_COMMAND
+    if disparador not in orq_refresco.DISPARADORES:
+        raise FallaDelHarness("--disparador tiene que ser uno de: %s."
+                              % ", ".join(orq_refresco.DISPARADORES))
+    clave = str(args.argumento) if args.argumento else None
+    if clave and not CLAVE_JIRA.match(clave):
+        raise FallaDelHarness("fuentes necesita una clave de Jira con la forma PROYECTO-123.")
+    resultado = _refresco_de(args, proyecto, rutas, consola, transporte, transporte_bytes,
+                             disparador, clave)
+    consola.evento("fuentes.refresco", disparador=disparador,
+                   refrescado="si" if resultado["refreshed"] else "no",
+                   codigo=resultado["errorCode"] or "ninguno")
+    if args.json:
+        sys.stdout.write(json.dumps(resultado, ensure_ascii=False, indent=2, sort_keys=True)
+                         + "\n")
+    else:
+        mostrar_refresco(consola, resultado)
+    return 0
+
+
+def mostrar_refresco(consola, resultado):
+    consola.linea("")
+    if resultado["refreshed"]:
+        consola.linea("Fuentes revisadas contra %s." % resultado["channel"])
+    elif orq_refresco.fallo(resultado):
+        consola.linea("Las fuentes no se pudieron revisar (%s): queda el último estado conocido."
+                      % resultado["errorCode"])
+    else:
+        consola.linea("No hacía falta revisar las fuentes (%s)." % resultado["errorCode"])
+    for f in resultado["sources"]:
+        consola.linea("  %-12s %-8s %-8s %s" % (f["id"], f["acceptedVersion"] or "—",
+                                               f["observedVersion"] or "—", f["sourceState"]))
+    consola.linea("Última revisión que salió bien: %s · próxima: %s"
+                  % (resultado.get("lastSuccessfulCheckAt") or "nunca",
+                     resultado.get("nextCheckDueAt") or "a pedido"))
+
+
+def compuerta_normativa(args, proyecto, rutas, consola, clave, transporte=None,
+                        transporte_bytes=None):
+    """Antes de una operacion que usa conocimiento normativo: refresca si vencio, y avisa.
+
+    🔴 No corta nunca. Integrado con Flow Governance (docs/cambios/flow-governance/
+    integracion-0.28.md, decision A): el refresco refresca, observa, registra y avisa, y lo que
+    frena `plan` o `refute --compile` lo decide despues la frescura de ESA operacion, sobre las
+    fuentes que exige (Wave 5): el plan queda BLOCKED y el flujo en HARD_BLOCKER, la refutacion
+    sale con 2 sin escribir. Una fuente seguida que la operacion no exige no la frena. Cortar aca
+    -la letra de KRF E-42- terminaba `plan` antes de que el flujo dejara el bloqueo escrito, y con
+    una fuente que el plan no usa. Lo que no es normativo no pasa por aca.
+
+    🔴 El canal es el que dejo la ultima corrida de `fuentes`, no la clave de esta tarea: volver
+    a mirar es volver al canal que ya funciono, no buscar una Ficha nueva a partir de un plan.
+    """
+    del clave
+    canal = orq_refresco.canal_previsto(proyecto)
+    veredicto = orq_refresco.ensure_normative_knowledge_fresh(
+        proyecto, _observador_de_jira(args, proyecto, rutas, consola, transporte,
+                                      transporte_bytes),
+        _capacidades(rutas), canal)
+    consola.evento("conocimiento.compuerta", decision=veredicto["decision"],
+                   refrescado="si" if veredicto["refresh"]["refreshed"] else "no")
+    if veredicto["decision"] != orq_refresco.PERMITIDO:
+        consola.linea("  aviso: conocimiento normativo SIN RESOLVER: %s" % veredicto["reason"])
+    if veredicto.get("alerts"):
+        consola.linea("  aviso: fuentes seguidas en alerta (%s): la operación decide por las "
+                      "fuentes que exige." % ", ".join(veredicto["alerts"]))
+    return veredicto
 
 
 def resolver_contexto(args, proyecto, rutas, config, almacen, timeout, consola,
@@ -1454,6 +1838,67 @@ def _bloque4_de_refutacion(proyecto, clave):
     return cont_presentacion.para_refutacion(cont_agregacion.resumir(eventos, task_id=clave))
 
 
+# -- presupuesto --context-defaults ----------------------------------------------
+
+def _escribir_politica(ruta, datos):
+    """Los bytes, con .tmp y os.replace: una politica a medio escribir no valida, y la barra la
+    dibujaria como `presupuesto ilegible`."""
+    carpeta = os.path.dirname(os.path.abspath(ruta))
+    if not os.path.isdir(carpeta):
+        os.makedirs(carpeta)
+    temporal = ruta + ".tmp"
+    with io.open(temporal, "wb") as f:
+        f.write(datos)
+    os.replace(temporal, ruta)
+
+
+def presupuesto(args, proyecto, rutas, consola):
+    """`presupuesto`: la politica de la Context Bar. Con --context-defaults es lo UNICO del harness
+    que escribe `.claude/harness.presupuesto.json`:
+
+      · sin archivo, crea la politica por defecto, igual a la plantilla;
+      · con una politica valida, le agrega solo contextWarningAt y contextErrorAt que falten, y
+        deja el resto de las claves con sus valores y en su orden;
+      · con una que no valida, no toca nada y lo dice.
+
+    Nunca crea un softLimit ni un hardLimit.
+    """
+    ruta = rutas["presupuesto"]
+    if not args.context_defaults:
+        mostrar_politica_de_la_barra(consola, rutas)
+        return 0
+
+    ruta_plantilla, plantilla = plantilla_de_contexto()
+    if plantilla is None or cont_presupuesto.umbrales_de_contexto_que_faltan(plantilla):
+        raise FallaDelHarness(
+            "no está la plantilla %s, no valida o no trae los dos umbrales de contexto. "
+            "Instalá de nuevo con install.ps1." % cont_presupuesto.PLANTILLA_DE_CONTEXTO)
+    clase, politica, motivo, faltan = politica_de_la_barra(rutas)
+    umbrales = "WARNING %s / ERROR %s" % tuple(
+        _porciento(plantilla["statusBar"][k]) for k in cont_presupuesto.UMBRALES_DE_CONTEXTO)
+
+    if clase == cont_presupuesto.POLITICA_INVALIDA:
+        raise FallaDelHarness(
+            ".claude/harness.presupuesto.json no valida, y no se toca: %s\nArreglala a mano y "
+            "volvé a correr `presupuesto --context-defaults`." % _motivo_en_una_linea(motivo))
+    if clase == cont_presupuesto.POLITICA_AUSENTE:
+        with io.open(ruta_plantilla, "rb") as f:
+            _escribir_politica(ruta, f.read())
+        consola.linea("Se creó .claude/harness.presupuesto.json con la política por defecto: "
+                      "contexto %s, sin presupuesto monetario." % umbrales)
+        return 0
+    if not faltan:
+        consola.linea("La política ya tiene los dos umbrales de contexto: no se tocó.")
+        return 0
+    nueva = cont_presupuesto.con_umbrales_de_contexto(politica, plantilla)
+    _escribir_politica(ruta, (json.dumps(nueva, ensure_ascii=False, indent=2) + "\n")
+                       .encode("utf-8"))
+    consola.linea("Se agregó a .claude/harness.presupuesto.json: %s. El resto de la política "
+                  "quedó igual." % ", ".join(
+                      "%s %s" % (k, nueva["statusBar"][k]) for k in faltan))
+    return 0
+
+
 # -- comandos ------------------------------------------------------------------
 
 def comando(args, transporte=None, transporte_bytes=None):
@@ -1472,16 +1917,30 @@ def comando(args, transporte=None, transporte_bytes=None):
     almacen = AlmacenSecretos(rutas["env"])
     timeout = timeout_de(rutas)
 
+    # 🔴 El refresco normativo, solo donde se usa conocimiento normativo: armar un plan,
+    # compilar una refutacion, el estado de seguridad. Ninguno corta aca: refresca y avisa, y la
+    # operacion decide despues por las fuentes que exige (integracion-0.28.md, decision A).
     if args.comando == "plan":
+        if not args.plantilla:
+            compuerta_normativa(args, proyecto, rutas, consola, args.argumento, transporte,
+                                transporte_bytes)
         return planificar(args, proyecto, rutas, consola)
 
     if args.comando == "contabilidad":
         return contabilizar(args, proyecto, rutas, consola)
 
+    if args.comando == "presupuesto":
+        return presupuesto(args, proyecto, rutas, consola)
+
     if args.comando == "seguridad":
+        compuerta_normativa(args, proyecto, rutas, consola, args.argumento, transporte,
+                            transporte_bytes)
         return reportar_seguridad(args, proyecto, consola)
 
     if args.comando == "refute":
+        if args.refutar_compile:
+            compuerta_normativa(args, proyecto, rutas, consola, args.argumento, transporte,
+                                transporte_bytes)
         return refutar(args, proyecto, consola)
 
     if args.comando == "flujo":
@@ -1524,6 +1983,8 @@ def comando(args, transporte=None, transporte_bytes=None):
         sys.stdout.write(json.dumps(documento, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     else:
         mostrar(consola, documento, proyecto, rutas)
+    if args.comando == "setup":
+        mostrar_politica_de_la_barra(consola, rutas)
     return 0
 
 
@@ -1533,7 +1994,7 @@ def parser():
         description="Integraciones y contexto de tarea del harness de desarrollo.")
     p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan",
                                        "contabilidad", "fuentes", "seguridad", "harness",
-                                       "refute", "flujo"))
+                                       "refute", "flujo", "presupuesto"))
     p.add_argument("argumento", nargs="?",
                    help="la integracion, para reconfigurar; la clave de Jira, para contexto")
     p.add_argument("--archivo", default="",
@@ -1604,6 +2065,14 @@ def parser():
     p.add_argument("--regresion", action="store_true",
                    help="fuentes --aceptar: admite una version anterior a la de fabrica, y deja "
                         "registrado cual se piso")
+    p.add_argument("--auto", action="store_true",
+                   help="fuentes: el refresco controlado, contra el canal que dejo la ultima corrida "
+                        "(o la clave o --archivo que se pasen). No acepta nada")
+    p.add_argument("--si-vence", action="store_true",
+                   help="fuentes: refresca solo si la revision vencio segun la politica")
+    p.add_argument("--disparador", default="",
+                   help="fuentes --auto: INSTALL, HARNESS_UPDATE, EXPLICIT_SOURCES_COMMAND o "
+                        "PRE_KNOWLEDGE_PROMOTION. Por defecto, EXPLICIT_SOURCES_COMMAND")
     p.add_argument("--proyecto", default=os.getcwd(),
                    help="raiz del proyecto (por defecto, el directorio actual)")
     p.add_argument("--json", action="store_true",
@@ -1613,6 +2082,10 @@ def parser():
                    help="harness: la version, la fecha, cada condicion con su id y los archivos leidos")
     p.add_argument("--reiniciar-bienvenida", action="store_true",
                    help="harness: la proxima sesion vuelve a mostrar la bienvenida completa")
+    p.add_argument("--context-defaults", dest="context_defaults", action="store_true",
+                   help="presupuesto: crea la politica por defecto de la Context Bar si falta, o le "
+                        "agrega a la del proyecto los umbrales de contexto que no tenga. Nunca un "
+                        "limite de plata")
     p.add_argument("--token", default=None,
                    help=argparse.SUPPRESS)
     return p

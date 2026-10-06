@@ -271,3 +271,22 @@ field. Step 3 (`business_rules`) stays outside `dev-refutador`'s reach by design
 territory). What was Recommended is now done; what is left is the reading that proves it works
 against a real project, and then deciding whether the compliance axis is worth its own schema
 version.
+
+### Classify `dev-harness.py presupuesto` in the tool policy instead of leaving it UNRESOLVED
+
+`presupuesto` arrived with 0.28.0 and the tool policy of Flow Governance (`comun/hooks/lib/tool_policy.py`,
+`_harness`) has no row for it, so it falls to `UNRESOLVED_TOOL_CLASS`. Seen during the integration of
+Flow Governance with 0.28.0 on 2026-10-05 (`docs/cambios/flow-governance/integracion-0.28.md`). With
+the governed task healthy it passes; with the task blocked, a human decision pending or the binding
+ambiguous it is denied, even plain `presupuesto` with no flags, which only reads the policy.
+
+Problem it solves. A conservative overblock: someone with a blocked task cannot look at the Context
+Bar policy. Not a hole: `--context-defaults` writes `.claude/harness.presupuesto.json`, and
+`UNRESOLVED_TOOL_CLASS` already gets the restrictions of `MUTATING`.
+
+Cost. One branch in `_harness` (no flags -> `READ_ONLY`, `--context-defaults` -> `MUTATING`) and its
+tests in `63_compuerta_del_flujo.py`. It changes the classification table, not the contract of
+`UNRESOLVED_TOOL_CLASS`.
+
+Status. Open. Classified USABILITY / CONSERVATIVE_OVERBLOCK / NON-BLOCKING by the person on
+2026-10-05, who asked for no hurried exception during the integration.

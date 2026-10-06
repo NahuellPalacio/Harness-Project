@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Trusted Knowledge Refresh Runtime State",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "state",
+    "lastAttemptAt",
+    "lastSuccessfulCheckAt",
+    "nextCheckDueAt",
+    "trigger",
+    "sources"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "knowledge-refresh-state/1.0"
+      ]
+    },
+    "state": {
+      "enum": [
+        "NEVER_CHECKED",
+        "CURRENT",
+        "DUE",
+        "RUNNING",
+        "SUCCEEDED_WITH_UPDATES",
+        "UNRESOLVED",
+        "ERROR"
+      ]
+    },
+    "lastAttemptAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lastSuccessfulCheckAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nextCheckDueAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "trigger": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "errorCode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notificationFingerprint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "acceptedVersion",
+          "observedVersion",
+          "sourceState"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "acceptedVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observedVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceState": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

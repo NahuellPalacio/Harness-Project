@@ -16,9 +16,15 @@ veces como veces se escribio la linea.
 
 🔴 La foto de la ventana -input + cache read + cache creation- NO es un consumo adicional.
 Viaja como `context` para que la barra la muestre, y la agregacion sabe que no se suma.
+
+La otra foto es la que manda Claude Code en el stdin de la `statusLine`, en `context_window`
+(docs/cambios/context-bar-consumo-desde-instalacion). Es la unica que trae el tamano de la
+ventana, y la lee `contexto_de_statusline`. Los nombres de esos campos viven aca y en ningun
+otro `.py` de la contabilidad: `statusline.py` le pasa el stdin entero y no mira adentro.
 """
 import io
 import json
+import math
 import os
 
 from . import contrato
@@ -163,6 +169,112 @@ def leer(ruta, rapido=False, desde_linea=0):
             motivo="la transcripcion no trae ninguna linea con consumo",
             provider=PROVEEDOR)]
     return registros
+
+
+# -- la ventana que manda la statusLine ------------------------------------------------------
+#
+# Lo que dice la documentacion de la statusLine (code.claude.com/docs/en/statusline, leida el
+# 30-09-2026): `context_window` viene siempre; `total_input_tokens` es la entrada de la ultima
+# respuesta CON la cache adentro, y `total_output_tokens` su salida; `current_usage` es null
+# antes de la primera llamada y despues de un /compact, hasta la llamada siguiente;
+# `used_percentage` cuenta solo la entrada.
+
+FUENTE_DE_CONTEXTO = "CLAUDE_CODE_STATUSLINE"
+VENTANA = "context_window"
+# El campo que dice de cuanto es la ventana. Lo nombra `harness --verbose` cuando falta: es el
+# proveedor el que tiene que informarlo, y el harness no tiene una tabla para inventarlo.
+CAMPO_DEL_LIMITE = "context_window_size"
+TOTALES = ("total_input_tokens", "total_output_tokens")
+USO_ACTUAL = "current_usage"
+DEL_USO_ACTUAL = ("input_tokens", "output_tokens", "cache_creation_input_tokens",
+                  "cache_read_input_tokens")
+PORCENTAJES = ("used_percentage", "remaining_percentage")
+REFERENCIA_DE_LA_FOTO = "statusLine"
+
+
+def _cantidad(valor):
+    """Un entero no negativo, o None. Un booleano, un texto, una lista o un flotante no son
+    una cantidad de tokens, aunque se parezcan a una."""
+    if isinstance(valor, int) and not isinstance(valor, bool) and valor >= 0:
+        return valor
+    return None
+
+
+def _porcentaje_reportado(valor):
+    """El numero tal cual lo mando el proveedor, si es un numero finito; si no, None."""
+    if isinstance(valor, bool) or not isinstance(valor, (int, float)):
+        return None
+    if isinstance(valor, float) and not math.isfinite(valor):
+        return None
+    return valor
+
+
+def _del_uso_actual(uso):
+    """La suma de los cuatro campos de `current_usage`, cada uno una vez. None si no hay
+    ninguno, o si alguno esta y no es una cantidad."""
+    if not isinstance(uso, dict):
+        return None
+    presentes = [uso.get(c) for c in DEL_USO_ACTUAL if uso.get(c) is not None]
+    if not presentes or any(_cantidad(v) is None for v in presentes):
+        return None
+    return sum(presentes)
+
+
+def _modelo_del_stdin(entrada):
+    modelo = entrada.get("model")
+    ident = modelo.get("id") if isinstance(modelo, dict) else None
+    return ident[:128] if isinstance(ident, str) and ident.strip() else None
+
+
+def contexto_de_statusline(entrada, sesion=None, cursor=0):
+    """De un stdin de la statusLine ya parseado, un registro CONTEXT_SNAPSHOT, o None.
+
+    None es "sin observacion": no hay nada que anotar, y la barra sigue con la ultima foto.
+    Es None sin `context_window`, con `context_window` null, y con `current_usage` null y los
+    dos totales en 0, que es como llega antes de la primera respuesta del modelo.
+
+    Los tokens: la suma de los dos totales si los dos son enteros validos -la cache ya esta
+    adentro de `total_input_tokens` y no se vuelve a sumar-. `current_usage` se usa SOLO si los
+    dos totales faltan. Un total que esta y no es valido no es un total que falta: la
+    observacion queda sin resolver, y sin resolver es None.
+
+    El limite es `context_window_size` si es un entero positivo; si no, la foto va sin limite y
+    la barra dibuja tokens. Los dos porcentajes se guardan como vinieron, y no cambian nada.
+
+    `cursor` es la linea mas alta de la transcripcion que el libro ya ingirio: entra en la
+    identidad de la foto para que la misma ventana, vista otra vez despues de que la sesion
+    avanzo, sea otra observacion y no un duplicado de la primera.
+    """
+    if not isinstance(entrada, dict):
+        return None
+    ventana = entrada.get(VENTANA)
+    if not isinstance(ventana, dict):
+        return None
+    uso = ventana.get(USO_ACTUAL)
+    totales = [ventana.get(c) for c in TOTALES]
+
+    if all(v is None for v in totales):
+        tokens = _del_uso_actual(uso)
+    elif uso is None and all(v == 0 and _cantidad(v) is not None for v in totales):
+        return None
+    elif all(_cantidad(v) is not None for v in totales):
+        tokens = sum(totales)
+    else:
+        tokens = None
+    if tokens is None:
+        return None
+
+    limite = ventana.get(CAMPO_DEL_LIMITE)
+    limite = limite if _cantidad(limite) else None
+    usado, libre = (_porcentaje_reportado(ventana.get(c)) for c in PORCENTAJES)
+    modelo = _modelo_del_stdin(entrada)
+    clave = "|".join(["ctx", str(sesion or ""), modelo or "", "L%d" % int(cursor or 0)]
+                     + [json.dumps(v) for v in (tokens, limite, usado, libre)])
+    return contrato.foto(
+        provider=PROVEEDOR, model=modelo, context=tokens, limit=limite,
+        reported_used=usado, reported_remaining=libre, source=FUENTE_DE_CONTEXTO,
+        session={"providerSessionId": sesion}, dedup_key=clave,
+        reference=REFERENCIA_DE_LA_FOTO)
 
 
 def _del_estado_de_costo(ultimo, archivo):

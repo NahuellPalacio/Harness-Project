@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Trusted Knowledge Refresh Policy",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mode",
+    "sessionStartNetwork",
+    "maxAgeHours",
+    "triggers"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "knowledge-refresh-policy/1.0"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "EVENT_ONLY",
+        "EVENT_AND_TTL"
+      ]
+    },
+    "sessionStartNetwork": {
+      "type": "boolean"
+    },
+    "maxAgeHours": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "triggers": {
+      "type": "object",
+      "required": [
+        "install",
+        "harnessUpdate",
+        "explicitSources",
+        "preKnowledgePromotion",
+        "preNormativeOperationIfStale"
+      ],
+      "properties": {
+        "install": {
+          "type": "boolean"
+        },
+        "harnessUpdate": {
+          "type": "boolean"
+        },
+        "explicitSources": {
+          "type": "boolean"
+        },
+        "preKnowledgePromotion": {
+          "type": "boolean"
+        },
+        "preNormativeOperationIfStale": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

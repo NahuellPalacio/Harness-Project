@@ -16,7 +16,7 @@
       "type": "string"
     },
     "eventType": {
-      "description": "Los trece tipos del ciclo de vida. Un agente o una skill NUNCA llaman a la contabilidad: estos eventos los emite quien orquesta la ejecucion, no quien la hace.",
+      "description": "Los catorce tipos del ciclo de vida. Un agente o una skill NUNCA llaman a la contabilidad: estos eventos los emite quien orquesta la ejecucion, no quien la hace. CONTEXT_WINDOW_OBSERVED es una foto de la ventana que informo el proveedor, no una llamada al modelo.",
       "enum": [
         "TASK_STARTED",
         "TASK_COMPLETED",
@@ -30,7 +30,8 @@
         "TOOL_CALL_COMPLETED",
         "MODEL_ESCALATION_REQUESTED",
         "BUDGET_DECISION_RECORDED",
-        "ACCOUNTING_CORRECTION"
+        "ACCOUNTING_CORRECTION",
+        "CONTEXT_WINDOW_OBSERVED"
       ]
     },
     "timestamp": {
@@ -193,6 +194,36 @@
         "calculationMethod": {
           "description": "PROVIDER_REPORTED cita la plata que reporto el proveedor; RATE_TABLE aplica una tabla que declaro el proyecto. No hay un tercero.",
           "type": ["string", "null"]
+        }
+      }
+    },
+    "contextWindow": {
+      "description": "Solo en CONTEXT_WINDOW_OBSERVED: la foto de la ventana que informo el proveedor. NO es consumo: no se suma, no se cuenta en los eventos, no entra a la conciliacion ni a la atribucion. El contexto del resumen es la ultima foto del libro.",
+      "type": ["object", "null"],
+      "properties": {
+        "source": {
+          "description": "De donde salio la foto. Lo declara el adaptador: el nucleo no nombra a ningun proveedor.",
+          "enum": ["CLAUDE_CODE_STATUSLINE"]
+        },
+        "contextTokens": {
+          "description": "Cuanto ocupa la ventana, entrada mas salida de la ultima respuesta.",
+          "type": ["integer", "null"]
+        },
+        "contextLimit": {
+          "description": "El tamano de la ventana que informo el proveedor. null si no informo uno usable: el harness no tiene una tabla de modelos y no inventa uno.",
+          "type": ["integer", "null"]
+        },
+        "reportedUsedPercentage": {
+          "description": "El porcentaje usado que informo el proveedor, tal cual. Es evidencia: no pisa lo que dicen los tokens y el limite.",
+          "type": ["number", "null"]
+        },
+        "reportedRemainingPercentage": {
+          "description": "El porcentaje libre que informo el proveedor, tal cual. Evidencia, como el anterior.",
+          "type": ["number", "null"]
+        },
+        "diagnostic": {
+          "description": "Solo si la foto no es coherente. CONTEXT_WINDOW_PROVIDER_INCONSISTENT: mas tokens que ventana. Ausente si no hay nada que decir.",
+          "enum": ["CONTEXT_WINDOW_PROVIDER_INCONSISTENT"]
         }
       }
     },

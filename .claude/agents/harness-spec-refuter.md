@@ -1,7 +1,7 @@
 ---
 name: harness-spec-refuter
 description: Verifies a change against the numbered scenarios of its spec under docs/cambios/. Runs the tests and returns one verdict per scenario: upheld, contradicted, read or unsupported. Writes nothing and fixes nothing. Use before closing a change, or whenever someone claims a scenario is covered.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, PowerShell
 ---
 
 <!--

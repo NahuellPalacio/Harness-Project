@@ -1,6 +1,11 @@
 # Flow Governance — preparación para la calificación
 
-**Estado:** preparación, no calificación · **Fecha:** 02-10-2026 · **Base:** `VERSION 0.26.0`
+**Estado:** preparación, no calificación · **Fecha:** 02-10-2026, actualizada el 05-10-2026 ·
+**Base:** `VERSION 0.28.0`, integrada (`integracion-0.28.md`)
+
+📌 Hasta el 05-10-2026 la base era `VERSION 0.26.0`: las Waves se construyeron sobre 0.26.0, y la
+línea oficial llegó a 0.28.0 mientras tanto. Las dos se integraron con un merge, sin rebase. Lo que
+cambió de las Waves al integrar está en `integracion-0.28.md`.
 
 Este documento junta lo que una revisión de calificación o de release va a necesitar mirar sobre la
 serie Flow Governance (Waves 1 a 6). **No declara nada calificado, listo para producción ni aprobado
@@ -16,7 +21,8 @@ con qué evidencia, qué quedó afuera y qué todavía impide calificar.
 | 3 | Compuerta de flujo por sesión | `2b43a77c0a9b6fbf39a2268fde82be9d6a54ca9b` | 65 sostenidos (`compuerta-del-flujo/`) | funcional 31/31, runtime real y manual PASS | 38071/38071 |
 | 4 | Interacción humana y reanudación segura | `2c33fba41cb13bb59c888377466b619cb70f42d1` | 71 sostenidos, ocho pasadas (`interaccion-humana/`) | manual de aprobación y de configuración persistente PASS | 38455/38455 |
 | 5 | Fallar cerrado y semántica de capacidades | `556c7bdde9e54091d40b7ca13124a5155f61388e` | 43 sostenidos, cuatro pasadas (`fail-closed-hardening/`) | manual de capacidades y del Bloque 4 PASS | 38746/38746 |
-| 6 | Limpieza de integridad y esta preparación | checkpoint pendiente de aprobación, sobre `556c7bd` | 46 sostenidos, dieciséis pasadas; E-24 sostenido también por la revisión humana independiente (`integrity-cleanup/`) | manual A, B y C PASS de la persona | ver `integrity-cleanup/verificacion.md` |
+| 6 | Limpieza de integridad y esta preparación | `73a7b47dc6f4bc2cd6bf105332129279112c1381` | 46 sostenidos, dieciséis pasadas; E-24 sostenido también por la revisión humana independiente (`integrity-cleanup/`) | manual A, B y C PASS de la persona | 39519/39519 |
+| Integración | Las Waves 1 a 6 con la línea oficial 0.28.0 | merge sin commit, pendiente de aprobación, de `e5d7a14` sobre `73a7b47` | 14 sostenidos, dos pasadas; decisión A sobre la frescura (`integracion-0.28.md`) | Manual B integrada PASS de la persona | 40389/40389 |
 
 Cada número de suite es la compuerta entera, `.\tests\Invoke-Tests.ps1`, corrida por quien verificó.
 La verificación la hizo siempre `harness-spec-refuter`, que no es quien construyó.
@@ -75,6 +81,9 @@ Los cinco estados de integración son exactamente `NOT_CONFIGURED`, `AUTHENTICAT
 - Wave 5: una capacidad soportada y caída sin `dev-tool-builder`, y el Bloque 4 en `N/D`.
 - Wave 6: A (en lo que la persona observó; el libro evento por evento todavía no), B y C PASS de la
   persona; B repetida con Claude Code real sobre el árbol final (`integrity-cleanup/verificacion.md`).
+- Integración con 0.28.0: la B otra vez, sobre el árbol integrado, PASS de la persona el 05-10-2026.
+  En la misma sesión real: `Ctx 5%` de 0.28 y la presentación de 0.27 (sin amarillo ni rojo, que a
+  5% no correspondían). Ver `integracion-0.28.md`.
 
 ## Lo que se cerró en la Wave 6
 
@@ -203,11 +212,12 @@ garantía.
 
 ## Lo que todavía impide calificar
 
-- El checkpoint de la Wave 6: el commit espera la aprobación de la persona.
+- El merge commit de la integración con 0.28.0: espera la aprobación de la persona.
 - Las sobreprotecciones a propósito (INTENTIONAL_CONSERVATIVE_OVERPROTECTION de `git config`, las
   herramientas desconocidas que mencionan la autoridad) y las dos observaciones NON-BLOCKING de la
   decimosexta pasada, leídas y aceptadas por quien califique.
-- La decisión de versión: la recomendación es `0.27.0` para la serie, sin bump todavía.
+- La versión siguiente: **DECISION_PENDING**. `VERSION` queda en `0.28.0`, la de la línea oficial, y
+  Flow Governance no tiene número propio todavía.
 - Lo que `Pendientes/Fix-Harness/PENDIENTES-FH.md` marca como primero, en particular: los tests del
   instalador que rompen archivos versionados si se los mata a mitad, y `-NonInteractive` del instalador
   en una consola.

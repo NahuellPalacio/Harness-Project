@@ -127,6 +127,17 @@ zones in the first place. Fix unknown: either the zones get defined retroactivel
 decision — which of the file's sections is "fija" vs "cache" vs unzoned prose is not obvious), or
 `techoFueraDeZonas` needs a meaning that holds even for a file with zero zones marked.
 
+### `CLAUDE.md` states the gate runs 24875 tests, and it runs 38025
+
+Seen on 2026-09-30: `.\tests\Invoke-Tests.ps1` passed 37568/37568 (514 PowerShell, 37054 Python),
+and `CLAUDE.md`, under `## The gate`, still says "24875 tests". The same day, after
+`context-bar-consumo-desde-instalacion`, the gate passed 38025/38025 (592 and 37433). The number is
+loaded on every turn and has drifted by more than half. Every agent that reads it learns a count that no run produces, and a count
+that looks wrong cannot flag a run that is actually short.
+
+Fix. Either drop the number from `CLAUDE.md`, or have the budget check compare it against the last
+run. Hand-editing it once only moves the drift.
+
 ## Incomplete capabilities
 
 ### Eight of the 24 ES0901 §7.1 rules are operationalized
@@ -874,6 +885,72 @@ Separately, `tests/medir_barra.py`, and therefore `-Doctor`, launches the render
 a shell. Measured by the refuter on 2026-09-24, PowerShell adds about 180 ms on top: 103 ms direct,
 149 ms under bash and 282 ms under PowerShell. That leaves about 370 ms with one message per draw,
 close to the 400 ms budget and out of sight.
+
+### The knowledge auto-refresh closed with weak tests, a stale doc and a spec table that says less than the code
+
+Found by the refuter on `conocimiento-auto-refresco`, on 2026-09-29 and 2026-09-30. The change
+closed at 72/72 sostenidos, but only 15 of the 72 scenarios carry `rojo visto: si`. None of what
+follows contradicts a scenario:
+- **Weak tests that still discriminate.**
+  - E-18 searches the imports as text, so it does not see `import http.client`,
+    `import urllib.parse` or a module loaded by path. Its behavioural half uses only an `archivo`
+    channel.
+  - E-32 counts the literal `'"w"'`.
+  - E-35's fake transport does not see the HTTP method. That the calls are GET only is guaranteed by
+    `http.py:81` and `:167`, not by the test.
+  - E-44 proves "arma el plan" only as "reaches `planificar`", and it looks for the string
+    `compuerta_normativa`.
+  - E-30 uses fresh projects with no previous state.
+  - E-56 and E-57 are textual checks.
+  - E-21's named assert covers the pure function only.
+  - E-28's second half goes through `resolver_y_escribir`, not `refrescar`.
+  - E-36's fixture is ES0902, while the scenario names ES0901.
+  - E-52's "otro adjunto" case proves only the fingerprint.
+  - E-02 does not look at `.claude/skills`.
+  - E-65 leans on E-70.
+- **E-42's `sin plan escrito` assert cannot fail.** The fixture cannot write a plan in any way. The
+  scenario is held by the `por la compuerta` assert.
+- **`docs/reporte-de-seguridad.md:16-17` is stale.** It says the knowledge state is whatever
+  `fuentes` left, but `seguridad` now refreshes first when the check is due.
+- **The spec's `Qué se construye` table omits two things.** The policy, due-date and fingerprint
+  logic lives in `bienvenida.py`, which `auto_refresh.py:103-145` wraps. `bienvenida.py:400-402`
+  also learned `minimum`.
+- **The decision "la bienvenida no compara versiones" has no scenario.** `linea_de_version`
+  compares observed against accepted, by equality.
+- **E-55 is held by its test alone.** `knowledge-refresh-state.schema.json` does not declare
+  `additionalProperties: false`, so `escribir_agenda` would accept an extra key. Closing the schema
+  would change the delivered contract, which is a decision, not a fix.
+
+Fix. Harden the listed tests one at a time, each seen red under the defect it names. Correct
+`docs/reporte-de-seguridad.md` and the spec's table. Either add a scenario for "no compara versiones"
+or reword the decision.
+
+### The Context Bar consumption change closed with two literal-ban tests and six uncovered edges
+
+Found by the refuter on `context-bar-consumo-desde-instalacion`, on 2026-09-30. The change closed at
+78/78 sostenidos. None of what follows contradicts a scenario:
+- **E-09 and E-10 ban literals, and are bypassed in one line.** A `_VENTANA_POR_DEFECTO = 2 * 10 ** 5`
+  in `barra.py` leaves `62_context_bar_consumo` at 335/335 (probe R04). So does a field name split
+  in two, like `"context_" + "window"`. `costos.py` itself now says `float(10 ** 6)` to get past
+  E-10. The real defence is behavioural: E-06, E-22 and E-49 go red under an invented limit.
+- **Superseding E-22 of `53_context_bar.py` dropped the partial-window case.** No test covers one
+  context total present and the other missing. The code leaves it unresolved.
+- **E-08 does not pin the snapshot's timestamp.** With the clock instead of the last model call, E-08
+  stays green (R03); only E-19 catches it.
+- **E-66 simulates 1.1.0** by editing the `INTEGRATION_VERSION` line of the 1.2.0 renderer and
+  rehashing the lockfile. It never installs the `statusline.py` and `claude_code.py` of 0.27.0.
+- **`current_usage` with zeros (not `null`) and both totals at 0 writes a snapshot of 0 and draws
+  `Ctx 0%`.** E-05 covers only `null`. Whether Claude Code ever sends that shape is not known.
+- **A snapshot without `transcript_path` takes the clock time** (`momento` is `None`).
+- **`-Uninstall` keeps the seeded `.claude/harness.presupuesto.json`,** because it is not in the
+  lockfile, and its message still says only "backups y tu harness.config.json".
+- **`docs/contabilidad.md` still says 8.811 bytes for the largest event.** The number was stale
+  before this change, according to its builder, and nobody re-measured it.
+
+Fix. For E-09 and E-10, replace the literal scans with behavioural assertions, or with an AST check
+over numeric constants. Add a partial-totals case and a zeros case to the adapter tests; for the
+zeros case, decide first whether it counts as "no observation". Pin the timestamp in E-08. Install
+the 0.27.0 renderer for real in E-66. Say in the `-Uninstall` message that the policy stays.
 
 ## Installer defects
 
@@ -1984,6 +2061,14 @@ today.
 - **`_MOMENTO` accepts `0000-00-00T00:00:00`.** It checks the shape, not the calendar. A forged
   installation document with that timestamp lets any later signal prove; forging it needs write
   access to `.claude/`, which the flow gate already protects.
+- **`66_integrity_cleanup` E-03 «ni un cero» looks for `" 0 "` only.** A `Ctx 0` or `Tok 0` at the end
+  of the line would pass. Seen by the refuter on 2026-10-05 during the integration with 0.28.0
+  (`docs/cambios/flow-governance/integracion-0.28.md`); its probe rules it out on today's tree, the
+  test does not. Fix. Match a zero fragment by the line's separator, at any position.
+- **`66_integrity_cleanup` E-41 registers at a fixed `2026-10-01T11:00:00` and draws at the real
+  clock.** With the clock before that date the evidence would fail by date, not by version, and E-41
+  would pass without discriminating. Seen by the same refuter pass. Fix. Draw at a fixed moment after
+  the registration.
 - **`ConfigIntegraciones.guardar` still writes `harness.integraciones.json`.** Nothing calls it on a
   live path today; it is the same class of latent writer that `AlmacenSecretos.set` was.
 - **`refute --unit` and `refute --record` have no gate of their own**, since Wave 1. Only

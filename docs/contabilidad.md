@@ -180,8 +180,10 @@ evidencia de tiempo de modelo, `modelMs` queda vacío y el bloque sale
 
 ## El presupuesto
 
-Se declara en `.claude/harness.presupuesto.json`. El harness no trae uno, y que no exista es la
-respuesta correcta hasta que alguien lo escriba.
+Se declara en `.claude/harness.presupuesto.json`. El harness no trae un límite de plata, y que no
+haya uno es la respuesta correcta hasta que alguien lo escriba. Lo que sí siembra `install.ps1`, si
+el archivo falta, es la política por defecto de la Context Bar: umbrales de contexto y nada más (ver
+abajo). Con ella el gate sigue contestando `BUDGET_UNDEFINED`.
 
 ```json
 {
@@ -249,25 +251,74 @@ HARNESS | m-grande | Ctx 122k | Tok 1.2M in / 34k out | USD 2.84 eq | 18m 03s | 
 > que lea el Bloque 4, y no existe.
 
 Cada vez que Claude Code la invoca, la barra:
-1. lee de stdin el `session_id` y el `transcript_path`, y nada más;
-2. ingiere la transcripción con el adaptador del Bloque 4 al libro de la sesión,
-   `.claude/runtime/accounting/<session_id>/ledger.jsonl`. El libro deduplica por `eventId`, así que
-   dibujar dos veces no suma dos veces;
+1. lee de stdin el `session_id` y el `transcript_path`, y le pasa el JSON entero al adaptador de
+   Claude Code, que es el único que sabe leer la ventana (`context_window`);
+2. ingiere la transcripción con ese adaptador al libro de la sesión,
+   `.claude/runtime/accounting/<session_id>/ledger.jsonl`, y si el stdin trajo una ventana usable
+   anota una foto `CONTEXT_WINDOW_OBSERVED`. El libro deduplica por `eventId`, así que dibujar dos
+   veces no suma dos veces, y la misma ventana sobre la misma transcripción deja una sola foto;
 3. dibuja lo que resume `barra.de`, en una línea;
 4. escribe su señal de vida, `.claude/runtime/contextbar.json`, que es lo que `harness` y la
    bienvenida usan para decir si está activa. Lleva la huella que el comando registrado le pasa
-   como último argumento: la del comando que corrió, no la del `settings.json` de ahora;
+   como último argumento —la del comando que corrió, no la del `settings.json` de ahora— y
+   `presentation.ansi`, que dice si el proceso de la barra tiene `NO_COLOR`;
 5. sale con 0 siempre. Si algo falla dibuja `HARNESS | sin datos del Bloque 4`, nunca una línea vacía.
 
 Lo que dibuja sale del Bloque 4 y de ningún otro lado:
-- **El costo y el contexto que Claude Code manda por stdin no se usan.** Serían una segunda fuente
-  contable.
+- **El costo que Claude Code manda por stdin no se usa.** Sería una segunda fuente contable. La
+  ventana sí entra, por el adaptador, y como una foto en el libro: el tamaño de la ventana lo sabe
+  solo el proveedor, y lo manda.
 - **Un campo que el Bloque 4 no tiene no aparece.** Sin límite de ventana no hay porcentaje de
   contexto, y sale la ventana en tokens. Sin política de presupuesto no hay plata ni `Budget`. Un
   costo `COST_UNRESOLVED` no sale como `USD 0`: no sale.
 - **La tarea no aparece** mientras nadie declare una: la barra contabiliza la sesión.
 - **No dibuja texto de la transcripción.** Del libro entran el modelo, la tarea y el agente, y solo
   si tienen forma de identificador y el catálogo de secretos no reconoce nada en ellos.
+
+Los colores muestran el nivel que ya calculó el Bloque 4, sin cambiar lo que dice la línea:
+- `Ctx NN%` y `Budget NN%` van en amarillo con `WARNING` y en rojo con `ERROR`. Con `NORMAL` o
+  `UNRESOLVED`, sin color.
+- La etiqueta `WARNING` del final va en amarillo, y `ERROR` en rojo.
+- `HARNESS` va en negrita. La línea `HARNESS | sin datos del Bloque 4` no lleva color nunca.
+- Con la variable `NO_COLOR` definida, aunque esté vacía, la barra sale sin colores: la misma línea
+  de antes, byte a byte.
+
+`Ctx` y `Tok` son dos métricas distintas, y no se leen una por la otra:
+- `Ctx` es la ocupación de la ventana actual: cuánto ocupa ahora la conversación en la ventana del
+  modelo, en porcentaje del límite que informó Claude Code. Es una foto, y vale la última: nunca la
+  suma ni la mayor.
+- `Tok` son los tokens acumulados de la sesión en el libro: lo que entró y salió en cada llamada,
+  sumado una vez por mensaje.
+
+Después de compactar con `/compact`, que `Ctx` baje mientras `Tok` sigue subiendo es lo esperable:
+la conversación compactada ocupa menos ventana, y lo que ya se consumió no se descuenta. Entre el
+`/compact` y la llamada siguiente Claude Code no manda una ventana usable, y `Ctx` sigue mostrando la
+última foto.
+
+Cómo sale `Ctx`:
+- **Los tokens** son `total_input_tokens` más `total_output_tokens` de la última respuesta. La caché
+  ya está adentro de la entrada y no se suma otra vez. Claude Code informa también un
+  `used_percentage` que cuenta solo la entrada, así que da algo menos que `Ctx`: esa diferencia no es
+  una inconsistencia, y el porcentaje informado se guarda como evidencia sin pisar el cálculo.
+- **El límite** es `context_window_size`. El harness no tiene una tabla de modelos: sin un tamaño
+  informado, `Ctx` sale en tokens y `harness --verbose` dice por qué.
+- **Antes de la primera respuesta** no hay observación: la barra no dibuja `Ctx 0%`.
+- **Con más tokens que ventana** la barra dibuja `Ctx` en tokens, sin color y sin nivel, y el resumen
+  lleva `CONTEXT_WINDOW_PROVIDER_INCONSISTENT`. Ningún porcentaje pasa de 100%.
+
+La política por defecto: si el proyecto no tiene `.claude/harness.presupuesto.json`, `install.ps1`
+copia la del harness, `harnesses/desarrollo/reglas/budget-policy-context-default.json`. Lleva
+`contextWarningAt: 0.7` y `contextErrorAt: 0.9`, `billingMode: UNKNOWN` y ningún límite de plata, así
+que el costo se dibuja igual que sin política. El 70% y el 90% son defaults operativos del harness,
+no reglas de ES0901 ni de ES0902: un proyecto que quiera otros los cambia en su política.
+- **Una política que existe no se toca.** Ni la instalación, ni `-Update`, ni `setup`, ni `estado`, ni
+  `harness` la escriben, aunque le falten los umbrales de contexto. `setup` y `harness --verbose`
+  dicen cuáles faltan, por nombre.
+- **El único que escribe es `dev-harness.py presupuesto --context-defaults`.** Sin archivo crea el
+  default; con una política del proyecto le agrega solo `contextWarningAt` y `contextErrorAt` si
+  faltan, y deja el resto con sus valores y en su orden. Nunca agrega un `softLimit` ni un `hardLimit`.
+- `setup` y `harness --verbose` dicen `DEFAULT` si la política es, parseada, igual a la plantilla,
+  `PROJECT` si es otra política válida, `MISSING` si no hay archivo e `INVALID` si no valida.
 
 La latencia se mide con `install.ps1 -Doctor`, sobre una transcripción de 5 MB. El umbral es 400 ms
 de p50 y no se mueve: si pasa, `-Doctor` lo dice.
@@ -306,8 +357,8 @@ Las dos son falsas.
 
 ## Lo que este bloque no hace
 
-- **No ejecuta nada.** Los trece tipos de evento son un vocabulario; el único productor real hoy es
-  un adaptador leyendo una transcripción. `AGENT_RUN_STARTED` es un contrato sin llamador hasta que
+- **No ejecuta nada.** Los catorce tipos de evento son un vocabulario; los únicos productores reales
+  hoy son un adaptador leyendo una transcripción y la Context Bar anotando la foto de la ventana. `AGENT_RUN_STARTED` es un contrato sin llamador hasta que
   exista el bloque que ejecute.
 - **No lo llama ningún agente ni ninguna skill.** Si un agente tuviera que acordarse de registrar su
   consumo, el consumo del agente que se olvide no existiría.
