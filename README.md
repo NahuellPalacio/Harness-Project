@@ -152,7 +152,7 @@ MiProyecto/
 ├── .env                   # tus credenciales: se crea una vez y no se toca nunca más
 └── .claude/
     ├── settings.json              # permisos + registro de hooks
-    ├── harness/                   # los hooks, los checks, las reglas y la CLI
+    ├── harness/                   # los hooks, los checks, las reglas, la CLI y los extractos
     ├── skills/  agents/           # las skills y los agentes del harness
     ├── harness.lock.json          # qué versión, qué archivos, SHA256
     ├── harness.installation.json  # el estado de la instalación y de la Context Bar
@@ -219,7 +219,7 @@ El detalle completo, con las zonas del `CLAUDE.md` y sus techos, está en
 | `manifest.json` | El único manifiesto: los requisitos de la máquina y la configuración inicial de cada proyecto |
 | `comun/` | La base del harness: hooks, secretos, zonas del `CLAUDE.md`, schemas y estado de la instalación |
 | `harnesses/desarrollo/` | El producto: la CLI, los checks, los controles normativos, las reglas, las skills y los agentes |
-| `normativa/` | Los estándares del GCBA destilados a markdown, en `extractos/`. **Insumo, nunca se copia a un proyecto**. Los PDF originales son documentación interna del GCBA y **no se publican acá**: van en `normativa/fuentes/`, que está gitignoreada — cada quien pone los suyos |
+| `normativa/` | Los estándares del GCBA destilados a markdown, en `extractos/`. Los extractos se instalan en el proyecto, dentro de `.claude/harness/`, porque la frescura de cada fuente mira la versión de su encabezado. Los PDF originales son documentación interna del GCBA y **no se publican acá**: van en `normativa/fuentes/`, que está gitignoreada — cada quien pone los suyos |
 | `docs/adr/` | Por qué cada decisión es como es |
 | `docs/dominio/` | El modelo de dominio canónico: qué conceptos tiene el harness, qué significa cada uno y dónde termina. Está en [docs/dominio/modelo-canonico.md](docs/dominio/modelo-canonico.md) |
 | `docs/cambios/` | Cada cambio con su spec, sus escenarios y el veredicto de quien lo verificó. El método está en [ADR-0006](docs/adr/0006-sdd-como-metodo-de-los-proyectos.md) |

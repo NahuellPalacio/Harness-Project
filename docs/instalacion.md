@@ -123,21 +123,34 @@ saludo aparece tu nombre y el estado del repo, está andando.
 
 ```
 MiProyecto/
-├── CLAUDE.md              # se le inyecta un bloque marcado; el resto no se toca
-├── .gitignore             # se le agrega un bloque de secretos
+├── CLAUDE.md              # se le inyecta un bloque marcado y sus zonas; el resto no se toca
+├── .gitignore             # se le agrega un bloque: .claude/ y los secretos
+├── .env.example           # la plantilla de las integraciones, en un bloque marcado
+├── .env                   # tus credenciales: se crea una vez y no se toca nunca más
 └── .claude/
-    ├── settings.json      # permisos + registro de hooks     ─┐
-    ├── harness/           # los hooks, skills, agentes         │ todo esto es
-    ├── harness.lock.json  # qué versión, qué archivos, SHA256  │ regenerable
-    ├── harness.config.json# tus ajustes — nunca se pisan       │ y va gitignoreado
-    └── .harness-backup/   # copia de todo lo que se pisó      ─┘
+    ├── settings.json              # permisos + registro de hooks
+    ├── harness/                   # los hooks, los checks, las reglas, la CLI y los extractos
+    ├── skills/  agents/           # las skills y los agentes del harness
+    ├── harness.lock.json          # qué versión, qué archivos, SHA256
+    ├── harness.installation.json  # el estado de la instalación y de la Context Bar
+    ├── harness.config.json        # tus ajustes: nunca se pisan
+    ├── harness.presupuesto.json   # los umbrales de la Context Bar: se crea si no existe
+    └── .harness-backup/           # copia de todo lo que se pisó
 ```
 
-La regla que ordena todo: **`.claude/` es 100% regenerable y va gitignoreado; `CLAUDE.md` no
-lo es y se versiona.** Si algo se rompe, borrás `.claude/` y reinstalás.
+Con el uso aparecen más: `harness.integraciones.json`, que se genera desde el `.env` sin ningún
+secreto; `harness.capacidades.json` y `harness.fuentes.json`, con el estado de la última corrida;
+`contextos/`, `planes/` y `refutaciones/`, con el trabajo de cada tarea; y `runtime/`, con los
+libros de la contabilidad, de la seguridad y de la Context Bar.
 
-`normativa/` **no** se copia nunca a un proyecto: es insumo de autoría del harness, se
-referencia desde el repo.
+La regla que ordena todo: **`.claude/` va gitignoreado y `CLAUDE.md` se versiona.** Lo que trae el
+harness —`settings.json`, `harness/`, las skills, los agentes y el lockfile— se regenera
+reinstalando. Lo que es tuyo o de tu trabajo —la configuración, los contextos, los planes, las
+refutaciones y los libros de `runtime/`— no lo toca `-Update`, y `-Uninstall` lo deja.
+
+De `normativa/` se copian solo los extractos en markdown, a `.claude/harness/normativa/extractos/`:
+la frescura de cada fuente mira la versión que dice su encabezado. Los PDF originales nunca salen
+de la fábrica.
 
 ## 6. Actualizar y desinstalar
 
@@ -146,7 +159,7 @@ cd C:\Work\gcba-harness
 git pull
 
 .\install.ps1 -Project C:\Work\GCBA\MiProyecto -Update      # traer cambios del harness
-.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Uninstall   # sacarlo, sin dejar rastro
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Uninstall   # sacar lo que instaló; lo tuyo queda
 ```
 
 Por bash, lo mismo con el prefijo `powershell.exe -NoProfile -ExecutionPolicy Bypass -File
@@ -158,6 +171,11 @@ con extensión `.nuevo`, y te avisa al final. `harness.config.json` no se toca j
 Lo que la versión anterior instaló y la nueva ya no trae se saca, y la salida lo nombra. Si lo
 habías editado a mano, se queda —sin `.nuevo`, porque no hay versión nueva— y sale del inventario:
 `-Doctor` y `-Uninstall` dejan de mirarlo.
+
+`-Uninstall` borra lo que lista el lockfile, el lockfile, el estado de la instalación, los `.nuevo`
+que quedaron y los bloques de `CLAUDE.md` y `.gitignore`. Del `CLAUDE.md` saca solo las zonas
+vacías: una zona con contenido es trabajo de alguien y se queda. Todo lo demás también se queda: la
+configuración, el `.env`, los contextos, los planes, las refutaciones, `runtime/` y los backups.
 
 📌 **Desde 0.29.0, el harness es uno solo.** El parámetro `Harness`
 ya no existe: pasarlo da el error de PowerShell *No se encuentra ningún parámetro que coincida
