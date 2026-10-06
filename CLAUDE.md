@@ -46,17 +46,13 @@ may sign, labelled `Firmó (delegado):` and never `Leyó:`. Fewer than five foll
 .\tests\Invoke-Tests.ps1
 ```
 
-Green before anything is called done. 24875 tests, two engines, one exit code. `install.ps1` uses the
-same suite as its own gate.
+Green before anything is called done: every case passing, two engines, one exit code. `install.ps1`
+uses the same suite as its own gate.
 
-🔴 If the suite is killed mid-run, check the tree before anything else. `tests/casos/03-instalador.ps1`
-breaks versioned files on purpose and restores them in a `finally` that does not survive the process
-being killed — it already left `pre-tool-use.py`, the only blocking rule of the harness, broken in
-the tree during 0.13.0:
-
-```bash
-git checkout -- comun/hooks/pre-tool-use.py comun/hooks/lib/zonas.py
-```
+Killing the suite mid-run does not touch the versioned tree. The installer cases that break files on
+purpose run on an isolated copy of the factory in `%TEMP%`. A killed run, a crash or a power cut can
+leave that copy behind; a later run sweeps it once it can prove the process that made it is gone, and
+leaves it alone otherwise. Nothing promises `%TEMP%` is cleaned right away.
 
 ## Who owns what
 

@@ -210,15 +210,30 @@ garantía.
 - `contabilidad --ingerir` de una fuente sin consumo, o de Codex, escribe un evento sin clave cada vez
   que se corre en otro segundo.
 
+## Qualification Gate 1
+
+**CLOSED** el 06-10-2026 (`qualification-gate-1.md`). Cerró los dos impedimentos que esta sección
+nombraba y que `PENDIENTES-FH.md` ponía primero y segundo:
+
+- **Q1, CLOSED:** los tests del instalador ya no rompen archivos versionados; corren sobre una copia
+  aislada, y matar la suite no toca el árbol.
+- **Q2, CLOSED:** `-NonInteractive` con una consola real no espera input ni aprueba solo; sale 1 con
+  el diagnóstico.
+
+Evidencia: dos pasadas del refutador sin contradichos, la aceptación humana de Q2 (A a E PASS) y la
+compuerta desde la terminal de la persona, 40447/40447, exit 0. Cerrar el gate no es calificar.
+
 ## Lo que todavía impide calificar
 
-- El merge commit de la integración con 0.28.0: espera la aprobación de la persona.
 - Las sobreprotecciones a propósito (INTENTIONAL_CONSERVATIVE_OVERPROTECTION de `git config`, las
   herramientas desconocidas que mencionan la autoridad) y las dos observaciones NON-BLOCKING de la
   decimosexta pasada, leídas y aceptadas por quien califique.
-- La versión siguiente: **DECISION_PENDING**. `VERSION` queda en `0.28.0`, la de la línea oficial, y
-  Flow Governance no tiene número propio todavía.
-- Lo que `Pendientes/Fix-Harness/PENDIENTES-FH.md` marca como primero, en particular: los tests del
-  instalador que rompen archivos versionados si se los mata a mitad, y `-NonInteractive` del instalador
-  en una consola.
 - El modelo de amenaza de arriba, leído y aceptado por quien califique.
+
+## Lo que se decide después de calificar
+
+No es un bloqueante de la calificación: es una decisión de release.
+
+- **La versión siguiente: DECISION_PENDING.** `VERSION` queda en `0.28.0`, la de la línea oficial, y
+  Flow Governance no tiene número propio todavía. Se decide cuando termine el Final Qualification
+  Gate; ningún número está elegido.

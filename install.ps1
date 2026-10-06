@@ -105,7 +105,13 @@ function ConvertTo-JsonTexto {
 function Get-Sha256Archivo {
     param([string] $Ruta)
     if (-not (Test-Path $Ruta)) { return '' }
-    return (Get-FileHash -Path $Ruta -Algorithm SHA256).Hash
+    # Sin Get-FileHash: pasa por ShouldProcess, así que con -Confirm preguntaba por cada archivo
+    # que lee, y sin consola fallaba con el mensaje de PowerShell antes de llegar a
+    # Confirm-Operacion. No acepta -Confirm:$false. Leer un hash no es algo que se confirme.
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $flujo = [System.IO.File]::OpenRead((Resolve-Path -Path $Ruta).ProviderPath)
+    try { return [System.BitConverter]::ToString($sha.ComputeHash($flujo)).Replace('-', '') }
+    finally { $flujo.Dispose(); $sha.Dispose() }
 }
 
 
@@ -724,18 +730,44 @@ function Resolve-Usuario {
 
     if ($Provisto) { return $Provisto.Trim() }
 
-    if ([Console]::IsInputRedirected) {
-        throw "falta -Usuario. Este harness te trata por tu nombre, y no hay consola para preguntarlo. Agregá: -Usuario 'Tu Nombre'"
-    }
+    $faltaUsuario = "falta -Usuario. Este harness te trata por tu nombre, y no hay consola para preguntarlo. Agregá: -Usuario 'Tu Nombre'"
+    if ([Console]::IsInputRedirected) { throw $faltaUsuario }
 
+    # Una consola de verdad no alcanza para poder preguntar: con powershell.exe -NonInteractive,
+    # o en un host sin UI, Read-Host falla aunque stdin sea la consola. Se ataja la falla y no
+    # se adivina el modo: cualquier motivo por el que no se pudo preguntar es el mismo error.
+    # Un fin de entrada ($null) tampoco es una respuesta, y reintentar ahí sería colgarse.
     Escribir ''
     Write-Host '  El harness te va a tratar por tu nombre.' -ForegroundColor Cyan
     $respuesta = ''
     while (-not $respuesta) {
-        $respuesta = (Read-Host '  ¿Cómo te llamás?').Trim()
+        try { $leido = Read-Host '  ¿Cómo te llamás?' } catch { throw $faltaUsuario }
+        if ($null -eq $leido) { throw $faltaUsuario }
+        $respuesta = $leido.Trim()
         if (-not $respuesta) { Write-Host '  Hace falta un nombre.' -ForegroundColor Yellow }
     }
     return $respuesta
+}
+
+
+function Confirm-Operacion {
+    <#
+    .SYNOPSIS
+        ShouldProcess, con un error del harness cuando -Confirm no tiene a quién preguntarle.
+    .DESCRIPTION
+        Sin -Confirm no pregunta nada. Con -Confirm y sin consola interactiva (-NonInteractive,
+        un host sin UI), ShouldProcess no puede preguntar y PowerShell tira su propia excepción.
+        No preguntar no es un sí: se aborta sin hacer nada, diciendo por qué. Cualquier otra
+        excepción sale tal cual.
+    #>
+    param([string] $Objetivo, [string] $Accion)
+    try { return $PSCmdlet.ShouldProcess($Objetivo, $Accion) }
+    catch {
+        if ($_.Exception.InnerException -is [System.Management.Automation.PSInvalidOperationException]) {
+            throw '-Confirm pide una confirmación y no hay consola para darla. No se hizo nada. Corré sin -Confirm, o desde una consola interactiva.'
+        }
+        throw
+    }
 }
 
 
@@ -1877,7 +1909,7 @@ function Invoke-Instalar {
     $dirBackup  = Join-Path $dirClaude ('.harness-backup\' + $sello)
     $rutaConfigExistente = Join-Path $dirClaude 'harness.config.json'
 
-    if (-not $PSCmdlet.ShouldProcess($Project, "instalar gcba-harness v$($script:Version)")) {
+    if (-not (Confirm-Operacion -Objetivo $Project -Accion "instalar gcba-harness v$($script:Version)")) {
         Escribir ''
         Escribir '  Se escribiría:'
         EscribirPaso ".claude\settings.json"
@@ -2254,7 +2286,7 @@ function Invoke-Actualizar {
         Escribir ''
     }
 
-    if (-not $PSCmdlet.ShouldProcess($Project, "actualizar de v$($d.version) a v$($script:Version)")) {
+    if (-not (Confirm-Operacion -Objetivo $Project -Accion "actualizar de v$($d.version) a v$($script:Version)")) {
         return 0
     }
 
@@ -2365,7 +2397,7 @@ function Invoke-Desinstalar {
         return 0
     }
 
-    if (-not $Silencioso -and -not $PSCmdlet.ShouldProcess($Project, 'desinstalar gcba-harness')) {
+    if (-not $Silencioso -and -not (Confirm-Operacion -Objetivo $Project -Accion 'desinstalar gcba-harness')) {
         return 0
     }
 

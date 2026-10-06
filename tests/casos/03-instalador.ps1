@@ -22,9 +22,9 @@ $gitHumano    = "node_modules/`r`n"
 $usuarioPrueba = 'Ana Prueba'
 
 function Invoke-Instalador {
-    param([string[]] $Argumentos)
+    param([string[]] $Argumentos, [string] $Desde = $instalador)
     $salida = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
-                               -File $instalador @Argumentos 2>&1 | Out-String
+                               -File $Desde @Argumentos 2>&1 | Out-String
     return [pscustomobject]@{ Salida = $salida; Codigo = $LASTEXITCODE }
 }
 
@@ -464,9 +464,12 @@ Assert-Igual 'E-17 solo zonas.py define el par nombre/techo de una zona' `
 # intacto" es peor que "no tocado": no hay forma de saber, mirándolo, si terminó de
 # instalarse o no.
 #
-# Rotura temporal y reversible de comun/hooks/lib/zonas.py -no es mío, y tiene que quedar
-# bit a bit igual al terminar-: un error de sintaxis, que ninguna defensa en tiempo de
-# ejecución puede atrapar porque Python ni siquiera puede compilarlo.
+# La rotura es un error de sintaxis, que ninguna defensa en tiempo de ejecución puede atrapar
+# porque Python ni siquiera puede compilarlo. Se rompe una copia aislada de la fábrica
+# (tests\isolated-factory.ps1, Qualification Gate 1): el árbol versionado no se escribe, así
+# que una compuerta matada a mitad no lo puede dejar roto.
+
+. (Join-Path $script:Raiz 'tests\isolated-factory.ps1')
 
 Set-Grupo 'Instalador - zonas.py roto aborta sin CLAUDE.md a medias (E-20)'
 
@@ -476,22 +479,28 @@ $demoZonasRotas = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-zonasrot
 $claudeMdPrevioE20 = "# CLAUDE.md - previo a la instalacion`r`n`r`nEsta linea es del humano.`r`n"
 
 try {
-    New-Item -ItemType Directory -Path $demoZonasRotas -Force | Out-Null
-    [System.IO.File]::WriteAllText((Join-Path $demoZonasRotas 'CLAUDE.md'), $claudeMdPrevioE20)
+    Invoke-EnFabricaAislada {
+        param($fabrica)
+        New-Item -ItemType Directory -Path $demoZonasRotas -Force | Out-Null
+        [System.IO.File]::WriteAllText((Join-Path $demoZonasRotas 'CLAUDE.md'), $claudeMdPrevioE20)
 
-    [System.IO.File]::AppendAllText($rutaZonasPy, "`ndef (((`n")
+        [System.IO.File]::AppendAllText((Join-Path $fabrica 'comun\hooks\lib\zonas.py'), "`ndef (((`n")
 
-    $rZonasRotas = Invoke-Instalador @('-Project', $demoZonasRotas, '-Harness', 'analisis', '-Usuario', 'Prueba Zonas Rotas')
+        $rZonasRotas = Invoke-Instalador @('-Project', $demoZonasRotas, '-Harness', 'analisis', '-Usuario', 'Prueba Zonas Rotas') `
+                                         -Desde (Join-Path $fabrica 'install.ps1')
 
-    Assert-Igual 'E-20 la instalacion aborta' 1 $rZonasRotas.Codigo
-    Assert-Contiene 'E-20 el mensaje nombra el error de zonas.py' 'zonas.py' $rZonasRotas.Salida
-    Assert-Igual 'E-20 el CLAUDE.md queda exactamente como estaba' `
-        $claudeMdPrevioE20 ([System.IO.File]::ReadAllText((Join-Path $demoZonasRotas 'CLAUDE.md')))
-    Assert-Verdadero 'E-20 no deja lockfile' `
-        (-not (Test-Path (Join-Path $demoZonasRotas '.claude\harness.lock.json')))
+        Assert-Igual 'E-20 la instalacion aborta' 1 $rZonasRotas.Codigo
+        Assert-Contiene 'E-20 el mensaje nombra el error de zonas.py' 'zonas.py' $rZonasRotas.Salida
+        # La copia está completa: lo que aborta es la rotura, no un archivo que no se copió.
+        Assert-Contiene 'E-20 aborta por la rotura, no por una copia incompleta (Qualification Gate 1)' `
+            'SyntaxError' $rZonasRotas.Salida
+        Assert-Igual 'E-20 el CLAUDE.md queda exactamente como estaba' `
+            $claudeMdPrevioE20 ([System.IO.File]::ReadAllText((Join-Path $demoZonasRotas 'CLAUDE.md')))
+        Assert-Verdadero 'E-20 no deja lockfile' `
+            (-not (Test-Path (Join-Path $demoZonasRotas '.claude\harness.lock.json')))
+    }
 }
 finally {
-    [System.IO.File]::WriteAllBytes($rutaZonasPy, $bytesZonasOriginales)
     if (Test-Path $demoZonasRotas) { Remove-Item $demoZonasRotas -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
@@ -507,9 +516,9 @@ Assert-Igual 'E-20 zonas.py quedo exactamente igual' `
 # deja un harness a medias. El revisor lo verificó a mano rompiendo pre-tool-use.py para
 # que emita una salida que no es JSON; esto lo deja clavado en la suite.
 #
-# Misma técnica que E-20: rotura temporal y reversible de un archivo que no es mío
-# -comun/hooks/pre-tool-use.py-, con un error de sintaxis que ninguna defensa en tiempo
-# de ejecución de lib.hook puede atrapar -es justo el punto: el hook no puede ni arrancar.
+# Misma técnica que E-20, sobre otra copia aislada: un error de sintaxis en
+# comun/hooks/pre-tool-use.py que ninguna defensa en tiempo de ejecución de lib.hook puede
+# atrapar -es justo el punto: el hook no puede ni arrancar.
 
 Set-Grupo 'Instalador - la compuerta revierte un hook roto (E-27)'
 
@@ -518,24 +527,29 @@ $bytesHookOriginales = [System.IO.File]::ReadAllBytes($rutaHookRoto)
 $demoHookRoto = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-hookroto-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
 
 try {
-    New-Item -ItemType Directory -Path $demoHookRoto -Force | Out-Null
+    Invoke-EnFabricaAislada {
+        param($fabrica)
+        New-Item -ItemType Directory -Path $demoHookRoto -Force | Out-Null
 
-    [System.IO.File]::AppendAllText($rutaHookRoto, "`ndef (((`n")
+        [System.IO.File]::AppendAllText((Join-Path $fabrica 'comun\hooks\pre-tool-use.py'), "`ndef (((`n")
 
-    $rHookRoto = Invoke-Instalador @('-Project', $demoHookRoto, '-Harness', 'analisis', '-Usuario', 'Prueba Hook Roto')
+        $rHookRoto = Invoke-Instalador @('-Project', $demoHookRoto, '-Harness', 'analisis', '-Usuario', 'Prueba Hook Roto') `
+                                       -Desde (Join-Path $fabrica 'install.ps1')
 
-    Assert-Igual 'E-27 la instalacion sale con codigo de fallo' 1 $rHookRoto.Codigo
-    Assert-Contiene 'E-27 avisa que revierte' 'Revirtiendo' $rHookRoto.Salida
-    Assert-Verdadero 'E-27 no deja lockfile' `
-        (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness.lock.json')))
-    Assert-Verdadero 'E-27 no deja .claude\harness a medias' `
-        (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness')))
-    # bloque-1-bienvenida E-01, la mitad de la instalacion revertida.
-    Assert-Verdadero 'bienvenida E-01 revertida por un hook roto: no deja harness.installation.json' `
-        (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness.installation.json')))
+        Assert-Igual 'E-27 la instalacion sale con codigo de fallo' 1 $rHookRoto.Codigo
+        Assert-Contiene 'E-27 avisa que revierte' 'Revirtiendo' $rHookRoto.Salida
+        # Revertir viene después de copiar todo y probar los hooks: la copia estaba completa.
+        Assert-Contiene 'E-27 el hook que falla es pre-tool-use (Qualification Gate 1)' 'pre-tool-use' $rHookRoto.Salida
+        Assert-Verdadero 'E-27 no deja lockfile' `
+            (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness.lock.json')))
+        Assert-Verdadero 'E-27 no deja .claude\harness a medias' `
+            (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness')))
+        # bloque-1-bienvenida E-01, la mitad de la instalacion revertida.
+        Assert-Verdadero 'bienvenida E-01 revertida por un hook roto: no deja harness.installation.json' `
+            (-not (Test-Path (Join-Path $demoHookRoto '.claude\harness.installation.json')))
+    }
 }
 finally {
-    [System.IO.File]::WriteAllBytes($rutaHookRoto, $bytesHookOriginales)
     if (Test-Path $demoHookRoto) { Remove-Item $demoHookRoto -Recurse -Force -ErrorAction SilentlyContinue }
 }
 

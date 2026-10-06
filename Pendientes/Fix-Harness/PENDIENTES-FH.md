@@ -12,40 +12,37 @@ running order.
 
 | | What | Why now |
 |---|---|---|
-| 1 | Two installer tests break versioned files | It can leave `pre-tool-use.py` — the only blocking rule of the harness — broken in the tree, and four agents were killed by a watchdog during 0.13.0 |
-| 2 | The installer misses `-NonInteractive` when stdin is a console | The gate is red for whoever runs it from their own terminal — it was, on 2026-09-28, for the person who owns the harness. A gate that is red for a reason nobody fixed teaches people to stop reading it. One `try` around `Read-Host` |
-| 3 | G1 reads a leading zero or a non-ASCII digit as a canonical version | `php 08.2.30` and an Arabic-Indic `8` come out `HOMOLOGATED`. The only fail-open result in six refuter passes, and a one-line fix |
-| 4 | `controles/` never reaches an installed project | Thirty-one normative controls declare `INSTALLED` and the installer never copies them: outside this repository every one of them is `CONTROL_FILE_MISSING`. Each rule installed makes this worse; D7 added six at once, D8 two and P1 five |
-| 5 | `19_contexto / E-29` is not deterministic | It fired once and never again. It asserts determinism, so the one time it fires nobody can tell the finding from the flake |
-| 6 | Close `integridad-de-repositorio` and `tool-builder` | They shipped in 0.19.0 with their verdict `EN CURSO`: two `sin sustento` in the first, eleven in the second |
-| 7 | Review the four contract fixes on their own diff | They rode inside a port that promised not to change behaviour. Until somebody reads them alone, the promise is unverified |
-| 8 | The IGE stayed on v0.9.0 | It is now four versions behind, and 0.13.0 breaks the check contract: any `.ps1` check written there stops running |
-| 9 | What the checks witness never exercised | 25 branches with no test and no implementation left to compare against |
-| 10 | The always loaded cost of agents and skills | The repo went from 53 to 449 tokens per turn during 0.13.0 and nothing caps it |
-| 11 | The budget has to measure the session | Same blind spot, one level up |
-| 12 | The four minor port divergences | None changes a verdict. Cheap to close while touching the files anyway |
-| 13 | Skill routing in `UserPromptSubmit` is mute | A capability that was never built, not a defect |
-| 14 | `ES0902.md` did not close as faithful | Predates all of this |
-| 15 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
-| 16 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
-| 17 | GitLab was never called for real, and Jira only once | The first real Jira call disproved the search probe (fixed in `sonda-de-jira-acotada`); GitLab and Jira's `mypermissions` are still unseen |
-| 18 | The Ficha de Proyecto is a supposition | The whole Block 2 rests on a concept nobody has written yet in a real Jira |
-| 19 | Three loadable .md files are in Spanish | ADR-0011 was broken by three files on the day it was written, and nothing measures it |
-| 20 | ES0902 still declares nine controls that are not built | Down from thirteen with Vu9 and Vu10 in 0.25.0. Whoever reads "ES0902 installed" can easily read "ES0902 complied with" |
-| 21 | Nothing produces the G2 severity mapping | Every real run of the acceptance threshold comes out `VULNERABILITY_RISK_MAPPING_UNRESOLVED`, so the threshold is installed and unusable |
-| 22 | The shared secret catalogue misses five credential forms, and its sample leaks twelve characters | The hook shows 12 of the 20 characters of an AWS key in the transcript, and the security ledger had to grow its own redaction layer to avoid it |
+| 1 | G1 reads a leading zero or a non-ASCII digit as a canonical version | `php 08.2.30` and an Arabic-Indic `8` come out `HOMOLOGATED`. The only fail-open result in six refuter passes, and a one-line fix |
+| 2 | `controles/` never reaches an installed project | Thirty-one normative controls declare `INSTALLED` and the installer never copies them: outside this repository every one of them is `CONTROL_FILE_MISSING`. Each rule installed makes this worse; D7 added six at once, D8 two and P1 five |
+| 3 | `19_contexto / E-29` is not deterministic | It fired once and never again. It asserts determinism, so the one time it fires nobody can tell the finding from the flake |
+| 4 | Close `integridad-de-repositorio` and `tool-builder` | They shipped in 0.19.0 with their verdict `EN CURSO`: two `sin sustento` in the first, eleven in the second |
+| 5 | Review the four contract fixes on their own diff | They rode inside a port that promised not to change behaviour. Until somebody reads them alone, the promise is unverified |
+| 6 | The IGE stayed on v0.9.0 | It is now four versions behind, and 0.13.0 breaks the check contract: any `.ps1` check written there stops running |
+| 7 | What the checks witness never exercised | 25 branches with no test and no implementation left to compare against |
+| 8 | The always loaded cost of agents and skills | The repo went from 53 to 449 tokens per turn during 0.13.0 and nothing caps it |
+| 9 | The budget has to measure the session | Same blind spot, one level up |
+| 10 | The four minor port divergences | None changes a verdict. Cheap to close while touching the files anyway |
+| 11 | Skill routing in `UserPromptSubmit` is mute | A capability that was never built, not a defect |
+| 12 | `ES0902.md` did not close as faithful | Predates all of this |
+| 13 | The reviewer panel | Deferred on purpose until `desarrollo` is used on real work |
+| 14 | `permissions.deny` hides `.env.example` from Claude | The harness ships a template into the project that the agent it serves cannot read |
+| 15 | GitLab was never called for real, and Jira only once | The first real Jira call disproved the search probe (fixed in `sonda-de-jira-acotada`); GitLab and Jira's `mypermissions` are still unseen |
+| 16 | The Ficha de Proyecto is a supposition | The whole Block 2 rests on a concept nobody has written yet in a real Jira |
+| 17 | Three loadable .md files are in Spanish | ADR-0011 was broken by three files on the day it was written, and nothing measures it |
+| 18 | ES0902 still declares nine controls that are not built | Down from thirteen with Vu9 and Vu10 in 0.25.0. Whoever reads "ES0902 installed" can easily read "ES0902 complied with" |
+| 19 | Nothing produces the G2 severity mapping | Every real run of the acceptance threshold comes out `VULNERABILITY_RISK_MAPPING_UNRESOLVED`, so the threshold is installed and unusable |
+| 20 | The shared secret catalogue misses five credential forms, and its sample leaks twelve characters | The hook shows 12 of the 20 characters of an AWS key in the transcript, and the security ledger had to grow its own redaction layer to avoid it |
 
-Item 2 is the cheapest and the most visible: until it is fixed, the gate cannot be read from a
-console. Item 3 is the most serious in what it says: it is the only place where the harness says
+Item 1 is the most serious in what it says: it is the only place where the harness says
 `HOMOLOGATED` for something the ratified rule rejects. 0.19.0 released the backlog of verdict files
-that had piled up since 0.18.0; two of those changes shipped open (item 6) and G1 shipped with E-17
-contradicted and in plain sight.
+that had piled up since 0.18.0; two of those changes shipped open (item 4) and G1 shipped with E-17
+contradicted and in plain sight. The two installer items that used to head this table closed with
+Flow Governance Qualification Gate 1 (see «Closed by Flow Governance Qualification Gate 1»).
 
 🔴 Recount it, do not copy the number: `docs/cambios/*/verificacion.md` that `git ls-files` does
 not know are the unreleased ones.
 
-Item 1 is what makes a killed run dangerous, and it stays at the top
-for that reason. Item 8 is not code: it is running `-Update` on a real project, and it is what tells
+Item 6 is not code: it is running `-Update` on a real project, and it is what tells
 whether any of this works outside this repo.
 
 📌 Two changes still have a `spec.md` and no verdict: `sdd-capacidad` and `mapa-en-la-bitacora`,
@@ -954,40 +951,18 @@ the 0.27.0 renderer for real in E-66. Say in the `-Uninstall` message that the p
 
 ## Installer defects
 
-### The installer misses `-NonInteractive` when stdin is a console, and the gate goes red
+### E-17 of the installer suite scans untracked copies of the hooks
 
-Found on 2026-09-28, closing 0.25.0. The owner ran `.\tests\Invoke-Tests.ps1` from their own
-PowerShell terminal and got `465/467` on the PowerShell engine; the same tree, run with stdin
-redirected, gave `36881/36881`. One of the two failures is this one:
+Found on 2026-09-28, closing 0.25.0, in the same run as the `-NonInteractive` defect (which closed
+with Flow Governance Qualification Gate 1). E-17 (in `03-instalador.ps1`, group `Composicion - …`)
+scans every `*.py` under the repository root, tracked or not, and found a copy of
+`comun\hooks\lib\zonas.py` under a folder `..Harness-release-024` inside the tree. The folder was
+gone by the time it was looked at, so what created it is not recorded. It is E-06 and E-07 of
+`docs/cambios/instalador-sin-consola/spec.md`, which Qualification Gate 1 left out on purpose: its
+test would write a temporary file inside the tree, the risk class Q1 removed.
 
-```
-[Instalador — ciclo completo] y el error dice como resolverlo
-    no contiene <-Usuario>; obtenido <... El harness te va a tratar por tu nombre.
-    Windows PowerShell se encuentra en modo no interactivo. Las funciones de lectura y
-    confirmación no están disponibles.
-```
-
-`Get-Usuario` in `install.ps1` (around line 721) decides there is nobody to ask only through
-`[Console]::IsInputRedirected`. The test launches `powershell.exe -NoProfile -NonInteractive -File
-install.ps1` without `-Usuario`; from a real console the child inherits the console as stdin, so
-`IsInputRedirected` is false, the installer reaches `Read-Host`, and `-NonInteractive` makes it throw
-its own message. The install still aborts with exit 1 and leaves nothing half written — only the
-message is wrong, and it does not tell the person to pass `-Usuario`. The same happens to anyone who
-runs the installer with `-NonInteractive` by hand or from a script, not only to the test.
-
-The second failure of the same run was environmental too, and belongs to the same family of "the
-gate depends on where it runs": E-17 (in `03-instalador.ps1`, group `Composicion - …`) scans every `*.py` under the repository root,
-tracked or not, and found a copy of `comun\hooks\lib\zonas.py` under a folder
-`..Harness-release-024` inside the tree. The folder was gone by the time it was looked at, so what
-created it is not recorded.
-
-Specified on 2026-09-28 in `docs/cambios/instalador-sin-consola/spec.md`, not built yet.
-
-Fix. In `Get-Usuario`, put `Read-Host` inside a `try` and, on failure, throw the same `falta -Usuario`
-message the redirected branch throws. Checking `[Environment]::GetCommandLineArgs()` for
-`-NonInteractive` would also work, but misses the other hosts where `Read-Host` cannot run. For E-17,
-limit the scan to `git ls-files`, which is what "the definition lives in one place" means for the
-factory.
+Fix. Limit the scan to `git ls-files`, which is what "the definition lives in one place" means for
+the factory, with a test that does not write inside the tree.
 
 ### The installer tests fail at random under load, and the python test counts drift
 
@@ -1829,38 +1804,6 @@ Fix. Not a bug, a hole in the net: every line above is a case somebody can add t
 whatever the rule says it should be. Worth doing before the checks are touched again for any
 reason.
 
-### Two installer tests break versioned files, and `finally` does not survive a killed process
-
-`tests/casos/03-instalador.ps1` covers E-20 and E-27 by appending a syntax error to a real,
-versioned file — `comun/hooks/lib/zonas.py` for one, `comun/hooks/pre-tool-use.py` for the other —
-running the installer against it, and restoring the file in a `finally`.
-
-`try/finally` only unwinds inside a live process. If the PowerShell process running the suite is
-killed outright — `Stop-Process -Force`, a CI timeout, an agent watchdog — the `finally` never
-runs and the file stays broken in the working tree. During the `hooks-en-python` change four
-agents were killed by a watchdog, so the window is not theoretical.
-
-🔴 **And there is a second way in that has nothing to do with being killed: two runs at once.**
-On 22-09-2026 two refuter agents were launched in parallel and both ran the full gate. One
-appended `def (((` while the other was between its own break and its own restore, so one
-`finally` wrote back a copy that already carried the other's damage. Both agents reported the
-tree broken; the suite had been green minutes earlier. The window is a few seconds wide and it
-does not need anybody to kill anything — **running the PowerShell gate twice concurrently is
-enough**, which is easy to do by accident with background agents. Until the fix below lands,
-never run `.\tests\Invoke-Tests.ps1` while another agent might be running it. The worst case leaves
-`pre-tool-use.py` — the hook that carries the only blocking rule in the harness — with a syntax
-error, and nothing detects it beyond somebody running `git status`.
-
-Recovery, if it ever happens:
-
-```bash
-git checkout -- comun/hooks/pre-tool-use.py comun/hooks/lib/zonas.py
-```
-
-Fix. Run those two cases against a copy of the repo in a temporary directory instead of against
-the working tree. It is a change to how the suite is built, not a one-line patch, which is why it
-was left out of 0.13.0 rather than rushed into it.
-
 ### Four behaviour fixes rode inside the Python port, so their diff never said one thing
 
 The `hooks-en-python` change was bound to parity: port the behaviour, defects included, so that the
@@ -1993,6 +1936,19 @@ the shape of thing to look for if anything else in that file reads wrong.
 
 What should happen: somebody who knows what the file said reads it once against the five specs it
 documents. Until then it is an honest reconstruction and not a restoration.
+
+### Closed by Flow Governance Qualification Gate 1, waiting for its version note
+
+Closed on 2026-10-06 by `docs/cambios/flow-governance/qualification-gate-1.md` (refuted in two
+passes with nothing contradicted, Q2 accepted by the person, gate 40447/40447 from the person's own
+terminal). This stub leaves the file when the version note that receives them is written.
+- **Two installer tests break versioned files, and `finally` does not survive a killed process**
+  (was item 1 of «What to take first»). Q1: the installer cases run on an isolated copy of the
+  factory; killing the run, or two runs at once, no longer touches the tree.
+- **The installer misses `-NonInteractive` when stdin is a console, and the gate goes red** (was
+  item 2). Q2: with a real console, `-NonInteractive` without `-Usuario` exits 1 with the `falta
+  -Usuario` diagnostic, `-Confirm` is not approved on its own, and the interactive install still
+  asks the name. Its other half, E-17 scanning untracked copies, stays open above.
 
 ### Closed by Flow Governance Wave 6, waiting for its version note
 
