@@ -18,6 +18,7 @@ recuperacion del flujo no abre el `.env`, y leerlo lo sigue impidiendo `permissi
 """
 import fnmatch
 import os
+import posixpath
 import re
 import shlex
 
@@ -100,7 +101,7 @@ def toca_autoridad(texto, tolerante=False):
     """Si un texto nombra `.claude` o `.git` como tramo de una ruta: en el texto crudo y en cada
     palabra del comando, que es como lo va a leer el shell (`cd .claude;` o `cd .claude&&echo`).
     En un comando, comillas sin cerrar son «ante la duda, si»; `tolerante` es para lo que no es un
-    comando (ver `_palabras`)."""
+    comando (ver `_palabras`). Un glob hacia la autoridad lo mira `destino_de_autoridad` (R11)."""
     if not isinstance(texto, str):
         return False
     if _AUTORIDAD.search(texto.replace("\\", "/")):
@@ -113,6 +114,76 @@ def toca_autoridad(texto, tolerante=False):
             if tramo.rstrip(" .").lower() in (".claude", ".git") or tramo.lower() in (".claude", ".git"):
                 return True
             if _PEGADA_A_UNA_OPCION.match(tramo.rstrip(" .")):   # `-o.claude/...`
+                return True
+    return False
+
+
+# Las clases POSIX de un `[...]` de bash (`[[:alpha:]]`), como rangos que entiende `fnmatch`.
+_CLASES_POSIX = {"alpha": "a-zA-Z", "upper": "A-Z", "lower": "a-z", "digit": "0-9",
+                 "alnum": "a-zA-Z0-9", "xdigit": "0-9a-fA-F", "word": "a-zA-Z0-9_",
+                 "space": " \t\n\r\f\v", "blank": " \t", "punct": "!-/:-@^-`{-~",
+                 "graph": "!-~", "print": " -~", "cntrl": "\x01-\x1f"}
+_CLASE_POSIX = re.compile(r"\[:(\w*):\]")
+
+
+def _puede_ser_autoridad(tramo):
+    """Si un segmento de ruta, con `*`, `?` o `[...]`, puede ser `.claude` o `.git`: el nombre
+    entero contra el patron, sin mayusculas y sin el punto o el espacio final que Windows ignora.
+    `[^...]` niega como `[!...]`, como en bash, y una clase POSIX (`[[:alpha:]]`) es su rango; una
+    que no se conoce, cualquier caracter. Un `*` puede empezar con punto: PowerShell lo expande
+    asi, y bash con `dotglob`."""
+    tramo = _CLASE_POSIX.sub(lambda m: _CLASES_POSIX.get(m.group(1).lower(), "!-~"), tramo).lower()
+    patrones = {tramo, tramo.rstrip(" .") or tramo}
+    patrones |= {p.replace("[^", "[!") for p in patrones}
+    return any(fnmatch.fnmatchcase(c, p) for p in patrones for c in _CARPETAS_DE_AUTORIDAD)
+
+
+def _tramos_de_texto(ruta):
+    """Los segmentos de una ruta por el texto, sin mayusculas: `.` y `..` resueltos sin el disco."""
+    tramos = [t if t in (".", "..") else t.rstrip(" .") or t
+              for t in ruta.replace("\\", "/").split("/")]
+    return [t.lower() for t in posixpath.normpath("/".join(tramos)).split("/") if t and t != "."]
+
+
+_ABSOLUTA = re.compile(r"^(?:/|[A-Za-z]:)")
+
+
+def _patron_de_autoridad(ruta, proyecto=None, cwd=None, sin_base=False):
+    """Si un destino, como patron de `fnmatch` (`*`, `?`, `[...]` activos; un comodin literal va
+    escapado como `[*]`), puede ser `.claude` o `.git` en la raiz del proyecto, o algo adentro
+    (R11). El glob cuenta en la posicion de la raiz:
+    `.cla*/x`, `./.cla*`, `../.cla*` desde una subcarpeta o `<raiz>/.cla*`, y no `tmp/.cla*`. Lo
+    relativo se resuelve contra `cwd` y contra `proyecto`: ante la duda sobre desde donde corre,
+    cualquiera de los dos. Sin proyecto, la raiz es el primer segmento de una ruta relativa.
+
+    `sin_base`: el comando cambia de carpeta (`cd`), y no se sabe desde donde se resuelve una ruta
+    relativa. Ahi el segmento cuenta si lo que tiene adelante, sin los `..`, puede ser el final de
+    la raiz: nada (`../.cla*`) o el nombre del proyecto (`cd .. && rm -rf <proyecto>/.cla*`).
+
+    Se decide por el texto: el glob no se expande contra el disco y una variable no se resuelve.
+    Del disco sale solo la forma larga de la raiz del proyecto, como en `es_ruta_de_autoridad`."""
+    ruta = ruta.replace("\\", "/")
+    absoluta = bool(_ABSOLUTA.match(ruta))
+    raices = [_tramos_de_texto(proyecto),
+              [t.lower() for t in re.split(r"[\\/]", _normalizada(proyecto, None)) if t]] if proyecto else [[]]
+    if not absoluta and (sin_base or not proyecto):
+        tramos = _tramos_de_texto(ruta)
+        while tramos and tramos[0] == "..":
+            tramos.pop(0)
+        if not sin_base:
+            return bool(tramos) and _puede_ser_autoridad(tramos[0])
+        return any(_puede_ser_autoridad(t) and (n == 0 or any(
+            n <= len(raiz) and all(fnmatch.fnmatchcase(r, x) for r, x in zip(raiz[-n:], tramos))
+            for raiz in raices)) for n, t in enumerate(tramos))
+    if not proyecto:
+        return False                                   # absoluta, sin raiz con que compararla
+    bases = [None] if absoluta else [b for b in (cwd, proyecto) if b]
+    for base in bases:
+        tramos = _tramos_de_texto(ruta if base is None else base.replace("\\", "/") + "/" + ruta)
+        for raiz in raices:
+            n = len(raiz)
+            if len(tramos) > n and _puede_ser_autoridad(tramos[n]) and all(
+                    fnmatch.fnmatchcase(r, t) for r, t in zip(raiz, tramos)):
                 return True
     return False
 
@@ -148,12 +219,14 @@ _NOMBRE_CORTO = re.compile(r"~\d")
 _MSYS = re.compile(r"^/([A-Za-z])(/|$)")
 
 
-def _como_rutas(palabra):
+def _como_rutas(palabra, redireccion=True):
     """Las rutas que una palabra del comando puede abrir, en las formas que el texto deja ver: sin
     redirecciones pegadas; el valor de una opcion pegado con `=` (`--target-directory=x`), con `:`
     (`-Path:x`, PowerShell) o detras de una opcion corta (`-ox`, `-uox`); `/c/x` de Git Bash como
-    `c:/x` y `~` expandido."""
-    palabra = palabra.lstrip("<>&|0123456789")
+    `c:/x` y `~` expandido. Sin `redireccion`, una palabra ya partida por el shell conserva sus
+    digitos del principio (`2024*` no es `*`)."""
+    if redireccion:
+        palabra = palabra.lstrip("<>&|0123456789")
     candidatas = [palabra]
     if palabra.startswith("-"):
         if "=" in palabra:
@@ -688,6 +761,572 @@ def _shell(tool, comando, proyecto=None, cwd=None):
     return _resultado(UNRESOLVED, "un segmento no se reconoce")
 
 
+# -- R11: el destino de una operacion que escribe -------------------------------
+#
+# Un comodin no es autoridad. Es autoridad el destino de una operacion que escribe, cuando la
+# sintaxis textual soportada de ese destino puede alcanzar `.claude` o `.git` en la raiz del
+# proyecto (R11, segunda pasada, decision de la persona del 06-10-2026). En orden: la operacion de
+# cada segmento, sus destinos, el texto de cada destino como lo deja el shell (comillas, escapes,
+# llaves de bash, backtick de PowerShell) y si ese patron alcanza la raiz.
+#
+# Solo Bash y PowerShell: una MCP generica no tiene destinos tipados, y sus valores no se leen como
+# rutas con comodin (R11-10). Lo que solo se sabe al correr -una variable, una sustitucion, un
+# programa que elige su destino- sigue siendo limite.
+
+# Los programas que cambian la carpeta desde donde se resuelve lo relativo.
+_CAMBIA_DE_CARPETA = frozenset(("cd", "chdir", "pushd", "set-location", "sl", "push-location"))
+_SHELLS_POSIX = frozenset(("bash", "sh", "zsh", "dash", "ksh"))
+_SHELLS_POWERSHELL = frozenset(("powershell", "pwsh"))
+# Lo que abre un bloque o una condicion de bash y no es el programa del segmento.
+_PALABRAS_DE_BLOQUE = frozenset(("{", "}", "!", "if", "then", "elif", "else", "while", "until",
+                                 "do", "time"))
+_OPERADORES_BASH = ("&>>", "<<<", "<<-", "&&", "||", ";;", "|&", ">>", "&>", ">|", "<<", "<>", ">&", "<&",
+                    ";", "&", "|", "(", ")", "<", ">")
+_REDIRIGE_ESCRITURA = frozenset((">", ">>", "&>", "&>>", ">|", "<>", ">&"))
+_REDIRIGE_LECTURA = frozenset(("<", "<<<", "<&"))
+_HEREDOC = frozenset(("<<", "<<-"))
+_OPERADORES_POWERSHELL = ("&&", "||", ">>", ";", "|", "&", "(", ")", "{", "}", ",", ">")
+_ESCAPES_DE_POWERSHELL = {"n": "\n", "t": "\t", "r": "\r", "0": "\0"}
+_LIMITE_DE_LLAVES = 256
+
+# Opciones de git cuyo valor no es un destino (un mensaje, el archivo del mensaje, un autor, una
+# fecha), por subcomando, porque la misma letra cambia: `-m` lleva el mensaje en `commit` y no lleva
+# valor en `checkout`. Cada subcomando: (cortas con valor, cortas sin valor, largas con valor). Las
+# cortas sin valor estan solo para descomponer un grupo (`-am`, `-sm`). Solo una opcion de esta
+# tabla saca de los destinos su valor; una que no esta, o un subcomando que no esta, no saca nada.
+_GIT_VALOR_SIN_RUTA = {
+    "commit": ("mF", "aenqsv", frozenset(("--message", "--file", "--reuse-message",
+                                          "--reedit-message", "--author", "--date", "--template",
+                                          "--cleanup", "--trailer", "--fixup", "--squash"))),
+    "tag": ("mF", "aefs", frozenset(("--message", "--file", "--local-user", "--cleanup"))),
+    "merge": ("mF", "enqv", frozenset(("--message", "--file", "--cleanup"))),
+    "notes": ("mF", "f", frozenset(("--message", "--file", "--reuse-message", "--reedit-message"))),
+    "stash": ("m", "akpqu", frozenset(("--message",))),
+}
+# Parametros de un cmdlet que escribe: los que no llevan valor, y los que llevan un valor que no
+# es una ruta. Se aceptan abreviados, como PowerShell. Cualquier otro valor es un destino.
+_PS_INTERRUPTORES = ("recurse", "force", "whatif", "confirm", "passthru", "nonewline", "append",
+                     "noclobber", "asbytestream", "verbose", "debug", "container")
+_PS_VALOR_SIN_RUTA = ("value", "encoding", "itemtype", "type", "credential", "stream",
+                      "inputobject", "width")
+# Los cmdlets cuyo segundo posicional es el contenido (`Set-Content x '*'`), no otra ruta.
+_PS_UNA_RUTA = frozenset(("set-content", "sc", "add-content", "ac", "out-file", "set-item", "si"))
+
+
+def destino_de_autoridad(tool, comando, proyecto=None, cwd=None):
+    """Si algun destino de lo que escribe un comando de Bash o PowerShell puede ser `.claude` o
+    `.git` en la raiz del proyecto, o algo adentro, por su texto (R11). Comillas sin cerrar: ante
+    la duda, si."""
+    if tool not in _SHELLS or not isinstance(comando, str):
+        return False
+    try:
+        return _alcanza(comando, tool == "PowerShell", proyecto, cwd, False, 0)
+    except ValueError:
+        return True
+
+
+def _alcanza(texto, powershell, proyecto, cwd, sin_base, hondura):
+    segmentos, redirecciones = (_lexico_powershell if powershell else _lexico_bash)(texto)
+    segmentos = [s for s in (_sin_bloque(s) for s in segmentos) if s]
+    # Un `cd` en el comando deja sin saber desde donde se resuelve lo relativo (R11-16, R11-23).
+    sin_base = sin_base or any(_programa(s[0][0]) in _CAMBIA_DE_CARPETA for s in segmentos)
+    destinos, carpetas, escribe = list(redirecciones), [], bool(redirecciones)
+    for segmento in segmentos:
+        clase, propios = _destinos_del_segmento(segmento, powershell)
+        if clase == "cd":
+            carpetas.extend(propios)
+            continue
+        escribe = escribe or clase != READ_ONLY
+        destinos.extend(propios)
+        if hondura < 3:
+            for interior, es_powershell in _comandos_anidados(segmento):
+                if _alcanza(interior, es_powershell, proyecto, cwd, sin_base, hondura + 1):
+                    return True
+    if escribe:
+        destinos.extend(carpetas)                      # `cd .cla* && rm -rf harness`
+    return any(_patron_alcanza(patron, proyecto, cwd, sin_base)
+               for _, patrones in destinos for patron in patrones)
+
+
+def _patron_alcanza(patron, proyecto, cwd, sin_base):
+    """Un destino, en las formas de `_como_rutas` (`--target-directory=x`, `-Path:x`, `-tx`): el
+    literal, como `toca_autoridad`, o el patron en la posicion de la raiz."""
+    for c in _como_rutas(patron, redireccion=False):
+        literal = re.sub(r"\[([*?\[])\]", r"\1", c)
+        if toca_autoridad(literal, tolerante=True) or _patron_de_autoridad(c, proyecto, cwd, sin_base):
+            return True
+    return False
+
+
+def _sin_bloque(segmento):
+    """El segmento sin lo que abre un bloque o una condicion (`{ cd src; ...; }`, `! rm ...`)."""
+    n = 0
+    while n < len(segmento) and segmento[n][0] in _PALABRAS_DE_BLOQUE:
+        n += 1
+    return segmento[n:]
+
+
+def _destinos_del_segmento(segmento, powershell):
+    """(clase, destinos) de un segmento: un programa y sus palabras. Lo que lee no tiene destinos;
+    lo que escribe o no se reconoce, cualquiera de sus argumentos, salvo lo que la operacion dice
+    que no es una ruta (el mensaje de git, por subcomando; el valor de `Set-Content`). `cd` va
+    aparte: sus argumentos cuentan si el comando escribe."""
+    textos = [p[0] for p in segmento]
+    programa, argumentos = _programa(textos[0]), segmento[1:]
+    if programa in _CAMBIA_DE_CARPETA:
+        return "cd", argumentos
+    if programa == "git":
+        if _git(textos[1:]) == READ_ONLY:
+            return READ_ONLY, []
+        return MUTATING, _destinos_de_git(argumentos)
+    clase = _segmento(textos, powershell)
+    if clase == READ_ONLY:
+        return READ_ONLY, []
+    if powershell and programa in _ESCRITURA:
+        return clase, _destinos_de_un_cmdlet(programa, argumentos)
+    return clase, argumentos
+
+
+def _valor_sin_ruta_de_git(subcomando, texto):
+    """Cuantas palabras ocupa `texto` si es una opcion de `subcomando` cuyo valor no es un destino
+    (`_GIT_VALOR_SIN_RUTA`): 1 si el valor va pegado (`-mfix`, `--message=fix`, `-amfix`), 2 si va
+    en la palabra siguiente (`-m fix`, `-am fix`), 0 si la tabla no la reconoce. Un grupo de cortas
+    se descompone solo con letras de la tabla: una letra desconocida antes de la del valor, 0."""
+    con_valor, sin_valor, largas = _GIT_VALOR_SIN_RUTA.get(subcomando, ("", "", ()))
+    if texto.startswith("--"):
+        nombre, igual, _ = texto.partition("=")
+        return (1 if igual else 2) if nombre in largas else 0
+    for n, letra in enumerate(texto[1:]):
+        if letra in con_valor:
+            return 1 if texto[n + 2:] else 2
+        if letra not in sin_valor:
+            return 0
+    return 0
+
+
+def _destinos_de_git(argumentos):
+    """Los argumentos de git que pueden ser una ruta: las opciones globales `-C`, `--git-dir` y
+    `--work-tree`, y lo que el subcomando recibe, salvo el valor de una opcion que la tabla
+    `_GIT_VALOR_SIN_RUTA` reconoce para ese subcomando (el mensaje de `commit -m`, `tag -F`...),
+    separado, pegado o al final de un grupo que la tabla descompone. La aridad se reconoce solo
+    para las opciones y los subcomandos de la tabla: una opcion o un subcomando desconocido es un
+    destino mas y no se lleva por si mismo el posicional siguiente. No es la gramatica de opciones
+    de git entera: si el valor de una opcion desconocida se escribe igual que una de la tabla
+    (`commit -t -m x`), se lee segun la tabla y `x` sale de los destinos (O1). Afecta la precision
+    de la extraccion; no hay evidencia de que esconda una escritura de la autoridad."""
+    textos = [p[0] for p in argumentos]
+    destinos, i = [], 0
+    while i < len(textos) and textos[i].startswith("-"):
+        opcion = textos[i].split("=", 1)[0]
+        if opcion in _GIT_OPCIONES_CON_VALOR and "=" not in textos[i]:
+            if opcion != "-c" and i + 1 < len(textos):
+                destinos.append(argumentos[i + 1])
+            i += 2
+            continue
+        if opcion != "-c":
+            destinos.append(argumentos[i])
+        i += 1
+    subcomando = textos[i] if i < len(textos) else None
+    i += 1
+    while i < len(textos):
+        texto = textos[i]
+        if texto == "--":
+            destinos.extend(argumentos[i + 1:])
+            break
+        ocupa = _valor_sin_ruta_de_git(subcomando, texto) if texto.startswith("-") else 0
+        if ocupa:
+            i += ocupa
+            continue
+        destinos.append(argumentos[i])
+        i += 1
+    return destinos
+
+
+def _abrevia(nombre, nombres):
+    return bool(nombre) and any(n.startswith(nombre) for n in nombres)
+
+
+def _destinos_de_un_cmdlet(programa, argumentos):
+    """Los argumentos de un cmdlet que escribe que pueden ser una ruta: los posicionales y el
+    valor de cualquier parametro, salvo los que no llevan valor (`-Recurse`), los que llevan uno
+    que no es una ruta (`-Value`, `-Encoding`) y el segundo posicional de `Set-Content` y los
+    suyos, que es el contenido."""
+    destinos, posicionales, i = [], 0, 0
+    while i < len(argumentos):
+        texto = argumentos[i][0]
+        if texto.startswith("-") and len(texto) > 1:
+            nombre, pegado, _ = texto[1:].partition(":")
+            nombre = nombre.lower()
+            interruptor = _abrevia(nombre, _PS_INTERRUPTORES)
+            if _abrevia(nombre, _PS_VALOR_SIN_RUTA) and not interruptor:
+                i += 1 if pegado else 2
+                continue
+            destinos.append(argumentos[i])             # `-Path:x`
+            if not (pegado or interruptor) and i + 1 < len(argumentos):
+                destinos.append(argumentos[i + 1])     # `-Destination x`
+                i += 1
+            i += 1
+            continue
+        if programa not in _PS_UNA_RUTA or posicionales == 0:
+            destinos.append(argumentos[i])
+        posicionales += 1
+        i += 1
+    return destinos
+
+
+def _comandos_anidados(segmento):
+    """[(texto, powershell)] de lo que el segmento hace correr a otro shell: `bash -c '...'`,
+    `sh -lc "..."`, `powershell -Command ...`, `pwsh -c ...`, `cmd /c ...`, tambien detras de otro
+    programa (`sudo bash -c`). `cmd` no expande comodines: los expande cada programa, y su texto se
+    lee como el de PowerShell, con `\\` de ruta."""
+    textos = [p[0] for p in segmento]
+    salida = []
+    for n, texto in enumerate(textos):
+        programa, resto = _programa(texto), textos[n + 1:]
+        if programa in _SHELLS_POSIX:
+            for k, opcion in enumerate(resto):
+                if re.match(r"^-[A-Za-z]*c[A-Za-z]*$", opcion) and k + 1 < len(resto):
+                    salida.append((resto[k + 1], False))
+                    break
+        elif programa in _SHELLS_POWERSHELL:
+            opciones = [o[1:].split(":", 1)[0].lower() if o.startswith("-") else None for o in resto]
+            if any(o in ("encodedcommand", "e", "ec", "file", "f") for o in opciones):
+                continue                               # codificado o un archivo: limite
+            k = next((k + 1 for k, o in enumerate(opciones) if _abrevia(o, ("command",))), None)
+            if k is None:                              # sin -Command, lo que sigue a las opciones
+                k = next((k for k, o in enumerate(opciones) if o is None), len(resto))
+            if k < len(resto):
+                salida.append((" ".join(resto[k:]), True))
+        elif programa == "cmd":
+            k = next((k for k, opcion in enumerate(resto) if opcion.lower() in ("/c", "/k")), None)
+            if k is not None and k + 1 < len(resto):
+                salida.append((" ".join(resto[k + 1:]), True))
+    return salida
+
+
+# Una palabra es (texto, patrones): el texto como lo recibe el programa, y los patrones de
+# `fnmatch` de su destino, con los comodines activos y los literales escapados (`[*]`). Bash da mas
+# de un patron cuando expande llaves.
+
+def _lexico_bash(texto):
+    """(segmentos, redirecciones) de un comando de bash, como lo parte bash: comillas simples y
+    dobles, la barra invertida como escape, los operadores y las redirecciones. Una palabra entre
+    comillas o escapada deja sus comodines literales. Levanta ValueError con comillas sin cerrar."""
+    segmentos, actual, redirecciones, heredocs = [], [], [], []
+    caracteres, en_palabra, redirige = [], False, None
+    i, n = 0, len(texto)
+
+    def cerrar():
+        nonlocal caracteres, en_palabra, redirige
+        if en_palabra:
+            palabra = _palabra_de_bash(caracteres)
+            if redirige is None:
+                actual.append(palabra)
+            elif redirige in _HEREDOC:
+                heredocs.append((palabra[0], redirige == "<<-"))
+            elif redirige and not re.match(r"^(?:\d+|-)$", palabra[0]):
+                redirecciones.append(palabra)
+            redirige = None
+        caracteres, en_palabra = [], False
+
+    while i < n:
+        c = texto[i]
+        if c == "\\":
+            if texto.startswith("\n", i + 1):
+                i += 2
+                continue
+            caracteres.append((texto[i + 1] if i + 1 < n else "\\", True))
+            en_palabra, i = True, i + 2
+            continue
+        if c == "'":
+            fin = texto.find("'", i + 1)
+            if fin < 0:
+                raise ValueError("comillas sin cerrar")
+            caracteres.extend((x, True) for x in texto[i + 1:fin])
+            en_palabra, i = True, fin + 1
+            continue
+        if c == '"':
+            en_palabra, i = True, i + 1
+            while True:
+                if i >= n:
+                    raise ValueError("comillas sin cerrar")
+                d = texto[i]
+                if d == '"':
+                    i += 1
+                    break
+                if d == "\\" and i + 1 < n and texto[i + 1] in '$`"\\\n':
+                    if texto[i + 1] != "\n":
+                        caracteres.append((texto[i + 1], True))
+                    i += 2
+                    continue
+                caracteres.append((d, True))
+                i += 1
+            continue
+        if c in " \t\r\n":
+            cerrar()
+            i += 1
+            if c == "\n":
+                segmentos.append(actual)
+                actual = []
+                i = _saltar_heredocs(texto, i, heredocs)
+            continue
+        if c == "#" and not en_palabra:
+            fin = texto.find("\n", i)
+            i = n if fin < 0 else fin
+            continue
+        operador = next((o for o in _OPERADORES_BASH if texto.startswith(o, i)), None)
+        if operador:
+            if operador[0] in "<>" and en_palabra and all(x.isdigit() and not lit for x, lit in caracteres):
+                caracteres, en_palabra = [], False    # el descriptor de `2>`
+            cerrar()
+            if operador in _REDIRIGE_ESCRITURA:
+                redirige = True
+            elif operador in _HEREDOC:
+                redirige = operador
+            elif operador in _REDIRIGE_LECTURA:
+                redirige = False
+            else:
+                segmentos.append(actual)
+                actual = []
+            i += len(operador)
+            continue
+        caracteres.append((c, False))
+        en_palabra, i = True, i + 1
+    cerrar()
+    segmentos.append(actual)
+    return [s for s in segmentos if s], redirecciones
+
+
+def _saltar_heredocs(texto, i, heredocs):
+    """Desde el principio de una linea, el final del cuerpo de los heredocs pendientes: el cuerpo
+    es la entrada de un programa, no un comando. Vacia `heredocs`."""
+    while heredocs:
+        delimitador, tabs = heredocs.pop(0)
+        while i < len(texto):
+            fin = texto.find("\n", i)
+            linea = texto[i:] if fin < 0 else texto[i:fin]
+            i = len(texto) if fin < 0 else fin + 1
+            if (linea.lstrip("\t") if tabs else linea).rstrip("\r") == delimitador:
+                break
+    return i
+
+
+def _palabra_de_bash(caracteres):
+    """(texto, patrones) de una palabra de bash: las llaves expandidas, acotadas."""
+    texto = "".join(c for c, _ in caracteres)
+    expandidas = _expandir_llaves(caracteres)
+    if expandidas is None:
+        expandidas = _llaves_como_comodin(caracteres)
+    return texto, ["".join("[%s]" % c if lit and c in "*?[" else c for c, lit in cs)
+                   for cs in expandidas]
+
+
+def _grupo_de_llaves(caracteres):
+    """(inicio, fin, alternativas) del primer grupo de llaves que bash expande: `{a,b}` o una
+    secuencia `{a..e}`, `{1..9}`, sin comillas y sin el `$` de una variable. None si no hay."""
+    for i, (c, lit) in enumerate(caracteres):
+        if c != "{" or lit or (i and caracteres[i - 1] == ("$", False)):
+            continue
+        nivel, comas, fin = 0, [], None
+        for j in range(i, len(caracteres)):
+            d, l = caracteres[j]
+            if l:
+                continue
+            if d == "{":
+                nivel += 1
+            elif d == "}":
+                nivel -= 1
+                if nivel == 0:
+                    fin = j
+                    break
+            elif d == "," and nivel == 1:
+                comas.append(j)
+        if fin is None:
+            continue
+        if comas:
+            cortes = [i] + comas + [fin]
+            return i, fin, [caracteres[a + 1:b] for a, b in zip(cortes, cortes[1:])]
+        texto = "".join(c for c, _ in caracteres[i + 1:fin])
+        if _SECUENCIA.match(texto):
+            secuencia = _secuencia(texto)
+            return i, fin, None if secuencia is None else [[(x, True) for x in s] for s in secuencia]
+    return None
+
+
+_SECUENCIA = re.compile(r"^(?:-?\d+\.\.-?\d+|[A-Za-z]\.\.[A-Za-z])(?:\.\.-?\d+)?$")
+
+
+def _secuencia(texto):
+    """Los elementos de una secuencia de bash (`a..e`, `1..9`, `1..9..2`), o None si pasan de
+    `_LIMITE_DE_LLAVES`."""
+    a, _, resto = texto.partition("..")
+    b, _, paso = resto.partition("..")
+    paso = abs(int(paso or 1)) or 1
+    x, y = (ord(a), ord(b)) if a.isalpha() else (int(a), int(b))
+    if abs(y - x) // paso > _LIMITE_DE_LLAVES:
+        return None
+    valores = range(x, y + (1 if y >= x else -1), paso if y >= x else -paso)
+    return [chr(v) if a.isalpha() else str(v) for v in valores]
+
+
+def _expandir_llaves(caracteres):
+    """Las palabras de la expansion de llaves, o None si pasan de `_LIMITE_DE_LLAVES`: no se
+    enumera lo que crece exponencial (`{a,b}{a,b}...`)."""
+    salida, pendientes = [], [caracteres]
+    while pendientes:
+        actual = pendientes.pop()
+        grupo = _grupo_de_llaves(actual)
+        if grupo is None:
+            salida.append(actual)
+            if len(salida) > _LIMITE_DE_LLAVES:
+                return None
+            continue
+        i, fin, alternativas = grupo
+        if alternativas is None or len(alternativas) > _LIMITE_DE_LLAVES:
+            return None
+        pendientes.extend(actual[:i] + a + actual[fin + 1:] for a in reversed(alternativas))
+    return salida
+
+
+def _llaves_como_comodin(caracteres):
+    """Pasado `_LIMITE_DE_LLAVES`, un intento sin garantia: cada grupo de llaves es un `*`, y las
+    alternativas con `/` se miran una por una, con los otros grupos como `*`. No es completo: una
+    expansion de mas de 256 palabras esta fuera de la frontera de R11 (final-qualification.md,
+    OUT_OF_SCOPE_COMPLEXITY_BOUNDARY). Dentro del limite decide `_expandir_llaves`."""
+    def todo_comodin(cs):
+        grupo = _grupo_de_llaves(cs)
+        while grupo is not None:
+            cs = cs[:grupo[0]] + [("*", False)] + cs[grupo[1] + 1:]
+            grupo = _grupo_de_llaves(cs)
+        return cs
+    salida, resto = [todo_comodin(caracteres)], caracteres
+    while True:
+        grupo = _grupo_de_llaves(resto)
+        if grupo is None:
+            return salida
+        i, fin, alternativas = grupo
+        salida.extend(todo_comodin(resto[:i] + a + resto[fin + 1:])
+                      for a in alternativas or () if any(c == "/" for c, _ in a))
+        resto = resto[:i] + [("*", False)] + resto[fin + 1:]
+
+
+def _lexico_powershell(texto):
+    """(segmentos, redirecciones) de un comando de PowerShell: comillas simples (literales) y
+    dobles, el backtick como escape fuera de las simples, los operadores y las redirecciones. Las
+    llaves y los parentesis parten segmentos: lo de adentro de un scriptblock tambien corre. El
+    comodin lo expande el provider, tambien entre comillas, salvo escapado con backtick (`` `* ``).
+    Levanta ValueError con comillas sin cerrar."""
+    segmentos, actual, redirecciones = [], [], []
+    caracteres, en_palabra, redirige = [], False, None
+    i, n = 0, len(texto)
+
+    def cerrar():
+        nonlocal caracteres, en_palabra, redirige
+        if en_palabra:
+            palabra = _palabra_de_powershell("".join(caracteres))
+            if redirige is None:
+                actual.append(palabra)
+            elif redirige:
+                redirecciones.append(palabra)
+            redirige = None
+        caracteres, en_palabra = [], False
+
+    while i < n:
+        c = texto[i]
+        if c == "`":
+            if texto.startswith("\n", i + 1) or texto.startswith("\r\n", i + 1):
+                i += 3 if texto[i + 1] == "\r" else 2
+                continue
+            if i + 1 < n:
+                caracteres.append(_ESCAPES_DE_POWERSHELL.get(texto[i + 1], texto[i + 1]))
+            en_palabra, i = True, i + 2
+            continue
+        if c == "'":
+            en_palabra, i = True, i + 1
+            while True:
+                if i >= n:
+                    raise ValueError("comillas sin cerrar")
+                if texto[i] == "'":
+                    if texto.startswith("'", i + 1):
+                        caracteres.append("'")
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                caracteres.append(texto[i])
+                i += 1
+            continue
+        if c == '"':
+            en_palabra, i = True, i + 1
+            while True:
+                if i >= n:
+                    raise ValueError("comillas sin cerrar")
+                d = texto[i]
+                if d == "`" and i + 1 < n:
+                    caracteres.append(_ESCAPES_DE_POWERSHELL.get(texto[i + 1], texto[i + 1]))
+                    i += 2
+                    continue
+                if d == '"':
+                    if texto.startswith('"', i + 1):
+                        caracteres.append('"')
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                caracteres.append(d)
+                i += 1
+            continue
+        if c in " \t\r\n":
+            cerrar()
+            if c == "\n":
+                segmentos.append(actual)
+                actual = []
+            i += 1
+            continue
+        if c == "#" and not en_palabra:
+            fin = texto.find("\n", i)
+            i = n if fin < 0 else fin
+            continue
+        operador = next((o for o in _OPERADORES_POWERSHELL if texto.startswith(o, i)), None)
+        if operador:
+            if operador[0] == ">" and en_palabra and all(x.isdigit() or x == "*" for x in caracteres):
+                caracteres, en_palabra = [], False    # el stream de `2>` o `*>`
+            cerrar()
+            if operador in (">", ">>"):
+                if re.match(r"&\d", texto[i + len(operador):i + len(operador) + 2]):
+                    i += len(operador) + 2             # `2>&1`
+                    continue
+                redirige = True
+            elif operador == ",":
+                pass                                   # un arreglo: cada elemento, una palabra
+            else:
+                segmentos.append(actual)
+                actual = []
+            i += len(operador)
+            continue
+        caracteres.append(c)
+        en_palabra, i = True, i + 1
+    cerrar()
+    segmentos.append(actual)
+    return [s for s in segmentos if s], redirecciones
+
+
+def _palabra_de_powershell(texto):
+    """(texto, [patron]) de una palabra de PowerShell: para el provider, `` `* `` es un `*` literal
+    y `*`, `?`, `[` son comodines."""
+    patron, i = [], 0
+    while i < len(texto):
+        c = texto[i]
+        if c == "`" and i + 1 < len(texto):
+            siguiente = texto[i + 1]
+            patron.append("[%s]" % siguiente if siguiente in "*?[" else siguiente)
+            i += 2
+            continue
+        patron.append(c)
+        i += 1
+    return texto, ["".join(patron)]
+
+
 # -- la herramienta ------------------------------------------------------------
 
 def _nombra_env(entrada):
@@ -845,7 +1484,8 @@ def clasificar(tool_name, tool_input, proyecto=None, cwd=None):
         salida = _shell(tool_name, comando, proyecto, cwd)
         if salida["class"] != READ_ONLY and not salida.get("cli") and (
                 toca_autoridad(comando) or toca_persistencia(comando)
-                or (isinstance(comando, str) and git_config_a_la_vista([comando], [comando]))):
+                or (isinstance(comando, str) and git_config_a_la_vista([comando], [comando]))
+                or destino_de_autoridad(tool_name, comando, proyecto, cwd)):
             salida.update({"class": MUTATING, "reason": "escribe la autoridad del flujo",
                            "protected": True, "humanIntent": None})
         return salida

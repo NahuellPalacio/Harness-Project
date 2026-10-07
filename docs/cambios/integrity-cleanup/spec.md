@@ -209,6 +209,28 @@ huérfanos reconocidos. No se rutea por dominio: se llega por SessionStart y por
 | Un ejecutable reemplazado fuera del proyecto | host | **límite** |
 | Correr los hooks con `python -I` | proyecto | **diferido**: cambia la codificación de la salida de los hooks y ningún test lo vería |
 
+**Nota posterior de endurecimiento, Final Qualification (R11, 06-10-2026).** La fila de `.claude/` y
+`.git/` dice «protegido desde la Wave 4» sin salvedad. La Wave 4 protegió los destinos que su parser
+podía ver: el nombre literal. La refutación del Final Qualification Gate escribió la autoridad con
+`.cla*`, que no lo es. El endurecimiento R11 posterior amplió esa cobertura, solo en Bash y
+PowerShell, al destino de una operación que escribe cuando su sintaxis textual normalizada puede
+alcanzar `.claude` o `.git` en la raíz. La sintaxis normalizada es una lista cerrada, escrita en
+`flow-governance/qualification-readiness.md` («Neutralizado localmente»). Quedan explícitamente
+fuera del modelo:
+- una variable, una concatenación o una sustitución que solo se resuelve al correr;
+- un programa que elige su destino (`git clean -fdx`) y el borrado de una carpeta que contiene la
+  raíz;
+- `FileSystem::` y `\\?\`;
+- un glob en una MCP genérica, `file:///` incluido;
+- el anidamiento de shells más allá de tres niveles, y un shell anidado que recibe su comando
+  codificado o de un archivo (`-EncodedCommand`, `-File`);
+- una expansión de llaves de más de 256 resultados (OUT_OF_SCOPE_COMPLEXITY_BOUNDARY): lo que la
+  política detecte ahí es incidental, no una garantía;
+- cualquier sintaxis que no esté en esa lista.
+
+La tabla de arriba es la de la Wave 6 y no se reescribe. La frontera vigente está en
+`flow-governance/final-qualification.md`, «R11: el estado vigente».
+
 🔴 **El texto de E-24 se acotó durante la verificación.** El primero decía, sin más, que escribir un
 punto de persistencia con una herramienta estaba protegido. La primera pasada encontró caminos que no
 lo nombran: los que se pueden ver en el texto —un stream, un nombre corto, `${PROFILE}`, `git config`
