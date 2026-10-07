@@ -290,3 +290,32 @@ tests in `63_compuerta_del_flujo.py`. It changes the classification table, not t
 
 Status. Open. Classified USABILITY / CONSERVATIVE_OVERBLOCK / NON-BLOCKING by the person on
 2026-10-05, who asked for no hurried exception during the integration.
+
+### Typed MCP authority targets: let R11 read a wildcard in an MCP only where the field is known
+
+An adapter or extractor that knows, for a specific MCP tool, which of its `tool_input` fields is a
+path, a target or a command, so the R11 wildcard analysis of `comun/hooks/lib/tool_policy.py`
+(`_patron_alcanza` / `_patron_de_autoridad`, today reached only through `destino_de_autoridad` for
+Bash and PowerShell) can run on that value the way it runs on a Bash or PowerShell destination.
+
+Problem it solves. Since the second pass of R11 (Final Qualification, 2026-10-06) a generic MCP is a
+declared boundary: `mcp__fs__delete {"path": ".cla*/harness"}` or `mcp__shell__run {"command": "rm
+-rf .cla*/harness"}` is not `FLOW_AUTHORITY_PROTECTED`, and only stays `UNRESOLVED_TOOL_CLASS`. With
+the governed task healthy it passes. The literal `.claude` / `.git` in any MCP value stays protected.
+The first pass globbed every MCP string and denied `SELECT * FROM t` (FP2). Pinned by R11-10, the MCP
+part of R11-13 and the MCP row of R11-22 in `tests/casos/70_r11_glob_de_autoridad.py`, and written in
+`docs/cambios/flow-governance/final-qualification.md` («La MCP genérica, frontera de R11»).
+
+Decision by the person on 2026-10-06, and it fences this idea: *no global list of MCP field names,
+no `path/file/target/destination/command/script` heuristic over arbitrary JSON. Generic MCP values
+are not typed authority targets. If closing a concrete MCP requires knowing the semantics of its
+fields and the repo does not own that contract, do not invent it in R11.*
+
+Cost. Unknown until a contract source exists: per-tool declarations (a typed table for MCP servers
+the harness ships or pins, or the server's own input schema if one becomes reliably available to
+the hook), a classification step that hands only typed values to `_patron_alcanza`, and one
+test per adapter. It must not reopen a word bag nor change `UNRESOLVED_TOOL_CLASS`. It also covers
+B7 (`file:///` with a glob in a generic MCP).
+
+Status. Open, POST_QUALIFICATION_WORK. Out of scope of the Flow Governance qualification by the
+person's decision of 2026-10-06; future work.

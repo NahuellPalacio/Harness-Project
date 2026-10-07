@@ -22,7 +22,7 @@ con qué evidencia, qué quedó afuera y qué todavía impide calificar.
 | 4 | Interacción humana y reanudación segura | `2c33fba41cb13bb59c888377466b619cb70f42d1` | 71 sostenidos, ocho pasadas (`interaccion-humana/`) | manual de aprobación y de configuración persistente PASS | 38455/38455 |
 | 5 | Fallar cerrado y semántica de capacidades | `556c7bdde9e54091d40b7ca13124a5155f61388e` | 43 sostenidos, cuatro pasadas (`fail-closed-hardening/`) | manual de capacidades y del Bloque 4 PASS | 38746/38746 |
 | 6 | Limpieza de integridad y esta preparación | `73a7b47dc6f4bc2cd6bf105332129279112c1381` | 46 sostenidos, dieciséis pasadas; E-24 sostenido también por la revisión humana independiente (`integrity-cleanup/`) | manual A, B y C PASS de la persona | 39519/39519 |
-| Integración | Las Waves 1 a 6 con la línea oficial 0.28.0 | merge sin commit, pendiente de aprobación, de `e5d7a14` sobre `73a7b47` | 14 sostenidos, dos pasadas; decisión A sobre la frescura (`integracion-0.28.md`) | Manual B integrada PASS de la persona | 40389/40389 |
+| Integración | Las Waves 1 a 6 con la línea oficial 0.28.0 | `05fefcdf160c2149c4f6732f22aa0807c4bf3dd0`, merge de `e5d7a14` sobre `73a7b47` | 14 sostenidos, dos pasadas; decisión A sobre la frescura (`integracion-0.28.md`) | Manual B integrada PASS de la persona | 40389/40389 |
 
 Cada número de suite es la compuerta entera, `.\tests\Invoke-Tests.ps1`, corrida por quien verificó.
 La verificación la hizo siempre `harness-spec-refuter`, que no es quien construyó.
@@ -109,7 +109,27 @@ del modelo que ven los hooks**; no defiende una máquina ya comprometida.
 
 ### Neutralizado localmente
 
-- `.claude/` y `.git/`: ninguna herramienta los escribe con estado del flujo (Wave 4).
+- `.claude/` y `.git/`, con estado del flujo:
+  - **El literal (Wave 4).** Ninguna herramienta los escribe nombrándolos literalmente en el texto:
+    Write, Edit, Bash, PowerShell o un valor de una línea de una MCP.
+  - **El glob, solo en Bash y PowerShell (R11, Final Qualification, segunda pasada).** Es protegido
+    el **destino de una operación que escribe** cuando, con la sintaxis textual que la política
+    normaliza, puede ser `.claude` o `.git` en la raíz del proyecto, o algo adentro. Esa sintaxis
+    es, y no otra: comillas y escapes de Bash (`\`), clases POSIX dentro de `[...]`, `*`, `?` y
+    `[...]`, expansión de llaves estática (`{a,b}`, `{a..e}`) de hasta 256 resultados —más de 256 es
+    límite, abajo—, el backtick de PowerShell, `.` y `..` resueltos por el texto contra
+    el cwd y la raíz, un `cd` literal en el mismo comando, y otro shell visible en el texto (`bash
+    -c`, `powershell -Command`) hasta tres niveles de anidamiento. Lo que lee no tiene
+    destino: un glob en una lectura o en el valor de `Set-Content` no es autoridad. En un git que
+    escribe se excluyen de los destinos solo los valores de las opciones no-destino que la política
+    reconoce por subcomando (el mensaje de `commit -m`); una opción desconocida no saca por sí
+    misma el posicional que la sigue (H1, cerrado). No es la gramática completa de git: si el valor
+    de una opción desconocida se escribe igual que una de la tabla, se lee según la tabla (O1,
+    residuo aceptado). Se decide por el texto, sin
+    expandir el glob contra el disco y sin correr un shell.
+  - Lo que queda afuera está en la lista de abajo: lo que arma el destino al correr, los prefijos
+    de ruta que la política no normaliza, el anidamiento más hondo, `cmd /c`, la expansión de llaves
+    de más de 256 resultados y el glob en una MCP genérica. Ninguna otra sintaxis está prometida.
 - `usercustomize.py`, `sitecustomize.py`, cualquier `.pth`, un perfil de PowerShell (`$PROFILE`,
   `${PROFILE}`, `*profile.ps1`), `~/.gitconfig`, `~/.config/git/config` y cualquier archivo bajo un
   `site-packages`, en el proyecto o en el host: con estado del flujo, **ni Write ni Edit los escriben,
@@ -121,6 +141,7 @@ del modelo que ven los hooks**; no defiende una máquina ya comprometida.
   `.git/config`; también `--global|--system|--file`, abreviados como los acepta git (`--glob`,
   `--sys`, `--fil`) o `-f<ruta>`, detrás de otro programa, entre comillas o en un alias de `-c`—, ni
   `uniq - <salida>` (Wave 6). Las lecturas de `git config` (`--get`, `--list`, un nombre solo) pasan.
+  Es por nombre, a propósito: un `profile.ps1` legítimo del proyecto también queda protegido.
 - Una herramienta desconocida que no es shell —un servidor MCP que escribe archivos— con `.claude/`,
   `.git/` o un punto de persistencia del host en un valor o una clave de una línea de su
   `tool_input`, a cualquier profundidad: con estado del flujo, protegida igual (Wave 6, E24-E14).
@@ -149,9 +170,8 @@ del modelo que ven los hooks**; no defiende una máquina ya comprometida.
 - **THREAT_MODEL_BOUNDARY** — una herramienta que no es `mcp__*` ni está en el matcher de
   PreToolUse no llega al hook: ni la compuerta ni la autoridad protegida la ven.
 - **THREAT_MODEL_BOUNDARY** — una MCP que corre comandos y recibe un script de varias líneas: un
-  texto de varias líneas es contenido y no se mira como comando. Es por nombre, a propósito: un `profile.ps1`
-  legítimo del proyecto también queda protegido. Un valor de una línea se mira como ruta y como
-  comando.
+  texto de varias líneas es contenido y no se mira como comando. Un valor de una línea se mira como
+  ruta y como comando.
 - **THREAT_MODEL_BOUNDARY** — un `git config` cuyas palabras no están en el texto: armado con
   variables, leído de un archivo o codificado (`-EncodedCommand`). Con la tarea sana pasa como
   cualquier `UNRESOLVED`; con la tarea bloqueada o una decisión pendiente, no.
@@ -160,6 +180,47 @@ del modelo que ven los hooks**; no defiende una máquina ya comprometida.
 ### THREAT_MODEL_BOUNDARY
 
 Lo que queda fuera, escrito para que nadie lo lea como protegido:
+
+- **THREAT_MODEL_BOUNDARY** — `.claude/` o `.git/` alcanzados por algo que el texto no muestra: una
+  variable, una concatenación que arma el nombre al correr, un `cd` calculado, un programa que
+  elige qué escribe o borra (`git clean -fdx`), o el borrado de una carpeta que contiene la raíz
+  (`rm -rf ../proj`, la raíz por su ruta). Tampoco una sustitución de comandos cuyo destino solo se
+  conoce al correr. El literal y el glob dentro de la sintaxis normalizada (arriba) están adentro
+  (R11); esto no. Un glob hacia un punto de persistencia del host sigue siendo límite: R11 no lo
+  cambió.
+
+- **THREAT_MODEL_BOUNDARY** — un glob hacia `.claude/` o `.git/` escrito con un prefijo de ruta que
+  la política no normaliza: el provider de PowerShell (`FileSystem::`) o una ruta de dispositivo de
+  Windows (`\\?\`). Es B6, límite explícito por decisión de la persona del 06-10-2026 (Final
+  Qualification, R11 segunda pasada). El literal sigue protegido.
+
+- **THREAT_MODEL_BOUNDARY** — un glob hacia `.claude/` o `.git/` dentro de un shell anidado más de
+  tres niveles (`bash -c` dentro de `bash -c`…), o en un shell anidado que recibe su comando
+  codificado o de un archivo (`-EncodedCommand`, `-File`). Pasado el límite, el análisis del glob no
+  sigue; el literal visible en el texto sigue protegido.
+
+- **THREAT_MODEL_BOUNDARY, OUT_OF_SCOPE_COMPLEXITY_BOUNDARY** — una expansión de llaves que da más
+  de 256 resultados. La política no la enumera. Lo que hace pasado el límite es un intento sin
+  garantía: puede bloquear algunos casos, pero esa detección es incidental, no es conservadora y no
+  prueba que se detecte todo destino de autoridad (decisión de la persona del 06-10-2026, F1).
+
+- **THREAT_MODEL_BOUNDARY** — cualquier otra sintaxis de Bash, PowerShell o `cmd` que la política no
+  normaliza expresamente (arriba). `cmd /c` está fuera del alcance: el código lo lee con el léxico de
+  PowerShell, pero la sintaxis propia de `cmd` no está normalizada y lo que se detecte ahí no es una
+  garantía. R11 no interpreta un shell entero: lo que no está en la lista de lo
+  normalizado no está prometido.
+
+- **THREAT_MODEL_BOUNDARY** — un glob hacia `.claude/` o `.git/` en un valor de una MCP genérica
+  (`path: .cla*/harness`, `command: rm -rf .cla*/harness`). Sus valores no son destinos tipados: R11
+  no adivina por el nombre del campo cuál es ruta o comando. El literal sigue protegido y la
+  herramienta sigue `UNRESOLVED_TOOL_CLASS`. Incluye un `file:///` con glob en una MCP (B7). Cerrarlo
+  pide un adaptador MCP tipado, trabajo posterior a la calificación (decisión de la persona del
+  06-10-2026, Final Qualification, R11 segunda pasada; `PENDIENTES-I.md`).
+
+- **THREAT_MODEL_BOUNDARY** — `.claude\harness\` borrado por algo fuera de este modelo de amenaza
+  (cualquiera de los límites de arriba, otro proceso, la persona): el lanzador `run-hook.cmd` no se
+  encuentra, el hook sale 0 y deja de gobernar la sesión (R9). Dentro de la sintaxis normalizada, R11
+  protege el destino que se ve; afuera, no. `run-hook.cmd` no cambia en esta calificación.
 
 - **THREAT_MODEL_BOUNDARY** — lo plantado **antes** de instalar el harness, o escrito por fuera de las
   herramientas del modelo (otro proceso, la persona, un instalador): un `usercustomize.py` o un `.pth`
@@ -223,7 +284,30 @@ nombraba y que `PENDIENTES-FH.md` ponía primero y segundo:
 Evidencia: dos pasadas del refutador sin contradichos, la aceptación humana de Q2 (A a E PASS) y la
 compuerta desde la terminal de la persona, 40447/40447, exit 0. Cerrar el gate no es calificar.
 
-## Lo que todavía impide calificar
+## Final Qualification Gate
+
+Evaluado el 06-10-2026 sobre `ea2dff7` (`final-qualification.md`). **Veredicto: `QUALIFIED`**, por
+decisión de la persona del 07-10-2026; antes fue `NOT_QUALIFIED`. QF-04 está `SUSTAINED_BY_ARCHITECTURE_REVIEW_WITH_PROCESS_EXCEPTION` desde el 07-10-2026.
+
+- El hallazgo original: un glob visible en el texto (`.cla*`) escribía la autoridad del flujo.
+- La persona decidió endurecerlo (R11 = HARDEN). La segunda pasada, por destino, está construida.
+- La refutación adversarial independiente no llegó a un veredicto. La persona aceptó, para R11 y solo
+  en esta calificación, una excepción de proceso: «R11 EVIDENCE PROCESS EXCEPTION» en
+  `final-qualification.md`.
+- La revisión independiente del arreglo de H1 dio `EVIDENCE_SUFFICIENT_FOR_HUMAN_ACCEPTANCE`; la
+  persona la aceptó y la excepción de proceso quedó `ACTIVATED`. No hay una refutación adversarial
+  sostenida.
+- R1 a R8 y R10 están aceptados. R9 = `ACCEPTED_RESIDUAL_RISK` desde el 07-10-2026: fuera del
+  modelo de amenaza soportado, algo que el analizador no ve puede borrar o inutilizar el lanzador, y
+  sin el lanzador el hook no es por sí mismo una raíz externa de enforcement. La garantía vale dentro
+  de la frontera publicada; no es «fail closed ante cualquier manipulación».
+- Los límites residuales de R11, los de «THREAT_MODEL_BOUNDARY» y O1 incluidos, son
+  `ACCEPTED_EXPLICIT_THREAT_MODEL_BOUNDARIES`: quedan fuera de la garantía, no cubiertos de forma
+  implícita.
+
+## Lo que impedía calificar
+
+Resuelto el 07-10-2026: la persona leyó y aceptó lo que sigue al aceptar R9 y los límites de R11.
 
 - Las sobreprotecciones a propósito (INTENTIONAL_CONSERVATIVE_OVERPROTECTION de `git config`, las
   herramientas desconocidas que mencionan la autoridad) y las dos observaciones NON-BLOCKING de la
@@ -234,6 +318,7 @@ compuerta desde la terminal de la persona, 40447/40447, exit 0. Cerrar el gate n
 
 No es un bloqueante de la calificación: es una decisión de release.
 
-- **La versión siguiente: DECISION_PENDING.** `VERSION` queda en `0.28.0`, la de la línea oficial, y
-  Flow Governance no tiene número propio todavía. Se decide cuando termine el Final Qualification
-  Gate; ningún número está elegido.
+- **La versión siguiente se escribe al integrar, no en la calificación.** No es 0.28.x: Flow Governance
+  trae un endurecimiento material y un cambio explícito del contrato y del modelo de amenaza, aunque
+  compatible. La calificación se hizo sobre `VERSION` 0.28.0, la base de esta rama. No se crea un
+  tag 0.29.0: `origin/main` ya tiene 0.29.0 y 0.30.0, y el número se decide al integrar.

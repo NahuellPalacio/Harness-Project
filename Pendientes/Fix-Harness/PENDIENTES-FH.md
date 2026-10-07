@@ -124,17 +124,6 @@ zones in the first place. Fix unknown: either the zones get defined retroactivel
 decision — which of the file's sections is "fija" vs "cache" vs unzoned prose is not obvious), or
 `techoFueraDeZonas` needs a meaning that holds even for a file with zero zones marked.
 
-### `CLAUDE.md` states the gate runs 24875 tests, and it runs 38025
-
-Seen on 2026-09-30: `.\tests\Invoke-Tests.ps1` passed 37568/37568 (514 PowerShell, 37054 Python),
-and `CLAUDE.md`, under `## The gate`, still says "24875 tests". The same day, after
-`context-bar-consumo-desde-instalacion`, the gate passed 38025/38025 (592 and 37433). The number is
-loaded on every turn and has drifted by more than half. Every agent that reads it learns a count that no run produces, and a count
-that looks wrong cannot flag a run that is actually short.
-
-Fix. Either drop the number from `CLAUDE.md`, or have the budget check compare it against the last
-run. Hand-editing it once only moves the drift.
-
 ## Incomplete capabilities
 
 ### Eight of the 24 ES0901 §7.1 rules are operationalized
@@ -1399,7 +1388,77 @@ Not fixed here: the command text is fixed by the spec (E-01), so failing when `$
 change, and how Claude Code reports a non-zero exit from a `shell: powershell` hook has not been
 observed.
 
+Since R11 of the Flow Governance Final Qualification (2026-10-06), a Bash or PowerShell call with
+flow state cannot remove `.claude\harness\` by naming it literally, or with a glob inside the
+textual syntax the policy normalizes (`.cla*\harness`): `FLOW_AUTHORITY_PROTECTED`. The normalized
+syntax is a closed list, written in `docs/cambios/flow-governance/qualification-readiness.md`. Outside
+it, the launcher can still go: a target built at run time (a variable, a concatenation, a
+substitution), a program that picks its own target (`git clean -fdx`), removing a folder that
+contains the project root, `FileSystem::` or `\\?\`, a glob in a generic MCP value, shells nested
+deeper than three levels, any syntax not in that list, or another process or the person. Then the
+hook exits 0 and stops governing the session.
+R9 is ACCEPTED_RESIDUAL_RISK since 2026-10-07 (`final-qualification.md`, «R9»): outside the
+supported threat model the launcher can go, and without it the hook is not an external root of
+enforcement on its own. The guarantee holds inside the published boundary only. The launcher itself
+is unchanged, and this entry stays open as the place to harden it.
+
 ## Verification that was not done
+
+### R11's wildcard protection has four test gaps that only an independent reading covers
+
+Found on 2026-10-06 by the first independent architecture review of R11's second pass (Flow
+Governance Final Qualification, `final-qualification.md`, G4). The review read the code and the
+tests and probed nothing. It saw no contradiction, and none of the four opens a known permission.
+Each one is attributed today only by reading `comun/hooks/lib/tool_policy.py`. Classified
+NON_BLOCKING_DEBT by the person on 2026-10-06.
+- **Shared reason.** `tests/casos/70_r11_glob_de_autoridad.py` asserts `FLOW_AUTHORITY_PROTECTED`.
+  The literal, persistence, `git config` and R11 branches all yield that same reason ("escribe la
+  autoridad del flujo"), so no assertion proves that `destino_de_autoridad` was the branch that
+  decided.
+- **Conservative fallback.** An unrecognized program that writes takes every argument as a target
+  (`_destinos_del_segmento`). No test is dedicated to it: one showing that it only adds `protected`
+  and never touches a `READ_ONLY` command.
+- **Two lexers.** `_shell` classifies with `shlex`, and `destino_de_autoridad` re-reads the command
+  with `_lexico_bash` / `_lexico_powershell`. No test pins that they split segments and operations
+  the same way.
+- **Non-`ValueError` exceptions.** `destino_de_autoridad` turns only `ValueError` into "protected".
+  Any other exception inside the analyzer leaves `clasificar`, and `flow_gate.decidir` falls back to
+  `UNRESOLVED_TOOL_CLASS` without `protected`. That passes with a healthy task. Reading found no path
+  that raises, and no test asserts that none exists.
+
+Fix. Add a distinct reason, or a field, for the R11 branch and assert it. Add one test per remaining
+gap. Behaviour stays frozen, so this is test quality, not a policy change.
+
+The second independent architecture review (2026-10-06, `final-qualification.md`, E1) found more
+gaps. The person accepted them on 2026-10-06 as ACCEPTED_NON_BLOCKING_EVIDENCE_DEBT for the Flow
+Governance qualification, on the condition that the next independent review finds no structural
+contradiction. The requested tests could not be completed in that execution environment, and the
+properties stay subject to independent architecture and code review. These tests are still missing:
+- brace sequences (`{a..e}`) within the 256 limit;
+- two- and three-level nesting of `bash -c` / `powershell -Command`;
+- an explicit control at the fourth level, as a boundary marker, not a protection guarantee;
+- the branch of `_llaves_como_comodin` that checks alternatives with `/` one by one.
+`cmd /c` is not coverage debt: it is OUT_OF_SCOPE.
+
+The positive extraction of a target from a writing `git` (`_destinos_de_git`) left this list on
+2026-10-06 with the H1 fix: R11-H1-F and R11-H1-A to E in `70_r11_glob_de_autoridad.py`. H1 is
+CLOSED / SUSTAINED_BY_INDEPENDENT_ARCHITECTURE_REVIEW since 2026-10-07 (`final-qualification.md`,
+«La revisión independiente del arreglo de H1»); it lands in the version note that releases this
+work. Residual O1 is ACCEPTED_NON_BLOCKING_RESIDUAL: when the value of an option missing from
+`_GIT_VALOR_SIN_RUTA` is spelled like an option in the table (`git commit -t -m x`), it is read by
+the table and `x` leaves the targets. No write to `.claude`/`.git` was shown; documented, not fixed.
+
+R11-22's past-the-limit cases are protected incidentally, by the root `*` (R11-14). They do not show
+that the fallback is complete. The matrix in `final-qualification.md` was corrected to say so. The
+test's docstring still claims more ("pasado el limite, con una alternativa que puede ser la
+autoridad, protegido"), and it was left untouched.
+
+Fix. Write those tests in an environment where they can be completed, and align R11-22's docstring
+with the corrected matrix.
+
+F1 is not test debt and is not here. Past the 256 limit the brace fallback is not complete, and the
+person resolved it by boundary on 2026-10-06: more than 256 results is
+OUT_OF_SCOPE_COMPLEXITY_BOUNDARY (`final-qualification.md`).
 
 ### No real `dev-refutador` run over a `refutation-unit/1.0` has been read
 
@@ -1937,6 +1996,17 @@ the shape of thing to look for if anything else in that file reads wrong.
 What should happen: somebody who knows what the file said reads it once against the five specs it
 documents. Until then it is an honest reconstruction and not a restoration.
 
+### Closed by the Flow Governance Final Qualification Gate review, waiting for its version note
+
+Found closed on 2026-10-06 while reading this file for `docs/cambios/flow-governance/final-qualification.md`;
+the entries still read as open. This stub leaves the file when the version note is written.
+- **E-24 waited for the independent reviewer to repeat its probes.** An independent human review on
+  the final Wave 6 tree sustained it (39 cases, 48 rows, no contract mismatch), and the person ruled
+  that E-24 is no longer pending another review. Recorded in
+  `docs/cambios/integrity-cleanup/verificacion.md`.
+- **`CLAUDE.md` stated the gate runs 24875 tests** (and its Wave 6 leftover twin). Commit `ea2dff7`
+  replaced the count with "every case passing" and the stale warning about breaking the tree.
+
 ### Closed by Flow Governance Qualification Gate 1, waiting for its version note
 
 Closed on 2026-10-06 by `docs/cambios/flow-governance/qualification-gate-1.md` (refuted in two
@@ -1982,13 +2052,6 @@ receives them.
 
 Found on 2026-10-02 while verifying `docs/cambios/integrity-cleanup/`. None changes a gate decision
 today.
-- **E-24 waits for the independent reviewer to repeat its probes.** After the refuter's fourth pass,
-  an independent adversarial review contradicted it with nine inputs in three classes (a
-  `site-packages` directory as the final destination, `git config --glob|--sys|--fil|-f<path>`,
-  `uniq - <out>`). They are fixed (E24-E1..E24-E9), as are the three forms of the refuter's fifth
-  pass (E24-E10..E24-E12) and every mutating `git config`, local scope included (E24-E13, decided
-  by the person on 2026-10-02). E-24 is MUST_FIX_BEFORE_QUALIFICATION until the same reviewer, with
-  probes unchanged, sustains it on the final tree. The boundary written in the spec stays.
 - **The `git config` guard over-protects any command that shows `git` and `config` without
   running `git config`.** Since E24-E21 (decided by the person on 2026-10-04) a shell command the
   parser does not prove `READ_ONLY` is protected when its text shows git and `config`, so `git commit
@@ -2058,8 +2121,6 @@ today.
   `costos.sumar` always sets it.
 - **The hooks still do not run with `python -I`.** Deferred: it changes the output encoding of the
   hooks and no test would see it.
-- **`CLAUDE.md` says 24875 tests; the gate runs 39080.** The ceiling of that file belongs to
-  `harness-budget-auditor`.
 
 ## Outside the harness, written down so it is not lost
 
