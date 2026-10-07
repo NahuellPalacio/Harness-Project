@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.31.0](0.31.0.md) | 07-10-2026 | Flow Governance: el estado del flujo por tarea, la compuerta en `PreToolUse`, la intención humana por el chat y la autoridad de `.claude/` y `.git/` protegida; el plan pasa a `orchestration-plan/2.1` con `BLOCKED` y `blockers` |
 | [0.30.0](0.30.0.md) | 05-10-2026 | El modelo de dominio canónico, con nueve contextos y Execution reservado; el plan pasa a `orchestration-plan/2.0`, que lee los 1.0 compatibles y rechaza los demás; ADR-0013 |
 | [0.29.0](0.29.0.md) | 02-10-2026 | Un solo harness: `desarrollo` es el producto y `comun` su base, `analisis` se retira, `-Harness` desaparece y queda un `manifest.json` en la raíz; el `-Update` limpia por inventario |
 | [0.28.0](0.28.0.md) | 01-10-2026 | Bloque 1: la Context Bar muestra `Ctx NN%` desde la instalación, con una política solo de contexto y la ventana que manda Claude Code; `harness --verbose` dice por qué puede pintar o no |

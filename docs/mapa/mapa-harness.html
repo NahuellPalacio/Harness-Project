@@ -197,13 +197,13 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
 
 <header class="masthead">
   <div class="fila-chips">
-    <span class="chip viva">v0.14.0</span>
+    <span class="chip viva">v0.31.0</span>
     <span class="chip">un solo harness</span>
     <span class="chip">4 hooks · Python 3.9+</span>
-    <span class="chip">772 tests</span>
+    <span class="chip">la suite: dos motores, un exit code</span>
   </div>
   <h1>Cómo actúa gcba-harness</h1>
-  <p class="bajada">El recorrido completo, de los manifiestos del repo hasta el aviso que Claude lee en el turno siguiente. Seis mapas: qué se compone, cómo se instala, qué pasa en cada turno, qué corre adentro de <code>PostToolUse</code> y dónde está la única puerta que bloquea.</p>
+  <p class="bajada">El recorrido completo, de los manifiestos del repo hasta el aviso que Claude lee en el turno siguiente. Siete mapas: qué se compone, cómo se instala, qué pasa en cada turno, qué corre adentro de <code>PostToolUse</code>, y la única puerta que bloquea con sus dos reglas: los secretos y el flujo.</p>
 </header>
 
 <section>
@@ -211,7 +211,7 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
   <h2>Tres capas, y el <code>CLAUDE.md</code> es solo la primera</h2>
   <div class="prosa">
     <p>El harness reparte el trabajo entre lo que el agente tiene que <strong>saber</strong>, lo que lo <strong>obliga</strong> a hacerlo y lo que <strong>comprueba</strong> que lo hizo. Cada capa vive en un artefacto distinto y falla distinto: si se cae la de saber, el agente improvisa; si se cae la de comprobar, nadie se entera.</p>
-    <p>La política de fondo se ve en todos los mapas de abajo: <strong>avisa, casi nunca bloquea</strong>. La única excepción son los secretos.</p>
+    <p>La política de fondo se ve en todos los mapas de abajo: <strong>avisa, casi nunca bloquea</strong>. Bloquea en una sola puerta, <code>PreToolUse</code>, y por dos reglas: los secretos y, desde 0.31.0, la compuerta del flujo, que en un proyecto con estado del flujo frena lo que modifica o avanza una tarea que no puede avanzar.</p>
     <p><strong>Lo que no está en ningún mapa tampoco es un olvido.</strong> No aparece ninguna herramienta que haya que instalar —ni un índice del código, ni un vault, ni un servidor MCP— porque el harness puede aprovechar lo externo y no puede depender de ello: no lo instala, no lo asume presente y sigue funcionando sin ello. Es lo que lo deja instalable en cualquier máquina del organismo sin instalar nada más. La regla y sus dos casos están en <code>docs/adr/0008-lo-externo-nunca-es-requisito.md</code>.</p>
   </div>
 
@@ -243,9 +243,9 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
         <text class="t-min" x="34" y="150">lo único que traba</text>
         <rect class="caja" x="196" y="110" width="330" height="52" rx="3"/>
         <text class="t" x="210" y="130">permissions.deny → impide LEER</text>
-        <text class="t" x="210" y="148">hook PreToolUse → impide ESCRIBIR</text>
+        <text class="t" x="210" y="148">hook PreToolUse → secretos y flujo</text>
         <line class="l-deny" x1="526" y1="136" x2="558" y2="136" marker-end="url(#f1a)"/>
-        <text class="t" x="566" y="140">antes de cada Write, Edit o Bash</text>
+        <text class="t" x="566" y="140">antes de escribir, correr, delegar o una MCP</text>
 
         <rect class="caja-viva" x="20" y="176" width="150" height="52" rx="3"/>
         <text class="t-tit acento" x="34" y="200">COMPROBAR</text>
@@ -270,7 +270,7 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
 
   <figure>
     <div class="lienzo">
-      <svg viewBox="0 0 900 434" role="img" aria-label="La base y el producto se copian a destinos fijos dentro del proyecto, con un solo manifiesto en la raíz del repo">
+      <svg viewBox="0 0 900 456" role="img" aria-label="La base y el producto se copian a destinos fijos dentro del proyecto, con un solo manifiesto en la raíz del repo">
         <defs>
           <marker id="f2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
@@ -283,42 +283,44 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
         <text class="t-tit acento" x="34" y="52">comun/ — la base</text>
         <text class="t" x="34" y="72">hooks · reglas · schemas · checks · bin</text>
         <text class="t" x="34" y="90">skills · agents · bloque CLAUDE.md</text>
-        <text class="t-min" x="34" y="108">hooks, secretos, zonas, estado de la instalación</text>
+        <text class="t-min" x="34" y="108">hooks, secretos, zonas, instalación, compuerta del flujo</text>
 
         <rect class="caja-viva" x="450" y="30" width="430" height="88" rx="3"/>
         <text class="t-tit acento" x="464" y="52">harnesses/desarrollo/ — el producto</text>
         <text class="t" x="464" y="72">bin · checks · reglas · skills · agents</text>
         <text class="t-min" x="464" y="90">ES0901, ES0902, ES0903, Obelisco, WCAG 2.2 AA</text>
-        <text class="t-min" x="464" y="108">la CLI dev-harness.py, la Context Bar, el Bloque 4</text>
+        <text class="t-min" x="464" y="108">la CLI dev-harness.py y el flujo, la Context Bar, el Bloque 4</text>
 
         <path class="l" d="M225,118 L225,148 L450,148 L450,178" marker-end="url(#f2a)"/>
         <path class="l" d="M665,118 L665,148 L452,148"/>
         <text class="t-eti" x="462" y="144">copia fija: sin descubrir, sin ids, sin prefijos</text>
 
         <text class="t-min" x="20" y="200">EN EL PROYECTO — regenerable y gitignoreado</text>
-        <rect class="caja-hueca" x="20" y="210" width="860" height="152" rx="3"/>
+        <rect class="caja-hueca" x="20" y="210" width="860" height="174" rx="3"/>
 
         <text class="t" x="38" y="234">.claude/harness/hooks/</text>
-        <text class="t-min" x="266" y="234">4 hooks .py — de la base</text>
+        <text class="t-min" x="266" y="234">4 hooks .py y lib/: secretos, zonas, la compuerta del flujo — de la base</text>
         <text class="t" x="38" y="256">.claude/harness/checks/</text>
         <text class="t-min" x="266" y="256">claude-md-zonas.py</text>
         <text class="t-min" x="430" y="256">← la base, en la raíz</text>
         <text class="t" x="54" y="278">checks/desarrollo/</text>
         <text class="t-min" x="266" y="278">dev-api-rutas · dev-dependencias · dev-accesibilidad-html · dev-infra-en-codigo · dev-codebase-forma</text>
         <text class="t" x="54" y="300">bin/desarrollo/</text>
-        <text class="t-min" x="266" y="300">dev-harness.py y sus paquetes: la dirección pública de la CLI</text>
+        <text class="t-min" x="266" y="300">dev-harness.py y sus paquetes, flujo/ y estado_de_tarea/ entre ellos</text>
         <text class="t" x="38" y="322">.claude/skills/ y .claude/agents/</text>
         <text class="t-min" x="266" y="322">todos juntos, sin subdirectorio</text>
         <text class="t" x="38" y="344">.claude/harness.lock.json</text>
         <text class="t-min" x="266" y="344">qué versión, qué archivos, SHA256 de cada uno — sin ids</text>
+        <text class="t" x="38" y="366">.claude/runtime/</text>
+        <text class="t-min" x="266" y="366">no lo copia el instalador: lo escriben la CLI y los hooks · tasks/&lt;KEY&gt;/, sessions/&lt;id&gt;/</text>
 
-        <line class="l" x1="450" y1="362" x2="450" y2="388" marker-end="url(#f2a)"/>
-        <rect class="caja" x="196" y="388" width="508" height="34" rx="3"/>
-        <text class="t" x="212" y="410">CLAUDE.md — bloque marcado: la base + "Trabajo técnico", en orden fijo</text>
-        <text class="t-min" x="716" y="410">se versiona; el resto no se toca</text>
+        <line class="l" x1="450" y1="384" x2="450" y2="410" marker-end="url(#f2a)"/>
+        <rect class="caja" x="196" y="410" width="508" height="34" rx="3"/>
+        <text class="t" x="212" y="432">CLAUDE.md — bloque marcado: la base + "Trabajo técnico", en orden fijo</text>
+        <text class="t-min" x="716" y="432">se versiona; el resto no se toca</text>
       </svg>
     </div>
-    <figcaption><b>Figura 2.</b> Los checks del producto aterrizan en <code>checks/desarrollo/</code>, pero <code>reglas.py</code> recorre el árbol entero con <code>os.walk</code>: para el motor son una sola lista ordenada alfabéticamente. La invariante que ordena todo el diseño está en el corte entre las dos mitades — <b><code>.claude/</code> es 100% regenerable, <code>CLAUDE.md</code> no</b>.</figcaption>
+    <figcaption><b>Figura 2.</b> Los checks del producto aterrizan en <code>checks/desarrollo/</code>, pero <code>reglas.py</code> recorre el árbol entero con <code>os.walk</code>: para el motor son una sola lista ordenada alfabéticamente. La invariante que ordena todo el diseño está en el corte entre las dos mitades — <b><code>.claude/</code> es 100% regenerable, <code>CLAUDE.md</code> no</b>. Con una salvedad desde 0.31.0: <code>.claude/runtime/</code> no lo copia ni lo reemplaza <code>-Update</code>. El estado de una tarea ahí es derivado y la CLI lo vuelve a armar; el registro de una decisión que aplicó una persona (<code>tasks/&lt;KEY&gt;/decisions/</code>) vive solo ahí.</figcaption>
   </figure>
 </section>
 
@@ -396,13 +398,28 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
     </div>
     <figcaption><b>Figura 3.</b> Los dos puntos rojos son la misma idea aplicada dos veces: <b>no existe un estado a medias</b>. Un <code>CLAUDE.md</code> con el bloque puesto y sin sus zonas no está corrupto, pero tampoco intacto — y «casi intacto» no se distingue de «instalación terminada» con solo mirarlo.</figcaption>
   </figure>
+
+  <div class="nota">
+    <span class="eyebrow">Lo que -Update suma en 0.31.0</span>
+    <p>Los mismos ocho pasos copian también Flow Governance: la compuerta y sus módulos en <code>hooks/lib/</code> (<code>flow_gate</code>, <code>tool_policy</code>, <code>task_binding</code>, <code>human_intent</code>, <code>flow_context</code>), <code>flujo/</code> y <code>estado_de_tarea/</code> en <code>bin/desarrollo/</code>, seis schemas nuevos y el registro <code>reglas/desarrollo/flow-required-inputs.json</code>. El paso 4 registra <code>PreToolUse</code> con un matcher que suma <code>^Agent$</code>, <code>^Task$</code> y <code>^mcp__</code>.</p>
+  </div>
+
+  <div class="nota">
+    <span class="eyebrow">-Doctor</span>
+    <p>Calcula la Context Bar en vivo, con <code>bienvenida.py barra</code>, el mismo resolvedor que <code>dev-harness.py harness</code>, y dice cuál fue la última sesión que la dibujó con datos. Sin Python, o si eso falla, muestra el estado guardado tal cual: no inventa un <code>ACTIVE</code>. Una barra <code>CONFIGURED</code> sale como aviso, nunca en OK. También avisa si <code>python</code> es el alias de la Microsoft Store.</p>
+  </div>
+
+  <div class="nota">
+    <span class="eyebrow">La compuerta de la fábrica</span>
+    <p>Los casos de la suite que rompen <code>zonas.py</code> o <code>pre-tool-use.py</code> a propósito lo hacen sobre una copia aislada de la fábrica en <code>%TEMP%</code> (<code>tests/isolated-factory.ps1</code>), nunca sobre el árbol versionado: matar la suite a mitad no lo puede dejar roto. Una copia huérfana la barre una corrida siguiente cuando prueba que su dueño —pid y arranque del proceso— ya no existe. Y sin consola el instalador no espera a nadie: sin <code>-Usuario</code> sale con 1 y lo pide, y un <code>-Confirm</code> que nadie puede contestar es un error que no hace nada.</p>
+  </div>
 </section>
 
 <section>
   <span class="eyebrow">Runtime</span>
   <h2>El turno de una sesión</h2>
   <div class="prosa">
-    <p>Este es el mapa central. Los cuatro hooks son infraestructura y no cambian; los checks son N y son reglas. Cada evento tiene un presupuesto de salida distinto porque cada uno se paga con una frecuencia distinta: <code>SessionStart</code> se paga una vez pero ocupa ventana todo el rato, <code>PreToolUse</code> arranca un proceso antes de cada llamada.</p>
+    <p>Este es el mapa central. Los cuatro hooks son infraestructura; los checks son N y son reglas. Cada evento tiene un presupuesto de salida distinto porque cada uno se paga con una frecuencia distinta: <code>SessionStart</code> se paga una vez pero ocupa ventana todo el rato, <code>PreToolUse</code> arranca un proceso antes de cada llamada.</p>
   </div>
 
   <figure>
@@ -434,10 +451,12 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
 
         <path class="l" d="M556,70 L592,70 L592,142 L20,142 L20,176" marker-end="url(#f4a)"/>
 
-        <rect class="caja-deny" x="20" y="176" width="176" height="60" rx="3"/>
+        <rect class="caja-deny" x="20" y="176" width="176" height="86" rx="3"/>
         <text class="t-tit rojo" x="32" y="198">PreToolUse</text>
-        <text class="t-min" x="32" y="215">matcher: Write | Edit |</text>
-        <text class="t-min" x="32" y="228">MultiEdit | NotebookEdit | Bash</text>
+        <text class="t-min" x="32" y="215">matcher: Write · Edit ·</text>
+        <text class="t-min" x="32" y="228">MultiEdit · NotebookEdit ·</text>
+        <text class="t-min" x="32" y="241">Bash · PowerShell · Agent ·</text>
+        <text class="t-min" x="32" y="254">Task · mcp__*</text>
 
         <line class="l" x1="196" y1="206" x2="234" y2="206" marker-end="url(#f4a)"/>
 
@@ -449,34 +468,38 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
 
         <rect class="caja-viva" x="412" y="176" width="152" height="60" rx="3"/>
         <text class="t-tit acento" x="424" y="198">PostToolUse</text>
-        <text class="t-min" x="424" y="215">mismo matcher que</text>
-        <text class="t-min" x="424" y="228">PreToolUse</text>
+        <text class="t-min" x="424" y="215">mismo matcher, sin</text>
+        <text class="t-min" x="424" y="228">Agent, Task ni mcp__</text>
 
         <path class="l-viva" d="M564,206 L616,206 L616,118 L482,118 L482,100" marker-end="url(#f4a)"/>
         <text class="t-eti acento" x="624" y="162">el aviso vuelve al</text>
         <text class="t-eti acento" x="624" y="176">turno siguiente</text>
 
-        <line class="l" x1="20" y1="262" x2="880" y2="262"/>
-        <text class="t-min" x="20" y="282">QUÉ SALE DE CADA UNO</text>
+        <line class="l" x1="20" y1="276" x2="880" y2="276"/>
+        <text class="t-min" x="20" y="292">QUÉ SALE DE CADA UNO</text>
 
         <text class="t acento" x="20" y="310">estado de la sesión</text>
         <text class="t-min" x="20" y="328">usuario y versión del harness, rama y</text>
         <text class="t-min" x="20" y="342">estado de git, últimos 3 commits,</text>
         <text class="t-min" x="20" y="356">zona caché del CLAUDE.md,</text>
-        <text class="t-min" x="20" y="370">definiciones pendientes abiertas</text>
-        <text class="t-min" x="20" y="394">techo: 12 líneas</text>
+        <text class="t-min" x="20" y="370">definiciones pendientes abiertas,</text>
+        <text class="t-min" x="20" y="384">una línea con la tarea del flujo</text>
+        <text class="t-min" x="20" y="408">techo: 12 líneas</text>
 
-        <text class="t" x="252" y="310">nada</text>
-        <text class="t-min" x="252" y="328">el hook existe y corre, pero el</text>
-        <text class="t-min" x="252" y="342">ruteo por disparadores de skill</text>
-        <text class="t-min" x="252" y="356">todavía no está escrito</text>
-        <text class="t-min" x="252" y="394">techo: 0 o 1 línea</text>
+        <text class="t" x="252" y="310">el flujo</text>
+        <text class="t-min" x="252" y="328">vincula la sesión a su tarea,</text>
+        <text class="t-min" x="252" y="342">avisa si la tarea está frenada</text>
+        <text class="t-min" x="252" y="356">y guarda una línea HARNESS</text>
+        <text class="t-min" x="252" y="370">exacta como intención de un uso</text>
+        <text class="t-min" x="252" y="384">el ruteo a skills, sin escribir</text>
+        <text class="t-min" x="252" y="408">sin estado del flujo: silencio</text>
 
         <text class="t rojo" x="466" y="310">deny o ask</text>
-        <text class="t-min" x="466" y="328">solo secretos. Nada más entra acá:</text>
-        <text class="t-min" x="466" y="342">avisar desde PreToolUse no sirve —</text>
-        <text class="t-min" x="466" y="356">en éxito la salida va a la</text>
-        <text class="t-min" x="466" y="370">transcripción y el modelo no la ve</text>
+        <text class="t-min" x="466" y="328">secretos, y desde 0.31.0 el</text>
+        <text class="t-min" x="466" y="342">flujo: deny, nunca ask. Avisar</text>
+        <text class="t-min" x="466" y="356">desde acá no sirve — en éxito</text>
+        <text class="t-min" x="466" y="370">la salida va a la transcripción</text>
+        <text class="t-min" x="466" y="384">y el modelo no la ve</text>
 
         <text class="t acento" x="686" y="310">additionalContext</text>
         <text class="t-min" x="686" y="328">los hallazgos de todos los checks.</text>
@@ -485,7 +508,7 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
         <text class="t-min" x="686" y="394">techo: 8 hallazgos</text>
       </svg>
     </div>
-    <figcaption><b>Figura 4.</b> La asimetría es deliberada y es la decisión más importante del runtime: <b>el harness bloquea en un evento y habla en otro</b>. Un aviso emitido desde <code>PreToolUse</code> se pierde en la transcripción sin que nadie lo note, así que todos los avisos se entregan después del hecho y Claude corrige en el turno siguiente.</figcaption>
+    <figcaption><b>Figura 4.</b> La asimetría es deliberada y es la decisión más importante del runtime: <b>el harness bloquea en un evento y habla en otro</b>. Un aviso emitido desde <code>PreToolUse</code> se pierde en la transcripción sin que nadie lo note, así que los avisos sobre lo escrito se entregan después del hecho y Claude corrige en el turno siguiente. El del flujo sale antes, en <code>UserPromptSubmit</code>, porque habla de la tarea y no de una herramienta.</figcaption>
   </figure>
 
   <div class="tabla-wrap">
@@ -497,31 +520,31 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
         <tr>
           <td><code>SessionStart</code></td>
           <td>abrir, retomar o limpiar</td>
-          <td>reconstruye «en qué quedamos» leyendo solo lo que alguien decidió dejar escrito</td>
+          <td>reconstruye «en qué quedamos» leyendo solo lo que alguien decidió dejar escrito, y una línea con la tarea del flujo</td>
           <td><span class="tag avisa">avisa</span></td>
         </tr>
         <tr>
           <td><code>UserPromptSubmit</code></td>
           <td>cada mensaje</td>
-          <td>ruteo a skills — reservado, todavía sin implementar</td>
-          <td><span class="tag silencio">silencio</span></td>
+          <td>con estado del flujo: vincula la sesión a la tarea que nombra la persona, avisa si esa tarea no puede avanzar y registra una línea <code>HARNESS …</code> exacta como intención. El ruteo a skills sigue reservado, sin implementar</td>
+          <td><span class="tag avisa">avisa</span> <span class="tag silencio">silencio</span></td>
         </tr>
         <tr>
           <td><code>PreToolUse</code></td>
-          <td>antes de Write, Edit, MultiEdit, NotebookEdit y Bash</td>
-          <td>detector de secretos, y nada más</td>
+          <td>antes de Write, Edit, MultiEdit, NotebookEdit, Bash, PowerShell, Agent, Task y las herramientas <code>mcp__</code></td>
+          <td>detector de secretos y compuerta del flujo, compuestos en una sola respuesta</td>
           <td><span class="tag bloquea">bloquea</span> <span class="tag pregunta">pregunta</span></td>
         </tr>
         <tr>
           <td><code>PostToolUse</code></td>
-          <td>después de las mismas cinco herramientas</td>
+          <td>después de Write, Edit, MultiEdit, NotebookEdit, Bash y PowerShell</td>
           <td>corre todos los checks contra lo que se acaba de escribir</td>
           <td><span class="tag avisa">avisa</span> <span class="tag silencio">silencio</span></td>
         </tr>
       </tbody>
     </table>
   </div>
-  <p class="pie-tabla">Los matchers son estrictos a propósito: un <code>*</code> en <code>PreToolUse</code> agregaría el arranque de un proceso Python a <em>cada</em> llamada a herramienta.</p>
+  <p class="pie-tabla">Los matchers son estrictos a propósito: un <code>*</code> en <code>PreToolUse</code> agregaría el arranque de un proceso Python a <em>cada</em> llamada a herramienta. <code>^Agent$</code>, <code>^Task$</code> y <code>^mcp__</code> van anclados: la delegación y un servidor MCP pueden escribir, y sin el hook no los ve la compuerta del flujo.</p>
 </section>
 
 <section>
@@ -604,6 +627,7 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
   <h2>La única puerta que dice que no</h2>
   <div class="prosa">
     <p>Dos mecanismos, y son complementarios porque cubren direcciones opuestas: uno impide <strong>leer</strong> material sensible, el otro impide <strong>escribirlo</strong>. El primero cuesta cero —no arranca ningún proceso— y sigue funcionando aunque los hooks estén rotos.</p>
+    <p>Desde 0.31.0 la misma puerta tiene una segunda regla, la del flujo, en la sección siguiente. Los secretos se evalúan primero.</p>
   </div>
 
   <figure>
@@ -664,26 +688,133 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
         <text class="t-min" x="34" y="339">también la protección que sí servía</text>
       </svg>
     </div>
-    <figcaption><b>Figura 6.</b> La escala de tres salidas —ignorar, preguntar, bloquear— es lo que separa este detector de un grep. Un secreto que la <em>persona</em> tipeó en el prompt tampoco se bloquea: se avisa. Bloquear lo que alguien escribió a mano es la vía más rápida a que desinstalen el harness.</figcaption>
+    <figcaption><b>Figura 6.</b> La escala de tres salidas —ignorar, preguntar, bloquear— es lo que separa este detector de un grep. Lo que la <em>persona</em> tipea en el prompt no pasa por este detector y no se bloquea: bloquear lo que alguien escribió a mano es la vía más rápida a que desinstalen el harness. La única salvedad es <code>HARNESS ANSWER</code>, que no registra un valor con forma de secreto.</figcaption>
   </figure>
+</section>
+
+<section>
+  <span class="eyebrow">La segunda regla</span>
+  <h2>La compuerta del flujo: una tarea frenada no avanza</h2>
+  <div class="prosa">
+    <p>Cada tarea tiene su estado en <code>.claude/runtime/tasks/&lt;KEY&gt;/state.json</code> (<code>task-flow-state/1.0</code>). Es <strong>derivado</strong>: lo reconcilia la CLI del Harness desde el TaskContext, el plan y la refutación, y si se borra se vuelve a armar igual. <code>flujo &lt;KEY&gt; --status</code> lo muestra. La compuerta lo mira antes de cada herramienta que alcanza el matcher y decide <strong>allow o deny, nunca ask</strong>: un ask dejaría saltar un bloqueo aprobando una herramienta, y un bloqueo se resuelve arreglando su causa.</p>
+    <p>El plan acompaña: <code>orchestration-plan/2.1</code> suma <code>BLOCKED</code> a los estados del plan y <code>blockers</code> a la unidad. Una precondición requerida que falta deja el plan en <code>BLOCKED</code> con su causa escrita, la tarea queda <code>BLOCKED</code> y la compuerta no la deja llegar a <code>EXECUTION</code>.</p>
+  </div>
+
+  <figure>
+    <div class="lienzo">
+      <svg viewBox="0 0 900 372" role="img" aria-label="La compuerta del flujo: de la sesión a su tarea, de la herramienta a su clase y del estado de la tarea a allow o deny, con los tres deny que no miran la etapa">
+        <defs>
+          <marker id="f7a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <text class="t-min" x="20" y="18">SIN NINGÚN state.json EN EL PROYECTO NO HAY TAREA QUE GOBERNAR: LA COMPUERTA DEJA PASAR</text>
+
+        <rect class="caja" x="20" y="30" width="190" height="62" rx="3"/>
+        <text class="t-tit" x="32" y="52">la sesión</text>
+        <text class="t-min" x="32" y="69">session_id de Claude Code</text>
+        <text class="t-min" x="32" y="83">sin él, no hay vínculo</text>
+        <line class="l" x1="210" y1="61" x2="244" y2="61" marker-end="url(#f7a)"/>
+
+        <rect class="caja" x="246" y="30" width="190" height="62" rx="3"/>
+        <text class="t-tit" x="258" y="52">su tarea</text>
+        <text class="t-min" x="258" y="69">sessions/&lt;id&gt;/task.json</text>
+        <text class="t-min" x="258" y="83">nombrada, nunca inferida</text>
+        <line class="l" x1="436" y1="61" x2="470" y2="61" marker-end="url(#f7a)"/>
+
+        <rect class="caja" x="472" y="30" width="190" height="62" rx="3"/>
+        <text class="t-tit" x="484" y="52">qué hace la herramienta</text>
+        <text class="t-min" x="484" y="69">lib/tool_policy.py</text>
+        <text class="t-min" x="484" y="83">lo no reconocido: escribe</text>
+        <line class="l" x1="662" y1="61" x2="696" y2="61" marker-end="url(#f7a)"/>
+
+        <rect class="caja" x="698" y="30" width="182" height="62" rx="3"/>
+        <text class="t-tit" x="710" y="52">el estado de la tarea</text>
+        <text class="t-min" x="710" y="69">tasks/&lt;KEY&gt;/state.json</text>
+        <text class="t-min" x="710" y="83">y su vigencia, recalculada</text>
+
+        <path class="l" d="M789,92 L789,110 L230,110 L230,128" marker-end="url(#f7a)"/>
+        <path class="l" d="M670,110 L670,128" marker-end="url(#f7a)"/>
+
+        <rect class="caja-viva" x="20" y="130" width="420" height="72" rx="3"/>
+        <text class="t-tit acento" x="34" y="151">pasan siempre</text>
+        <text class="t-min" x="34" y="168">READ_ONLY — lee y no cambia nada</text>
+        <text class="t-min" x="34" y="182">FLOW_RECOVERY — flujo --status y --resume, contexto, setup</text>
+        <text class="t-min" x="34" y="196">una decisión (--approve…) solo con la intención de la persona</text>
+
+        <rect class="caja-deny" x="460" y="130" width="420" height="86" rx="3"/>
+        <text class="t-tit rojo" x="474" y="151">pasan si la tarea puede avanzar</text>
+        <text class="t-min" x="474" y="168">WORKFLOW_ADVANCING — plan, refute, delegar (Agent, Task)</text>
+        <text class="t-min" x="474" y="182">MUTATING — escribe · UNRESOLVED_TOOL_CLASS — como MUTATING</text>
+        <text class="t-min" x="474" y="196">bloqueada, desactualizada o sin tarea clara: deny</text>
+        <text class="t-min" x="474" y="210">plan y refute --compile pasan si revalidan la etapa a retomar</text>
+
+        <text class="t-min" x="20" y="246">Y TRES DENY QUE NO MIRAN LA ETAPA — SOLO CON ESTADO DEL FLUJO</text>
+
+        <rect class="caja-deny" x="20" y="256" width="280" height="86" rx="3"/>
+        <text class="t-tit rojo" x="34" y="277">la autoridad</text>
+        <text class="t-min" x="34" y="294">ninguna herramienta escribe</text>
+        <text class="t-min" x="34" y="308">.claude/, .git/ ni un .gitconfig</text>
+        <text class="t-min" x="34" y="322">FLOW_AUTHORITY_PROTECTED</text>
+
+        <rect class="caja-deny" x="310" y="256" width="280" height="86" rx="3"/>
+        <text class="t-tit rojo" x="324" y="277">una decisión humana abierta</text>
+        <text class="t-min" x="324" y="294">el shell solo lee y corre el Harness</text>
+        <text class="t-min" x="324" y="308">Write y Edit no entran acá</text>
+        <text class="t-min" x="324" y="322">FLOW_HUMAN_DECISION_PENDING</text>
+
+        <rect class="caja-deny" x="600" y="256" width="280" height="86" rx="3"/>
+        <text class="t-tit rojo" x="614" y="277">una falla interna</text>
+        <text class="t-min" x="614" y="294">evento ilegible o compuerta que</text>
+        <text class="t-min" x="614" y="308">no carga: deny, nunca silencio</text>
+        <text class="t-min" x="614" y="322">FLOW_GATE_UNRESOLVED</text>
+      </svg>
+    </div>
+    <figcaption><b>Figura 7.</b> Los hooks no escriben el estado de la tarea: lo leen. Del flujo escriben solo tres archivos de la sesión —qué tarea trabaja, qué aviso ya vio y la intención que dejó la persona—, y la compuerta corre un solo proceso, <code>git remote -v</code>, con un límite de 1,5 s: vencido, falla cerrada. <b>No sale a la red, no lee el <code>.env</code> y no llama a un modelo.</b></figcaption>
+  </figure>
+
+  <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Secret Guard</th><th>Compuerta del flujo</th><th>Sale</th></tr></thead>
+      <tbody>
+        <tr><td>confianza alta</td><td>no se evalúa</td><td><span class="tag bloquea">deny</span> del secreto</td></tr>
+        <tr><td>confianza media</td><td>deny</td><td><span class="tag bloquea">deny</span> del flujo, con el aviso del secreto al lado</td></tr>
+        <tr><td>confianza media</td><td>pasa</td><td><span class="tag pregunta">ask</span> del secreto</td></tr>
+        <tr><td>nada</td><td>deny</td><td><span class="tag bloquea">deny</span> del flujo</td></tr>
+        <tr><td>nada</td><td>pasa</td><td><span class="tag silencio">silencio</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="pie-tabla"><code>pre-tool-use.py</code> compone las dos reglas y emite una sola vez. El flujo nunca baja un deny a ask ni a allow.</p>
+
+  <div class="nota">
+    <span class="eyebrow">Una llamada del modelo no es una aprobación</span>
+    <p>Una decisión humana —aprobar, elegir una alternativa, cancelar, contestar— la escribe la persona en el chat, sola en su línea y en mayúsculas: <code>HARNESS APPROVE|ALTERNATIVE|CHOOSE|CANCEL|ANSWER|RESUME &lt;KEY&gt;</code> más la interacción y la opción que pida. <code>UserPromptSubmit</code> es el único evento que prueba que un texto lo escribió una persona: la valida contra las interacciones abiertas y la guarda en <code>sessions/&lt;id&gt;/human-intent.json</code>. El comando <code>flujo &lt;KEY&gt; --approve … --sesion &lt;id&gt;</code> que la aplica pasa la compuerta solo con esa intención, de esa sesión, y la consume una vez. «Dale» u «ok» no aprueban nada.</p>
+  </div>
+
+  <div class="nota">
+    <span class="eyebrow">El límite, escrito</span>
+    <p>La protección de <code>.claude/</code> y <code>.git/</code> lee lo que el texto del comando deja ver, comodines y redirecciones incluidos. Una variable, una concatenación o cualquier cosa que recién se resuelve al correr queda fuera, igual que un servidor MCP genérico con un comodín. Es la frontera declarada en <code>docs/cambios/flow-governance/final-qualification.md</code>, no una promesa de entender un shell entero.</p>
+  </div>
 </section>
 
 <section>
   <span class="eyebrow">Estado</span>
   <h2>Lo que en el mapa está dibujado pero todavía no conduce</h2>
   <div class="prosa">
-    <p>Seis cosas que salen de leer el código de 0.13.0 contra lo que el contrato promete. Ninguna es un bug abierto: son huecos que hoy no tienen consecuencia visible, y por eso conviene tenerlos anotados en algún lado.</p>
+    <p>Cinco cosas que salen de leer el código contra lo que el contrato promete; se leyeron en 0.13.0 y siguen así en 0.31.0. Ninguna es un bug abierto: son huecos que hoy no tienen consecuencia visible, y por eso conviene tenerlos anotados en algún lado.</p>
   </div>
 
   <div class="grilla-gap">
     <div class="gap">
       <h4>El ruteo a skills nunca se cableó</h4>
-      <p>El hook dice «se agrega cuando existan las skills». Ya existen nueve instalables —<code>hu-escribir</code> y ocho <code>dev-*</code>— y el hook sigue callado. Hoy arranca un proceso Python en cada mensaje para no hacer nada.</p>
+      <p>El hook dice «se agrega cuando existan las skills». En 0.31.0 hay veintiocho instalables —<code>instalar-desde-github</code> y veintisiete <code>dev-*</code>— y el ruteo sigue sin escribir. El hook ya no calla del todo: habla del flujo, y nada más.</p>
       <span class="ref">comun/hooks/user-prompt-submit.py</span>
     </div>
     <div class="gap">
       <h4><code>avisar()</code> no valida el evento</h4>
-      <p>Llamarla desde <code>PreToolUse</code> corre sin error y el texto se pierde en la transcripción. Hoy la convención se sostiene sola porque <code>pre-tool-use.py</code> importa solo <code>bloquear</code> y <code>preguntar</code>. Ya está anotado en el contrato como decisión abierta.</p>
+      <p>Llamarla desde <code>PreToolUse</code> corre sin error y el texto se pierde en la transcripción. Hoy la convención se sostiene sola porque <code>pre-tool-use.py</code> emite solo con <code>bloquear</code> y <code>preguntar</code>. Ya está anotado en el contrato como decisión abierta.</p>
       <span class="ref">comun/hooks/lib/hook.py</span>
     </div>
     <div class="gap">
@@ -729,7 +860,7 @@ footer{padding:44px 0 0;border-top:2px solid var(--tinta);margin-top:56px;font-s
 </section>
 
 <footer>
-  <p>Leído del repo <code>gcba-harness</code> en v0.13.0 — README, <code>docs/contrato-hooks.md</code>, los cuatro hooks, <code>lib/reglas.py</code>, <code>lib/secretos.py</code>, los tres manifiestos de entonces y <code>install.ps1</code>. Los mapas de qué se instala y de cómo se instala se volvieron a dibujar con <code>docs/cambios/harness-unico</code>, cuando el harness pasó a ser un solo producto.</p>
+  <p>Leído del repo <code>gcba-harness</code> en v0.13.0 — README, <code>docs/contrato-hooks.md</code>, los cuatro hooks, <code>lib/reglas.py</code>, <code>lib/secretos.py</code>, los tres manifiestos de entonces y <code>install.ps1</code>. Los mapas de qué se instala y de cómo se instala se volvieron a dibujar con <code>docs/cambios/harness-unico</code>, cuando el harness pasó a ser un solo producto. Para 0.31.0 se volvieron a leer los cuatro hooks, <code>lib/flow_gate.py</code>, <code>tool_policy.py</code>, <code>task_binding.py</code>, <code>human_intent.py</code>, <code>flow_context.py</code>, <code>hooks.plantilla.json</code>, <code>install.ps1</code> y las specs de Flow Governance (Waves 1 a 6, la Qualification Gate 1, la calificación final con R11 y la integración con <code>orchestration-plan/2.1</code>), y de ahí salen la séptima figura y lo que cambió en las otras.</p>
 </footer>
 
 </div>

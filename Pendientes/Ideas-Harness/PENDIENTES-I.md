@@ -319,3 +319,20 @@ B7 (`file:///` with a glob in a generic MCP).
 
 Status. Open, POST_QUALIFICATION_WORK. Out of scope of the Flow Governance qualification by the
 person's decision of 2026-10-06; future work.
+
+### Flow governance as a tenth bounded context
+
+Make the flow (task flow state, required inputs, human intent and decision, session binding, flow
+notice, flow gate) its own bounded context in `docs/dominio/modelo-canonico.md`, instead of spreading
+its six concepts over Work Intake, Planning and Guardrails.
+
+Problem it solves. Raised on 2026-10-07 while mapping the six Flow Governance schemas (D7 of
+`docs/cambios/integracion-flow-governance-0-31/spec.md`). By the model's own criteria for a context
+(language, invariants, owner, data, lifecycle) the flow could stand alone: it has its own
+vocabulary, its own derived state and its own gate. Spread over three contexts, nobody reading the
+model sees it as one thing.
+
+Cost. ADR-0013 fixes nine contexts and `64_modelo_de_dominio.py` pins them, so it is a new ADR (or a
+revision of 0013), the map of contexts, the six concepts moved, and the tests. No code changes.
+
+Status. Open. Left as an open question in D7 of the integration spec; not decided by anyone yet.

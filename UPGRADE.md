@@ -23,6 +23,43 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.30.0 → 0.31.0
+
+`-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala los módulos del flujo, sus
+seis schemas y el matcher nuevo de `PreToolUse` (`^Agent$|^Task$|^mcp__`). Al terminar avisa si
+hay que reiniciar Claude Code.
+
+Lo que se nota depende de si el proyecto tiene **estado del flujo**, o sea algo adentro de
+`.claude/runtime/tasks/`. Lo crean `contexto`, `plan` y `refute` de `dev-harness.py`.
+
+- **Sin estado del flujo, nada cambia** en lo que bloquea el hook. Solo las llamadas a `Agent`,
+  `Task` y a herramientas `mcp__*` pasan ahora por `PreToolUse`, y pagan su arranque.
+- **Con estado del flujo:**
+  - si la tarea de la sesión está bloqueada, `Write`, `Edit`, los comandos que escriben y la
+    delegación se niegan. El motivo dice qué falta;
+  - con dos o más tareas, la sesión tiene que decir cuál trabaja. Basta una línea con la clave sola
+    (`ABC-123`) o `seguimos con ABC-123`. Si no la dice, se niega con `SESSION_TASK_AMBIGUOUS`;
+  - aprobar, elegir o cancelar se escribe en el chat, exacto y en mayúsculas
+    (`HARNESS APPROVE ABC-123 <interactionId>`). Un «dale» no aprueba;
+  - ninguna herramienta del modelo escribe `.claude/` ni `.git/`. Tampoco un `git config` que
+    escribe. `git commit -m "... config ..."` también se niega: se usa `git commit -F <archivo>`;
+  - una MCP que nombra `.claude/`, `.git/` o «git config» en un valor se niega, aunque solo lea.
+- **El plan pasa a `orchestration-plan/2.1`.** Suma `BLOCKED` como estado del plan y `blockers` en
+  la unidad. Lo que pasa con un plan guardado en `.claude\planes\`:
+  - **un 2.0 de 0.30.0** se lee, pero `refute --compile` sale con 2 y `PLAN_NOT_READY`: no trae
+    las precondiciones del flujo. Se resuelve con
+    `python .claude\harness\bin\desarrollo\dev-harness.py plan <KEY> --replanificar <propuesta> --motivo "<por qué>"`,
+    que lo escribe como 2.1 con la versión siguiente y su historia;
+  - **un 2.0 o un 1.0 con `DELEGATING` o una unidad `READY`** se rechaza igual que en 0.30.0;
+  - **una aprobación desde `flujo`** sobre un plan 2.0 también lo escribe como 2.1.
+- **`plan` con una fuente exigida en alerta de integridad escribe el plan `BLOCKED`.** Una fuente
+  seguida y no exigida ya no corta, solo avisa.
+- **Un ciclo o una dependencia rota en la propuesta sale con 2**, no con 1.
+- **El Bloque 4 y la Context Bar muestran `N/D`** donde antes había un `0` o un parcial.
+- **Un script que corría `install.ps1 -NonInteractive` sin `-Usuario` sale 1** con el diagnóstico,
+  también desde una consola. Con `-Confirm` y sin nadie a quien preguntar, sale con error y no
+  instala nada.
+
 ## 0.29.0 → 0.30.0
 
 `-Update` alcanza para un proyecto instalado: no hay que migrar nada a mano. Si hace falta reiniciar

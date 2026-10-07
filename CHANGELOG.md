@@ -3,6 +3,75 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.31.0] — 2026-10-07
+
+**El harness gobierna el flujo de una tarea: sabe en qué etapa está, qué la frena y quién tiene que
+decidir, y no deja que una herramienta del modelo avance por encima de eso.**
+
+Hasta 0.30.0 el flujo de una tarea vivía en la conversación. Nada impedía escribir código con el
+repositorio equivocado, delegar con la tarea bloqueada o tomar un «dale» como una aprobación.
+Flow Governance son seis Waves, una compuerta de calificación y una calificación final, construidas
+sobre 0.28.0 y verificadas cada una por `harness-spec-refuter`. Esta versión las integra con 0.29.0
+y 0.30.0. El plan pasa a `orchestration-plan/2.1`, para que un bloqueo del flujo quede escrito en el
+plan sin volver a los estados que 0.30.0 sacó.
+
+### Agregado
+
+- **Las precondiciones del flujo** — `harnesses/desarrollo/reglas/flow-required-inputs.json` dice
+  qué necesita cada etapa y cómo se consigue si falta (`HARD_BLOCKER`, `SOFT_DEPENDENCY`,
+  `OPTIONAL`, `DERIVABLE`). La identidad del repositorio de la tarea es `MATCHED`, `MISMATCH` o
+  `UNRESOLVED`, y un plan sin precondiciones resueltas no está listo
+- **El estado del flujo por tarea** — `.claude/runtime/tasks/<KEY>/state.json`
+  (`task-flow-state/1.0`), derivado del TaskContext, el plan, el repositorio y la refutación, con
+  sus bloqueos y desde qué compuerta se retoma. `flujo <KEY> --status` lo muestra
+- **La compuerta del flujo en `PreToolUse`** — con la tarea bloqueada, desactualizada o sin estado,
+  lo que modifica o avanza se niega; la lectura y la recuperación pasan. Se compone con el control
+  de secretos en una sola respuesta. El matcher alcanza `Agent`, `Task` y las herramientas `mcp__*`
+- **La interacción humana** — la persona aprueba, elige, cancela o retoma escribiendo
+  `HARNESS <ACCIÓN> <KEY> <interactionId>` en el chat. `UserPromptSubmit` lo captura una sola vez,
+  atado a la sesión, la tarea y la versión del plan; `flujo <KEY> --approve|--alternative|--choose|--cancel|--resume`
+  lo aplica. Una herramienta del modelo no aprueba nada
+- **La tarea de cada sesión** — una sesión trabaja la tarea que declara. Con varias tareas y ninguna
+  declarada, `SESSION_TASK_AMBIGUOUS`
+- **`orchestration-plan/2.1`** — `BLOCKED` como estado público del plan y `blockers` en cada unidad
+  bloqueada: el input del registro y el código de quien lo decidió
+- **Seis conceptos nuevos en el modelo canónico** — TaskFlowState, FlowRequiredInput, HumanIntent,
+  HumanDecisionRecord, SessionTaskBinding y SessionFlowNotice, uno por schema nuevo
+
+### Cambiado
+
+- 🔴 **Ninguna herramienta del modelo escribe `.claude/` ni `.git/`** cuando hay estado del flujo,
+  tampoco un `git config` que escribe ni un comodín que llegue ahí (R11). Ver
+  [UPGRADE.md](UPGRADE.md)
+- 🔴 **Un plan 2.0 guardado no compila hasta replanificarlo** — no trae las precondiciones del
+  flujo. Ver [UPGRADE.md](UPGRADE.md)
+- **Una capacidad es soportada y disponible, soportada y caída, o no soportada** — una integración
+  caída deja el plan `BLOCKED` en vez de pedirle una tool a `dev-tool-builder`
+- **El Bloque 4 y la Context Bar dicen `N/D`** donde no saben, nunca un `0` que no midieron
+- **Un hallazgo crítico sin resolver deja el reporte de seguridad en `REVIEW_INCOMPLETE`**, nunca
+  `READY`
+- **`-Doctor` calcula la Context Bar en vivo**, y `ACTIVE` exige evidencia de una sesión que dibujó
+  con datos
+- **Todo error de plan sale con 2**, también un ciclo o una dependencia rota
+- **`install.ps1 -NonInteractive` sin `-Usuario` sale 1** con el diagnóstico, y `-Confirm` sin nadie
+  a quien preguntar no instala
+
+### Corregido
+
+- **Matar la suite ya no rompe el árbol versionado** — los casos del instalador que rompen archivos
+  a propósito corren sobre una copia aislada de la fábrica en `%TEMP%`
+- **Una decisión humana sobre un plan guardado de otra versión** se escribe como 2.1 en vez de
+  caer al validar
+
+### Cómo se verificó
+
+Cada Wave cerró con su refutación: 23, 38, 65, 71, 43 y 46 escenarios sostenidos, sin contradichos.
+La integración con 0.28.0 sumó 14, y la compuerta de calificación, 23 escenarios y 7 afirmaciones.
+La calificación final de R11 cerró con una excepción de proceso declarada: la refutación adversarial
+de R11 no se completó y no se afirma (`docs/cambios/flow-governance/final-qualification.md`). La
+integración con 0.30.0 la verificó `harness-spec-refuter`
+(`docs/cambios/integracion-flow-governance-0-31/verificacion.md`).
+
 ## [0.30.0] — 2026-10-05
 
 **HARNESS tiene su modelo de dominio escrito, y el plan de orquestación pasa a

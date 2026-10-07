@@ -550,8 +550,10 @@ def _decisiones():
     return importlib.import_module("estado_de_tarea.decisiones")
 
 
-def _como_0_30_0(plan, version=V20):
-    """Lo que escribia 0.30.0 (o las Waves en 1.0): sin blockers en las unidades."""
+def _sin_blockers(plan, version=V20):
+    """El plan con otra cadena de version y sin blockers en las unidades. Conserva sus
+    flowPreconditions: un 2.0 real de 0.30.0 no las trae, y la compuerta no ofrece una decision
+    sobre el (D5, «Leer no es compilar»)."""
     doc = _con(plan, version)
     for u in doc["workUnits"]:
         u.pop("blockers", None)
@@ -568,7 +570,7 @@ def test_e22_una_decision_sobre_un_plan_viejo_lo_escribe_en_2_1(t):
         try:
             destino = Path(raiz) / ".claude" / "planes" / (M20.CLAVE + ".json")
             destino.parent.mkdir(parents=True, exist_ok=True)
-            viejo = _como_0_30_0(_armar([_cara(), _hueco()]), version)
+            viejo = _sin_blockers(_armar([_cara(), _hueco()]), version)
             destino.write_text(json.dumps(viejo), encoding="utf-8")
             abierta = {"workUnitId": "u-cara", "interactionId": "ixn-0000000000000000"}
             escrito = _decisiones()._efecto_en_el_plan(raiz, M20.CLAVE, viejo, abierta,
@@ -586,7 +588,7 @@ def test_e22_una_decision_sobre_un_plan_viejo_lo_escribe_en_2_1(t):
             t.igual("E-22 %s: devuelve lo que escribio" % version, leido, escrito)
         finally:
             shutil.rmtree(raiz, ignore_errors=True)
-    sin_causa = _como_0_30_0(_armar([_lista()]))
+    sin_causa = _sin_blockers(_armar([_lista()]))
     sin_causa["workUnits"][0]["status"] = "BLOCKED"
     try:
         P.replanificar(sin_causa, ["x"], "x", "human-decision")
@@ -597,7 +599,7 @@ def test_e22_una_decision_sobre_un_plan_viejo_lo_escribe_en_2_1(t):
     try:
         destino = Path(raiz) / ".claude" / "planes" / (M20.CLAVE + ".json")
         destino.parent.mkdir(parents=True, exist_ok=True)
-        retirado = _con(_como_0_30_0(_armar([_cara()])), status="DELEGATING")
+        retirado = _con(_sin_blockers(_armar([_cara()])), status="DELEGATING")
         destino.write_text(json.dumps(retirado), encoding="utf-8")
         antes = destino.read_bytes()
         try:

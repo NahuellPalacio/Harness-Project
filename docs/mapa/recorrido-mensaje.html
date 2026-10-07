@@ -133,11 +133,12 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <div>
     <h1>El recorrido de un mensaje</h1>
   </div>
-  <p class="sub">Qué hace gcba-harness v0.29.0 desde que se instala en un proyecto hasta que Claude contesta.</p>
+  <p class="sub">Qué hace gcba-harness v0.31.0 desde que se instala en un proyecto hasta que Claude contesta.</p>
   <div class="chips">
-    <span class="chip viva">v0.29.0</span>
+    <span class="chip viva">v0.31.0</span>
     <span class="chip">4 hooks</span>
     <span class="chip">1 sola puerta que bloquea</span>
+    <span class="chip">2 reglas en esa puerta: secretos y flujo</span>
     <span class="chip">1 paso todavía sin escribir</span>
   </div>
 </header>
@@ -151,7 +152,7 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
 </div>
 
 <div class="lienzo">
-<svg viewBox="0 0 980 1415" role="img" aria-label="Diagrama de flujo de gcba-harness: la adopción del harness y el primer recorrido del código, el estado que SessionStart le muestra a la persona, y después el recorrido de un mensaje — UserPromptSubmit, la decisión de Claude, la puerta de secretos en PreToolUse, la ejecución de la herramienta, los checks de PostToolUse y el retorno del aviso a Claude">
+<svg viewBox="0 0 980 1945" role="img" aria-label="Diagrama de flujo de gcba-harness: la adopción del harness y el primer recorrido del código, el estado que SessionStart le muestra a la persona y la línea del flujo para Claude, y después el recorrido de un mensaje — UserPromptSubmit con la decisión de la persona y el aviso del flujo, la decisión de Claude, la puerta de PreToolUse con sus dos reglas, secretos y compuerta del flujo, la ejecución de la herramienta, los checks de PostToolUse y el retorno del aviso a Claude">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
@@ -176,7 +177,7 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <text class="t-sec" x="120" y="16">FUERA DEL TURNO</text>
   <rect class="caja-hueca" x="120" y="24" width="320" height="46" rx="3"/>
   <text class="t-tit" x="136" y="44">SessionStart</text>
-  <text class="t-min" x="136" y="60">una vez: versión del harness · git · caché · pendientes</text>
+  <text class="t-min" x="136" y="60">una vez: versión · git · caché · pendientes · flujo</text>
 
   <path class="l" d="M400,24 L400,6 L478,6 L478,-60 L526,-60" marker-end="url(#a)"/>
   <rect class="caja-viva" x="530" y="-164" width="400" height="158" rx="3"/>
@@ -199,6 +200,12 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <text class="t-min" x="546" y="60">lo recorre dev-iniciador-code, una vez, y lo lanza la persona</text>
   <text class="t-min" x="546" y="78">deja docs/codebase/ · fichas, mapa y project-context.json</text>
 
+  <path class="l" d="M440,62 L466,62 L466,135 L526,135" marker-end="url(#a)"/>
+  <rect class="caja-viva" x="530" y="104" width="400" height="62" rx="3"/>
+  <text class="t-tit acento" x="546" y="124">con estado del flujo: una línea, para Claude</text>
+  <text class="t-min" x="546" y="141">la tarea vinculada a la sesión, su etapa y si está frenada</text>
+  <text class="t-min" x="546" y="155">sin vínculo, la última tocada: sugerencia, nunca elección</text>
+
   <line class="l" x1="280" y1="70" x2="280" y2="94" marker-end="url(#a)"/>
 
   <text class="t-sec" x="120" y="88">EL TURNO</text>
@@ -212,6 +219,50 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <text class="t-min" x="136" y="207">arranca un proceso Python en cada mensaje</text>
 
   <line class="l" x1="280" y1="220" x2="280" y2="244" marker-end="url(#a)"/>
+
+  <polygon class="rombo" points="280,246 440,282 280,318 120,282"/>
+  <text class="t" x="280" y="279" text-anchor="middle">¿es una línea</text>
+  <text class="t" x="280" y="293" text-anchor="middle">HARNESS exacta?</text>
+
+  <line class="l" x1="440" y1="282" x2="526" y2="282" marker-end="url(#a)"/>
+  <text class="t-eti" x="470" y="274">sí</text>
+  <rect class="caja-viva" x="530" y="226" width="400" height="118" rx="3"/>
+  <text class="t-tit acento" x="546" y="246">una decisión de la persona</text>
+  <text class="t-min" x="546" y="263">HARNESS APPROVE|ALTERNATIVE|CHOOSE|CANCEL|ANSWER|RESUME &lt;KEY&gt;</text>
+  <text class="t-min" x="546" y="277">más la interacción y la opción que pida: sola, en mayúsculas</text>
+  <text class="t-min" x="546" y="291">se valida contra lo abierto y queda como intención de un uso</text>
+  <text class="t-min" x="546" y="305">en .claude/runtime/sessions/&lt;id&gt;/human-intent.json</text>
+  <text class="t-min" x="546" y="319">Claude y la persona ven el comando flujo exacto que la aplica</text>
+  <text class="t-min" x="546" y="333">«dale» u «ok» no aprueban nada · RESUME pide flujo --resume</text>
+
+  <line class="l" x1="280" y1="318" x2="280" y2="350" marker-end="url(#a)"/>
+  <text class="t-eti" x="292" y="338">no</text>
+
+  <rect class="caja" x="120" y="352" width="320" height="62" rx="3"/>
+  <text class="t-tit" x="136" y="372">si nombra una tarea, vincula la sesión</text>
+  <text class="t-min" x="136" y="389">«Seguimos con ABC-123» → sessions/&lt;id&gt;/task.json</text>
+  <text class="t-min" x="136" y="403">nunca se infiere de la última tarea tocada</text>
+
+  <line class="l" x1="280" y1="414" x2="280" y2="438" marker-end="url(#a)"/>
+
+  <polygon class="rombo" points="280,440 440,476 280,512 120,476"/>
+  <text class="t" x="280" y="473" text-anchor="middle">¿hay estado del flujo y la</text>
+  <text class="t" x="280" y="487" text-anchor="middle">tarea no puede avanzar?</text>
+
+  <line class="l" x1="440" y1="476" x2="526" y2="476" marker-end="url(#a)"/>
+  <text class="t-eti" x="470" y="468">sí</text>
+  <rect class="caja-viva" x="530" y="424" width="400" height="104" rx="3"/>
+  <text class="t-tit acento" x="546" y="444">el aviso del flujo</text>
+  <text class="t-min" x="546" y="461">bloqueada, desactualizada, o la sesión no dijo cuál</text>
+  <text class="t-min" x="546" y="475">(SESSION_TASK_AMBIGUOUS: el harness no elige por la persona)</text>
+  <text class="t-min" x="546" y="489">qué falta, dónde se completa y la línea HARNESS para decidir</text>
+  <text class="t-min" x="546" y="503">entero, a Claude y a la persona, cuando cambia; si no, una</text>
+  <text class="t-min" x="546" y="517">línea o nada · la huella vive en sessions/&lt;id&gt;/notice.json</text>
+
+  <line class="l" x1="280" y1="512" x2="280" y2="544" marker-end="url(#a)"/>
+  <text class="t-eti" x="292" y="532">no · silencio</text>
+
+  <g transform="translate(0,300)">
 
   <polygon class="rombo" points="280,246 440,282 280,318 120,282"/>
   <text class="t" x="280" y="279" text-anchor="middle">¿el prompt matchea</text>
@@ -229,7 +280,7 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <rect class="caja" x="120" y="352" width="320" height="68" rx="3"/>
   <text class="t-tit" x="136" y="376">Claude lee y decide</text>
   <text class="t-min" x="136" y="393">CLAUDE.md entero (4 zonas con techo) + skills + prompt</text>
-  <text class="t-min" x="136" y="409">+ lo que le haya llegado del turno anterior</text>
+  <text class="t-min" x="136" y="409">+ el aviso del flujo y lo del turno anterior</text>
 
   <line class="l" x1="280" y1="420" x2="280" y2="442" marker-end="url(#a)"/>
 
@@ -237,53 +288,85 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <text class="t" x="280" y="477" text-anchor="middle">¿llama una</text>
   <text class="t" x="280" y="491" text-anchor="middle">herramienta?</text>
 
-  <path class="l" d="M120,480 L62,480 L62,1183 L114,1183" marker-end="url(#a)"/>
+  <path class="l" d="M120,480 L62,480 L62,1413 L114,1413" marker-end="url(#a)"/>
   <text class="t-eti" x="70" y="470">no</text>
-  <text class="t-eti" x="70" y="1170">fin</text>
+  <text class="t-eti" x="70" y="1400">fin</text>
 
   <line class="l" x1="280" y1="516" x2="280" y2="554" marker-end="url(#a)"/>
   <text class="t-eti" x="292" y="540">sí</text>
 
-  <rect class="caja-deny" x="120" y="556" width="320" height="56" rx="3"/>
+  <rect class="caja-deny" x="120" y="556" width="320" height="70" rx="3"/>
   <text class="t-tit rojo" x="136" y="576">hook PreToolUse</text>
   <text class="t-min" x="136" y="593">Write · Edit · MultiEdit · NotebookEdit</text>
   <text class="t-min" x="136" y="606">Bash · PowerShell</text>
+  <text class="t-min" x="136" y="619">Agent · Task · mcp__* — delegar y las MCP</text>
 
-  <line class="l-punt" x1="440" y1="584" x2="524" y2="584"/>
-  <text class="t-min" x="530" y="572">Read, Grep, Glob, WebFetch y el resto no</text>
-  <text class="t-min" x="530" y="587">disparan ningún hook. A un Read lo puede</text>
-  <text class="t-min" x="530" y="602">cortar permissions.deny, sin arrancar nada.</text>
+  <line class="l-punt" x1="440" y1="591" x2="524" y2="591"/>
+  <text class="t-min" x="530" y="579">Read, Grep, Glob, WebFetch y el resto no</text>
+  <text class="t-min" x="530" y="594">disparan ningún hook. A un Read lo puede</text>
+  <text class="t-min" x="530" y="609">cortar permissions.deny, sin arrancar nada.</text>
 
-  <line class="l" x1="280" y1="612" x2="280" y2="638" marker-end="url(#a)"/>
+  <line class="l" x1="280" y1="626" x2="280" y2="652" marker-end="url(#a)"/>
 
-  <polygon class="rombo" points="280,640 440,676 280,712 120,676"/>
-  <text class="t" x="280" y="673" text-anchor="middle">¿el texto tiene</text>
-  <text class="t" x="280" y="687" text-anchor="middle">forma de secreto?</text>
+  <polygon class="rombo" points="280,654 440,690 280,726 120,690"/>
+  <text class="t" x="280" y="687" text-anchor="middle">¿secreto de</text>
+  <text class="t" x="280" y="701" text-anchor="middle">confianza alta?</text>
 
-  <path class="l" d="M440,676 L486,676"/>
-  <path class="l" d="M486,636 L486,720"/>
-  <line class="l" x1="486" y1="636" x2="696" y2="636" marker-end="url(#a)"/>
-  <line class="l" x1="486" y1="720" x2="526" y2="720" marker-end="url(#a)"/>
+  <line class="l" x1="440" y1="690" x2="526" y2="690" marker-end="url(#a)"/>
+  <text class="t-eti" x="470" y="682">sí</text>
+  <rect class="caja-deny" x="530" y="666" width="230" height="48" rx="3"/>
+  <text class="t-tit rojo" x="544" y="686">deny</text>
+  <text class="t-min" x="586" y="686">confianza alta</text>
+  <text class="t-min" x="544" y="703">el flujo ni se evalúa</text>
+  <path class="l-deny" d="M760,690 L946,690"/>
+  <text class="t-eti rojo" x="770" y="682">el motivo dice qué hacer</text>
 
-  <rect class="caja-ask" x="700" y="612" width="230" height="48" rx="3"/>
-  <text class="t-tit ambar" x="714" y="632">ask</text>
-  <text class="t-min" x="748" y="632">confianza media</text>
-  <text class="t-min" x="714" y="649">lo decide la persona</text>
+  <line class="l" x1="280" y1="726" x2="280" y2="760" marker-end="url(#a)"/>
+  <text class="t-eti" x="292" y="746">no</text>
 
-  <rect class="caja-deny" x="530" y="696" width="230" height="48" rx="3"/>
-  <text class="t-tit rojo" x="544" y="716">deny</text>
-  <text class="t-min" x="586" y="716">confianza alta</text>
-  <text class="t-min" x="544" y="733">la llamada no se ejecuta</text>
+  <polygon class="rombo" points="280,762 440,798 280,834 120,798"/>
+  <text class="t" x="280" y="795" text-anchor="middle">¿la compuerta del</text>
+  <text class="t" x="280" y="809" text-anchor="middle">flujo deja pasar?</text>
 
-  <path class="l-ask" d="M815,660 L815,775 L446,775" marker-end="url(#a)"/>
-  <text class="t-eti" x="824" y="700">si acepta</text>
-  <path class="l-ask" d="M930,636 L946,636"/>
-  <text class="t-eti" x="836" y="628">si corta ↴</text>
-  <path class="l-deny" d="M760,720 L946,720"/>
-  <text class="t-eti rojo" x="770" y="712">el motivo dice qué hacer</text>
+  <line class="l" x1="440" y1="798" x2="526" y2="798" marker-end="url(#a)"/>
+  <text class="t-eti" x="470" y="790">no</text>
+  <rect class="caja-deny" x="530" y="730" width="400" height="136" rx="3"/>
+  <text class="t-tit rojo" x="544" y="750">deny del flujo</text>
+  <text class="t-min" x="544" y="767">con estado del flujo y la tarea frenada, desactualizada o</text>
+  <text class="t-min" x="544" y="781">sin aclarar en la sesión: no pasa lo que modifica o avanza</text>
+  <text class="t-min" x="544" y="795">(escribir, delegar, una MCP, un comando no reconocido)</text>
+  <text class="t-min" x="544" y="809">si espera a una persona: el shell solo lee y corre el Harness</text>
+  <text class="t-min" x="544" y="823">ninguna herramienta escribe en .claude/ ni en .git/</text>
+  <text class="t-min" x="544" y="837">falla interna: FLOW_GATE_UNRESOLVED, falla cerrado</text>
+  <text class="t-min" x="544" y="851">deny, nunca ask; un secreto ambiguo se suma al motivo</text>
+  <path class="l-deny" d="M930,798 L946,798"/>
 
-  <line class="l" x1="280" y1="712" x2="280" y2="750" marker-end="url(#a)"/>
-  <text class="t-eti" x="292" y="736">no, o matchea un patrón de ignorar</text>
+  <line class="l" x1="280" y1="834" x2="280" y2="868" marker-end="url(#a)"/>
+  <text class="t-eti" x="292" y="854">sí, o sin estado del flujo</text>
+
+  <polygon class="rombo" points="280,870 440,906 280,942 120,906"/>
+  <text class="t" x="280" y="903" text-anchor="middle">¿secreto de</text>
+  <text class="t" x="280" y="917" text-anchor="middle">confianza media?</text>
+
+  <line class="l" x1="440" y1="906" x2="526" y2="906" marker-end="url(#a)"/>
+  <text class="t-eti" x="470" y="898">sí</text>
+  <rect class="caja-ask" x="530" y="882" width="230" height="48" rx="3"/>
+  <text class="t-tit ambar" x="544" y="902">ask</text>
+  <text class="t-min" x="578" y="902">confianza media</text>
+  <text class="t-min" x="544" y="919">lo decide la persona</text>
+
+  <path class="l-ask" d="M645,930 L645,1005 L446,1005" marker-end="url(#a)"/>
+  <text class="t-eti" x="654" y="960">si acepta</text>
+  <path class="l-ask" d="M760,906 L946,906"/>
+  <text class="t-eti" x="770" y="898">si corta ↴</text>
+
+  <line class="l" x1="280" y1="942" x2="280" y2="980" marker-end="url(#a)"/>
+  <text class="t-eti" x="292" y="966">no, o matchea un patrón de ignorar</text>
+
+  <path class="l-viva" d="M440,1273 L946,1273 L946,385 L446,385" marker-end="url(#a)"/>
+  <text class="t-eti acento" x="930" y="376" text-anchor="end">vuelve a Claude — corrige en el turno siguiente</text>
+
+  <g transform="translate(0,230)">
 
   <rect class="caja-hueca" x="120" y="752" width="320" height="46" rx="3"/>
   <text class="t-tit" x="136" y="780">la herramienta escribe o ejecuta</text>
@@ -318,9 +401,6 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <text class="t-tit acento" x="136" y="1040">additionalContext</text>
   <text class="t-min" x="136" y="1057">hasta 8 hallazgos, adentro del contexto de Claude</text>
 
-  <path class="l-viva" d="M440,1043 L946,1043 L946,385 L446,385" marker-end="url(#a)"/>
-  <text class="t-eti acento" x="930" y="376" text-anchor="end">vuelve a Claude — corrige en el turno siguiente</text>
-
   <rect class="caja-viva" x="120" y="1160" width="440" height="46" rx="3"/>
   <text class="t-tit acento" x="136" y="1180">Claude responde — fin del turno</text>
   <text class="t-min" x="136" y="1196">el mensaje siguiente vuelve a empezar arriba</text>
@@ -333,11 +413,16 @@ footer{margin-top:28px;font-size:.73rem;color:var(--apagado);line-height:1.6}
   <text class="t-min" x="614" y="1220">deja su señal de vida · NO_COLOR la apaga</text>
 
   </g>
+  </g>
+  </g>
 </svg>
 </div>
 
 <footer>
   <p>La asimetría del medio es la decisión de diseño: <strong>bloquea en PreToolUse, habla en PostToolUse</strong>. Un aviso emitido antes de la herramienta se pierde en la transcripción y el modelo no lo ve.</p>
+  <p>La puerta que bloquea es una sola y desde 0.31.0 tiene dos reglas, compuestas en una sola respuesta: primero el <strong>Secret Guard</strong> —un secreto de confianza alta corta y la compuerta ni se evalúa— y después la <strong>compuerta del flujo</strong>. Un deny del flujo gana sobre el ask de un secreto ambiguo: un ask dejaría saltar un bloqueo aprobando una herramienta. Sin estado del flujo en el proyecto la compuerta deja pasar todo, y el harness se comporta como antes.</p>
+  <p>El estado del flujo vive en <code>.claude/runtime/</code>. <code>tasks/&lt;KEY&gt;/state.json</code> es derivado: lo reconcilia la CLI del Harness (<code>contexto</code>, <code>plan</code>, <code>refute</code>, <code>flujo --resume</code>) desde el TaskContext, el plan y la refutación, y <code>flujo &lt;KEY&gt; --status</code> lo muestra. <code>sessions/&lt;id&gt;/</code> guarda qué tarea trabaja cada sesión, qué aviso ya vio y la intención que dejó la persona. Lo escriben los hooks, la CLI del Harness, git o la persona; con estado del flujo, ninguna herramienta del modelo (<code>FLOW_AUTHORITY_PROTECTED</code>). Esa protección lee lo que el texto del comando deja ver: una variable o algo que recién se resuelve al correr queda fuera, y es un límite escrito en <code>docs/cambios/flow-governance/final-qualification.md</code>.</p>
+  <p>Una llamada del modelo no es una aprobación. <code>flujo &lt;KEY&gt; --approve</code>, <code>--alternative</code>, <code>--choose</code>, <code>--cancel</code> y <code>--answer</code> pasan la compuerta solo con la intención que la persona escribió en el chat de esa misma sesión, y la consumen una vez.</p>
   <p>Lo que el harness sabe de un proyecto vive adentro del repo y en markdown: <code>docs/conocimiento/</code> lo escrito a mano, <code>docs/codebase/</code> el índice del código — y al lado del índice, <code>project-context.json</code>, el mismo conocimiento serializado con el commit del que salió, el hash de lo que dice y los huecos que el recorrido no pudo llenar. Eso es lo que deja que un agente diga <em>con qué snapshot del proyecto decidió</em>, que la prosa no contesta. Quien quiera enlaces <code>[[wiki]]</code> y vista de grafo abre esa carpeta con Obsidian y los tiene — el harness no depende de eso, y no puede depender de nada que haya que instalar (ADR-0008).</p>
 </footer>
 

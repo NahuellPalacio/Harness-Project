@@ -1,6 +1,6 @@
 # Integración de Flow Governance con 0.30.0, y `orchestration-plan/2.1`
 
-**Estado:** especificado · **Fecha:** 07-10-2026 · **Versión de partida:** 0.30.0 (`0f8b725`) más
+**Estado:** verificado y cerrado (0.31.0) · **Fecha:** 07-10-2026 · **Versión de partida:** 0.30.0 (`0f8b725`) más
 `integration/flow-governance-0.28` (`ea2dff7`)
 
 Las rutas sin prefijo son relativas a la raíz del repo; `bin/` abrevia `harnesses/desarrollo/bin/`.

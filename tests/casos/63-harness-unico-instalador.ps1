@@ -431,7 +431,7 @@ try {
                 if (-not $huAHash.ContainsKey($ruta)) { $distintos += "$ruta (no estaba)"; continue }
                 if ((Get-HuHash (Join-Path $huB $ruta)) -ne $huAHash[$ruta]) { $distintos += $ruta }
             }
-            Assert-Vacio 'E-16 cada archivo tiene el contenido de 0.28.0, salvo las cinco excepciones' ($distintos -join ', ')
+            Assert-Vacio 'E-16 cada archivo tiene el contenido de la base, salvo las excepciones listadas' ($distintos -join ', ')
 
             # E-18, E-19, E-20, E-23
             Assert-Igual 'E-18 harness.config.json igual al de 0.28.0' $huAConfig (Get-HuNormalizado (Join-Path $huB '.claude\harness.config.json'))

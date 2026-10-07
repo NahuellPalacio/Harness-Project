@@ -1032,6 +1032,8 @@ so the next person does not have to reproduce it by hand. For the drifting count
 registry already show the shape of the fix.
 
 
+Seen again on 2026-10-07, closing 0.31.0: `55_refutacion_atomica` E-58 failed once in a full gate run with `REPOSITORY_MISMATCH` from `refutacion.compilar` (the flow gate), while a second agent was rendering pages with Edge headless on the same machine. Run alone right after, the case passed three times in a row (305/305), and the previous full run had passed it. The likely cause is the flow gate's 1.5 s limit on `git remote -v`, which fails closed when the machine is loaded. Not reproduced on purpose; recorded so the next occurrence can be matched.
+
 ### `permissions.deny` blocks `.env.example`, the template the harness itself ships
 
 `comun/settings/permissions.deny.json` carries `"Read(./.env)"` and `"Read(./.env.*)"`. The second
@@ -1641,7 +1643,63 @@ Fix. The first three are text. The fifth is one assertion next to E-18b or E-19 
 `tests/casos/64_modelo_de_dominio.py`. The fourth is a decision, not a typo: if an unregistered
 agent should hold readiness, it changes behaviour and needs its own spec.
 
+## What the Flow Governance integration left open
+
+Written on 2026-10-07 while closing `docs/cambios/integracion-flow-governance-0-31` (0.31.0). Its
+`verificacion.md` names each of these.
+
+### A rejected human decision still consumes the person's intent
+
+Found on 2026-10-07 by the second pass of `harness-spec-refuter` on `dde03fe`. `decisiones.aplicar`
+(`harnesses/desarrollo/bin/estado_de_tarea/decisiones.py`) calls `hi.consumir` before
+`_efecto_en_el_plan`. When the plan effect raises, the plan file stays intact but
+`.claude/runtime/sessions/<SAFE>/human-intent.json` keeps its `consumedAt`. Reproduced with a 1.0
+plan holding a `BLOCKED` unit whose content does not say why: `flujo --approve` exits 2, the plan is
+untouched, and the intent is spent, so the person has to type the `HARNESS APPROVE` line again. It
+contradicts the docstring of `aplicar` («no toca nada si falla»).
+
+Not fixed in 0.31.0 because the order is part of Wave 4's single-use lock
+(`HUMAN_INTENT_ALREADY_CONSUMED`): consuming after the effect opens a window for a second use that
+the Wave 4 spec closed on purpose.
+
+Fix. Consume and apply inside one step that rolls the intent back when the effect fails, or validate
+everything the effect needs (read rule, migration) before consuming. Either needs its own scenarios
+against `docs/cambios/interaccion-humana/spec.md`.
+
+### The canonical model says secrets are the only rule that blocks, and the flow gate blocks too
+
+Found on 2026-10-07 while mapping the six Flow Governance schemas into
+`docs/dominio/modelo-canonico.md` (D7 of the integration spec). The model still says the secret
+control is «la única regla que bloquea» and, in Guardrails, «solo los secretos bloquean». Since Wave
+3 the flow gate in `PreToolUse` (`comun/hooks/lib/flow_gate.py`) also denies tools, and it has no
+concept in the model. The maps were corrected for 0.31.0; the model was not, because adding a
+concept is a modelling decision, not a typo.
+
+Fix. A `FlowGate` concept (or an extension of `GuardrailCheck`) with its ten fields, and the two
+sentences corrected. It touches the catalog tests of `64_modelo_de_dominio.py`.
+
+### `user-prompt-submit.py` says a typed secret is warned about, and it is not
+
+Found on 2026-10-07 while updating `docs/mapa/mapa-harness.html` for 0.31.0. The header comment of
+`comun/hooks/user-prompt-submit.py` says a secret typed in the prompt «se avisa». The code does not
+do it, and did not in 0.29.0 either. The long map's Fig. 6 repeated the claim and was corrected.
+
+Fix. Correct the comment. If warning about a typed secret is wanted, it is a new behaviour with its
+own spec, not a comment.
+
 ## Verification that was not done
+
+### The migration of a human decision was never exercised on a real 0.30.0 plan
+
+Found on 2026-10-07 by the second pass of `harness-spec-refuter` on the 0.31.0 integration. E-22 of
+`docs/cambios/integracion-flow-governance-0-31/spec.md` proves that a decision over a 2.0 or 1.0
+plan writes it as 2.1, but on a plan that carries `flowPreconditions`. A 2.0 written by 0.30.0 never
+does, so the gate never offers a `HUMAN_DECISION` on it: `--approve` exits 2 with
+`HUMAN_INTENT_REQUIRED` and touches nothing (D5, «Leer no es compilar»). The path is coherent, but
+the scenario's «2.0» is in practice a plan 0.30.0 never wrote.
+
+Fix. One manual run after a real `-Update` from 0.30.0: `--replanificar` the stored 2.0, then take a
+decision on it, and record what happened in the version note.
 
 ### `harness-unico` closed with four tests that prove less than their scenario
 
