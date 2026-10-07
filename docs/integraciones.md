@@ -139,9 +139,13 @@ El mensaje sale de un diccionario fijo del código y **nunca** del cuerpo de la 
 ## Soportada no es lo mismo que disponible
 
 ```
-soportada   el harness sabe hacerlo       -> capacidadesSoportadas, en el manifiesto
-disponible  además está validado ahora    -> harness.capacidades.json, ENABLED
+soportada   el harness sabe hacerlo       -> CAPACIDADES de la clase de integración
+disponible  además está validado ahora    -> harness.capacidades.json, ENABLED en esta máquina
 ```
+
+📌 **Lo soportado lo declaran las clases de integración, no el manifiesto.** `capacidadesSoportadas`
+de `manifest.json` no se lee en tiempo de ejecución: es una copia que un test contrasta contra las
+clases (`tests/casos/18_integraciones.py`). Lo disponible depende de la validación en esta máquina.
 
 Una capacidad soportada cuya integración está caída figura `DISABLED`, nunca ausente: una
 lista que se acorta sola no explica por qué se acortó. La regla que esto hace cumplir es

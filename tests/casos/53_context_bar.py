@@ -296,8 +296,7 @@ def test_e02_el_1_1_que_escriben_el_hook_el_registro_y_la_cli_valida(t):
     casos = (("ACTIVE", _registrado_y_visto(), {"sesion": OTRA}),
              ("CONFIGURED", _registrado_y_visto(), {}),
              ("RELOAD_REQUIRED", _proyecto(), {}),
-             ("ERROR", _proyecto(senal={"block4": B.BLOCK4_SOURCE_UNAVAILABLE}), {}),
-             ("solo analisis", _proyecto(harness=("comun", "analisis")), {}))
+             ("ERROR", _proyecto(senal={"block4": B.BLOCK4_SOURCE_UNAVAILABLE}), {}))
     for rotulo, proy, kw in casos:
         codigo, _, _ = _sesion(proy, **kw)
         t.igual("E-02 %s: el hook sale 0" % rotulo, 0, codigo)
@@ -317,10 +316,9 @@ def test_e02_el_1_1_que_escriben_el_hook_el_registro_y_la_cli_valida(t):
 
 
 def test_e03_despues_de_instalar_los_tres_componentes_tienen_estado(t):
-    """E-03 — con y sin `desarrollo`, cada componente tiene un estado de componente, nunca
-    AVAILABLE."""
-    for rotulo, proy in (("desarrollo", _proyecto()),
-                         ("solo analisis", _proyecto(harness=("comun", "analisis")))):
+    """E-03 — cada componente tiene un estado de componente, nunca AVAILABLE. El caso sin
+    `desarrollo` se retiro con docs/cambios/harness-unico/spec.md: ese estado ya no existe."""
+    for rotulo, proy in (("desarrollo", _proyecto()),):
         doc = B.registrar_instalacion(str(proy), barra_probada=True)
         for clave, _, _, _ in B.COMPONENTES:
             estado = (doc["runtimeComponents"].get(clave) or {}).get("state")
@@ -459,14 +457,13 @@ def test_e14_error_sale_como_error_sin_tilde_y_deja_partial(t):
 # -- E-11 / E-12 / E-13 — la bienvenida ----------------------------------------------------
 
 def test_e11_la_bienvenida_con_desarrollo_muestra_observabilidad(t):
-    """E-11 — el bloque, con los tres, solo con `desarrollo`."""
+    """E-11 — el bloque, con los tres. La mitad "sin `desarrollo`, no" se retiro con
+    docs/cambios/harness-unico/spec.md: ese estado ya no existe."""
     _, mensaje, _ = _sesion(_registrado_y_visto())
     t.contiene("E-11 la primera sesion muestra Observabilidad", "Observabilidad", mensaje or "")
     for nombre in ("Block 4 Accounting", "Context Bar", "Security Reporting"):
         t.verdadero("E-11 con %s" % nombre,
                     bool(_fila((mensaje or "").split("Observabilidad", 1)[-1], nombre)))
-    completa = B.renderizar_bienvenida(B.resolver(str(_proyecto(harness=("comun", "analisis")))))
-    t.no_contiene("E-11 sin desarrollo, no", "Observabilidad", completa)
 
 
 def test_e12_reload_required_sale_como_requiere_reinicio(t):
@@ -763,11 +760,8 @@ def test_la_tabla_de_estados_de_la_barra(t):
             _escribir(proy / ".claude" / "runtime" / "contextbar.json", senal)
         t.igual("tabla: senal %s: UNRESOLVED" % rotulo, "UNRESOLVED",
                 _barra(B.resolver(str(proy), sesion=SESION))["state"])
-    doc = B.resolver(str(_proyecto(harness=("comun", "analisis"))))
-    t.igual("tabla: sin desarrollo, los tres NOT_CONFIGURED y ninguna condicion",
-            (["NOT_CONFIGURED"] * 3, "READY"),
-            ([doc["runtimeComponents"][c]["state"] for c, _, _, _ in B.COMPONENTES],
-             doc["bootstrap"]["status"]))
+    # La fila "sin desarrollo, los tres NOT_CONFIGURED" se retiro con
+    # docs/cambios/harness-unico/spec.md: ese estado ya no existe.
 
 
 def test_el_contrato_de_la_senal_de_vida(t):

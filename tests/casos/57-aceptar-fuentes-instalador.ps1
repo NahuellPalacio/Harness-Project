@@ -47,7 +47,7 @@ New-Item -ItemType Directory -Path $pdfsAf -Force | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $pdfsAf 'ES0902 - Estandar de Seguridad V6.2.pdf'), 'original ES0902 6.2')
 
 try {
-    $r = Invoke-InstaladorAf @('-Project', $demoAf, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorAf @('-Project', $demoAf, '-Usuario', 'Ana Prueba')
     Assert-Igual 'la instalacion sale 0' 0 $r.Codigo
 
     # -- E-16: los seis extractos llegan, con su linea de version ---------------------------

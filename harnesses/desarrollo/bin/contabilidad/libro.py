@@ -14,6 +14,7 @@ se escribe una segunda limpieza parecida — un dia una encuentra el catalogo y 
 import io
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -35,6 +36,33 @@ TOPE_DE_TEXTO = 300
 # Bajo `.claude/`, al lado de `contextos/` y `planes/`. Un `runtime/` en la raiz ensucia el
 # repositorio del proyecto que se esta desarrollando, que no es nuestro.
 BASE = (".claude", "runtime", "accounting")
+
+# El `session_id` de una sesion del Host: la barra guarda su ledger por sesion, no por tarea.
+SESION = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+                    r"[0-9a-fA-F]{12}$")
+
+
+class ClaveDeLibroInvalida(ValueError):
+    """La clave no es ni una tarea ni una sesion. El libro no se abre."""
+
+
+def validar_clave(clave, es_clave_de_tarea):
+    """La LedgerKey, si es una clave de Jira o el `session_id` de una sesion del Host.
+
+    La regla de la clave de Jira la pasa quien llama. Ya esta escrita dos veces -en la CLI y
+    en la refutacion- y una tercera copia aca seria otra que un dia dice otra cosa.
+
+    🔴 No la llaman `carpeta_de`, `ruta_de` ni `agregar`: la `statusLine` escribe por ahi
+    con el `session_id` que le da el Host, y eso sigue como esta. Se valida en la CLI.
+    """
+    clave = str(clave or "")
+    if es_clave_de_tarea(clave) or SESION.fullmatch(clave):
+        return clave
+    raise ClaveDeLibroInvalida(
+        "`%s` no es una clave de libro contable. Tiene que ser una clave de Jira, con la "
+        "forma PROYECTO-123, o el id de una sesion, con la forma "
+        "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. Ejemplo: dev-harness.py contabilidad GCBA-1234"
+        % clave)
 
 
 def carpeta_de(proyecto, task_id):

@@ -77,7 +77,7 @@ que el harness dependa de nada — ver [ADR-0008](adr/0008-lo-externo-nunca-es-r
 `SessionStart` contesta *"¿en qué quedamos?"* sin que tengas que preguntarlo:
 
 ```
-Nahue - harness: comun, analisis v0.6.0
+Nahue - harness v0.6.0
 git: develop, 3 con cambios
 Ultimo trabajo:
   - regla de secretos punta a punta
@@ -96,7 +96,7 @@ El harness te trata por tu nombre. Se pide al instalar y se guarda en
 `harness.config.json`, que después no se toca nunca:
 
 ```powershell
-.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Harness analisis -Usuario "Tu Nombre"
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Usuario "Tu Nombre"
 ```
 
 Si no lo pasás y hay consola, te lo pregunta. Si no hay consola —en un script, en CI— **aborta

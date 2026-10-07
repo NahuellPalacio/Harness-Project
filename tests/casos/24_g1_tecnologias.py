@@ -520,12 +520,13 @@ def test_e23_los_checks_normativos_no_son_los_del_hook(t):
 
     # El contrato del hook. `post-tool-use.py` corre lo que hay en `<harness>/checks`, al lado
     # de `hooks/`; y ese directorio lo llena install.ps1 SOLO desde `comun/checks` y
-    # `harnesses/<id>/checks`. `controles/` no es origen de ninguna copia a `checks`.
+    # `harnesses/desarrollo/checks` (desde docs/cambios/harness-unico/spec.md, una copia fija y
+    # no una por id). `controles/` no es origen de ninguna copia a `checks`.
     hook = (RAIZ / "comun" / "hooks" / "post-tool-use.py").read_text(encoding="utf-8")
     t.contiene("E-23 el hook corre <harness>/checks", 'os.path.join(AQUI, "..", "checks")', hook)
     origenes = _origenes_de_checks((RAIZ / "install.ps1").read_text(encoding="utf-8-sig"))
-    t.igual("E-23 install.ps1 llena checks desde comun/checks y harnesses/<id>/checks",
-            ["$origen/checks", "$origenComun/checks"], origenes)
+    t.igual("E-23 install.ps1 llena checks desde comun/checks y harnesses/desarrollo/checks",
+            ["$origenComun/checks", "$origenProducto/checks"], origenes)
 
     # Lo que ese runner descubriria en un proyecto instalado, con su misma regla de descubrimiento:
     # ningun check de G1 esta ahi, y los dos existen del otro lado.
@@ -551,9 +552,10 @@ def test_e23_los_checks_normativos_no_son_los_del_hook(t):
 
 
 def _origenes_de_checks(texto):
-    """El origen de cada `Copy-Arbol` de install.ps1 cuyo destino es `checks` del harness."""
+    """El origen de cada `Copy-Arbol` de install.ps1 cuyo destino es `checks` del harness: la
+    raiz o `checks\\desarrollo` (desde docs/cambios/harness-unico/spec.md, un destino fijo)."""
     patron = (r"Copy-Arbol\s+\(Join-Path\s+(\$\w+)\s+'([^']+)'\)\s+"
-              r"\(Join-Path\s+\$dirHarness\s+(?:'checks'|\"checks\\\$id\")\)")
+              r"\(Join-Path\s+\$dirHarness\s+(?:'checks'|'checks\\desarrollo')\)")
     return sorted({"%s/%s" % (m.group(1), m.group(2)) for m in re.finditer(patron, texto)})
 
 

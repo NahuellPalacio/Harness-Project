@@ -355,11 +355,6 @@ def seccion_de_runtime(b, doc, proyecto):
     """
     rc = doc.get("runtimeComponents") or {}
     lineas = ["", "Runtime / Observabilidad"]
-    if not rc or not (doc.get("knowledge") or {}).get("applies"):
-        lineas.append("  sin el harness de desarrollo: no hay Bloque 4, ni Context Bar, ni "
-                      "reporte de seguridad")
-        return "\n".join(lineas)
-
     ancho = len("Reinicio de Claude Code") + 3
     acciones = []
     for clave, nombre, _, _ in b.COMPONENTES:
@@ -454,7 +449,7 @@ def _detalle_de_runtime(b, doc, proyecto):
     """Las huellas, las versiones y las fechas de los componentes de runtime. Son sha256 y
     fechas: ningun secreto, y ninguna ruta que no se vea ya en "Archivos leídos"."""
     rc = doc.get("runtimeComponents") or {}
-    if not rc or not (doc.get("knowledge") or {}).get("applies"):
+    if not rc:
         return []
     lineas = []
     for clave, nombre, _, _ in b.COMPONENTES:
@@ -614,7 +609,7 @@ def _detalle_de_consumo(b, doc, proyecto, rutas):
     umbrales, y nada mas.
     """
     rc = doc.get("runtimeComponents") or {}
-    if not rc or not (doc.get("knowledge") or {}).get("applies"):
+    if not rc:
         return []
     comp = rc.get("contextBar") or {}
     senal, _ = b.leer_senal_de_vida(proyecto)
@@ -1254,7 +1249,11 @@ def planificar(args, proyecto, rutas, consola):
             raise FallaDelHarness(
                 "replanificar sin motivo no se puede: un plan que cambia solo no se puede "
                 "auditar despues. Pasa --motivo.")
-        anterior = _json_o_vacio(destino)
+        # 🔴 El plan anterior pasa por la regla de lectura antes de leer la propuesta nueva. Uno
+        # que no se reconoce -otra version, o un estado que no existe en 2.0- no se migra ni se
+        # pisa: sale con 2 y el archivo queda como estaba. Uno ilegible llega como `{}`, sin
+        # version, y se rechaza por eso.
+        anterior = orq_plan.aceptar_guardado(_json_o_vacio(destino), clave)
         nueva = _json_o_vacio(args.replanificar)
         documento = orq_plan.armar(nueva, task_context, registro, config,
                                    version_de(rutas), _relativa(proyecto, ruta_contexto),
@@ -1424,6 +1423,9 @@ def contabilizar(args, proyecto, rutas, consola):
         raise FallaDelHarness(
             "contabilidad necesita la tarea. Ejemplo:\n"
             "    dev-harness.py contabilidad GCBA-1234")
+    # La LedgerKey, antes de armar la ruta del libro: una clave de Jira o el id de una sesion
+    # del Host. Cualquier otra cosa seria una carpeta de ledger con un nombre que no es nada.
+    tarea = cont_libro.validar_clave(tarea, CLAVE_JIRA.match)
 
     ruta_libro = cont_libro.ruta_de(proyecto, tarea)
     politica = cont_presupuesto.cargar(rutas["presupuesto"])
@@ -2138,6 +2140,12 @@ def main(argv=None, transporte=None, transporte_bytes=None):
         except seg_libro.TareaInvalida as e:
             sys.stderr.write("harness: %s Ejemplo: dev-harness.py seguridad GCBA-1234\n" % e)
             return 2
+        # Y que sea una clave de Jira: el ledger y el resumen llevan esta clave como `taskId`.
+        if not CLAVE_JIRA.match(str(args.argumento or "")):
+            sys.stderr.write(
+                "seguridad necesita una clave de Jira, con la forma PROYECTO-123. "
+                "Ejemplo: dev-harness.py seguridad GCBA-1234\n")
+            return 2
 
     try:
         return comando(args, transporte, transporte_bytes)
@@ -2149,7 +2157,7 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             seg_productores.ProductorInvalido, seg_resumen.ResumenInvalido,
             orq_refutacion.RefutacionInvalida, flujo_requeridos.RegistroInvalido,
             flujo_estado.ErrorDeEstado, estado_decisiones.ErrorDeDecision,
-            orq_plan.PlanInvalido) as e:
+            cont_libro.ClaveDeLibroInvalida, orq_plan.PlanInvalido) as e:
         sys.stderr.write("harness: %s\n" % e)
         return 2
     except KeyboardInterrupt:

@@ -53,7 +53,7 @@ for p in glob.glob('.claude/agents/*.md') + glob.glob('.claude/skills/*/SKILL.md
 EOF
 ```
 
-For the zones, the ceilings live in `comun/manifest.json` and the measurement in
+For the zones, the ceilings live in `manifest.json` and the measurement in
 `comun/hooks/lib/zonas.py`. Use them; do not reimplement the counting.
 
 ## The rule that decides where something goes

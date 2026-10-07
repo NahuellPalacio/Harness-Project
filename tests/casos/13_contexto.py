@@ -599,9 +599,10 @@ def _session_start(raiz):
     return (datos.get("hookSpecificOutput") or {}).get("additionalContext", "")
 
 
-def _lock(raiz, harness):
-    _escribir(raiz / ".claude" / "harness.lock.json",
-              json.dumps({"harness": harness, "version": "0.0.0"}))
+def _lock(raiz):
+    # Un lock como el que escribe install.ps1 desde harness-unico: sin el campo `harness`.
+    # E-32 de docs/cambios/harness-unico/spec.md: el aviso sale con cualquier lock legible.
+    _escribir(raiz / ".claude" / "harness.lock.json", json.dumps({"version": "0.0.0"}))
     _escribir(raiz / ".claude" / "harness.config.json", json.dumps({}))
 
 
@@ -610,7 +611,7 @@ def test_e16_avisa_cuando_el_indice_esta_y_el_contrato_no(t):
     por antiguedad: cualquier commit cambia HEAD, asi que un aviso de 'quedo viejo'
     saldria en todas las sesiones para siempre y se dejaria de leer."""
     raiz, codebase = _proyecto()
-    _lock(raiz, ["comun", "desarrollo"])
+    _lock(raiz)
     texto = _session_start(raiz)
     t.contiene("E-16: lo nombra", "project-context.json", texto)
 
@@ -621,14 +622,15 @@ def test_e16_avisa_cuando_el_indice_esta_y_el_contrato_no(t):
         t.no_contiene("E-16: ninguna otra marca del bloque", marca, texto2)
 
 
-def test_e16b_sin_desarrollo_no_dice_nada(t):
-    """E-16b — un proyecto de solo analisis no tiene codigo que recorrer."""
+def test_e16b_sin_lockfile_no_dice_nada(t):
+    """E-16b decia que un lock sin `desarrollo` callaba el aviso. Desde
+    docs/cambios/harness-unico/spec.md (E-32) lo que lo calla es no tener el harness instalado:
+    sin lockfile, ningun aviso del recorrido."""
     raiz, _codebase = _proyecto()
     os.remove(str(_codebase / "indice.md"))
-    _lock(raiz, ["comun", "analisis"])
     texto = _session_start(raiz)
     for marca in MARCAS:
-        t.no_contiene("E-16b: sin desarrollo, sin aviso", marca, texto)
+        t.no_contiene("harness-unico E-32: sin lockfile, sin aviso", marca, texto)
 
 
 def test_e17_el_bloque_agrega_a_lo_sumo_una_linea(t):
@@ -642,7 +644,7 @@ def test_e17_el_bloque_agrega_a_lo_sumo_una_linea(t):
     }
     for nombre, (fichas, indice, contrato) in casos.items():
         raiz, codebase = _proyecto()
-        _lock(raiz, ["comun", "desarrollo"])
+        _lock(raiz)
         if not fichas:
             for f in list(codebase.glob("*.md")):
                 os.remove(str(f))

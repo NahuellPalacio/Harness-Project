@@ -7,7 +7,7 @@ Connect, si el proveedor es el Keycloak que DGSEI autoriza para ese ambiente, si
 registrado en ese servidor, si el flujo es el que corresponde, si el ingreso de credenciales esta
 delegado, si hay politica de ASI a la que atarse, y si sigue activo el servicio OpenID anterior.
 
-🔴 **Esto no es un check del hook.** No corre en `PreToolUse`, no tiene presupuesto de latencia
+🔴 **Esto no es un check del hook.** No corre en `PostToolUse`, no tiene presupuesto de latencia
 y no devuelve las tres salidas del contrato de `comun/checks/`. Es un control normativo.
 
 🔴 **Por superficie, no por aplicacion.** Un login que cumple no tapa a otro que nadie miro, y un

@@ -409,8 +409,9 @@ def derivar(proyecto, clave, harness_version="", proceso=None, registro=None):
         hechos = dict(previas["facts"])
         # El ruteo sale de las unidades del plan. Sin plan no hay nada que rutear todavia:
         # es la planificacion la que lo va a decidir.
-        hechos["agents.routing"] = not any(u.get("blockers") for u in (plan or {}).get(
-            "workUnits") or []) if plan is not None else True
+        hechos[orq_plan.RUTEO_DE_AGENTES] = (
+            not orq_plan.ruteo_bloqueado((plan or {}).get("workUnits"))
+            if plan is not None else True)
         evaluacion = precondiciones.evaluar(precondiciones.PLANNING, hechos, registro)
         de_planificacion = _bloqueos_de(evaluacion, registro)
         bloqueos += de_planificacion

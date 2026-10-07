@@ -32,7 +32,23 @@ from . import modelo                             # noqa: E402
 from . import normativa                          # noqa: E402
 from . import roster                             # noqa: E402
 
-VERSION_SCHEMA = "orchestration-plan/1.0"
+VERSION_SCHEMA = "orchestration-plan/2.1"
+
+# Los estados que existen, y son los unicos que el codigo escribe: el del plan sale de
+# `estado_de` y el de cada unidad de `_armar_unidad`. El schema 2.1 dice lo mismo, y la regla
+# de lectura de un plan guardado los toma de aca. Ninguno habla de delegar ni de ejecutar: el
+# estado detallado de la tarea vive en task-flow-state, no aca (integracion-flow-governance-0-31).
+ESTADOS_DEL_PLAN = ("BLOCKED", "CAPABILITY_RESOLUTION", "WAITING_FOR_HUMAN_APPROVAL",
+                    "READY_FOR_EXECUTION")
+ESTADOS_DE_UNIDAD = ("PENDING", "BLOCKED", "WAITING_FOR_HUMAN_APPROVAL")
+
+# Lo que se lee de un plan guardado. Se escribe solo 2.1. Un 2.0 o un 1.0 cuyos estados existen
+# en 2.1 es un 2.1 salvo la cadena de version: se lee tal cual y pasa a 2.1 cuando se reescribe.
+VERSIONES_LEGIBLES = ("orchestration-plan/2.1", "orchestration-plan/2.0", "orchestration-plan/1.0")
+
+# El input del registro que dice si los agentes del plan se rutean. Una unidad BLOCKED por una
+# capacidad tambien lleva `blockers`, asi que el ruteo se lee de los suyos y no de cualquiera.
+RUTEO_DE_AGENTES = "agents.routing"
 
 # Que parte del contexto ve cada dominio. Lo que no figura, no viaja — y lo que no viaja se
 # declara en `omitted`, porque un aislamiento que no se puede auditar no es un aislamiento.
@@ -55,6 +71,16 @@ TODO_EL_CONTEXTO = ("acceptance_criteria", "rules", "documents", "repository")
 
 class PlanInvalido(Exception):
     """El plan no se escribe. Un plan roto con el sello puesto es peor que ninguno."""
+
+
+class PlanRechazado(PlanInvalido):
+    """Un rechazo por un invariante del modelo canonico, y la CLI lo saca con codigo 2.
+
+    Son tres y nada mas: un id de unidad repetido, una unidad de un dominio que no esta en el
+    plan, y un plan guardado que la regla de lectura no acepta. Los PlanInvalido de antes -un
+    ciclo, una dependencia rota, un plan que no valida- siguen saliendo como salian: mapearlos
+    a 2 no evita ningun artefacto y no entra por la regla de inclusion (D15).
+    """
 
 
 def ahora():
@@ -187,6 +213,33 @@ def armar(propuesta, task_context, registro, config, version_harness="", ruta_co
     unidades_propuestas = propuesta.get("workUnits") or []
     if not unidades_propuestas:
         raise PlanInvalido("la propuesta no trae ninguna unidad de trabajo.")
+
+    # 🔴 El id es la identidad de la unidad: con el se arman las dependencias, el orden, las
+    # aprobaciones y las unidades de la refutacion. Dos unidades con el mismo id colapsaban
+    # en silencio en `orden_de_ejecucion`, y el plan escrito tenia una que nadie podia nombrar.
+    # Se normaliza como lo hace `_armar_unidad`, que es el id que se escribiria.
+    vistos, repetidos = set(), []
+    for propuesta_unidad in unidades_propuestas:
+        uid = str(propuesta_unidad.get("id") or "")
+        if uid in vistos and uid not in repetidos:
+            repetidos.append(uid)
+        vistos.add(uid)
+    if repetidos:
+        raise PlanRechazado(
+            "la propuesta repite el id de unidad %s. El id es lo que identifica a una unidad: "
+            "dos con el mismo no se pueden distinguir." % ", ".join("'%s'" % r for r in repetidos))
+
+    # El dominio de cada unidad tiene que estar entre los del plan. `domains` es lo que decide
+    # que especialistas participan (el schema lo dice): una unidad de otro dominio mete a uno
+    # que, segun el mismo plan, no participa.
+    for propuesta_unidad in unidades_propuestas:
+        dominio = str(propuesta_unidad.get("domain") or "")
+        if dominio not in dominios:
+            raise PlanRechazado(
+                "la unidad '%s' es del dominio '%s', que no esta entre los dominios del plan: "
+                "%s. Agregalo a `domains` o cambiale el dominio a la unidad." % (
+                    str(propuesta_unidad.get("id") or ""), dominio,
+                    ", ".join(dominios) or "ninguno"))
 
     politica = consumo.politica(config)
     perfiles = modelo.perfiles_declarados((config or {}).get("modelRouting"))
@@ -372,9 +425,34 @@ def _armar_unidad(propuesta_unidad, task_context, capacidades, politica, dominio
         },
         "status": estado,
     }
-    if not ruteable["routable"]:
-        unidad["blockers"] = [{"inputId": "agents.routing", "code": ruteable["result"]}]
+    if estado == "BLOCKED":
+        # 🔴 En 2.1 toda unidad BLOCKED dice por que, con el input y el codigo de quien lo decidio.
+        # El schema no puede exigirlo (no hay if/then en el validador): lo exigen este productor y
+        # la regla de lectura.
+        unidad["blockers"] = _bloqueos_de_unidad(
+            ruteable, propuesta_unidad.get("requiredCapabilities") or [], capacidades,
+            no_soportadas)
     return unidad, solicitud, politica
+
+
+def _bloqueos_de_unidad(ruteable, requeridas, capacidades, no_soportadas):
+    """Los blockers de una unidad BLOCKED: el ruteo primero, despues cada clase de capacidad."""
+    bloqueos = []
+    if not ruteable["routable"]:
+        bloqueos.append({"inputId": RUTEO_DE_AGENTES, "code": ruteable["result"]})
+    faltan = [c for c in requeridas if c in capacidades["missing"]]
+    if any(no_soportadas is None or c in no_soportadas for c in faltan):
+        bloqueos.append({"inputId": "plan.capabilityGaps", "code": "CAPABILITY_GAP"})
+    if any(no_soportadas is not None and c not in no_soportadas for c in faltan):
+        bloqueos.append({"inputId": "plan.capabilityStatus", "code": "CAPABILITY_UNAVAILABLE"})
+    return bloqueos
+
+
+def ruteo_bloqueado(unidades):
+    """Si alguna unidad tiene un agente que el registro no rutea. Solo cuentan sus blockers de
+    ruteo: una unidad BLOCKED por una capacidad no dice nada del ruteo."""
+    return any(isinstance(b, dict) and b.get("inputId") == RUTEO_DE_AGENTES
+               for u in unidades or [] for b in (u.get("blockers") or []))
 
 
 def _ruteo_de_agente(agente):
@@ -391,7 +469,7 @@ def _precondiciones(precondiciones, unidades):
     from flujo import precondiciones as flujo
     from flujo import requeridos
     hechos = dict((precondiciones or {}).get("facts") or {})
-    hechos["agents.routing"] = not any(u.get("blockers") for u in unidades)
+    hechos[RUTEO_DE_AGENTES] = not ruteo_bloqueado(unidades)
     try:
         evaluacion = flujo.evaluar(flujo.PLANNING, hechos)
     except requeridos.RegistroInvalido as e:
@@ -511,6 +589,75 @@ def escribir(documento, ruta):
     with io.open(ruta, "w", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps(documento, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     return ruta
+
+
+# -- la lectura de un plan guardado --------------------------------------------
+
+def aceptar_guardado(documento, clave=""):
+    """La regla de lectura de un plan guardado: una sola, para `refute --compile` y para
+    `--replanificar`. Devuelve el documento tal cual o levanta PlanRechazado.
+
+    Se lee un 2.1, o un 2.0 o un 1.0 cuyo `status` y los de todas sus unidades existen en 2.1.
+    Nada se convierte, nada se escribe y el documento no se toca: pasa a 2.1 recien cuando
+    alguien lo reescribe. Un 2.1 ademas dice por que esta BLOCKED cada unidad que lo esta; un
+    2.0 o un 1.0 no, porque esa exigencia nacio con 2.1.
+
+    🔴 Un estado que no existe en 2.1 no se migra. No hay un estado 2.0 que signifique
+    "delegando", y elegir uno parecido es hacerle decir al plan algo que no dice. La salida
+    es regenerarlo, y el mensaje lo dice.
+
+    `clave` es la de quien lo pide, para el mensaje: se usa si el plan no trae la suya.
+    """
+    meta = documento.get("meta") if isinstance(documento, dict) else None
+    meta = meta if isinstance(meta, dict) else {}
+    clave = str(meta.get("task_key") or clave or "<KEY>")
+    regenerar = "Hay que regenerarlo con `dev-harness.py plan %s --propuesta ...`." % clave
+
+    version = meta.get("schema_version")
+    if version in (None, ""):
+        raise PlanRechazado(
+            "el plan guardado de %s no dice su version: falta `meta.schema_version`. Se leen "
+            "%s. %s" % (clave, " y ".join(VERSIONES_LEGIBLES), regenerar))
+    if version not in VERSIONES_LEGIBLES:
+        raise PlanRechazado(
+            "el plan guardado de %s es `%s`, y se leen solo %s. %s"
+            % (clave, version, " y ".join(VERSIONES_LEGIBLES), regenerar))
+
+    # Las tres versiones pasan por aca: el 1.0 declaraba validos estados que el 2.1 no tiene.
+    estado = documento.get("status")
+    if estado not in ESTADOS_DEL_PLAN:
+        raise PlanRechazado(
+            "el plan guardado de %s tiene `status: %s`, un estado que no existe en %s. Los de un "
+            "plan son %s, y no se convierte a ninguno. %s" % (
+                clave, _valor(estado), VERSION_SCHEMA, ", ".join(ESTADOS_DEL_PLAN), regenerar))
+    unidades = documento.get("workUnits")
+    for i, unidad in enumerate(unidades if isinstance(unidades, list) else []):
+        unidad = unidad if isinstance(unidad, dict) else {}
+        if unidad.get("status") not in ESTADOS_DE_UNIDAD:
+            raise PlanRechazado(
+                "la unidad '%s' del plan guardado de %s tiene `workUnits[%d].status: %s`, un "
+                "estado que no existe en %s. Los de una unidad son %s, y no se convierte a "
+                "ninguno. %s" % (
+                    str(unidad.get("id") or ""), clave, i, _valor(unidad.get("status")),
+                    VERSION_SCHEMA, ", ".join(ESTADOS_DE_UNIDAD), regenerar))
+        if (version == VERSION_SCHEMA and unidad.get("status") == "BLOCKED"
+                and not _bloqueos_validos(unidad.get("blockers"))):
+            raise PlanRechazado(
+                "la unidad '%s' del plan guardado de %s esta BLOCKED y no dice por que: "
+                "`workUnits[%d].blockers` falta o esta vacio. En %s una unidad BLOCKED lleva sus "
+                "blockers. %s" % (str(unidad.get("id") or ""), clave, i, VERSION_SCHEMA, regenerar))
+    return documento
+
+
+def _bloqueos_validos(bloqueos):
+    """Una lista no vacia de blockers, cada uno con su input y su codigo."""
+    return isinstance(bloqueos, list) and bool(bloqueos) and all(
+        isinstance(b, dict) and b.get("inputId") and b.get("code") for b in bloqueos)
+
+
+def _valor(valor):
+    """Un valor para el mensaje. Uno ausente se dice, no se imprime `None`."""
+    return "(vacio)" if valor in (None, "") else str(valor)
 
 
 def replanificar(documento, cambios, motivo, disparador):

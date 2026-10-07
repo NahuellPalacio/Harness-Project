@@ -1,0 +1,4 @@
+ran ['test_e31_declared_checks_son_los_que_declara_la_norma', 'test_e33_la_cache_key_no_cambia', 'test_e32_los_casos_de_cierre_resuelven_igual_que_4c6f0f3', 'test_e16_un_1_0_de_4c6f0f3_se_acepta_y_se_migra_al_escribirlo'] in 18s: 77/79 passed
+failures by scenario: {'E-31': 2} of {'E-31': 5, 'E-33': 13, 'E-32': 45, 'E-16': 16}
+  MAL E-31 los declaredChecks de cada unidad son exactamente los que declara la norma no esta vacio: <["wu-1 ES0901.C1: ['application-logging-coverage', 'architecture-documentation', 'core-rest-api-layer', 'dev-api-rutas', 'dev-dependencias', 'dev-infra-en-codigo', 'environment-config-
+  MAL E-31 ningun declaredCheck es un check de roster.json no esta vacio: <['dev-api-rutas', 'dev-dependencias', 'dev-infra-en-codigo']>

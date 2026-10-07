@@ -610,9 +610,9 @@ def test_e22_el_registro_contesta_por_capacidad_y_por_integracion(t):
 
 
 def test_e23_el_manifiesto_y_el_codigo_declaran_lo_mismo(t):
-    """E-23 — capacidadesSoportadas del manifiesto == las de los adapters."""
-    manifiesto = json.loads((RAIZ / "harnesses" / "desarrollo" / "manifest.json")
-                            .read_text(encoding="utf-8"))
+    """E-23 — capacidadesSoportadas del manifiesto == las de los adapters. Desde
+    docs/cambios/harness-unico/spec.md (E-04) el manifiesto es uno solo, el de la raiz."""
+    manifiesto = json.loads((RAIZ / "manifest.json").read_text(encoding="utf-8"))
     del_codigo = sorted(list(IntegracionJira.CAPACIDADES) + list(IntegracionGitLab.CAPACIDADES))
     t.igual("E-23", del_codigo, sorted(manifiesto.get("capacidadesSoportadas", [])))
 

@@ -259,8 +259,11 @@ def _en_git(patrones):
         return None
     if r.returncode != 0:
         return None
+    # Lo de un harness cuyo directorio ya no existe lo retiro docs/cambios/harness-unico/spec.md:
+    # eso no es un agente ni una skill nuevos.
     return sorted(l for l in r.stdout.decode("utf-8").splitlines()
-                  if any(fnmatch.fnmatch(l, p) for p in patrones))
+                  if any(fnmatch.fnmatch(l, p) for p in patrones)
+                  and not (l.startswith("harnesses/") and not (RAIZ / "/".join(l.split("/")[:2])).is_dir()))
 
 
 def _del_arbol(patrones):

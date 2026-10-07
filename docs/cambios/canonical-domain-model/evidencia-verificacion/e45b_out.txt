@@ -1,0 +1,9 @@
+installed plan.py is current: True | lock version: 0.29.0
+after -Update: contextos same True | planes same True | refutaciones (units, verdicts, run.json, cache) same True
+refute --compile (current installed) on 1.0: exit 0 
+  plan bytes unchanged (not regenerated): True | still orchestration-plan/1.0
+  same units (id, WU, rule, cacheKey, status, path) as before -Update: False
+  recorded verdict kept: [('REF-013', 'cumple', 'SEMANTIC_REFUTATION'), ('REF-058', 'cumple', 'CACHE')]
+  refutaciones changes after current compile: ['modified OBRA-45/run.json', 'modified OBRA-45/units/REF-001.json', 'modified OBRA-45/units/REF-002.json', 'modified OBRA-45/units/REF-003.json', 'modified OBRA-45/units/REF-004.json', 'modified OBRA-45/units/REF-005.json', 'modified OBRA-45/units/REF-006.json', 'modified OBRA-45/units/REF-007.json', 'modified OBRA-45/units/REF-008.json', 'modified OBRA-45/units/REF-009.json', 'modified OBRA-45/units/REF-010.json', 'modified OBRA-45/units/REF-011.json'] ... total 48
+--replanificar (current installed): exit 0 orchestration-plan/2.0 pv 1 -> 2 | history kept True len 2 
+refute --compile on the migrated 2.0: exit 0 | verdicts [('REF-013', 'cumple', 'SEMANTIC_REFUTATION'), ('REF-058', 'cumple', 'CACHE'), ('REF-103', 'cumple', 'CACHE')] | units 135

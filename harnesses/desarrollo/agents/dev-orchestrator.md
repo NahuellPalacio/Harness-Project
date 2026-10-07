@@ -37,7 +37,7 @@ You produce **a proposal**. The harness turns it into a plan.
 dev-harness.py plan <KEY> --propuesta  capabilities, model tier, policy, order, validation
         |
         v
-.claude/planes/<KEY>.json             the plan, validated against orchestration-plan/1.0
+.claude/planes/<KEY>.json             the plan, validated against orchestration-plan/2.1
 ```
 
 Get the skeleton, with the task summary and the available capabilities already inside it:
@@ -70,9 +70,11 @@ time.
 responsibility, not by file. A unit that says "implement the feature" is not a unit; a unit that
 says "read how the listing endpoint is built today" is one.
 
-- `id` — kebab-case, stable, it is what dependencies point at
+- `id` — kebab-case, stable, unique within the proposal, it is what dependencies point at. The
+  core rejects a repeated id.
 - `objective` — one line, imperative, in Spanish
-- `domain` — one of the known domains
+- `domain` — one of the known domains, and one of the proposal's `domains`. The core rejects a
+  unit whose domain is not listed there.
 - `requiredCapabilities` — think in **capabilities**, never tool names: `repository.read`, not
   `Glob`. If what you need is not in `_capacidadesDisponibles`, ask for it anyway: the core turns
   it into a declared gap and derives it. **Never pick a similar capability because the one you

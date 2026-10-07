@@ -13,6 +13,16 @@ plan, tiers, compuerta   →     tokens, tiempo, plata, presupuesto
 > autoridad para escalar a un modelo caro sigue siendo la compuerta humana de `consumo.py`, que ni
 > siquiera sabe que este bloque existe.
 
+> 🔴 **La contabilidad no es estado de ejecución.** Observa el consumo de modelo de una sesión o de
+> una tarea, reconstruido de la transcripción y de la `statusLine`. Nada fuera de este bloque lee un
+> ledger para decidir algo. Que el contrato se llame `execution-accounting-event` no quiere decir que
+> algo se ejecute: un `WORKUNIT_STARTED` o un `AGENT_RUN_COMPLETED` no son estados, y hoy no los
+> emite nadie. Ver `docs/dominio/modelo-canonico.md`, en *El límite de la ejecución*.
+
+La clave de un ledger es una **LedgerKey**: una clave de tarea (`PROYECTO-123`) o, en la Context Bar,
+el `session_id` de la sesión de Claude Code. `contabilidad` acepta esas dos formas y rechaza cualquier
+otra con código 2, sin escribir.
+
 ## Qué corre
 
 ```bash

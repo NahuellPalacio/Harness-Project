@@ -727,6 +727,10 @@ def test_e20_el_bloque_de_siempre_sale_igual_despues_de_la_bienvenida(t):
              "Sin indice del codigo todavia")
     posiciones = [(antes or "").find(p) for p in orden]
     t.verdadero("E-20 el caso ejercita las cinco secciones", all(p >= 0 for p in posiciones))
+    # E-31 de docs/cambios/harness-unico/spec.md cambio a proposito una sola linea del bloque de
+    # antes: el encabezado dice la version y ya no los ids. Todo lo demas sigue byte a byte.
+    antes = (antes or "").replace("Nahue - harness: comun, desarrollo v0.20.0",
+                                  "Nahue - harness v0.20.0")
     for rotulo in ("primera", "siguiente"):
         _, mensaje, ctx, _ = _sesion(proy)
         t.verdadero("E-20 %s: hay bienvenida" % rotulo, bool(mensaje))
@@ -771,7 +775,7 @@ def test_e22_un_archivo_roto_no_rompe_el_hook_ni_da_ready(t):
         t.verdadero("E-22 %s: la persona ve un estado" % rotulo,
                     (mensaje or "").startswith(("━", "Harness GCBA")))
         t.igual("E-22 %s: y no dice listo" % rotulo, None, _LISTO.search(mensaje or ""))
-        t.contiene("E-22 %s: el bloque de siempre sigue" % rotulo, "Nahue - harness:", ctx)
+        t.contiene("E-22 %s: el bloque de siempre sigue" % rotulo, "Nahue - harness v", ctx)
         t.no_contiene("E-22 %s: sin falla del hook" % rotulo, "fallo el hook", mensaje)
     # Un lockfile roto tambien: BLOCKED, y el hook sigue.
     _e22_tipos_en_cualquier_nivel(t)
@@ -877,9 +881,11 @@ def test_e26_sin_fuentes_es_parcial(t):
     t.contiene("E-26 la bienvenida nombra lo pendiente", "no tiene ninguna fuente", completa)
     _, mensaje, _, _ = _sesion(proy)
     t.igual("E-26 lo que queda escrito es PARTIAL", "PARTIAL", _estado(proy)["bootstrap"]["status"])
-    # Solo analisis no tiene conocimiento: ahi no aplica.
-    solo = _proyecto(harness=("comun", "analisis"), fuentes={})
-    t.igual("E-26 solo analisis sigue READY", "READY", B.resolver(str(solo))["bootstrap"]["status"])
+    # Desde docs/cambios/harness-unico/spec.md (E-28) el campo `harness` del lock no se mira: un
+    # lock con otro id no saca al conocimiento del estado.
+    otro = _proyecto(harness=("comun", "datos"), fuentes={})
+    t.igual("harness-unico E-28 con otro id en el lock sigue PARTIAL", "PARTIAL",
+            B.resolver(str(otro))["bootstrap"]["status"])
 
 
 def test_e26_actual_solo_si_todas_estan_al_dia(t):
@@ -906,18 +912,8 @@ def test_e26_actual_solo_si_todas_estan_al_dia(t):
     t.igual("E-26 CURRENT y RETIRED: READY", "READY", doc["bootstrap"]["status"])
 
 
-# -- E-23 — solo analisis ------------------------------------------------------------------
-
-def test_e23_solo_analisis_no_lista_integraciones_ni_conocimiento(t):
-    """E-23 — sin integraciones ni conocimiento, y READY."""
-    proy = _proyecto(harness=("comun", "analisis"), capacidades=False, fuentes_archivo=False)
-    doc, completa, linea = _textos(proy)
-    t.igual("E-23 READY", "READY", doc["bootstrap"]["status"])
-    for parte in ("Integraciones", "Conocimiento", "Jira", "GitLab", "Normativa", "Fuentes"):
-        t.no_contiene("E-23 la bienvenida no trae %s" % parte, parte, completa)
-        t.no_contiene("E-23 la linea no trae %s" % parte, parte, linea)
-    t.igual("E-23 la linea", "Harness GCBA ✓ LISTO", linea)
-    t.igual("E-23 sin integraciones en el estado", [], doc["integrations"])
+# E-23 (un proyecto sin `desarrollo` no lista integraciones ni conocimiento) se retiro con
+# docs/cambios/harness-unico/spec.md: ese estado ya no existe.
 
 
 # -- E-25 — un estado que la tabla no traduce -------------------------------------------------

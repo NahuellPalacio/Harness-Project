@@ -47,7 +47,7 @@ function New-ProyectoDescartable {
 
 $demo = New-ProyectoDescartable 'harness-env'
 try {
-    $r = Invoke-InstaladorEnv @('-Project', $demo, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorEnv @('-Project', $demo, '-Usuario', 'Ana Prueba')
     Assert-Igual 'instalar desarrollo sale con codigo 0' 0 $r.Codigo
 
     $rutaEnvExample = Join-Path $demo '.env.example'
@@ -101,20 +101,4 @@ try {
 }
 finally {
     if (Test-Path $demo) { Remove-Item $demo -Recurse -Force -ErrorAction SilentlyContinue }
-}
-
-# -- E-02: sin desarrollo, ni .env.example ni .env -----------------------------------
-
-$demoSinDev = New-ProyectoDescartable 'harness-env-sin-dev'
-try {
-    $r = Invoke-InstaladorEnv @('-Project', $demoSinDev, '-Harness', 'analisis', '-Usuario', 'Ana Prueba')
-    Assert-Igual 'instalar analisis sale con codigo 0' 0 $r.Codigo
-
-    Assert-Verdadero 'E-02 sin desarrollo, no hay .env.example' `
-        (-not (Test-Path (Join-Path $demoSinDev '.env.example'))) '.env.example se instalo igual'
-    Assert-Verdadero 'E-02 sin desarrollo, no hay .env' `
-        (-not (Test-Path (Join-Path $demoSinDev '.env'))) '.env se instalo igual'
-}
-finally {
-    if (Test-Path $demoSinDev) { Remove-Item $demoSinDev -Recurse -Force -ErrorAction SilentlyContinue }
 }

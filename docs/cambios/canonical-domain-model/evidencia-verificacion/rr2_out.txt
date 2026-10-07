@@ -1,0 +1,69 @@
+prep compile 0
+prep record 0 
+prep refutaciones/<KEY>: ['run.json', 'scope.json', 'units', 'verdicts'] | units 136 | verdicts ['REF-013.json']
+prep cache entries: ['2783ebf5f7151968635f05b56ea648c9930c3cba1a28d39781db26c44c4db74e.json']
+E-16b docs vs 4c6f0f3 schema+validator (exit 0): [[], []] 
+E-16b docs vs current 2.0 schema: [["$.meta.schema_version: `orchestration-plan/1.0` no esta entre los valores permitidos (orchestration-plan/2.0)", "$.status: `DELEGATING` no esta entre los valores permitidos (CAPABILITY_RESOLUTION, WAITING_FOR_HUMAN_APPROVAL, READY_FOR_EXECUTION)"], ["$.meta.schema_version: `orchestration-plan/1.0` no esta entre los valores permitidos (orchestration-plan/2.0)", "$.workUnits[0].status: `READY` no esta entre los valores permitidos (PENDING, BLOCKED, WAITING_FOR_HUMAN_APPROVAL)"]]
+REJ [1.0 plan DELEGATING] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: el plan guardado de GCBA-64 tiene `status: DELEGATING`, un estado que no existe en orchestration-plan/2.0. Los de un plan son CAPABILITY_RESOLUTION, WAITING_FOR_HUMAN_APPROVAL, READY_FOR_EXECUTION, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [1.0 plan DELEGATING] via --replanificar -> exit 2
+    msg: harness: el plan guardado de GCBA-64 tiene `status: DELEGATING`, un estado que no existe en orchestration-plan/2.0. Los de un plan son CAPABILITY_RESOLUTION, WAITING_FOR_HUMAN_APPROVAL, READY_FOR_EXECUTION, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [1.0 unit READY] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: la unidad 'exp-1' del plan guardado de GCBA-64 tiene `workUnits[0].status: READY`, un estado que no existe en orchestration-plan/2.0. Los de una unidad son PENDING, BLOCKED, WAITING_FOR_HUMAN_APPROVAL, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [1.0 unit READY] via --replanificar -> exit 2
+    msg: harness: la unidad 'exp-1' del plan guardado de GCBA-64 tiene `workUnits[0].status: READY`, un estado que no existe en orchestration-plan/2.0. Los de una unidad son PENDING, BLOCKED, WAITING_FOR_HUMAN_APPROVAL, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [orchestration-plan/3.0] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: el plan guardado de GCBA-64 es `orchestration-plan/3.0`, y se leen solo orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [orchestration-plan/3.0] via --replanificar -> exit 2
+    msg: harness: el plan guardado de GCBA-64 es `orchestration-plan/3.0`, y se leen solo orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [no schema_version] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: el plan guardado de GCBA-64 no dice su version: falta `meta.schema_version`. Se leen orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [no schema_version] via --replanificar -> exit 2
+    msg: harness: el plan guardado de GCBA-64 no dice su version: falta `meta.schema_version`. Se leen orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [orchestration-plan/1.1] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: el plan guardado de GCBA-64 es `orchestration-plan/1.1`, y se leen solo orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [orchestration-plan/1.1] via --replanificar -> exit 2
+    msg: harness: el plan guardado de GCBA-64 es `orchestration-plan/1.1`, y se leen solo orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [schema_version int 2] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: el plan guardado de GCBA-64 es `2`, y se leen solo orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [schema_version int 2] via --replanificar -> exit 2
+    msg: harness: el plan guardado de GCBA-64 es `2`, y se leen solo orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [2.0 plan DELEGATING] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: el plan guardado de GCBA-64 tiene `status: DELEGATING`, un estado que no existe en orchestration-plan/2.0. Los de un plan son CAPABILITY_RESOLUTION, WAITING_FOR_HUMAN_APPROVAL, READY_FOR_EXECUTION, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [2.0 plan DELEGATING] via --replanificar -> exit 2
+    msg: harness: el plan guardado de GCBA-64 tiene `status: DELEGATING`, un estado que no existe en orchestration-plan/2.0. Los de un plan son CAPABILITY_RESOLUTION, WAITING_FOR_HUMAN_APPROVAL, READY_FOR_EXECUTION, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [no meta] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: el plan guardado de GCBA-64 no dice su version: falta `meta.schema_version`. Se leen orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [no meta] via --replanificar -> exit 2
+    msg: harness: el plan guardado de GCBA-64 no dice su version: falta `meta.schema_version`. Se leen orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [1.0 unit[1] RUNNING] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: la unidad 'exp-2' del plan guardado de GCBA-64 tiene `workUnits[1].status: RUNNING`, un estado que no existe en orchestration-plan/2.0. Los de una unidad son PENDING, BLOCKED, WAITING_FOR_HUMAN_APPROVAL, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [1.0 unit[1] RUNNING] via --replanificar -> exit 2
+    msg: harness: la unidad 'exp-2' del plan guardado de GCBA-64 tiene `workUnits[1].status: RUNNING`, un estado que no existe en orchestration-plan/2.0. Los de una unidad son PENDING, BLOCKED, WAITING_FOR_HUMAN_APPROVAL, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [1.0 plan PLANNING] via refute --compile -> exit 2
+    msg: harness: REFUTATION_RULE_UNRESOLVED: el plan guardado de GCBA-64 tiene `status: PLANNING`, un estado que no existe en orchestration-plan/2.0. Los de un plan son CAPABILITY_RESOLUTION, WAITING_FOR_HUMAN_APPROVAL, READY_FOR_EXECUTION, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [1.0 plan PLANNING] via --replanificar -> exit 2
+    msg: harness: el plan guardado de GCBA-64 tiene `status: PLANNING`, un estado que no existe en orchestration-plan/2.0. Los de un plan son CAPABILITY_RESOLUTION, WAITING_FOR_HUMAN_APPROVAL, READY_FOR_EXECUTION, y no se convierte a ninguno. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`.
+    plan same: True | ref<KEY> diff: [] | cache diff: [] | rest .claude diff: [] | proj diff: [] | gate changed: ['modified runtime/knowledge-refresh.json']
+REJ [invalid JSON] via refute --compile -> exit 2 | harness: REFUTATION_RULE_UNRESOLVED: no hay plan para GCBA-64 legible (Expecting property name enclosed in double quotes: line 1 column 2 (char 1)). Corré primero `plan GCBA-64 --propuesta ...`. | plan same True ref diff [] cache diff []
+REJ [invalid JSON] via --replanificar -> exit 2 | harness: el plan guardado de GCBA-64 no dice su version: falta `meta.schema_version`. Se leen orchestration-plan/2.0 y orchestration-plan/1.0. Hay que regenerarlo con `dev-harness.py plan GCBA-64 --propuesta ...`. | plan same True ref diff [] cache diff []
+REJ fresh (no refutaciones dir) exit 2 | refutaciones created: False

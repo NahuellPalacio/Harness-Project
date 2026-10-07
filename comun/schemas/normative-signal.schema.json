@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "NORMATIVE_SIGNAL",
-  "description": "Una senal de aplicabilidad normativa: el dato que decide si una regla CONDITIONAL de ES0901 7.1 aplica a una unidad de trabajo. Tres valores y no dos, porque el tercero -UNRESOLVED- es el unico que la matriz obliga a distinguir: una senal ausente NUNCA es una senal falsa. `evidence` es obligatorio: una senal que afirma TRUE o FALSE sin respaldo se degrada a UNRESOLVED con SIGNAL_EVIDENCE_MISSING.",
+  "description": "Una senal de aplicabilidad normativa: el dato que decide si una regla CONDITIONAL aplica a una unidad de trabajo. Lleva las senales de dos estandares, ES0901 §7.1 y ES0902 v6.2: las declaran sus dos matrices normativas, y una senal que solo declara ES0902 esta declarada igual. Tres valores y no dos, porque el tercero -UNRESOLVED- es el unico que la matriz obliga a distinguir: una senal ausente NUNCA es una senal falsa. `evidence` es obligatorio: una senal que afirma TRUE o FALSE sin respaldo se degrada a UNRESOLVED con SIGNAL_EVIDENCE_MISSING.",
   "type": "object",
   "required": [
     "signalId",

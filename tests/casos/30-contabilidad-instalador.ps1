@@ -23,7 +23,7 @@ New-Item -ItemType Directory -Path $demoCont -Force | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $demoCont 'CLAUDE.md'), "# Proyecto de prueba`r`n")
 
 try {
-    $r = Invoke-InstaladorCont @('-Project', $demoCont, '-Harness', 'desarrollo',
+    $r = Invoke-InstaladorCont @('-Project', $demoCont, 
                                  '-Usuario', 'Ana Prueba')
     Assert-Igual 'instalar desarrollo sale con codigo 0' 0 $r.Codigo
 

@@ -17,7 +17,8 @@
 # otra cosa, la copia queda incompleta y E-20/E-27 lo dicen: cada uno afirma que su falla es
 # la rotura que hizo y no un archivo que falta.
 $script:PartesDeLaFabrica = @(
-    'install.ps1', 'VERSION', 'comun', 'harnesses', 'normativa', 'tests\payloads', 'tests\medir_barra.py'
+    'install.ps1', 'VERSION', 'manifest.json', 'comun', 'harnesses', 'normativa', 'tests\payloads',
+    'tests\medir_barra.py'
 )
 $script:PrefijoFabrica = 'harness-fabrica-'
 $script:MarcaFabrica   = '.fabrica-aislada.json'

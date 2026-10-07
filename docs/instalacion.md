@@ -56,10 +56,10 @@ cd C:\Work\gcba-harness
 .\install.ps1 -Doctor
 
 # 2. ¿Qué va a escribir, exactamente? Tampoco escribe nada.
-.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Harness analisis -WhatIf
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -WhatIf
 
 # 3. Instalar.
-.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Harness analisis -Usuario "Tu Nombre"
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Usuario "Tu Nombre"
 ```
 
 Si te salta `no se puede cargar el archivo ... install.ps1`, es la política de ejecución de
@@ -82,11 +82,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 -Doctor
 
 # 2. Ver qué va a escribir.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
-  -Project 'C:/Work/GCBA/MiProyecto' -Harness analisis -WhatIf
+  -Project 'C:/Work/GCBA/MiProyecto' -WhatIf
 
 # 3. Instalar.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
-  -Project 'C:/Work/GCBA/MiProyecto' -Harness analisis -Usuario 'Tu Nombre'
+  -Project 'C:/Work/GCBA/MiProyecto' -Usuario 'Tu Nombre'
 ```
 
 Cuatro detalles que sí importan en esta vía:
@@ -101,9 +101,8 @@ nombre, aborta explicando en vez de inventar un default. Por parámetro, no hay 
 **`-NoProfile` no es un lujo.** Si tu perfil de PowerShell imprime algo, ese texto se mezcla
 con la salida y ensucia el diagnóstico.
 
-**Los dos harness juntos se pasan igual:** `-Harness analisis,desarrollo`. Invocado con
-`-File` eso llega como una sola cadena literal, y el instalador la parte él mismo. Las dos
-vías se comportan igual.
+**Todo parámetro va con su nombre.** El instalador no acepta argumentos sueltos: uno de más falla
+a la vista, con el error de PowerShell, en vez de caer en el parámetro que le toque por posición.
 
 ## 4. Comprobar que quedó
 
@@ -116,7 +115,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
   -Project 'C:/Work/GCBA/MiProyecto' -Doctor
 ```
 
-Te dice qué harness rige, en qué versión está, si el proyecto está bajo control de versiones y
+Te dice qué versión del harness está instalada, si el proyecto está bajo control de versiones y
 qué archivos del harness fueron editados a mano. Abrí Claude Code en el proyecto: si en el
 saludo aparece tu nombre y el estado del repo, está andando.
 
@@ -124,21 +123,34 @@ saludo aparece tu nombre y el estado del repo, está andando.
 
 ```
 MiProyecto/
-├── CLAUDE.md              # se le inyecta un bloque marcado; el resto no se toca
-├── .gitignore             # se le agrega un bloque de secretos
+├── CLAUDE.md              # se le inyecta un bloque marcado y sus zonas; el resto no se toca
+├── .gitignore             # se le agrega un bloque: .claude/ y los secretos
+├── .env.example           # la plantilla de las integraciones, en un bloque marcado
+├── .env                   # tus credenciales: se crea una vez y no se toca nunca más
 └── .claude/
-    ├── settings.json      # permisos + registro de hooks     ─┐
-    ├── harness/           # los hooks, skills, agentes         │ todo esto es
-    ├── harness.lock.json  # qué versión, qué archivos, SHA256  │ regenerable
-    ├── harness.config.json# tus ajustes — nunca se pisan       │ y va gitignoreado
-    └── .harness-backup/   # copia de todo lo que se pisó      ─┘
+    ├── settings.json              # permisos + registro de hooks
+    ├── harness/                   # los hooks, los checks, las reglas, la CLI y los extractos
+    ├── skills/  agents/           # las skills y los agentes del harness
+    ├── harness.lock.json          # qué versión, qué archivos, SHA256
+    ├── harness.installation.json  # el estado de la instalación y de la Context Bar
+    ├── harness.config.json        # tus ajustes: nunca se pisan
+    ├── harness.presupuesto.json   # los umbrales de la Context Bar: se crea si no existe
+    └── .harness-backup/           # copia de todo lo que se pisó
 ```
 
-La regla que ordena todo: **`.claude/` es 100% regenerable y va gitignoreado; `CLAUDE.md` no
-lo es y se versiona.** Si algo se rompe, borrás `.claude/` y reinstalás.
+Con el uso aparecen más: `harness.integraciones.json`, que se genera desde el `.env` sin ningún
+secreto; `harness.capacidades.json` y `harness.fuentes.json`, con el estado de la última corrida;
+`contextos/`, `planes/` y `refutaciones/`, con el trabajo de cada tarea; y `runtime/`, con los
+libros de la contabilidad, de la seguridad y de la Context Bar.
 
-`normativa/` **no** se copia nunca a un proyecto: es insumo de autoría del harness, se
-referencia desde el repo.
+La regla que ordena todo: **`.claude/` va gitignoreado y `CLAUDE.md` se versiona.** Lo que trae el
+harness —`settings.json`, `harness/`, las skills, los agentes y el lockfile— se regenera
+reinstalando. Lo que es tuyo o de tu trabajo —la configuración, los contextos, los planes, las
+refutaciones y los libros de `runtime/`— no lo toca `-Update`, y `-Uninstall` lo deja.
+
+De `normativa/` se copian solo los extractos en markdown, a `.claude/harness/normativa/extractos/`:
+la frescura de cada fuente mira la versión que dice su encabezado. Los PDF originales nunca salen
+de la fábrica.
 
 ## 6. Actualizar y desinstalar
 
@@ -147,7 +159,7 @@ cd C:\Work\gcba-harness
 git pull
 
 .\install.ps1 -Project C:\Work\GCBA\MiProyecto -Update      # traer cambios del harness
-.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Uninstall   # sacarlo, sin dejar rastro
+.\install.ps1 -Project C:\Work\GCBA\MiProyecto -Uninstall   # sacar lo que instaló; lo tuyo queda
 ```
 
 Por bash, lo mismo con el prefijo `powershell.exe -NoProfile -ExecutionPolicy Bypass -File
@@ -156,11 +168,27 @@ Por bash, lo mismo con el prefijo `powershell.exe -NoProfile -ExecutionPolicy By
 `-Update` **nunca pisa un archivo que hayas editado a mano**: escribe la versión nueva al lado,
 con extensión `.nuevo`, y te avisa al final. `harness.config.json` no se toca jamás.
 
+Lo que la versión anterior instaló y la nueva ya no trae se saca, y la salida lo nombra. Si lo
+habías editado a mano, se queda —sin `.nuevo`, porque no hay versión nueva— y sale del inventario:
+`-Doctor` y `-Uninstall` dejan de mirarlo.
+
+`-Uninstall` borra lo que lista el lockfile, el lockfile, el estado de la instalación, los `.nuevo`
+que quedaron y los bloques de `CLAUDE.md` y `.gitignore`. Del `CLAUDE.md` saca solo las zonas
+vacías: una zona con contenido es trabajo de alguien y se queda. Todo lo demás también se queda: la
+configuración, el `.env`, los contextos, los planes, las refutaciones, `runtime/` y los backups.
+
+📌 **Desde 0.29.0, el harness es uno solo.** El parámetro `Harness`
+ya no existe: pasarlo da el error de PowerShell *No se encuentra ningún parámetro que coincida
+con el nombre del parámetro 'Harness'*, y no se escribe nada. Un proyecto que tenía `analisis` pasa a
+tener el producto entero en su próximo `-Update`, y pierde `hu-escribir`, `hu-redactor`,
+`hu-refutador` y las reglas de "Trabajo funcional" del bloque de su `CLAUDE.md` (el `CLAUDE.md`
+anterior queda en el backup de esa corrida). Su `harness.config.json` no se toca.
+
 Para migrar entre versiones con cambios que rompen, mirá [UPGRADE.md](../UPGRADE.md).
 
 ## 7. Conectar Jira y GitLab
 
-Solo si instalaste el harness `desarrollo`. Se completa **un solo archivo**, el `.env` de la raíz,
+Se completa **un solo archivo**, el `.env` de la raíz,
 que el instalador creó con la plantilla de `.env.example`, que el `.gitignore` excluye y que Claude
 no puede leer: `HARNESS_JIRA_ENABLED`, `JIRA_BASE_URL`, `JIRA_USER`, `JIRA_TOKEN`, y lo mismo para
 GitLab. Nada te pregunta nada. Para ver qué falta, por nombre y sin mostrar ningún valor:
@@ -182,17 +210,6 @@ python .claude\harness\bin\desarrollo\dev-harness.py reconfigurar jira   # cambi
 
 Los estados, las capacidades y cómo agregar una integración nueva están en
 [integraciones.md](integraciones.md).
-
-## 8. Sumar el segundo harness
-
-Instalar es **aditivo**: lo que el proyecto ya tenía se conserva, y el instalador lo anuncia.
-
-```powershell
-.\install.ps1 -Project ... -Harness analisis,desarrollo   # los dos de una
-.\install.ps1 -Project ... -Harness desarrollo            # sumar el segundo más tarde
-```
-
-Para quedarte con un conjunto exacto, el camino es `-Uninstall` y volver a instalar.
 
 ## Cuando algo falla
 

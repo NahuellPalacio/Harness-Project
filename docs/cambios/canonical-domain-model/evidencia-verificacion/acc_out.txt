@@ -1,0 +1,15 @@
+E-43 schema equal ignoring every `description`: True
+E-43 $id old/new: None None | title EXECUTION_ACCOUNTING_EVENT EXECUTION_ACCOUNTING_EVENT
+E-43 eventType enum identical & ordered: True 14
+E-43 property names same: True | required same: True
+E-43 description contains 'NO es estado de ejecucion': True
+E-43 taskId desc: La LedgerKey: la clave del libro al que pertenece el evento. Es una TaskKey (PROYECTO-123) o, cuando no hay una tarea declarada, el `session_id` de la sesion de
+E-43 descriptions changed: ['$.properties.taskId.description', '$.properties.eventType.description', '$.description']
+E-43 [medir_barra 12KB] key GCBA-43: exit 0/0 events 2/2 same eventIds True | same types True | whole events equal (minus recordedAt/ingestedAt) True
+   reingest new: events now 2
+E-43 [medir_barra 12KB] key 0f8fad5b-d9cb-469f-a165-70867728950e: exit 0/0 events 2/2 same eventIds True | same types True | whole events equal (minus recordedAt/ingestedAt) True
+   reingest new: events now 2
+E-43 [55 helper] key GCBA-43: exit 0/0 events 2/2 same eventIds True | same types True | whole events equal (minus recordedAt/ingestedAt) True
+   reingest new: events now 2
+E-43 [55 helper] key 0f8fad5b-d9cb-469f-a165-70867728950e: exit 0/0 events 2/2 same eventIds True | same types True | whole events equal (minus recordedAt/ingestedAt) True
+   reingest new: events now 2

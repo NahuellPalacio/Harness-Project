@@ -75,7 +75,7 @@ there. Nothing warned, because nothing measures it. And 27 skills were installed
 stretch, each with its own always-loaded description, none of them counted here.
 
 Fix. `-Doctor` measures and reports the total; new cap `techoAssetsSiempreCargados` in
-`comun/manifest.json`. It warns, it never blocks.
+`manifest.json`. It warns, it never blocks.
 
 ### The budget has to measure the session, not the harness
 
@@ -134,6 +134,10 @@ that looks wrong cannot flag a run that is actually short.
 
 Fix. Either drop the number from `CLAUDE.md`, or have the budget check compare it against the last
 run. Hand-editing it once only moves the drift.
+
+On 2026-10-02 the 0.29.0 close hand-edited it to the count of its own gate run, because the close
+asked for the real number. That is exactly the one-time edit this item says does not fix it: the
+item stays open, and the number starts drifting again with the next change.
 
 ## Incomplete capabilities
 
@@ -444,26 +448,65 @@ Fix. Either delete it — the witnesses it generated are committed and it has no
 leave a header saying it is a historical artifact of the 0.13.0 port and is not expected to run.
 What is not defensible is a script in `tests/` that looks runnable and is not.
 
-### `aporta` in every manifest is decorative — nothing reads it
+### The Agent Registry is invalid in every installed project
 
-Found on 2026-08-21 while building `iniciador-code`. A mutation removed `"agents": "agents"` from
-`harnesses/desarrollo/manifest.json` expecting the agent to stop being installed, and the whole
-suite stayed green. `grep -n "aporta" install.ps1` returns nothing: the installer never reads the
-key. What it actually does is copy `<harness>/skills` and `<harness>/agents` unconditionally
-(`install.ps1:1107-1108`), and the same for `checks`.
+Found on 2026-10-01 while specifying `harness-unico`, and measured on a real 0.28.0 install. In an
+installed project `registro_agentes.reporte()` gives `registryValid: false`: `flush-memoria` and
+`leer-docs` come out `ORPHAN_AGENT` with severity `ERROR`, and `instalar-desde-github` comes out
+`UNDECLARED_SKILL`. In the factory it gives `true`, because there it only looks at
+`harnesses/desarrollo/`. The three are installed by `comun/`, and `agent-registry.json`, which
+claims to be the source of agent existence, does not declare them. It goes unnoticed because no CLI
+calls `reporte()`. The disk scan has a second blind spot of the same shape: in an installed project
+it walks the whole `.claude/agents/`, so a project's own agents would also count as orphans.
 
-The key reads as load-bearing and is not. Somebody adding a harness will fill it in, expect it to
-select what gets installed, and be wrong in a way no test catches — a directory they forgot to
-declare gets installed anyway, and one they declared without creating fails silently. It is also
-why `analisis` can declare `checks` with an empty directory and nobody notices, which is already
-written down as a gap in `docs/mapa/mapa-harness.html`.
+`docs/cambios/harness-unico/spec.md` E-53 pins the 0.28.0 result on purpose, so it does not get
+worse while nobody fixes it.
 
-Fix. Two ways out and they are not the same. Either the installer reads `aporta` and copies only
-what it declares — which turns a comment into a contract and needs `docs/agregar-un-harness.md`
-updated to say so — or `aporta` comes out of the three manifests and the convention stays "the
-directory is the declaration", like checks discovery already works. The second is smaller and
-consistent with `os.walk(checks/)`; the first is what a reader of the manifest already believes is
-happening.
+Fix. Two ways, and they are not the same. Declare the three in the registry —which needs a type for
+two agents with no domain and an owner for a skill no agent holds, and the registry model has no
+place for the second— or make the disk scan look only at what the lockfile says the harness
+installed. The second also covers the project's own agents. It changes Agent Registry semantics,
+so it needs its own spec.
+
+### `config` defaults are repeated in Python, outside `manifest.json`
+
+Found on 2026-10-01 while specifying `harness-unico`. When `harness.config.json` lacks a key, the
+value does not come from `manifest.json` but from a default written in the code:
+
+- `rutaCodebase` = `"docs/codebase"` in `comun/hooks/lib/bienvenida.py:253`,
+  `comun/hooks/session-start.py:190`, `harnesses/desarrollo/bin/dev-harness.py:1132` and
+  `harnesses/desarrollo/bin/contexto/repositorio.py:63`;
+- `timeoutIntegraciones` = 5 in `dev-harness.py:90` and `bin/integraciones/http.py:27`;
+- `fichaTipoDeIssue` in `bin/contexto/proyecto.py:16`;
+- `topeTextoDocumento` in `bin/contexto/documentos.py:19`.
+
+Today they all match the manifest. It matters since `harness-unico`: a project that had only
+`analisis` keeps its `harness.config.json` byte for byte, without any key `desarrollo` used to seed,
+and lives on these defaults. Spec E-43 checks that the two values `harness` and `estado` read are
+equivalent to the manifest's; `fichaTipoDeIssue` and `topeTextoDocumento` have no scenario. If
+someone changes a value in `manifest.json`, new installs get it and the rest keep the code's, in
+silence.
+
+Fix. The code reads its defaults from `manifest.json`, or a test pins each code default against the
+manifest. The first changes where a value comes from in every project, so it needs its own spec.
+
+### `docs/codebase/` still describes a harness that no longer exists
+
+The factory's own index (`docs/codebase/indice.md`, `harnesses-analisis.md`, `install.md`,
+`project-context.json`, `mapa.html`) was written by `dev-iniciador-code` on 2026-08-21 and
+describes `harnesses/analisis/`, the composition and the three manifests. `harness-unico` retired
+all three and left the index on purpose: it is a model run, and its own header forbids hand edits.
+
+Fix. Run `dev-iniciador-code` over the factory again and commit what it writes.
+
+### Two hot-path comments still talk about several harnesses
+
+`comun/hooks/post-tool-use.py:3` says it runs "los checks de comun y de los harness instalados", and
+`comun/hooks/lib/reglas.py:1` says "los checks que aportan comun y los harness instalados". There is
+one harness since `harness-unico`. They were left because `harness-unico` E-16 pins every installed
+file it does not need to touch byte for byte, and these two are on every tool call's path.
+
+Fix. Reword both comments in a change that touches those files anyway.
 
 ### The reviewer panel is planned and deferred
 
@@ -1023,8 +1066,8 @@ route: check whether Claude Code resolves a more specific allow over a broader d
 
 ### `controles/` never reaches an installed project
 
-Found on 2026-09-19 while building D1. `install.ps1:1155-1161` copies a hardcoded list per
-harness — `checks`, `bin`, `reglas`, `skills`, `agents` — and `controles/` is not in it. The
+Found on 2026-09-19 while building D1. `install.ps1` copies a fixed list from
+`harnesses/desarrollo/` — `checks`, `bin`, `reglas`, `skills`, `agents` — and `controles/` is not in it. The
 directory was born with G1 and holds the normative controls: **sixteen policies, thirteen checks and two
 reviews** today (`harnesses/desarrollo/controles/`), thirty-one in all. It was four, three and one
 when this was found; every rule installed since has made it worse, and D7 added six at once — the
@@ -1038,16 +1081,26 @@ was copied there, so every declared control resolves to `CONTROL_FILE_MISSING` a
 factory reads the repository tree. `G1`, `G2` and `D1` all ship a control registry that says
 `INSTALLED` and an installed project where nothing is.
 
-Reproduce it: install `desarrollo` into an empty project and look for
+Reproduce it: install the harness into an empty project and look for
 `.claude\harness\controles\` — it is not created, and neither is `.claude\controles\`.
+`docs/cambios/harness-unico/spec.md` E-55 pins this on purpose: an installed project's
+`controles.reporte()` gives the same `result` as 0.28.0 did.
 
-Fix. Two decisions and they are not independent. First, where the controls live once installed:
-`.claude\harness\controles\<id>\` follows what `checks` already does and keeps the harnesses
-apart, and then `controles._ruta_de` needs the same second candidate that `roster.existe_check`
-already carries for `harness/checks/<id>/`. Second, whether the copy is added to the hardcoded
-list or the list is replaced by reading `aporta` — which is the item above, and doing this one by
-hand makes that one a little worse. It needs its own spec: it touches `install.ps1`, `controles.py`
-and a new installer case.
+It also changes what a plan says. Seen on 2026-10-03 by `canonical-domain-model` E-44: with the same
+task context and proposal, the plan built in the factory has
+`normative.standards.ES0902.rules.C3.developmentStandardBaseline` `RESOLVED`, and the plan built in
+an installed project has it unresolved, because `estandar_de_desarrollo.resolver_base` requires the
+G1 shared controls `INSTALLED`. Same result with `4c6f0f3`. E-44 now pins that difference as the
+only one between the two layouts.
+
+Fix. Since `harness-unico` there is one product and no `<id>` to keep apart, and `aporta` is gone:
+the installer's map is a fixed list in `install.ps1`, and adding `controles` to it is one more
+line. What is left to decide is where the controls live once installed. `.claude\harness\controles\`
+is the plain choice; `.claude\harness\controles\desarrollo\` would follow `checks\desarrollo\`,
+which only kept its segment because the CLI's public path lives next to it. Either way
+`controles._ruta_de` needs a candidate for the installed tree, the way `roster.existe_check`
+carries one for `harness/checks/desarrollo/`. It needs its own spec: it touches `install.ps1`,
+`controles.py` and a new installer case.
 
 ### ES0902 C2 leaves four identity and freshness choices as the spec wrote them
 
@@ -1399,7 +1452,225 @@ Not fixed here: the command text is fixed by the spec (E-01), so failing when `$
 change, and how Claude Code reports a non-zero exit from a `shell: powershell` hook has not been
 observed.
 
+## What the canonical domain model found and left open
+
+Written on 2026-10-03 while building `docs/cambios/canonical-domain-model`. Its spec, section 17,
+lists the contradictions it found: C-01 to C-55 plus the lettered C-09b and C-17b, 57 entries as of
+this writing. It fixed only the ones that pass its inclusion rule, D15:
+a behaviour change goes in only when, without it, the code can produce or accept an artifact that
+directly contradicts a canonical invariant. Everything below failed that rule on purpose. Each item
+names its contradictions by number so the spec stays the evidence. Line numbers refer to `4c6f0f3`.
+
+### The task context hash is not deterministic, and three of its fields say something else
+
+C-17, C-17b, C-18 and the case half of C-19. The hash is supposed to be stable for the same data
+(`task-context.schema.json:25`), but `sources[].retrieved_at` is wall-clock time
+(`contexto/comun.py:49`) and stays inside the hash (`contexto-armar.py:980-982`). The absolute
+`local_path` of documents enters the hash too. The schema says `local_path` is relative
+(`:177`), and the code writes an absolute path (`dev-harness.py:1119`). It also says `origin` is the
+issue key (`:168`), and the code writes `tarea` or `ficha` (`documentos.py:90`). Two attachments with
+the same name, one on the ticket and one on the Ficha, overwrite each other (`documentos.py:131`).
+`CLAVE_JIRA` accepts lowercase while the Jira probe accepts uppercase only (`jira.py:30`). And when the
+secrets catalogue is missing, the context is written without redaction and nothing says so
+(`limpieza.py:88-89`).
+
+Fix. Take `retrieved_at` and absolute paths out of the hashed content (or hash a normalized copy),
+write `local_path` relative to the project, and make the redaction failure a declared gap. Each one
+changes a persisted contract, so it needs its own spec.
+
+### Plan rebuilds lose history, and four plan fields are never read
+
+C-07, C-08, C-09b, C-22, C-23 and C-49. Re-running `plan --propuesta` on an existing plan rewrites
+it at `plan_version` 1 with the history reset, with no existence check (`dev-harness.py:1231-1244`).
+The schema calls the plan "regenerable" while regenerating it loses the history. Four fields are
+recorded and never read: `sessionBudget.maxRetries`, `modelPolicy.allowEscalation`, and the free
+strings `policies` and `applicablePolicies`. `roster.cargar()` returns `{}` without a warning even
+though its docstring says the plan declares it (`roster.py:53-66`). `dev-orchestrator.md` hardcodes
+`model: sonnet` against "perfiles, nunca nombres de modelo" (`modelo.py:3-5`). The premium budget is
+spent at planning time and resets on every rebuild (`plan.py:177`).
+
+Fix unknown as a whole. The cheapest part is to refuse `--propuesta` over an existing plan unless
+asked, which is a behaviour change with its own spec.
+
+### Six approvals exist and none can be resolved
+
+C-03. The model-tier approval in the plan is written only as `PENDING` (`consumo.py:82`), and no
+command moves it to `APPROVED`, `DOWNGRADED` or `CANCELLED`: the parser has no such choice
+(`dev-harness.py:1836-1838`). The other five meanings of "approval" are listed in the canonical model
+(`docs/dominio/modelo-canonico.md`, *Vocabulario*): budget evaluation, external security approval,
+`officialApprovalStatus`, source acceptance and tool promotion. None of them shares a record.
+
+Fix. A command that resolves a `ModelTierApproval`. It adds functionality, which is why the domain
+model change did not build it.
+
+### A source acceptance is a human decision stored in a derived, gitignored file
+
+C-31 and C-32. `harness.fuentes.json` says it "se DERIVA de la evidencia y no se escribe a mano"
+(`source-state.schema.json:5`), yet it stores `decisions`, which are human acceptances
+(`:217-276`), and `.claude/` is gitignored (`install.ps1:1976`). An acceptance is therefore per
+machine and is not shared through the repo. The welcome tells the person to "aceptar o posponer"
+(`bienvenida.py:1811`), and `fuentes` has no flag to postpone (`dev-harness.py:1885-1900`).
+
+Fix unknown. Moving acceptances to a versioned file is a decision about where a human record lives,
+and it touches how every installed project accepts sources.
+
+### The plan reports the normative matrix as unbuilt
+
+C-21. Every plan warns "26 de 26 reglas sin clasificar… la matriz normativa todavia no se construyo"
+and leaves `applicableStandards` empty (`normativa.py:53-79`), because `plan.applicableStandards`
+reads the old citation catalogue `es0901-7.1.json`, where every `conditions` is `{}`. Meanwhile the
+per-unit `normative` block uses the 24-row classified matrix.
+
+Fix. Derive `applicableStandards` from the classified matrix and drop the false warning. It changes
+the output of every plan, so it needs its own spec.
+
+### Accounting names and counts that say something else
+
+C-14, C-15, C-16, C-50, C-51 and C-54. `SESSION_COMPLETED` is emitted for every cumulative
+`cost-state` snapshot, several times per session, while `SESSION_STARTED` is never emitted
+(`contrato.py:222-227`). It is not renamed because the type is part of the `eventId` hash. "Reingerir
+no duplica" (`docs/contabilidad.md`) is false for `USAGE_UNRESOLVED` records with no dedupKey
+(`eventos.py:305`). Security ledger events hash their own timestamp, so they are not idempotent
+(`productores.py:110-131`). A transcript ingested by the CLI and by the Context Bar lands in two
+ledgers. And several counts in comments are stale: "siete claves" are 11 (`eventos.py:78-95`), "nueve
+productores" are 10 (`reporte_seguridad/libro.py:49-53`), and the item above about accounting types
+says thirteen types and two emitted, when they are 14 and 3.
+
+Fix. Each one is small, but the dedupKey and idempotency ones change persisted ids, so they need a
+spec.
+
+### Schemas that do not describe what their producers write
+
+C-29, C-30, C-33 to C-40, C-44, C-48, C-52 and C-53. In short:
+
+- `harness-installation-state` is validated at runtime against an inline copy that lacks
+  `integrationConfiguration`, and `knowledgeRefresh` is not in the schema;
+- `knowledge-refresh-state` declares `RUNNING`, `DUE` and `ERROR`, which nobody writes, and the
+  welcome emits `UNREADABLE`, which is not in the enum;
+- the plan writes `normative.standards`, and the security summary and the integrity finding write
+  fields their schemas do not declare;
+- `COMPLIANT_WITH_OBSERVATIONS` silently becomes `UNRESOLVED` in the summary;
+- `NO_SUSPICIOUS_CHANGE_FOUND` changes name between engine and summary;
+- several `$id` values do not match their file names;
+- the refutation hardcodes `docs/codebase/project-context.json` and ignores `rutaCodebase`;
+- stale docstrings and counts: `registro_fuentes.py:134-136`, `normative-review.schema.json:212`,
+  `matriz.py:20-21`, `senales.py:4-5` and `docs/normativa-7.1.md:41`;
+- the governance `.md` of Vu3 to Vu7 disagree with the matrix on `primaryAgents`;
+- `_con_desarrollo` still uses `knowledge.applies` as "desarrollo installed", a leftover of
+  composition;
+- `security-report` requires `pdfOutput` and points it at the HTML.
+
+The control checks' docstrings in `harnesses/desarrollo/controles/checks/` also still say the hook
+checks have "tres salidas"; the hook has three outputs, a check returns strings.
+
+Fix. One contract at a time. Closing the open objects is its own decision.
+
+### Capabilities that skills name and no catalog declares
+
+C-25, C-26 and C-27. Skills name capabilities that exist in no registry or roster, such as
+`filesystem.read`, `dependency.inspect` and `task-context.read`
+(`dev-backend-implementation/SKILL.md:542-559`; `dev-architecture-analysis/SKILL.md:445`), and
+nothing links an agent's `tools:` to capabilities. `tool-registry` says the Capability Registry
+consults it, and it does not (`capacidades.py:22-26`). The output that `dev-tool-builder` describes
+is not the `tool-contract`.
+
+Fix. Declare the capabilities or take them out of the skills. Editing a `SKILL.md` changes its
+fingerprint, which invalidates the refutation cache for its units, so it is not free.
+
+### Who may overwrite a project-owned rule file is read two ways
+
+C-46 and C-47. The item about project-filled `reglas/*.json` says `-Update` overwrites them silently.
+`install.ps1:2112-2229` keeps a hand-edited file and writes the new one as `.nuevo`, while another
+reading sees a `Copy-Item -Force` (`install.ps1:339`). Project inventories such as
+`security-approval-evidence.json` also live in `reglas/`, which is the factory's folder.
+
+Fix unknown until somebody runs an `-Update` over a project with a filled inventory and records what
+happened.
+
+### ADR-0011 says identifiers are English and most are Spanish
+
+C-43. ADR-0011 asks for identifiers and file names in English. The CLI subcommands, the modules, the
+state files under `.claude/` and 60 of the 61 folders of `docs/cambios/` are Spanish. The canonical
+domain model maps each Spanish name to an English canonical name and renames nothing, because a
+rename changes persisted names, fingerprints, hashes and tests.
+
+Fix unknown. Either ADR-0011 gets an explicit exception for existing identifiers, or a rename gets
+its own spec with its migration.
+
+### ADR-0006 and CLAUDE.md disagree on where SDD applies
+
+C-41. ADR-0006 makes SDD the method of the installed projects and "no… para este repositorio"
+(`docs/adr/0006…md:43, 100-103`). `CLAUDE.md` makes it the factory's method, and the product installs
+no SDD piece. ADR-0006 also promises warnings when building without a spec, and no installed check
+does that.
+
+Fix. Write down which one is true. It is a decision, not code.
+
+### The task key rule is written twice, and `plan` crashes without a key
+
+C-20 and C-55. `CLAVE_JIRA` in `dev-harness.py:92` and `CLAVE` in `refutacion.py:57` are the same
+regex written twice. `plan` does not validate its key: with an invalid one it cannot write a plan,
+because the `plan_id` pattern stops it at write time, but without any key it crashes on
+`None + ".json"` (`dev-harness.py:1197-1198`). The domain model change left both out on purpose: no
+artifact comes out wrong today, so they failed its inclusion rule. Its E-25 and E-27 pin the current
+behaviour.
+
+Fix. One TaskKey rule imported by every entry point, and `plan` exiting 2 without a key. The ledger's
+`libro.validar_clave` already takes the TaskKey rule as a parameter to avoid a third copy.
+
+### The canonical domain model closed with five loose ends in its text and tests
+
+Found on 2026-10-05 by its third verification (`docs/cambios/canonical-domain-model/verificacion.md`,
+*Tercera verificación*), which ruled `SPEC VERIFIED`. None of them blocked 0.30.0. Line numbers
+refer to the 0.30.0 tree.
+
+- **Agent, `Dónde vive`, says the plan keeps the requested `assignedAgent` id.** Not for an id
+  shaped like a credential: `_limpiar` redacts the whole plan except `meta` (`plan.py:298-299,
+  395-413`), so that id is stored as `[secreto redactado: …]`. The refuter ruled it an edge
+  imprecision; read literally, it would contradict E-02.
+- **Spec §5.1 (Catalog row) and I-21 say availability is decided by the environment validation**,
+  without "of the integrations". Local capabilities are always available (`capacidades.py:22-26`).
+  The canonical document says it right.
+- **`docs/orquestacion.md` does not state the unit-state precedence** of `plan.py:320-326`: a unit
+  with a capability gap and an approval is `WAITING_FOR_HUMAN_APPROVAL`, not `BLOCKED`.
+- **A plan is `READY_FOR_EXECUTION` with a unit whose `agentExists` is `false`,** while
+  `docs/orquestacion.md` says READY means nothing is pending. It behaves the same in `4c6f0f3`.
+- **No test covers E-19's unknown-domain case.** A unit with domain `"inventado"` or `""` exits 2
+  (it exited 1 in `4c6f0f3`). Only the refuters' reproductions hold it.
+
+Fix. The first three are text. The fifth is one assertion next to E-18b or E-19 in
+`tests/casos/64_modelo_de_dominio.py`. The fourth is a decision, not a typo: if an unregistered
+agent should hold readiness, it changes behaviour and needs its own spec.
+
 ## Verification that was not done
+
+### `harness-unico` closed with four tests that prove less than their scenario
+
+Found by `harness-spec-refuter` on 2026-10-02, verifying `docs/cambios/harness-unico/spec.md`. All
+62 scenarios are upheld, but in four of them the gap was closed by the refuter's own checks, not by
+the test that names the scenario:
+
+- **E-43, `rutaCodebase`.** The first way the test compares effective defaults (`harness --json`
+  and `estado --json` with the legacy config against the config completed from `manifest.json`)
+  cannot tell `rutaCodebase` apart in its fixture: the project has no
+  `docs/codebase/project-context.json`, and `bienvenida._proyecto` only reads the path when that
+  file exists. Setting `rutaCodebase: "docs/otro"` changes neither output. `timeoutIntegraciones`
+  is covered by `timeout_de`. If the code default and the manifest default diverge, the test does not
+  see it.
+- **E-45** checks exit 0 and a lock without `harness`, not that the inventory is the product's.
+- **E-48** does not prove `requierePython` comes from `manifest.json`: the 3.9 that `03-instalador`
+  E-24 checks is also the default in the code.
+- **E-55, the factory half** (`registryValid: true` in the repository) is held by cases 31 to 40, not
+  by a test that names E-55.
+
+Also an edge outside what E-11 measures: if someone hand-edited
+`.claude\harness\manifiestos\analisis.json`, `-Update` keeps it and names it, as the orphan rule
+requires, and that output contains the word `analisis`.
+
+Fix. In `tests/casos/63-harness-unico-instalador.ps1`: give the E-43 fixture a
+`project-context.json`, so a wrong `rutaCodebase` changes the output; compare the E-45 lock paths
+against the 259 of E-15; add an E-48 copy with `requierePython` at an impossible value; and name
+E-55 in the factory-side assertion.
 
 ### No real `dev-refutador` run over a `refutation-unit/1.0` has been read
 
@@ -1594,8 +1865,8 @@ documentation shaped like configuration. Test assertions of the form
 `"REPOSITORY_DEPENDENCY" in CHECK.EVIDENCIA_QUE_NO_PRUEBA` assert that a string is in a tuple and
 prove nothing about behaviour; the state assertions beside them are what hold `D4/E-09` to `E-13`.
 
-Same smell as `aporta` in the manifests, one item above: a name that reads like a contract and is a
-comment. Fix. Either drop the two tuples into the module docstring where a reader expects prose, or
+Same smell `aporta` had in the manifests until `harness-unico` took it out: a name that reads like a
+contract and is a comment. Fix. Either drop the two tuples into the module docstring where a reader expects prose, or
 have `_evaluar_caso` reject a declared-useless class explicitly instead of by omission. Touches
 `D4/E-09`..`E-13`, which name the constants.
 
@@ -1687,10 +1958,18 @@ loads as instructions, Spanish for anything a person reads. The ADR names its ow
 They were not translated with the ADR on purpose: mixing the translation with the change that
 introduces the rule would make one diff say two things.
 
-Fix. Translate the three to English, keeping every rule and every example intact — these are
-working agents, not drafts, and `hu-refutador` in particular is the one `dev-refutador` inherited
-its shape from. What they output for people stays in Spanish, and each one should say so in its
-second line, the way `dev-iniciador-code.md` already does.
+Since `harness-unico` two of the three are gone: `hu-redactor` and `hu-refutador` left with the
+`analisis` harness. One remains, and it carries a second loose end: its HTML comment still says it
+is the sibling of `harnesses/analisis/agents/hu-refutador.md`, a file that no longer exists.
+`harness-unico` left both on purpose, because the file's fingerprint is part of the atomic
+refutation's cache key (`refutacion.py:41-45`): any edit, even a comma, invalidates the cache in
+every installed project.
+
+Fix. Translate `dev-refutador.md` to English, keeping every rule and every example intact — it is a
+working agent, not a draft — and in the same edit point the comment at the shape it inherited
+from `hu-refutador` as history, not as a path. What it outputs for people stays in Spanish, and it
+should say so in its second line, the way `dev-iniciador-code.md` already does. Ship it with the
+cache invalidation said in UPGRADE.
 
 ### Nothing measures whether a loadable .md is in the right language
 
@@ -1698,9 +1977,9 @@ ADR-0011 claims its criterion is checkable: *"un `.md` con frontmatter `name:`/`
 pieza cargable y va en inglés. No hace falta juicio para clasificarlo."* Nothing checks it. The
 three files above prove the rule does not enforce itself.
 
-Fix. A case in `06-composicion.ps1` — the one that already audits the repo's composition — asserting
-that every `.md` with `name:` frontmatter under `harnesses/*/agents/` and `harnesses/*/skills/` is
-in English. Detecting "is in English" mechanically is the hard part; a cheap proxy that would have
+Fix. A case in the suite — `06-composicion.ps1`, which audited the repo's composition, left with
+`harness-unico` — asserting that every `.md` with `name:` frontmatter under `comun/agents/`,
+`comun/skills/`, `harnesses/desarrollo/agents/` and `harnesses/desarrollo/skills/` is in English. Detecting "is in English" mechanically is the hard part; a cheap proxy that would have
 caught all three is the presence of Spanish function words (`que`, `debe`, `para`, `cuando`) in the
 first 40 lines. It warns, it does not block — the same shape as every other measurement in this
 repo.
@@ -1765,6 +2044,11 @@ It is missing the 8 skills, the 4 checks, `dev-refutador` and the secrets fix fr
 powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 \
   -Project 'C:\Work\GCBA\IGE' -Update
 ```
+
+Seen on 2026-10-02, while closing 0.29.0, read only: `C:\Work\GCBA\IGE` does not exist on this
+machine. The Portal IGE at `C:\dev\portal-ige-web` has a 0.28.0 lockfile with
+`harness: comun, desarrollo`, 261 files and no `hu-*`, installed 2026-10-01. Whether the Portal IGE
+is the project this item meant is not recorded. Until somebody says so, the item stays as written.
 
 ### `ES0902.md` was the only extract that did not close as faithful
 
@@ -1900,6 +2184,12 @@ not-installed report, once per type.
 
 What should happen: whoever owns the ES0902 matrix splits the id, or confirms that one control
 plays both roles. Until then the double entry is correct and intentional.
+
+No production command calls `colisiones_de_id` today: the diagnostic exists, but only
+`37_es0902_seguridad.py` and `64_modelo_de_dominio.py` reach it. The docstring of `seguridad.py`
+(`:37-39`) and `docs/seguridad-es0902.md:869` say the collision "se reporta"; nothing emits it.
+Found by the canonical domain model (S3). Either a command reports it, or both texts say it is a
+diagnostic only.
 
 ### A signal name shared by the two standards is not prevented from colliding
 

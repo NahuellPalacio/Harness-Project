@@ -320,14 +320,18 @@ def test_e13_tampoco_si_la_otra_esta_sana(t):
 def test_e14_el_repositorio_de_la_unidad_es_el_del_flujo(t):
     """E-14 — workUnits[].context.repository es el de la identidad del flujo."""
     plan = importlib.import_module("orquestacion.plan")
-    doc = plan.armar(M20._propuesta([M20._unidad("u1", dominio="integration")]), M20.CONTEXTO,
+    # 0.30.0 rechaza una unidad de un dominio que no esta en `domains` (integracion-flow-
+    # governance-0-31): la propuesta declara el dominio de la unidad.
+    doc = plan.armar(M20._propuesta([M20._unidad("u1", dominio="integration")],
+                                    domains=["integration"]), M20.CONTEXTO,
                      {}, {}, "0.26.0", "docs/x.json", M20.PRECONDICIONES)
     esperado = M20.PRECONDICIONES["repository"]["taskRepository"]
     t.igual("E-14 el de la identidad", esperado, doc["workUnits"][0]["context"].get("repository"))
     t.igual("E-14 el mismo de flowPreconditions", doc["flowPreconditions"]["repository"]["taskRepository"],
             doc["workUnits"][0]["context"].get("repository"))
     vacio = dict(M20.CONTEXTO, repository={"project": {"name": ""}})
-    doc = plan.armar(M20._propuesta([M20._unidad("u1", dominio="integration")]), vacio,
+    doc = plan.armar(M20._propuesta([M20._unidad("u1", dominio="integration")],
+                                    domains=["integration"]), vacio,
                      {}, {}, "0.26.0", "docs/x.json", M20.PRECONDICIONES)
     t.igual("E-14 sin nombre en el TaskContext, igual el del flujo", esperado,
             doc["workUnits"][0]["context"].get("repository"))
@@ -427,6 +431,9 @@ def test_e20_un_error_inesperado_no_se_disfraza(t):
 
         def _roto(*_a, **_k):
             raise KeyError("un bug")
+        # `orq_plan` es el modulo compartido de sys.modules: se restaura en el finally, o todo
+        # caso que corra despues arma planes con el bug (lo encontro 71_plan_2_1).
+        original = modulo.orq_plan.armar
         modulo.orq_plan.armar = _roto
         levanto = None
         try:
@@ -436,6 +443,8 @@ def test_e20_un_error_inesperado_no_se_disfraza(t):
         t.verdadero("E-20 el KeyError sigue siendo un KeyError", isinstance(levanto, KeyError))
         t.verdadero("E-20 y no sale con 2", codigo != 2)
     finally:
+        if "original" in locals():
+            modulo.orq_plan.armar = original
         _borrar(p)
 
 

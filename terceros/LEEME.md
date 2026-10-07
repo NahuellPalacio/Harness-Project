@@ -9,7 +9,7 @@ Lo operativo es esto:
 
 ### 1. Esto no se instala
 
-`install.ps1` solo copia desde `comun/` y `harnesses/<id>/`. Para usar algo de acá, se
+`install.ps1` solo copia desde `comun/` y `harnesses/desarrollo/`. Para usar algo de acá, se
 **copia** a lo propio con una nota de procedencia arriba:
 
 ```

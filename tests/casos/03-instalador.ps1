@@ -33,22 +33,16 @@ try {
     [System.IO.File]::WriteAllText((Join-Path $demo 'CLAUDE.md'),  $claudeHumano)
     [System.IO.File]::WriteAllText((Join-Path $demo '.gitignore'), $gitHumano)
 
-    $idHarness = 'analisis'
-    if (-not (Test-Path (Join-Path $script:Raiz "harnesses\$idHarness\manifest.json"))) {
-        Assert-Verdadero 'existe un harness para probar' $false "falta harnesses\$idHarness"
-        return
-    }
-
     # ── -WhatIf no escribe nada ─────────────────────────────────────────────────
     # A proposito SIN -Usuario: como no escribe nada, no puede exigir nada. Ver que
     # alguien va a hacer antes de decidirse tiene que costar cero requisitos.
-    $r = Invoke-Instalador @('-Project', $demo, '-Harness', $idHarness, '-WhatIf')
+    $r = Invoke-Instalador @('-Project', $demo, '-WhatIf')
     Assert-Igual '-WhatIf sale con codigo 0 sin pedir el nombre' 0 $r.Codigo
     Assert-Verdadero '-WhatIf no crea .claude' (-not (Test-Path (Join-Path $demo '.claude'))) `
         'escribio algo cuando prometio no escribir nada'
 
     # ── Instalar ────────────────────────────────────────────────────────────────
-    $r = Invoke-Instalador @('-Project', $demo, '-Harness', $idHarness, '-Usuario', $usuarioPrueba)
+    $r = Invoke-Instalador @('-Project', $demo, '-Usuario', $usuarioPrueba)
     Assert-Igual 'la instalacion sale con codigo 0' 0 $r.Codigo
     Assert-Contiene 'verifica que los hooks responden' 'los cuatro hooks responden' $r.Salida
 
@@ -98,7 +92,7 @@ try {
     $otro = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-sinusuario-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
     New-Item -ItemType Directory -Path $otro -Force | Out-Null
     try {
-        $r = Invoke-Instalador @('-Project', $otro, '-Harness', $idHarness)
+        $r = Invoke-Instalador @('-Project', $otro)
         Assert-Igual 'sin -Usuario y sin consola, aborta' 1 $r.Codigo
         Assert-Contiene 'y el error dice como resolverlo' '-Usuario' $r.Salida
         Assert-Verdadero 'y no dejo el proyecto a medio instalar' `
@@ -110,7 +104,7 @@ try {
     # alcanza con olvidar las comillas simples para que las barras invertidas desaparezcan.
     # El error tiene que nombrar la ruta, no la propiedad de un $null.
     $noExiste = Join-Path ([System.IO.Path]::GetTempPath()) ('no-existe-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 6))
-    $r = Invoke-Instalador @('-Project', $noExiste, '-Harness', $idHarness, '-Usuario', $usuarioPrueba)
+    $r = Invoke-Instalador @('-Project', $noExiste, '-Usuario', $usuarioPrueba)
     $plano = ($r.Salida -replace "\r?\n", '')
     Assert-Igual 'una ruta de proyecto inexistente aborta' 1 $r.Codigo
     Assert-Contiene 'y el error dice que el proyecto no existe' 'el proyecto no existe' $plano
@@ -123,18 +117,18 @@ try {
     $skillsInstaladas = @(Get-ChildItem (Join-Path $demo '.claude\skills') -Recurse -Filter 'SKILL.md' -ErrorAction SilentlyContinue)
     $agentesInstalados = @(Get-ChildItem (Join-Path $demo '.claude\agents') -Filter '*.md' -ErrorAction SilentlyContinue)
 
-    # Se cuentan los de comun MAS los del harness: comun tambien aporta skills y agentes.
+    # Se cuentan los de comun MAS los del producto: comun tambien aporta skills y agentes.
     $skillsEnRepo = @(
         @(Get-ChildItem (Join-Path $script:Raiz 'comun\skills') -Recurse -Filter 'SKILL.md' -ErrorAction SilentlyContinue) +
-        @(Get-ChildItem (Join-Path $script:Raiz "harnesses\$idHarness\skills") -Recurse -Filter 'SKILL.md' -ErrorAction SilentlyContinue)
+        @(Get-ChildItem (Join-Path $script:Raiz 'harnesses\desarrollo\skills') -Recurse -Filter 'SKILL.md' -ErrorAction SilentlyContinue)
     )
     $agentesEnRepo = @(
         @(Get-ChildItem (Join-Path $script:Raiz 'comun\agents') -Filter '*.md' -ErrorAction SilentlyContinue) +
-        @(Get-ChildItem (Join-Path $script:Raiz "harnesses\$idHarness\agents") -Filter '*.md' -ErrorAction SilentlyContinue)
+        @(Get-ChildItem (Join-Path $script:Raiz 'harnesses\desarrollo\agents') -Filter '*.md' -ErrorAction SilentlyContinue)
     )
 
-    Assert-Igual 'instala todas las skills, de comun y del harness'  $skillsEnRepo.Count  $skillsInstaladas.Count
-    Assert-Igual 'instala todos los agentes, de comun y del harness' $agentesEnRepo.Count $agentesInstalados.Count
+    Assert-Igual 'instala todas las skills, de comun y del producto'  $skillsEnRepo.Count  $skillsInstaladas.Count
+    Assert-Igual 'instala todos los agentes, de comun y del producto' $agentesEnRepo.Count $agentesInstalados.Count
 
     # Un agente sin tools declaradas hereda escritura y ejecucion total. En un harness que
     # se instala en 12 repos de un organismo publico, eso no puede pasar por descuido.
@@ -145,7 +139,7 @@ try {
         ("sin declarar: " + (($sinTools | Select-Object -ExpandProperty Name) -join ', '))
 
     # Instalar dos veces seguidas tiene que dar lo mismo que instalar una.
-    Invoke-Instalador @('-Project', $demo, '-Harness', $idHarness, '-Usuario', $usuarioPrueba) | Out-Null
+    Invoke-Instalador @('-Project', $demo, '-Usuario', $usuarioPrueba) | Out-Null
     $claudeDosVeces = [System.IO.File]::ReadAllText((Join-Path $demo 'CLAUDE.md'))
     $bloques = ([regex]::Matches($claudeDosVeces, 'HARNESS:COMUN')).Count
     Assert-Igual 'reinstalar no duplica el bloque en CLAUDE.md' 2 $bloques
@@ -224,7 +218,7 @@ Assert-Vacio 'E-23b sin zonas.py ni Resolve-Python en el nivel superior' `
 # ── Version minima de Python (E-24) ──────────────────────────────────────────────
 #
 # Un Python viejo alcanzado en el PATH es una FALLA, no un aviso: los hooks no van a
-# correr igual. El mínimo vive en comun/manifest.json, junto a requiereClaudeCode. Se
+# correr igual. El mínimo vive en manifest.json, junto a requiereClaudeCode. Se
 # prueba con dot-source -no un -Doctor real- porque hace falta simular una versión que
 # la máquina que corre la suite probablemente no tenga instalada.
 
@@ -259,7 +253,7 @@ $demoShim = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-shim-' + [Syst
 try {
     New-Item -ItemType Directory -Path $demoShim -Force | Out-Null
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
-                     -Project $demoShim -Harness analisis -Usuario 'Prueba Shim' | Out-Null
+                     -Project $demoShim -Usuario 'Prueba Shim' | Out-Null
     Assert-Igual 'instala para probar los shims' 0 $LASTEXITCODE
 
     $rutaCmd = Join-Path $demoShim '.claude\harness\run-hook.cmd'
@@ -293,7 +287,7 @@ $demoUpdate = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-update-' + [
 try {
     New-Item -ItemType Directory -Path $demoUpdate -Force | Out-Null
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
-                     -Project $demoUpdate -Harness analisis -Usuario 'Prueba Update' | Out-Null
+                     -Project $demoUpdate -Usuario 'Prueba Update' | Out-Null
 
     # Simula lo que dejaría una instalación de una versión anterior a la migración a Python.
     New-Item -ItemType File -Path (Join-Path $demoUpdate '.claude\harness\hooks\pre-tool-use.ps1') -Force | Out-Null
@@ -329,7 +323,7 @@ try {
     [System.IO.File]::WriteAllText((Join-Path $demoUninstSinPython 'CLAUDE.md'), "# CLAUDE.md previo`r`n")
 
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
-                     -Project $demoUninstSinPython -Harness analisis -Usuario 'Prueba Sin Python' | Out-Null
+                     -Project $demoUninstSinPython -Usuario 'Prueba Sin Python' | Out-Null
 
     $comandoDesinstalarSinPython = "`$env:PATH = 'C:\no-existe'; & '$instalador' -Project '$demoUninstSinPython' -Uninstall 2>&1 | Out-String"
     $salidaDesinstalar = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
@@ -371,7 +365,7 @@ Assert-Igual    'E-25b no bloquea'       0                  $rDoctorLatencia.Cod
 #
 # Hallazgo del revisor: E-25 (arriba) borra .claude\harness\ ANTES de reinstalar. Si
 # Invoke-Instalar tira por cualquier motivo que no sea "los hooks no responden" -falta
-# Python, zonas.py falla, un id invalido, prefijos repetidos: todos usan throw- esa
+# Python, zonas.py falla, un manifiesto ilegible: todos usan throw- esa
 # excepcion se propaga y el borrado nunca se deshace. El proyecto queda sin harness, y
 # lo que el humano habia editado a mano -que solo vivia en la variable $guardados de ese
 # proceso- se pierde para siempre. Un -Update que falla tiene que dejar el proyecto como
@@ -383,7 +377,7 @@ $demoUpdateFalla = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-update-
 try {
     New-Item -ItemType Directory -Path $demoUpdateFalla -Force | Out-Null
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $instalador `
-                     -Project $demoUpdateFalla -Harness analisis -Usuario 'Prueba Update Falla' | Out-Null
+                     -Project $demoUpdateFalla -Usuario 'Prueba Update Falla' | Out-Null
 
     # Trabajo humano: un hook editado a mano, que -Update tiene que conservar.
     $hookEditadoFalla = Join-Path $demoUpdateFalla '.claude\harness\hooks\pre-tool-use.py'
@@ -486,7 +480,7 @@ try {
 
         [System.IO.File]::AppendAllText((Join-Path $fabrica 'comun\hooks\lib\zonas.py'), "`ndef (((`n")
 
-        $rZonasRotas = Invoke-Instalador @('-Project', $demoZonasRotas, '-Harness', 'analisis', '-Usuario', 'Prueba Zonas Rotas') `
+        $rZonasRotas = Invoke-Instalador @('-Project', $demoZonasRotas, '-Usuario', 'Prueba Zonas Rotas') `
                                          -Desde (Join-Path $fabrica 'install.ps1')
 
         Assert-Igual 'E-20 la instalacion aborta' 1 $rZonasRotas.Codigo
@@ -533,7 +527,7 @@ try {
 
         [System.IO.File]::AppendAllText((Join-Path $fabrica 'comun\hooks\pre-tool-use.py'), "`ndef (((`n")
 
-        $rHookRoto = Invoke-Instalador @('-Project', $demoHookRoto, '-Harness', 'analisis', '-Usuario', 'Prueba Hook Roto') `
+        $rHookRoto = Invoke-Instalador @('-Project', $demoHookRoto, '-Usuario', 'Prueba Hook Roto') `
                                        -Desde (Join-Path $fabrica 'install.ps1')
 
         Assert-Igual 'E-27 la instalacion sale con codigo de fallo' 1 $rHookRoto.Codigo
@@ -772,7 +766,7 @@ $hpsUsuario = 'Íñigo Pérez'
 
 try {
     New-Item -ItemType Directory -Path $hpsDemo -Force | Out-Null
-    $r = Invoke-Instalador @('-Project', $hpsDemo, '-Harness', 'analisis', '-Usuario', $hpsUsuario)
+    $r = Invoke-Instalador @('-Project', $hpsDemo, '-Usuario', $hpsUsuario)
     Assert-Igual 'instala el proyecto de los hooks registrados' 0 $r.Codigo
     Assert-Contiene 'la compuerta dice que probo lo registrado' 'con el comando que quedó en settings.json' $r.Salida
 
@@ -811,8 +805,14 @@ try {
         Assert-Igual "E-02 el filtro de $ev nombra PowerShell, exacto" $hpsMatchers[$ev] ($m -join ' / ')
     }
 
-    # La invariante de portabilidad: settings.json no lleva ninguna ruta de esta maquina.
-    $textoSettingsHps = [System.IO.File]::ReadAllText((Join-Path $hpsDemo '.claude\settings.json'))
+    # La invariante de portabilidad: settings.json no lleva ninguna ruta de esta maquina. La unica
+    # excepcion es el comando de la Context Bar (statusLine), que New-SettingsProyecto documenta:
+    # lleva la ruta del proyecto y la del interprete. Desde docs/cambios/harness-unico/spec.md el
+    # proyecto de prueba instala el producto entero, con barra, asi que la invariante se mide sin
+    # ese bloque.
+    $settingsSinBarra = [System.IO.File]::ReadAllText((Join-Path $hpsDemo '.claude\settings.json')) | ConvertFrom-Json
+    if ($settingsSinBarra.PSObject.Properties['statusLine']) { $settingsSinBarra.PSObject.Properties.Remove('statusLine') }
+    $textoSettingsHps = ConvertTo-Json -InputObject $settingsSinBarra -Depth 20
     $txtCmdHps = [System.IO.File]::ReadAllText((Join-Path $hpsDemo '.claude\harness\run-hook.cmd'))
     $exeHps = ([regex]::Match($txtCmdHps, '"([^"]+\.exe)"')).Groups[1].Value
     Assert-Verdadero 'settings.json no lleva la ruta del proyecto' (-not $textoSettingsHps.Contains($hpsDemo))
@@ -990,7 +990,10 @@ $problemas = Test-HooksInstalados -Project $Proyecto
     $lineas = @($mensaje -split "`n")
     Assert-Igual 'bienvenida E-18 la sesion siguiente avisa la actualizacion' `
         "Harness GCBA actualizado: 0.19.0 → $hpsVersion ✓" $lineas[0]
-    Assert-Igual 'bienvenida E-18 y la linea, nada mas' 2 $lineas.Count
+    # Con el producto entero el aviso suma la linea de la Context Bar entre las dos, como lo pidio
+    # bloque-1-context-bar: aviso, barra y linea compacta, y nada mas.
+    Assert-Igual 'bienvenida E-18 el aviso, la barra y la linea, nada mas' 3 $lineas.Count
+    Assert-Verdadero 'bienvenida E-18 la del medio es la de la Context Bar' ($lineas.Count -ge 2 -and $lineas[1].StartsWith('Context Bar')) $mensaje
     Assert-Verdadero 'bienvenida E-18 no repite la bienvenida' (-not $mensaje.Contains('GCBA Development Harness')) $mensaje
     $mensaje = Get-HpsMensaje (Invoke-HpsSesion $hpsDemo)
     Assert-Verdadero 'bienvenida E-18 una sola vez' (-not $mensaje.Contains('actualizado')) $mensaje
@@ -1003,7 +1006,7 @@ $problemas = Test-HooksInstalados -Project $Proyecto
 
     # ── E-04: una ruta con espacios, un apostrofo y un $ ─────────────────────────
     New-Item -ItemType Directory -Path $hpsRaro -Force | Out-Null
-    $r = Invoke-Instalador @('-Project', $hpsRaro, '-Harness', 'analisis', '-Usuario', 'Prueba Rara')
+    $r = Invoke-Instalador @('-Project', $hpsRaro, '-Usuario', 'Prueba Rara')
     Assert-Igual 'E-04 instala en la ruta rara (su compuerta ya corrio lo registrado)' 0 $r.Codigo
     if (Test-Path (Join-Path $hpsRaro '.claude\settings.json')) {
         foreach ($h in (Get-HpsHooks $hpsRaro)) {
@@ -1043,7 +1046,7 @@ function Invoke-HpsCostura {
         }
         [System.IO.File]::WriteAllText($RutaSettings, (ConvertTo-Json -InputObject $s -Depth 20))
     }
-    Invoke-Instalar -Ids analisis | Out-Null
+    Invoke-Instalar | Out-Null
 }
 try { Invoke-HpsCostura; exit 0 } catch { [Console]::Out.WriteLine($_.Exception.Message); exit 1 }
 '@, $hpsUtf8)

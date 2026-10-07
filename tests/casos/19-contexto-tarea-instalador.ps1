@@ -25,7 +25,7 @@ function New-ProyectoCtx {
 
 $demo = New-ProyectoCtx 'harness-ctx'
 try {
-    $r = Invoke-InstaladorCtx @('-Project', $demo, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorCtx @('-Project', $demo, '-Usuario', 'Ana Prueba')
     Assert-Igual 'instalar desarrollo sale con codigo 0' 0 $r.Codigo
 
     # -- E-33: los modulos del resolvedor y el schema del contrato ------------------

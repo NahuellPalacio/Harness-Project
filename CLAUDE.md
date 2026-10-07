@@ -59,7 +59,7 @@ leaves it alone otherwise. Nothing promises `%TEMP%` is cleaned right away.
 | Agent | Owns |
 |---|---|
 | `harness-hook-engineer` | `comun/hooks/`, `comun/checks/`, `*/checks/` |
-| `harness-backend-engineer` | `install.ps1`, `tests/`, manifests, lockfile |
+| `harness-backend-engineer` | `install.ps1`, `tests/`, `manifest.json`, lockfile |
 | `harness-staff-engineer` | Performance, size, simplicity — behaviour frozen |
 | `harness-spec-refuter` | Verdicts against a spec. Runs the tests, writes nothing |
 | `harness-budget-auditor` | Always-loaded context cost and the `CLAUDE.md` ceilings |

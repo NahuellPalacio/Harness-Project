@@ -708,8 +708,8 @@ def test_e41_una_sola_autoridad_de_lo_soportado(t):
     t.igual("E-41 soporte() es la de los adapters", esperado, _registro().soporte())
     t.igual("E-41 dev-harness usa las mismas clases", tuple(_registro().clases()),
             tuple(_cli_mod().CLASES))
-    manifiesto = json.loads((RAIZ / "harnesses" / "desarrollo" / "manifest.json").read_text(
-        encoding="utf-8"))
+    # 0.29.0 junto los manifiestos en uno, en la raiz (integracion-flow-governance-0-31).
+    manifiesto = json.loads((RAIZ / "manifest.json").read_text(encoding="utf-8"))
     t.igual("E-41 el manifiesto dice lo mismo", sorted(esperado),
             sorted(manifiesto.get("capacidadesSoportadas") or []))
 

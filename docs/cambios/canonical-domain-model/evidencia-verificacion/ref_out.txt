@@ -1,0 +1,15 @@
+registry ids/types identical old vs new: True
+control-registry.json equal ignoring description/_comentario: True
+checks.json results: 211 [('base-software-data-disclosure-configuration', 'ES0902.C3'), ('base-software-data-disclosure-configuration', 'ES0902.G1'), ('base-software-data-disclosure-configuration', 'ES0902.O1'), ('base-software-data-disclosure-configuration', 'ES0902.O2'), ('base-software-data-disclosure-configuration', 'ES0902.Ve1'), ('base-software-data-disclosure-configuration', 'ES0902.Vu7'), ('citizen-authentication-mechanism', 'ES0901.D1'), ('citizen-authentication-mechanism', 'ES0901.G1'), ('citizen-authentication-mechanism', 'ES0901.G2'), ('citizen-authentication-mechanism', 'ES0901.M1'), ('citizen-authentication-mechanism', 'ES0901.M2'), ('citizen-authentication-mechanism', 'ES0901.M3'), ('citizen-authentication-mechanism', 'ES0901.P1'), ('citizen-authentication-mechanism', 'ES0901.P4'), ('citizen-authentication-mechanism', 'ES0902.C3'), ('citizen-authentication-mechanism', 'ES0902.G1'), ('citizen-authentication-mechanism', 'ES0902.O1'), ('citizen-authentication-mechanism', 'ES0902.O2'), ('citizen-authentication-mechanism', 'ES0902.Ve1'), ('citizen-authentication-mechanism', 'ES0902.Vu7'), ('dev-api-rutas', 'ES0901.G1'), ('framework-homologation', 'ES0901.D1'), ('framework-homologation', 'ES0901.G1'), ('framework-homologation', 'ES0901.G2'), ('framework-homologation', 'ES0901.M1'), ('framework-homologation', 'ES0901.M2'), ('framework-homologation', 'ES0901.M3'), ('framework-homologation', 'ES0901.P1'), ('framework-homologation', 'ES0901.P4'), ('framework-homologation', 'ES0902.C3')]
+[pass] exit old 0 new 0 | same units/path/status/cacheKey: True | same verdicts: True | verdicts n=19 | run status/counts same: True (INCOMPLETE 19) | paths seen: ['DETERMINISTIC_CHECK']
+   checkRefs equal: True | roster check closed something new: False
+[fail] exit old 0 new 0 | same units/path/status/cacheKey: True | same verdicts: True | verdicts n=19 | run status/counts same: True (FAIL 19) | paths seen: ['DETERMINISTIC_CHECK']
+   checkRefs equal: True | roster check closed something new: False
+[stale] exit old 0 new 0 | same units/path/status/cacheKey: True | same verdicts: True | verdicts n=0 | run status/counts same: True (INCOMPLETE 0) | paths seen: []
+   checkRefs equal: True | roster check closed something new: False
+[only-roster] exit old 0 new 0 | same units/path/status/cacheKey: True | same verdicts: True | verdicts n=0 | run status/counts same: True (INCOMPLETE 0) | paths seen: []
+   checkRefs equal: True | roster check closed something new: False
+record 0 
+cache old->new: record exit 0, cache files ['2783ebf5f7151968635f05b56ea648c9930c3cba1a28d39781db26c44c4db74e.json'] | reader compile exit 0 | unit REF-013 status RESOLVED path CACHE | verdict [('cumple', 'CACHE', True)]
+record 0 
+cache new->old: record exit 0, cache files ['2783ebf5f7151968635f05b56ea648c9930c3cba1a28d39781db26c44c4db74e.json'] | reader compile exit 0 | unit REF-013 status RESOLVED path CACHE | verdict [('cumple', 'CACHE', True)]

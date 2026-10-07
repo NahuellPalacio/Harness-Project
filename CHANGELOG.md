@@ -3,6 +3,132 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.30.0] — 2026-10-05
+
+**HARNESS tiene su modelo de dominio escrito, y el plan de orquestación pasa a
+`orchestration-plan/2.0`.**
+
+Hasta 0.29.0 había tres problemas:
+
+- el dominio existía en el código, pero no estaba escrito;
+- la misma palabra nombraba cosas distintas;
+- el plan declaraba once estados y escribía tres.
+
+Ahora hay un documento canónico y un ADR, y el contrato del plan dice solo los estados que existen.
+También se corrigieron los comportamientos que dejaban producir un artefacto contra el modelo.
+
+El cambio se verificó en tres pasadas y quedó con 52 escenarios sostenidos y ninguno contradicho. No
+agrega ejecución: nada toma una unidad de trabajo y la lleva a cabo.
+
+### Agregado
+
+- **El modelo de dominio canónico** — `docs/dominio/modelo-canonico.md`. Cada concepto tiene su
+  contexto, su clasificación, su identidad, su ciclo, sus invariantes, quién lo crea y lo lee, su
+  contrato, dónde vive y qué no es. Hay nueve contextos delimitados: Work Intake, Project Knowledge,
+  Normative Sources, Planning, Catalog, Governance, Guardrails, Observability y Host Integration.
+  Execution queda como un límite reservado, con nombre y vacío. El vocabulario lleva cada nombre del
+  código a su nombre canónico, sin renombrar nada
+- **[ADR-0013](docs/adr/0013-modelo-de-dominio-canonico.md)** — fija seis decisiones:
+  - los nueve contextos;
+  - la Task es externa: Jira la registra, y HARNESS guarda lo que deriva de ella, nombrado por su
+    TaskKey;
+  - el Host, Claude Code, no es dominio;
+  - Execution está reservado;
+  - "check" son tres conceptos;
+  - qué promete un `schema_version`
+- **Las separaciones que el modelo deja escritas** — Capability y Tool, Agent y Skill, Policy,
+  ControlCheck, GuardrailCheck y CheckSpecification, Evidence y EvaluationResult, Plan y Execution, y
+  Execution y la contabilidad. Cada una dice qué código la sostiene
+- **Tests nuevos** — `tests/casos/64_modelo_de_dominio.py` y
+  `tests/casos/64-modelo-de-dominio-instalador.ps1`. La versión anterior para comparar sale de
+  `git archive 4c6f0f3` en cada corrida
+
+### Cambiado
+
+- 🔴 **El plan pasa a `orchestration-plan/2.0`** — el plan tiene tres estados:
+  `CAPABILITY_RESOLUTION`, `WAITING_FOR_HUMAN_APPROVAL` y `READY_FOR_EXECUTION`. La unidad tiene otros
+  tres: `PENDING`, `BLOCKED` y `WAITING_FOR_HUMAN_APPROVAL`. Salen los que nadie escribía, como
+  `DELEGATING` y `READY`, y `plan` escribe solo 2.0. Ver [UPGRADE.md](UPGRADE.md)
+- **Un plan 1.0 guardado se sigue leyendo si sus estados existen en 2.0** — `refute --compile` lo lee
+  sin reescribirlo, y `--replanificar` lo escribe como 2.0, con toda su historia. Un 1.0 con un
+  estado retirado, otra versión o ninguna se rechaza con código 2, sin tocar el plan, la refutación
+  ni la caché
+- 🔴 **`plan` rechaza ids de unidad repetidos y unidades de un dominio que no está en el plan** — sale
+  con 2 y no escribe; hasta 0.29.0 los escribía. Un dominio que HARNESS no conoce también entra en
+  este caso. Los demás errores de una propuesta (un ciclo, una dependencia rota, ninguna unidad) salen
+  como antes
+- 🔴 **`seguridad` exige una TaskKey válida** — si no lo es, sale con 2 antes de escribir nada
+- 🔴 **`contabilidad` exige una clave de libro** — una TaskKey, o el UUID de una sesión de Claude
+  Code. La `statusLine` no cambia
+- **Cuando Jira devuelve otra clave que la pedida**, el TaskContext lo anota como conflicto, nombra
+  las dos y conserva la pedida
+- **`declaredChecks`, en una unidad de refutación,** lleva los checks que declara la norma, estén
+  registrados o no, y ya no suma los checks del hook. No cambian la `cacheKey`, los `REF-nnn`, el
+  `resolutionPath` ni ningún veredicto
+- **Descripciones que decían otra cosa:**
+  - los schemas de la contabilidad y de la señal normativa;
+  - "PostToolUse" en el registro de controles y en los checks de `controles/`;
+  - `docs/orquestacion.md`: los estados, su precedencia y la regla de lectura;
+  - `docs/contabilidad.md`: "La contabilidad no es estado de ejecución";
+  - `docs/integraciones.md`;
+  - `dev-orchestrator.md`
+
+### Lo que no cambia, a propósito
+
+- **No hay ejecución.** Ningún comando ejecuta una unidad de trabajo, y nadie emite los eventos de
+  ciclo de una tarea
+- **`controles/` sigue sin instalarse**
+- **G2 sigue declarando un mismo id como policy y como check.** Es un defecto de datos: hay un
+  diagnóstico, pero ningún comando lo emite
+- **Los nombres del código siguen en español.** El documento canónico los mapea
+- **La contabilidad no cambia su contrato:** los `eventId` son los mismos
+- **Lo que el modelo encontró y no arregló** sigue abierto en `PENDIENTES-FH.md`, sin presentarse
+  como resuelto: doce ítems con las contradicciones que no pasaron la regla de inclusión, y los cabos
+  sueltos de la verificación
+
+## [0.29.0] — 2026-10-02
+
+**El harness es uno solo: `desarrollo` es el producto, `comun` es su base, y `analisis` se retira.**
+Hasta 0.28.0 el instalador descubría harnesses, los elegía con `-Harness` y los componía, aunque el
+producto ya era uno. Ahora instala siempre lo mismo, desde un único `manifest.json` en la raíz. Las
+rutas instaladas no cambian: la CLI sigue en `bin\desarrollo\dev-harness.py`. Es un cambio
+verificado, con 62 escenarios sostenidos y ninguno contradicho. Cierra, además, el ítem de `aporta`
+de los manifiestos.
+
+### Cambiado
+
+- 🔴 **`-Harness` ya no existe** — pasarlo sale con 1 y el error de PowerShell *No se encuentra
+  ningún parámetro que coincida con el nombre del parámetro 'Harness'*, sin escribir nada. Los
+  argumentos posicionales también dejan de bindear. Ver [UPGRADE.md](UPGRADE.md)
+- 🔴 **`analisis` se retira** — en el `-Update`, un proyecto que lo tenía pasa a tener el producto
+  entero y pierde `hu-escribir`, `hu-redactor`, `hu-refutador` y las reglas de "Trabajo funcional"
+  del bloque de su `CLAUDE.md`. El `CLAUDE.md` anterior queda en el backup, y `harness.config.json` no
+  se toca
+- 🔴 **El lockfile pierde el campo `harness`** — queda con `version`, `instalado`, `backup` y
+  `archivos`. El instalador de 0.28.0 ya no puede actualizar ni diagnosticar un proyecto actualizado:
+  volver atrás pide `-Uninstall`
+- **Un solo `manifest.json`, en la raíz** — reemplaza a `comun/manifest.json` y a los de
+  `harnesses/*/`. Lleva solo lo que alguien lee: los requisitos, las capacidades y `config`. Salen
+  `id`, `prefijo`, `aporta`, `claudeMd` y `descripcion`
+- **El `-Update` saca lo que la versión nueva ya no instala** — un archivo que el lock anterior
+  listaba y el inventario nuevo no se borra, y la salida lo nombra si está fuera de
+  `.claude\harness\`. Si lo habías editado a mano, queda, sin `.nuevo`, y sale del inventario
+- **La Context Bar pide reiniciar una vez más** — el `-Update` la deja en `RELOAD_REQUIRED` hasta que
+  Claude Code arranca de nuevo
+- **El encabezado de cada sesión** pasa de `harness: comun, desarrollo vX` a `harness vX`
+- **`-Doctor`** deja de listar los harnesses disponibles y dice `harness instalado (v<versión>)`
+
+### Lo que no cambia, a propósito
+
+- **Las rutas instaladas**, `bin\desarrollo\`, `reglas\desarrollo\` y `checks\desarrollo\`, igual que
+  los nombres `dev-*`, `dev-harness.py` y el marcador `HARNESS:COMUN`
+- **El bloque del `CLAUDE.md`** de un proyecto que tenía `desarrollo` sale igual, byte a byte
+- **El estado de la instalación** no cambia de forma: `harnessId` sigue siendo `"desarrollo"`
+- **Lo que este cambio descubrió y no arregló** sigue abierto en `PENDIENTES-FH.md`, sin presentarse
+  como resuelto: el Agent Registry inválido en los proyectos instalados, los defaults de `config`
+  repetidos en Python, `docs/codebase/` sin regenerar, `controles/` sin instalarse, y cuatro tests
+  que prueban menos que su escenario
+
 ## [0.28.0] — 2026-10-01
 
 **La Context Bar muestra cuánto de la ventana de contexto se está usando desde la primera respuesta

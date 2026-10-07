@@ -226,8 +226,8 @@ if ($fallados.Count -eq 0) {
 # ── El segundo motor: python tests/correr.py ────────────────────────────────────
 #
 # Invoke-Tests.ps1 sigue siendo EL comando: adentro corre lo que sigue siendo
-# PowerShell (00-encoding-fuentes.ps1, 03-instalador.ps1, y lo que compone/audita el
-# repo en 06-composicion.ps1 y 08-bitacora.ps1) y delega el resto a Python. Una sola
+# PowerShell (00-encoding-fuentes.ps1, los casos del instalador, y lo que audita el repo
+# en 08-bitacora.ps1) y delega el resto a Python. Una sola
 # cuenta, un solo codigo de salida: 0 solo si los dos motores pasaron.
 
 Write-Host ''

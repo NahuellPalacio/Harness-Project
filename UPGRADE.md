@@ -23,6 +23,99 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.29.0 → 0.30.0
+
+`-Update` alcanza para un proyecto instalado: no hay que migrar nada a mano. Si hace falta reiniciar
+Claude Code, el `-Update` lo avisa al final.
+
+Lo que hay que saber es qué pasa con los planes guardados en `.claude\planes\`, porque el contrato
+del plan sube de versión mayor.
+
+🔴 **`orchestration-plan` pasa de 1.0 a 2.0.** Es la versión del contrato del plan, no la de HARNESS.
+El plan tiene ahora tres estados, y la unidad otros tres. Salen los estados que 0.29.0 declaraba y
+nunca escribía, como `DELEGATING` en el plan y `READY` en la unidad. `plan` escribe solo 2.0, y un
+plan guardado cae en uno de estos tres casos:
+
+- **Un plan 1.0 que escribió HARNESS 0.29.0.** Sus estados existen en 2.0, así que:
+  - `refute --compile` lo sigue leyendo y no lo reescribe solo por leerlo. Compila las mismas
+    unidades que antes, con la misma `cacheKey` y los mismos veredictos;
+  - `--replanificar` lo migra: lo escribe como 2.0, con `plan_version` + 1 y la historia entera.
+
+  No hay que hacer nada.
+- **Un plan 1.0 válido para el schema viejo, pero con un estado retirado**, como `DELEGATING` o una
+  unidad en `READY`:
+  - se rechaza con código 2, y el mensaje nombra el campo y el valor;
+  - no se convierte a otro estado: no hay un estado 2.0 que signifique eso;
+  - hay que regenerarlo:
+
+    ```powershell
+    python .claude\harness\bin\desarrollo\dev-harness.py plan <KEY> --propuesta <archivo>
+    ```
+
+  HARNESS 0.29.0 nunca escribió esos estados, así que esto solo le pasa a un plan editado a mano o
+  escrito por otra herramienta.
+- **Un plan con otra versión, o sin `schema_version`.** Se rechaza con código 2, nombrando la
+  versión. Hay que regenerarlo igual.
+
+**Qué toca un rechazo.** No toca el plan, la refutación (`.claude\refutaciones\<KEY>\`) ni su caché:
+la regla de lectura corre antes de cualquier escritura. Lo que no se deshace es lo que ya escribió
+la compuerta normativa en esa misma corrida, porque no hay un rollback global.
+
+**Lo que antes se aceptaba y ahora sale con código 2, sin escribir nada:**
+
+- `seguridad` con una clave que no es una TaskKey válida (`OBRA-91` sí; `OBRA91` u `OBRA-` no);
+- `contabilidad` con una clave que no es una TaskKey ni el UUID de una sesión de Claude Code. La
+  `statusLine` no cambia;
+- `plan --propuesta` y `--replanificar` con dos unidades con el mismo id, o con una unidad de un
+  dominio que no está en `domains`. Hasta 0.29.0 el plan se escribía igual. Si un script o una
+  propuesta guardada dependía de eso, hay que corregir la propuesta.
+
+## 0.28.0 → 0.29.0
+
+`-Update` alcanza para un proyecto instalado. Lo manual está en los scripts que pasen `-Harness`, y
+en reiniciar Claude Code después del `-Update`.
+
+- 🔴 **El parámetro `-Harness` ya no existe.** Pasarlo sale con 1, sin escribir nada, y con el error
+  de PowerShell:
+
+  ```
+  No se encuentra ningún parámetro que coincida con el nombre del parámetro 'Harness'.
+  ```
+
+  Hay que sacarlo de cualquier script, `.cmd` o CI que lo use. El harness es uno solo, y se instala
+  así:
+
+  ```powershell
+  .\install.ps1 -Project <ruta> -Usuario <nombre>
+  ```
+
+  Los argumentos sin nombre también dejan de andar: `-Project` y `-Usuario` van siempre con su
+  nombre.
+
+- 🔴 **Si el proyecto tenía `analisis`, el `-Update` lo retira.** El proyecto pasa a tener el producto
+  entero (`comun` y `desarrollo`), y salen:
+  - las skills y agentes `hu-escribir`, `hu-redactor` y `hu-refutador`;
+  - las reglas de "Trabajo funcional" del bloque `HARNESS:COMUN` del `CLAUDE.md`, que pasan a ser las
+    de "Trabajo técnico". El `CLAUDE.md` anterior queda en el backup de esa corrida.
+
+  `harness.config.json` no se toca. Si habías editado a mano alguno de esos archivos, queda en disco
+  y la salida lo nombra, pero sale del inventario: `-Doctor` y `-Uninstall` dejan de mirarlo. Mirá el
+  lockfile antes de actualizar: si en `.claude\harness.lock.json` el campo `harness` lista
+  `analisis`, quien usa el proyecto tiene que saberlo antes.
+
+- **La Context Bar queda en `RELOAD_REQUIRED`.** Hay que cerrar y volver a abrir la sesión de Claude
+  Code para que la active. El `-Update` lo avisa: *Reiniciá la sesión de Claude Code para activarla.*
+
+- 🔴 **Volver a 0.28.0 no se puede con `-Update`.** El lockfile nuevo no tiene el campo `harness`, y el
+  `-Update` y el `-Doctor -Project` del instalador de 0.28.0 mueren al leerlo, antes de tocar nada.
+  Para volver, primero se desinstala con este instalador y después se reinstala con el de 0.28.0:
+
+  ```powershell
+  .\install.ps1 -Project <ruta> -Uninstall
+  # con el repo del harness en 0.28.0:
+  .\install.ps1 -Project <ruta> -Harness desarrollo -Usuario <nombre>
+  ```
+
 ## 0.27.0 → 0.28.0
 
 `-Update` alcanza. Lo nuevo se ve al terminar:

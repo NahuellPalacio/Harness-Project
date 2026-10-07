@@ -1,0 +1,13 @@
+[4c6f0f3] factory exit 0, installed exit 0, schema orchestration-plan/1.0/orchestration-plan/1.0, differing leaves (fab vs installed) 3:
+    $.workUnits[0].normative.standards.ES0902.rules.C3.developmentStandardBaseline.status: 'RESOLVED' / 'UNRESOLVED'
+    $.workUnits[1].normative.standards.ES0902.rules.C3.developmentStandardBaseline.status: 'RESOLVED' / 'UNRESOLVED'
+    $.workUnits[2].normative.standards.ES0902.rules.C3.developmentStandardBaseline.status: 'RESOLVED' / 'UNRESOLVED'
+    harness_version fab/inst: '' '0.29.0'
+[current] factory exit 0, installed exit 0, schema orchestration-plan/2.0/orchestration-plan/2.0, differing leaves (fab vs installed) 3:
+    $.workUnits[0].normative.standards.ES0902.rules.C3.developmentStandardBaseline.status: 'RESOLVED' / 'UNRESOLVED'
+    $.workUnits[1].normative.standards.ES0902.rules.C3.developmentStandardBaseline.status: 'RESOLVED' / 'UNRESOLVED'
+    $.workUnits[2].normative.standards.ES0902.rules.C3.developmentStandardBaseline.status: 'RESOLVED' / 'UNRESOLVED'
+    harness_version fab/inst: '' '0.29.0'
+same set of differing paths at baseline and current: True
+baseline-only paths: []
+current-only paths: []

@@ -656,9 +656,12 @@ def compilar_unidades(proyecto, plan, scope, desde=__file__):
                                                    "version": version_matriz,
                                                    "rule": entrada_matriz})
                                            if entrada_matriz else None),
+            # Los checks que declara la norma, esten o no en el registro; nunca un check del
+            # hook (GuardrailCheck). Los `requiredChecks` de la unidad son checks del
+            # hook, no controles: unirlos aca hacia que la unidad declarara algo que no declara,
+            # y nunca cambio una resolucion, porque cerrar por check exige la matriz.
             "declaredChecks": sorted(set(list(bloque.get("declaredChecks") or [])
-                                         + list(normativa.get("declaredChecks") or [])
-                                         + list(wu.get("requiredChecks") or []))),
+                                         + list(normativa.get("declaredChecks") or []))),
             "declaredReviews": sorted(set(list(bloque.get("declaredReviews") or [])
                                           + list(normativa.get("declaredReviews") or []))),
             "checkRefs": [],
@@ -883,13 +886,23 @@ def corrida(plan, unidades, veredictos, avisos, contrato, revision):
 
 # -- compilar, de punta a punta ------------------------------------------------
 
-def _leer_plan(proyecto, clave):
+def _leer_plan(proyecto, clave, opcional=False):
+    """El plan guardado por la regla de lectura. `opcional`: uno que falta o no se lee da None."""
     plan, error = _leer_json(ruta_del_plan(proyecto, clave))
+    if opcional and not isinstance(plan, dict):
+        return None
     if plan is None:
         raise RefutacionInvalida(
             RULE_UNRESOLVED, "no hay plan para %s%s. Corré primero `plan %s --propuesta ...`."
             % (clave, " legible (%s)" % error if error else "", clave))
-    return plan
+    # 🔴 Por la regla de lectura del plan, la misma que usa `--replanificar`, y antes de
+    # cualquier escritura: un plan de otra version, o con un estado que no existe en 2.1, no
+    # compila, y la refutacion de la tarea y la cache quedan como estaban.
+    from . import plan as _plan
+    try:
+        return _plan.aceptar_guardado(plan, clave)
+    except _plan.PlanInvalido as e:
+        raise RefutacionInvalida(RULE_UNRESOLVED, str(e))
 
 
 def _veredictos_guardados(carpeta):
@@ -954,6 +967,11 @@ def compilar(proyecto, clave, desde=__file__):
     si no, deja de valer y se avisa. Dos compilaciones seguidas dejan los mismos bytes.
     """
     clave = validar_clave(clave)
+    # La regla de lectura del plan va antes que la compuerta, que escribe el estado derivado de la
+    # tarea: un plan guardado que no se reconoce -otra version, o un estado que no existe en 2.1-
+    # sale nombrando el campo y no deja nada escrito (integracion-flow-governance-0-31). Un plan
+    # que falta o no se lee sigue siendo asunto de la compuerta.
+    _leer_plan(proyecto, clave, opcional=True)
     compuerta(proyecto, clave)
     carpeta = carpeta_de(proyecto, clave)
     plan = _leer_plan(proyecto, clave)

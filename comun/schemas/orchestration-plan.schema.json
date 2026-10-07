@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "orchestration-plan/1.0",
+  "$id": "orchestration-plan/2.1",
   "title": "ORCHESTRATION_PLAN",
   "description": "El plan de trabajo de una tarea: que hay que hacer, quien deberia hacerlo, con que capacidades, en que orden y con cuanto modelo. Lo arma el nucleo de orquestacion del harness de desarrollo a partir del task-context/1.0 que dejo el Context Resolver y de una propuesta escrita por dev-orchestrator. Vive en .claude/planes/<CLAVE>.json, que es regenerable y no se versiona. Este contrato NO ejecuta nada: READY_FOR_EXECUTION es un estado del documento, no una invocacion. El vocabulario y los estados estan en ingles, como en project-context/1.1 y task-context/1.0; lo que se le muestra a una persona va en espanol, segun ADR-0011. Lo valida el interprete de subconjunto de contexto-armar.py: type, properties, required, items, enum y pattern, y nada mas.",
   "type": "object",
@@ -16,7 +16,7 @@
       "required": ["schema_version", "plan_id", "plan_version", "generated_at",
                    "harness_version", "task_key", "task_context_ref"],
       "properties": {
-        "schema_version": { "type": "string", "enum": ["orchestration-plan/1.0"] },
+        "schema_version": { "type": "string", "enum": ["orchestration-plan/2.1"] },
         "plan_id": {
           "description": "pln_<clave>. No lleva resumen de hash: el mismo motivo que en task-context/1.0, un id derivado del hash vuelve al hash no recomputable por quien lee el archivo.",
           "type": "string",
@@ -59,7 +59,7 @@
     },
 
     "agents": {
-      "description": "Quien participa. `exists` lo decide el disco, no el roster.",
+      "description": "Quien participa. `exists` lo decide el registro de agentes (Agent Registry), no el disco: es true solo si el registro declara al agente y su validacion lo deja rutear. El disco diagnostica -un .md que falta, un id que no coincide- y no da de alta a nadie.",
       "type": "array",
       "items": {
         "type": "object",
@@ -195,7 +195,7 @@
           "domain": { "type": "string" },
           "assignedAgent": { "type": "string" },
           "agentExists": {
-            "description": "Si el agente asignado tiene su .md de verdad. Va en la unidad y no solo en los avisos del plan: un especialista recibe su unidad suelta, y tiene que poder saber ahi mismo que el agente al que esta asignada todavia no existe, sin ir a buscar una lista de avisos tres niveles mas arriba.",
+            "description": "Si el registro de agentes (Agent Registry) declara al agente asignado y su validacion lo deja rutear. Lo decide el registro, no el disco: un .md en disco que el registro no declara da false, y el disco solo diagnostica el motivo, que va en `agentValidation`. Va en la unidad y no solo en los avisos del plan: un especialista recibe su unidad suelta, y tiene que poder saber ahi mismo que el agente al que esta asignada todavia no existe, sin ir a buscar una lista de avisos tres niveles mas arriba.",
             "type": "boolean"
           },
 
@@ -307,19 +307,20 @@
           },
 
           "status": {
+            "description": "Se calcula, como el del plan. PENDING: planificada y sin nada que la frene. BLOCKED: le falta una capacidad, o su agente no se rutea; el porque va en blockers. WAITING_FOR_HUMAN_APPROVAL: el tier de modelo que pide necesita una aprobacion humana. Son estados del documento, no de una corrida: ninguno dice que la unidad se delego o se ejecuto.",
             "type": "string",
-            "enum": ["PENDING", "BLOCKED", "WAITING_FOR_HUMAN_APPROVAL", "READY"]
+            "enum": ["PENDING", "BLOCKED", "WAITING_FOR_HUMAN_APPROVAL"]
           },
 
           "blockers": {
-            "description": "Por que la unidad esta BLOCKED por el flujo, con el codigo exacto de quien lo decidio. Hoy: un agente que el Agent Registry no rutea (agents.routing, con el `result` de resolver_ruteo). Opcional: una unidad sin bloqueos no lo lleva.",
+            "description": "Por que la unidad esta BLOCKED, con el input del registro y el codigo exacto de quien lo decidio: agents.routing con el `result` del Agent Registry, plan.capabilityGaps con CAPABILITY_GAP, o plan.capabilityStatus con CAPABILITY_UNAVAILABLE. Opcional en el schema: una unidad que no esta BLOCKED no lo lleva. En 2.1, una unidad BLOCKED lo lleva y no vacio; el validador no expresa esa condicion, y la exigen el productor y la regla de lectura (plan.aceptar_guardado). Desde orchestration-plan/2.1.",
             "type": "array",
             "items": {
               "type": "object",
               "required": ["inputId", "code"],
               "additionalProperties": false,
               "properties": {
-                "inputId": { "type": "string" },
+                "inputId": { "type": "string", "pattern": "." },
                 "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
               }
             }
@@ -474,11 +475,9 @@
     },
 
     "status": {
-      "description": "Se CALCULA del contenido, no lo declara quien arma el plan: con huecos de capacidad o aprobaciones pendientes, un plan no puede decir que esta listo. BLOCKED es que las precondiciones del flujo no se cumplen o no se evaluaron.",
+      "description": "Se CALCULA del contenido, no lo declara quien arma el plan: con huecos de capacidad o aprobaciones pendientes, un plan no puede decir que esta listo. BLOCKED: las precondiciones del flujo no se cumplen o no se evaluaron, una capacidad soportada no esta disponible o una fuente exigida bloquea; la causa queda escrita en flowPreconditions, capabilityStatus, knowledgeSources o en los blockers de la unidad (desde 2.1). CAPABILITY_RESOLUTION: hay un hueco de capacidad o una unidad BLOCKED. WAITING_FOR_HUMAN_APPROVAL: hay una aprobacion en PENDING. READY_FOR_EXECUTION es un estado del documento -sin huecos, sin aprobaciones pendientes y sin unidades bloqueadas-, no una invocacion ni una orden de arrancar. No hay estados de delegacion ni de ejecucion: los de la tarea viven en task-flow-state, y este contrato describe un documento y no lo que pasa despues.",
       "type": "string",
-      "enum": ["RECEIVED", "ANALYZING", "PLANNING", "BLOCKED", "CAPABILITY_RESOLUTION",
-               "WAITING_FOR_TOOL", "WAITING_FOR_HUMAN_APPROVAL", "READY_FOR_DELEGATION", "DELEGATING",
-               "REPLANNING", "READY_FOR_EXECUTION", "FAILED"]
+      "enum": ["BLOCKED", "CAPABILITY_RESOLUTION", "WAITING_FOR_HUMAN_APPROVAL", "READY_FOR_EXECUTION"]
     }
   }
 }

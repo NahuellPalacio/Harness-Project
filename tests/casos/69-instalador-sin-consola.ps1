@@ -17,7 +17,7 @@ $scTimeoutSeg = 180
 $scHuellasDeTraza = @('En línea:', 'At line:', 'CategoryInfo', 'FullyQualifiedErrorId', 'Traceback (most recent call last)')
 
 function Invoke-InstaladorEnConsola {
-    <# Corre install.ps1 -Project <nuevo> -Harness analisis <Extra> con -NonInteractive y una consola real como stdin. #>
+    <# Corre install.ps1 -Project <nuevo> <Extra> con -NonInteractive y una consola real como stdin. #>
     param([string[]] $Extra = @())
     $dir = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-consola-' + [System.Guid]::NewGuid().ToString('N').Substring(0, 8))
     $proy = Join-Path $dir 'proyecto'
@@ -32,7 +32,7 @@ function Invoke-InstaladorEnConsola {
     [System.IO.File]::WriteAllText($envoltorio, (@(
         '[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false'
         "$lanzar -Command '[Console]::IsInputRedirected' *> $(& $citar $sonda)"
-        "$lanzar -File $(& $citar $scInstalador) -Project $(& $citar $proy) -Harness analisis $extraTxt *> $(& $citar $salida)"
+        "$lanzar -File $(& $citar $scInstalador) -Project $(& $citar $proy) $extraTxt *> $(& $citar $salida)"
         "[System.IO.File]::WriteAllText($(& $citar $codigo), [string]`$LASTEXITCODE)"
     ) -join "`r`n"), (New-Object System.Text.UTF8Encoding $true))
     try {
@@ -97,7 +97,7 @@ $scDirUpd = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-updconfirm-' +
 New-Item -ItemType Directory -Path $scDirUpd -Force | Out-Null
 try {
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scInstalador `
-        -Project $scDirUpd -Harness analisis -Usuario 'Prueba Update Confirm' 2>&1 | Out-Null
+        -Project $scDirUpd -Usuario 'Prueba Update Confirm' 2>&1 | Out-Null
     $scLockUpd = Join-Path $scDirUpd '.claude\harness.lock.json'
     $scHashUpd = if (Test-Path -LiteralPath $scLockUpd) { (Get-FileHash -LiteralPath $scLockUpd).Hash } else { '' }
     # El stdin del hijo es un pipe vacío que se cierra: no hereda el de la compuerta (refutación, H3).
@@ -129,7 +129,7 @@ New-Item -ItemType Directory -Path $scDirCerrado -Force | Out-Null
 try {
     $psiSc = New-Object System.Diagnostics.ProcessStartInfo
     $psiSc.FileName = 'powershell.exe'
-    $psiSc.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $scInstalador + '" -Project "' + $scDirCerrado + '" -Harness analisis'
+    $psiSc.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $scInstalador + '" -Project "' + $scDirCerrado + '"'
     $psiSc.UseShellExecute = $false
     $psiSc.CreateNoWindow = $true
     $psiSc.RedirectStandardInput = $true

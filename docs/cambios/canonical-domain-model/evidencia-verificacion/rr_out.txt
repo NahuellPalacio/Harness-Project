@@ -1,0 +1,17 @@
+SEED old plan exit 0 | orchestration-plan/1.0 READY_FOR_EXECUTION ['PENDING', 'PENDING', 'PENDING'] pv 1 hist 1
+A current plan exit 0 orchestration-plan/2.0 READY_FOR_EXECUTION
+A 2.0 + refute --compile exit 0 plan bytes unchanged: True units: 135 
+A 2.0 + --replanificar exit 0 orchestration-plan/2.0 pv 2 hist 2 hist kept: True 
+B 1.0 + refute --compile: old exit 0 new exit 0 | plan bytes unchanged: True | still 1.0: orchestration-plan/1.0
+B units old/new: 135 135 | same ids/WU/rules: True
+B units differing outside declaredChecks: []
+B same cacheKey/status/resolutionPath: True
+B roster names in old declaredChecks: ['dev-accesibilidad-html', 'dev-api-rutas', 'dev-dependencias', 'dev-infra-en-codigo']
+B roster names in new declaredChecks: []
+B removed from declaredChecks (all units): ['dev-accesibilidad-html', 'dev-api-rutas', 'dev-dependencias', 'dev-infra-en-codigo'] | added: []
+B new declaredChecks ids not in control-registry: 9 ['application-logging-coverage', 'architecture-documentation', 'core-rest-api-layer', 'environment-config-externalized', 'environment-value-hardcoding', 'functional-documentation', 'knowledge-transfer-documentation', 'nonfunctional-documentation', 'runtime-log-level-configuration']
+B run.json status/counts old INCOMPLETE {'blocked': 95, 'cacheHits': 0, 'checkResolved': 0, 'cumple': 0, 'incumple': 0, 'pending': 40, 'semanticRuns': 0, 'sinVerificar': 135, 'units': 135} new INCOMPLETE {'blocked': 95, 'cacheHits': 0, 'checkResolved': 0, 'cumple': 0, 'incumple': 0, 'pending': 40, 'semanticRuns': 0, 'sinVerificar': 135, 'units': 135}
+B run.json differing keys: []
+C 1.0 + --replanificar exit 0 orchestration-plan/2.0 pv 1 -> 2 hist 1 -> 2 kept: True 
+C written 2.0 validates against 2.0 schema: []
+seed 1.0 as-is vs 2.0 schema errors: ['$.meta.schema_version: `orchestration-plan/1.0` no esta entre los valores permitidos (orchestration-plan/2.0)']

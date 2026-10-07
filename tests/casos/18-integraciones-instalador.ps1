@@ -51,7 +51,7 @@ Assert-Verdadero 'E-33 precondicion: el arbol de origen tiene bytecode compilado
 
 $demo = New-ProyectoInteg 'harness-integ'
 try {
-    $r = Invoke-InstaladorInteg @('-Project', $demo, '-Harness', 'desarrollo', '-Usuario', 'Ana Prueba')
+    $r = Invoke-InstaladorInteg @('-Project', $demo, '-Usuario', 'Ana Prueba')
     Assert-Igual 'instalar desarrollo sale con codigo 0' 0 $r.Codigo
 
     $dirBin  = Join-Path $demo '.claude\harness\bin\desarrollo'
@@ -117,22 +117,4 @@ try {
 }
 finally {
     if (Test-Path $demo) { Remove-Item $demo -Recurse -Force -ErrorAction SilentlyContinue }
-}
-
-# -- E-30: sin desarrollo, nada de esto ---------------------------------------------
-
-$demoSinDev = New-ProyectoInteg 'harness-integ-sin-dev'
-try {
-    $r = Invoke-InstaladorInteg @('-Project', $demoSinDev, '-Harness', 'analisis', '-Usuario', 'Ana Prueba')
-    Assert-Igual 'instalar analisis sale con codigo 0' 0 $r.Codigo
-
-    Assert-Verdadero 'E-30 sin desarrollo, no hay bin de integraciones' `
-        (-not (Test-Path (Join-Path $demoSinDev '.claude\harness\bin\desarrollo'))) `
-        'se instalo el bin igual'
-    Assert-Verdadero 'E-30 sin desarrollo, no hay harness.integraciones.json' `
-        (-not (Test-Path (Join-Path $demoSinDev '.claude\harness.integraciones.json'))) `
-        'se sembro la configuracion igual'
-}
-finally {
-    if (Test-Path $demoSinDev) { Remove-Item $demoSinDev -Recurse -Force -ErrorAction SilentlyContinue }
 }
