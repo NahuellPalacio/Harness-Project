@@ -102,6 +102,50 @@ Los planes 1.0 que escribió Flow Governance antes de la integración pueden ten
 `status: BLOCKED`, que en 2.1 existe. Se leen como se lee un 1.0 en 0.30.0: tal cual, y pasan a 2.1
 cuando se reescriben. `DELEGATING` o `READY` siguen rechazándose.
 
+Leer no es compilar. Después de la regla de lectura, `refute --compile` pasa por la compuerta del
+flujo, que exige `flowPreconditions` resueltas: un 2.0 escrito por 0.30.0, o un 1.0 sin ellas, sale
+con 2 y `PLAN_NOT_READY`. Es la semántica calificada de las Waves y no se afloja: se resuelve con
+`plan --replanificar`. Por eso los tests de 0.30.0 que compilaban un plan guardado (E-16, E-16b,
+E-16c y E-45 de `canonical-domain-model`) le agregan las precondiciones reales del proyecto antes de
+compilar; lo que siguen afirmando es la lectura, no que un plan sin precondiciones esté listo.
+
+### D8. Reescribir un plan guardado lo pasa a 2.1, por la misma regla de lectura
+
+Tres caminos reescriben un plan que ya está en disco: `--replanificar`, `refute --compile` (que lo
+lee) y una decisión humana (`flujo --approve` o `--alternative`, que lo replanifica). Los tres leen
+por `plan.aceptar_guardado`. `refute --compile` la aplica antes de la compuerta, que escribe el
+estado derivado de la tarea: un plan con un estado retirado sale nombrando el campo y no deja nada
+escrito. Un plan que falta o no se lee sigue siendo asunto de la compuerta.
+
+`plan.replanificar` migra lo que reescribe: la cadena de versión pasa a 2.1, y una unidad `BLOCKED`
+que no traía `blockers` los recibe derivados del contenido, como se deriva el estado (el ruteo del
+registro de hoy y sus capacidades faltantes). Si el contenido no dice por qué está bloqueada, se
+rechaza y se pide regenerar. Lo encontró el refutador: una decisión sobre un 2.0 o un 1.0 caía al
+escribir, porque `escribir` valida contra 2.1 y `replanificar` dejaba la versión vieja.
+
+Lo que se descartó: dejar que `escribir` acepte 2.0 y 1.0. Es el «enum más flojo» que D16 de
+`canonical-domain-model` descarta.
+
+### D9. Lo que esta integración pisa de 0.30.0 y de harness-unico
+
+Los tests de esas dos versiones suponían un mundo sin Flow Governance. Lo que cambia, y por qué:
+
+| Test | Qué afirmaba | Qué afirma ahora | Por qué |
+|---|---|---|---|
+| canonical E-13, E-15, E-16, E-17, E-24, E-45, E-47 | `orchestration-plan/2.0`, tres estados | 2.1, cuatro estados | D1 |
+| canonical E-02 S5, E-21 y los planes armados en los tests | Un plan sin precondiciones podía estar listo | Los fixtures traen un repositorio `MATCHED` y precondiciones resueltas; la precedencia empieza por `BLOCKED` | La semántica de las Waves (`flujo-precondiciones`), como ya hizo `20_orquestacion.py` |
+| canonical E-16, E-16b, E-16c, E-45 | Un plan guardado compila tal cual | Compila después de recibir las precondiciones reales | D5 |
+| canonical E-16b | El código no nombra `READY` | `READY` se admite solo como estado de `flowPreconditions` | Es otro contrato: el de las precondiciones, no el del plan |
+| canonical E-17 | El plan es igual al de `4c6f0f3`, salvo fechas | Igual, salvo los campos que suma Flow Governance, que se afirman uno por uno | `flowPreconditions`, `capabilityStatus`, `knowledgeSources` y el repositorio de la unidad son de las Waves |
+| canonical E-18b | Un ciclo sale con 1 | Sale con 2 | D6, E-18 |
+| canonical E-22 | Dos módulos arman la ruta de `.claude/planes/` | Cinco, más `exigir_plan_vigente` | Las Waves leen el plan desde el flujo, las decisiones y las precondiciones |
+| canonical E-23 | `dev-iniciador-code` es un agente sin registrar | El huérfano es uno sembrado en una copia de la fábrica; `dev-iniciador-code` está registrado | La Wave 6 lo registró |
+| canonical E-41 | Todo subprocess lanza git o markitdown | También `taskkill`, solo desde `flujo/repositorio.py` | La Wave 3 mata el árbol de `git remote -v` al vencer su límite |
+| canonical E-05 | 46 schemas | 52 | D7 |
+| harness-unico (los dos archivos) | La base es `e5d7a14` | La base es `ea2dff7`: 282 archivos instalados, 11 agentes, 2 huérfanos; `flujo/estado.py`, `estado_de_tarea/decisiones.py` y `tool_policy.py` entre las excepciones de E-16 | La línea parte de 0.28.0 con Flow Governance; D4, D8 y R11 tocan esos tres archivos |
+
+Cada test pisado cita esta spec en un comentario al lado de su id original.
+
 ### D6. Las resoluciones del merge
 
 | Archivo | Qué queda |
@@ -157,6 +201,9 @@ una decisión de ADR, no de esta integración.
 | `comun/schemas/orchestration-plan.schema.json` | `$id` y `meta.schema_version` 2.1; `BLOCKED` en el estado del plan; `blockers` opcional en la unidad |
 | `bin/orquestacion/plan.py` | Escribe 2.1; `blockers` en toda unidad `BLOCKED`; lee 2.1, 2.0 y 1.0; rechaza un 2.1 con una unidad `BLOCKED` sin `blockers`; `agents.routing` solo de los `blockers` de ruteo |
 | `bin/flujo/estado.py` | `agents.routing` solo de los `blockers` de ruteo |
+| `bin/orquestacion/refutacion.py` | `compilar` aplica la regla de lectura antes de la compuerta (D8) |
+| `bin/estado_de_tarea/decisiones.py` | Una decisión lee el plan por la regla de lectura (D8) |
+| `plan.replanificar` | Migra a 2.1 lo que reescribe, con los `blockers` derivados (D8) |
 | Las seis resoluciones de D6 | El merge |
 | `docs/dominio/modelo-canonico.md`, `docs/orquestacion.md` | Dicen 2.1, `BLOCKED` y `blockers` |
 | `docs/dominio/modelo-canonico.md` | Los seis conceptos de D7, con su fila en el catálogo, en el mapa de contextos y en el vocabulario. ModelTierApproval dice que `flujo` la resuelve |
@@ -239,6 +286,13 @@ una decisión de ADR, no de esta integración.
 
 - **E-21** — Los seis schemas de Flow Governance figuran en Persistencia y contrato de un concepto de
   docs/dominio/modelo-canonico.md, y la tabla de D7 dice cuál. · rojo visto: si
+
+### Reescribir un plan guardado
+
+- **E-22** — Una decisión humana sobre un plan 2.0 o 1.0 guardado lo escribe como 2.1, con la
+  versión siguiente y `blockers` derivados en sus unidades `BLOCKED`. Una unidad `BLOCKED` cuyo
+  contenido no dice por qué se rechaza nombrándola, y un plan con un estado retirado se rechaza sin
+  tocar el archivo. · rojo visto: si
 
 ## Cómo se verifica
 

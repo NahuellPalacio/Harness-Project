@@ -71,7 +71,9 @@ def _aprobacion(plan, unidad):
 def _efecto_en_el_plan(proyecto, clave, plan, abierta, accion, opcion):
     """APPROVE o USE_ALTERNATIVE: la aprobacion de esa unidad, en el plan, con su historia."""
     from orquestacion import plan as orq_plan
-    documento = json.loads(json.dumps(plan))
+    # La misma regla de lectura que refute --compile y --replanificar: un plan de otra version, o
+    # con un estado que no existe en 2.1, no se reescribe (integracion-flow-governance-0-31, D8).
+    documento = json.loads(json.dumps(orq_plan.aceptar_guardado(plan, clave)))
     solicitud = _aprobacion(documento, abierta["workUnitId"])
     if solicitud is None:
         raise ErrorDeDecision(INTENT_STALE, "la aprobacion de %s ya no esta pendiente."

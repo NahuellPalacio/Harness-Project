@@ -74,12 +74,11 @@ class PlanInvalido(Exception):
 
 
 class PlanRechazado(PlanInvalido):
-    """Un rechazo por un invariante del modelo canonico, y la CLI lo saca con codigo 2.
+    """Un rechazo por un invariante del modelo canonico: un id de unidad repetido, una unidad de
+    un dominio que no esta en el plan, o un plan guardado que la regla de lectura no acepta.
 
-    Son tres y nada mas: un id de unidad repetido, una unidad de un dominio que no esta en el
-    plan, y un plan guardado que la regla de lectura no acepta. Los PlanInvalido de antes -un
-    ciclo, una dependencia rota, un plan que no valida- siguen saliendo como salian: mapearlos
-    a 2 no evita ningun artefacto y no entra por la regla de inclusion (D15).
+    La CLI saca con 2 todo PlanInvalido, no solo este: lo califico la Wave 6 de Flow Governance y
+    lo fija integracion-flow-governance-0-31 (D6, E-18). Un ciclo o una dependencia rota tambien.
     """
 
 
@@ -644,15 +643,40 @@ def aceptar_guardado(documento, clave=""):
                 and not _bloqueos_validos(unidad.get("blockers"))):
             raise PlanRechazado(
                 "la unidad '%s' del plan guardado de %s esta BLOCKED y no dice por que: "
-                "`workUnits[%d].blockers` falta o esta vacio. En %s una unidad BLOCKED lleva sus "
-                "blockers. %s" % (str(unidad.get("id") or ""), clave, i, VERSION_SCHEMA, regenerar))
+                "`workUnits[%d].blockers` falta, esta vacio o tiene un item sin `inputId` o sin "
+                "`code`. En %s una unidad BLOCKED lleva sus blockers. %s"
+                % (str(unidad.get("id") or ""), clave, i, VERSION_SCHEMA, regenerar))
     return documento
 
 
 def _bloqueos_validos(bloqueos):
-    """Una lista no vacia de blockers, cada uno con su input y su codigo."""
+    """Una lista no vacia de blockers, cada uno con su input y su codigo. Un 2.1 que no la trae se
+    rechaza con un mismo mensaje, falte, este vacia o tenga un item sin `inputId` o sin `code`."""
     return isinstance(bloqueos, list) and bool(bloqueos) and all(
         isinstance(b, dict) and b.get("inputId") and b.get("code") for b in bloqueos)
+
+
+def _migrar(documento):
+    """Un 2.0 o un 1.0 legible, al contrato de hoy. En un 2.1 no cambia nada."""
+    meta = documento.setdefault("meta", {})
+    if meta.get("schema_version") == VERSION_SCHEMA:
+        return
+    clave = str(meta.get("task_key") or "<KEY>")
+    meta["schema_version"] = VERSION_SCHEMA
+    capacidades = documento.get("capabilities") or {"missing": []}
+    no_soportadas = set(h.get("capability") for h in documento.get("capabilityGaps") or [])
+    for unidad in documento.get("workUnits") or []:
+        if unidad.get("status") != "BLOCKED" or _bloqueos_validos(unidad.get("blockers")):
+            continue
+        bloqueos = _bloqueos_de_unidad(
+            _ruteo_de_agente(str(unidad.get("assignedAgent") or "")),
+            unidad.get("requiredCapabilities") or [], capacidades, no_soportadas)
+        if not bloqueos:
+            raise PlanRechazado(
+                "la unidad '%s' del plan de %s esta BLOCKED y su contenido no dice por que: no se "
+                "puede pasar a %s. Hay que regenerarlo con `dev-harness.py plan %s --propuesta "
+                "...`." % (str(unidad.get("id") or ""), clave, VERSION_SCHEMA, clave))
+        unidad["blockers"] = bloqueos
 
 
 def _valor(valor):
@@ -661,10 +685,16 @@ def _valor(valor):
 
 
 def replanificar(documento, cambios, motivo, disparador):
-    """Sube la version y deja escrito por que. Un plan que cambia solo no se puede auditar."""
+    """Sube la version y deja escrito por que. Un plan que cambia solo no se puede auditar.
+
+    Reescribir un plan guardado lo pasa a 2.1 (integracion-flow-governance-0-31, D8): la
+    cadena de version, y los blockers de cada unidad BLOCKED que no los traia, derivados del
+    contenido como se deriva el estado. Si no se pueden derivar, se rechaza: regenerarlo.
+    """
     if not motivo:
         raise PlanInvalido("una replanificacion sin motivo es un plan que cambio solo.")
     documento = json.loads(json.dumps(documento))
+    _migrar(documento)
     documento["meta"]["plan_version"] += 1
     documento["meta"]["generated_at"] = ahora()
     documento["planHistory"].append({

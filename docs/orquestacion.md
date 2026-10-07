@@ -223,17 +223,23 @@ validador no expresa la condición; la exigen `plan` al escribir y la regla de l
 El plan se escribe siempre como `orchestration-plan/2.1`. En 0.30.0 era `orchestration-plan/2.0`, y
 hasta 0.29.0, `orchestration-plan/1.0`, que declaraba estados que el código nunca escribía. La 2.1
 agrega `BLOCKED` al plan y `blockers` a la unidad: todo 2.0 válido sigue siendo válido. `refute
---compile` y `--replanificar` leen un plan guardado por una sola regla:
+--compile`, `--replanificar` y la aplicación de una decisión humana (`flujo --approve` o
+`--alternative`) leen un plan guardado por una sola regla:
 
 | Lo que encuentran | Qué hacen |
 |---|---|
 | Un `2.1` | Lo usan, salvo que una unidad `BLOCKED` no traiga `blockers`: eso se rechaza con 2, nombrando la unidad |
-| Un `2.0` o un `1.0` cuyos estados existen en 2.1 | Lo usan tal cual, también con `status: BLOCKED`. `refute --compile` no lo reescribe; `--replanificar` lo escribe como `2.1`, con la versión siguiente y toda su historia |
+| Un `2.0` o un `1.0` cuyos estados existen en 2.1 | Lo leen tal cual, también con `status: BLOCKED`. `refute --compile` no lo reescribe. `--replanificar` y una decisión humana lo escriben como `2.1`, con la versión siguiente y toda su historia; a una unidad `BLOCKED` sin `blockers` se los derivan del contenido, y si no se puede, lo rechazan y piden regenerarlo |
 | Un `2.0` o un `1.0` con un estado que no existe en 2.1, como un plan `DELEGATING` o una unidad `READY` | Lo rechazan: salen con 2, nombran el campo y el valor, y piden regenerarlo con `plan --propuesta`. No se migra, porque no hay un estado 2.1 que signifique eso |
 | Otra versión, o ninguna | Lo rechazan igual, nombrando la versión |
 
 El rechazo no toca el plan ni la refutación de esa tarea. Lo que la compuerta normativa haya escrito
 antes de leer el plan queda.
+
+Leerlo no es poder compilarlo. Después de la regla de lectura, `refute --compile` pasa por la
+compuerta del flujo, y un plan sin `flowPreconditions` resueltas no está listo: un `2.0` de 0.30.0 o
+un `1.0` sin ellas sale con 2 y `PLAN_NOT_READY`. Se resuelve con `plan --replanificar`, que lo
+vuelve a armar con las precondiciones de hoy.
 
 La propuesta tiene dos reglas más que el núcleo hace cumplir: los ids de las unidades no se repiten,
 y el dominio de cada unidad tiene que estar en `domains`. Si no, el plan no se escribe.

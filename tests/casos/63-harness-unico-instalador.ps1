@@ -418,8 +418,12 @@ try {
                 '.claude\harness\schemas\normative-signal.schema.json',
                 '.claude\harness\schemas\orchestration-plan.schema.json',
                 # Y docs/cambios/integracion-flow-governance-0-31: el ruteo de agentes se lee de
-                # los blockers de ruteo (D4).
-                '.claude\harness\bin\desarrollo\flujo\estado.py')
+                # los blockers de ruteo (D4); una decision lee el plan por la regla de lectura (D8).
+                # Y R11 de la calificacion de Flow Governance (dd73021), que endurece la politica de
+                # herramientas.
+                '.claude\harness\bin\desarrollo\flujo\estado.py',
+                '.claude\harness\bin\desarrollo\estado_de_tarea\decisiones.py',
+                '.claude\harness\hooks\lib\tool_policy.py')
             $distintos = @()
             foreach ($ruta in $huBRutas) {
                 if ($tocados -contains $ruta) { continue }

@@ -268,10 +268,12 @@ def test_e09_la_precedencia_de_estado_de(t):
     """E-09 — precondiciones, caida o fuente (BLOCKED); hueco; aprobacion; unidad BLOCKED; listo."""
     listas = {"status": "READY", "questions": []}
 
-    def doc(previas=listas, caida=False, hueco=False, aprobacion=False, bloqueada=False):
+    def doc(previas=listas, caida=False, fuente=False, hueco=False, aprobacion=False,
+            bloqueada=False):
         return {"flowPreconditions": previas,
                 "capabilityStatus": [{"availability": "SUPPORTED_UNAVAILABLE"}] if caida else [],
-                "knowledgeSources": [],
+                "knowledgeSources": [{"standard": "ES0901", "state": "INTEGRITY_ALERT",
+                                      "blocking": True}] if fuente else [],
                 "capabilityGaps": [{"capability": "no.existe"}] if hueco else [],
                 "humanApprovals": [{"status": "PENDING" if aprobacion else "APPROVED"}],
                 "workUnits": [{"id": "u1", "status": "BLOCKED" if bloqueada else "PENDING"}]}
@@ -282,6 +284,11 @@ def test_e09_la_precedencia_de_estado_de(t):
     t.igual("E-09 una pregunta bloqueante: BLOCKED", "BLOCKED", P.estado_de(
         doc(previas={"status": "READY", "questions": [{"blocking": True}]}, **todo)))
     t.igual("E-09 una capacidad caida: BLOCKED", "BLOCKED", P.estado_de(doc(caida=True, **todo)))
+    t.igual("E-09 una fuente que bloquea, aunque haya de todo: BLOCKED", "BLOCKED",
+            P.estado_de(doc(fuente=True, **todo)))
+    t.igual("E-09 una fuente que no bloquea no frena nada", "READY_FOR_EXECUTION",
+            P.estado_de(dict(doc(), knowledgeSources=[{"standard": "ES0901", "state": "STALE",
+                                                       "blocking": False}])))
     t.igual("E-09 un hueco pesa mas que una aprobacion", "CAPABILITY_RESOLUTION",
             P.estado_de(doc(hueco=True, aprobacion=True, bloqueada=True)))
     t.igual("E-09 una aprobacion pesa mas que una unidad BLOCKED", "WAITING_FOR_HUMAN_APPROVAL",
@@ -369,6 +376,55 @@ def test_e12_se_leen_tres_versiones(t):
     sin = _con(plan)
     del sin["meta"]["schema_version"]
     _rechaza(t, "E-12 uno sin version", sin, "schema_version")
+
+
+def _por_los_dos_comandos(t, nombre, documento, agujas):
+    """refute --compile y --replanificar sobre el plan guardado: salen con 2, nombran lo que
+    rechazan y el archivo no cambia."""
+    for comando in ("refute --compile", "--replanificar"):
+        raiz = M20._proyecto_con_contexto(repositorio=True)
+        try:
+            destino = Path(raiz) / ".claude" / "planes" / (M20.CLAVE + ".json")
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            destino.write_text(json.dumps(documento), encoding="utf-8")
+            antes = destino.read_bytes()
+            if comando == "refute --compile":
+                argv = ["refute", M20.CLAVE, "--compile", "--proyecto", raiz]
+            else:
+                propuesta = Path(raiz) / "prop.json"
+                propuesta.write_text(json.dumps(M20._propuesta()), encoding="utf-8")
+                argv = ["plan", M20.CLAVE, "--proyecto", raiz, "--replanificar", str(propuesta),
+                        "--motivo", "x"]
+            codigo, _, error = M20._correr_cli(argv)
+            t.igual("%s, %s: sale 2" % (nombre, comando), 2, codigo)
+            for aguja in agujas:
+                t.contiene("%s, %s: nombra %s" % (nombre, comando, aguja), aguja, error)
+            t.igual("%s, %s: el archivo no cambio" % (nombre, comando), antes, destino.read_bytes())
+        finally:
+            shutil.rmtree(raiz, ignore_errors=True)
+
+
+def test_e12_los_comandos_rechazan_otra_version(t):
+    """E-12 — refute --compile y --replanificar rechazan con 2 otra version o ninguna, nombrandola."""
+    plan = _armar([_lista()])
+    _por_los_dos_comandos(t, "E-12 un 3.0", _con(plan, "orchestration-plan/3.0"),
+                          ["orchestration-plan/3.0"])
+    sin = _con(plan)
+    del sin["meta"]["schema_version"]
+    _por_los_dos_comandos(t, "E-12 uno sin version", sin, ["schema_version"])
+
+
+def test_e13_los_comandos_rechazan_lo_retirado(t):
+    """E-13 — DELEGATING en el plan o READY en una unidad, en un 1.0 o un 2.0: los dos comandos
+    salen con 2 nombrando el campo y el valor, y piden regenerarlo."""
+    plan = _armar([_lista()])
+    for version in (V10, V20):
+        _por_los_dos_comandos(t, "E-13 un %s DELEGATING" % version,
+                              _con(plan, version, "DELEGATING"),
+                              ["status: DELEGATING", "--propuesta"])
+        _por_los_dos_comandos(t, "E-13 un %s con una unidad READY" % version,
+                              _con(plan, version, unidad={"status": "READY"}),
+                              ["workUnits[0].status: READY", "--propuesta"])
 
 
 def test_e13_blocked_se_lee_y_lo_retirado_no(t):
@@ -486,3 +542,71 @@ def test_e19_la_documentacion_dice_2_1(t):
         t.verdadero("E-19 %s nombra BLOCKED como estado del plan" % ruta.name,
                     re.search(r"BLOCKED[^\n]*(plan|precondici)|(plan|precondici)[^\n]*BLOCKED",
                               texto) is not None)
+
+
+# -- E-22: reescribir un plan guardado lo pasa a 2.1 ----------------------------------------
+
+def _decisiones():
+    return importlib.import_module("estado_de_tarea.decisiones")
+
+
+def _como_0_30_0(plan, version=V20):
+    """Lo que escribia 0.30.0 (o las Waves en 1.0): sin blockers en las unidades."""
+    doc = _con(plan, version)
+    for u in doc["workUnits"]:
+        u.pop("blockers", None)
+    return doc
+
+
+def test_e22_una_decision_sobre_un_plan_viejo_lo_escribe_en_2_1(t):
+    """E-22 — una decision humana sobre un plan 2.0 o 1.0 guardado lo escribe como 2.1, con la
+    version siguiente y blockers derivados en sus unidades BLOCKED; si no se pueden derivar, o el
+    plan tiene un estado retirado, se rechaza y el archivo no cambia."""
+    from flujo import interaccion
+    for version in (V20, V10):
+        raiz = M20._proyecto_con_contexto(repositorio=True)
+        try:
+            destino = Path(raiz) / ".claude" / "planes" / (M20.CLAVE + ".json")
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            viejo = _como_0_30_0(_armar([_cara(), _hueco()]), version)
+            destino.write_text(json.dumps(viejo), encoding="utf-8")
+            abierta = {"workUnitId": "u-cara", "interactionId": "ixn-0000000000000000"}
+            escrito = _decisiones()._efecto_en_el_plan(raiz, M20.CLAVE, viejo, abierta,
+                                                       interaccion.APPROVE, None)
+            leido = json.loads(destino.read_text(encoding="utf-8"))
+            t.igual("E-22 %s: se escribe como 2.1" % version, V21, leido["meta"]["schema_version"])
+            t.igual("E-22 %s: con la version siguiente" % version,
+                    viejo["meta"]["plan_version"] + 1, leido["meta"]["plan_version"])
+            t.igual("E-22 %s: la unidad BLOCKED recibe sus blockers del contenido" % version,
+                    [{"inputId": "plan.capabilityGaps", "code": "CAPABILITY_GAP"}],
+                    _por_id(leido)["u-hueco"].get("blockers"))
+            t.igual("E-22 %s: la aprobacion quedo aplicada" % version, "PENDING",
+                    _por_id(leido)["u-cara"]["status"])
+            t.igual("E-22 %s: valida" % version, [], P.validar(leido))
+            t.igual("E-22 %s: devuelve lo que escribio" % version, leido, escrito)
+        finally:
+            shutil.rmtree(raiz, ignore_errors=True)
+    sin_causa = _como_0_30_0(_armar([_lista()]))
+    sin_causa["workUnits"][0]["status"] = "BLOCKED"
+    try:
+        P.replanificar(sin_causa, ["x"], "x", "human-decision")
+        t.verdadero("E-22 una unidad BLOCKED sin causa en el contenido se rechaza", False)
+    except P.PlanRechazado as e:
+        t.contiene("E-22 una unidad BLOCKED sin causa se rechaza nombrandola", "u-lista", str(e))
+    raiz = M20._proyecto_con_contexto(repositorio=True)
+    try:
+        destino = Path(raiz) / ".claude" / "planes" / (M20.CLAVE + ".json")
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        retirado = _con(_como_0_30_0(_armar([_cara()])), status="DELEGATING")
+        destino.write_text(json.dumps(retirado), encoding="utf-8")
+        antes = destino.read_bytes()
+        try:
+            _decisiones()._efecto_en_el_plan(
+                raiz, M20.CLAVE, retirado, {"workUnitId": "u-cara", "interactionId": "ixn-0"},
+                interaccion.APPROVE, None)
+            t.verdadero("E-22 un plan DELEGATING no se reescribe", False)
+        except P.PlanRechazado as e:
+            t.contiene("E-22 un plan DELEGATING se rechaza nombrandolo", "DELEGATING", str(e))
+        t.igual("E-22 y el archivo no cambio", antes, destino.read_bytes())
+    finally:
+        shutil.rmtree(raiz, ignore_errors=True)
