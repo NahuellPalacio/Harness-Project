@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.32.0](0.32.0.md) | 13-10-2026 | Execution: el contrato de ejecución (Task 3, ADR-0014) y el motor mínimo (Task 4, ADR-0015): `ejecutar` admite una WorkUnit, la entrega a Claude Code como un intento único y deja un resultado terminal que valida contra el contrato |
 | [0.31.0](0.31.0.md) | 07-10-2026 | Flow Governance: el estado del flujo por tarea, la compuerta en `PreToolUse`, la intención humana por el chat y la autoridad de `.claude/` y `.git/` protegida; el plan pasa a `orchestration-plan/2.1` con `BLOCKED` y `blockers` |
 | [0.30.0](0.30.0.md) | 05-10-2026 | El modelo de dominio canónico, con nueve contextos y Execution reservado; el plan pasa a `orchestration-plan/2.0`, que lee los 1.0 compatibles y rechaza los demás; ADR-0013 |
 | [0.29.0](0.29.0.md) | 02-10-2026 | Un solo harness: `desarrollo` es el producto y `comun` su base, `analisis` se retira, `-Harness` desaparece y queda un `manifest.json` en la raíz; el `-Update` limpia por inventario |

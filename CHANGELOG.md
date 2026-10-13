@@ -3,6 +3,80 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.32.0] — 2026-10-13
+
+**HARNESS ejecuta una unidad de trabajo: la admite, la entrega a Claude Code como un intento único y
+deja un resultado terminal que valida contra un contrato.**
+
+Hasta 0.31.0 el harness planificaba y no ejecutaba. Nada admitía una WorkUnit antes de correr, y lo
+que hacía un especialista no quedaba registrado con identidad, evidencia ni resultado. Esta versión
+trae Execution en dos pasos que cierran juntos: el contrato (Task 3) y el motor mínimo que lo produce
+(Task 4). El motor corre una sola WorkUnit por invocación. No elige la siguiente, no reintenta solo y
+no corre varias a la vez.
+
+### Agregado
+
+- **Execution, el décimo contexto del modelo de dominio** — ocho conceptos (Execution,
+  ExecutionRequest, ExecutionResult, ExecutionId, ExecutionAdmission, ExecutionError,
+  ExecutionEvidence y AgentReport), un ciclo de vida de seis estados con cuatro terminales
+  (`SUCCEEDED`, `FAILED`, `CANCELLED`, `REJECTED`), y [ADR-0014](docs/adr/0014-el-contrato-de-ejecucion.md)
+- **El contrato de ejecución** — `execution-request/1.0` y `execution-result/1.0` en
+  `comun/schemas/`, y `bin/ejecucion/contrato.py`, un validador puro con la regla de admisión de quince
+  condiciones, los veintitrés códigos de error y la huella. Un reintento es otra Execution con la misma
+  `idempotencyKey`, y lo que declara el agente es un AgentReport, `{declaredStatus, artifact}`, sin
+  autoridad
+- **`dev-harness.py ejecutar <KEY> --unidad <id>`** — admite la WorkUnit, crea la Execution, la entrega al
+  Host y espera su resultado. Suma `--cancelar`, `--estado` (solo lee), `--recuperar`, `--pedido-por` y
+  `--json`. Necesita `claude` en el `PATH`
+- **El registro de ejecuciones** — `.claude/ejecuciones/<KEY>/<executionId>/`, de archivos que se
+  escriben una sola vez y nunca se pisan. Una Execution existe si y solo si un turno de su
+  `idempotencyKey` la nombra, y dos procesos que piden la misma unidad dejan una Execution y un
+  `DUPLICATE_EXECUTION`
+- **La recuperación y la cancelación** — una Execution cuyo motor murió se cierra `FAILED` con
+  `HOST_INTERRUPTED`, o `CANCELLED` si había un pedido de cancelar. Nadie reanuda ni vuelve a entregar, y
+  la recuperación no mata por pid
+- **El Host Adapter de Claude Code** — lanza `claude -p` sin `--agent`, con el cuerpo del agente como prompt
+  de sistema, solo las herramientas que pide la unidad y salida estructurada. El AgentReport sale de
+  `structured_output` y nadie interpreta texto. Los hooks del proyecto siguen activos: nunca `--bare` ni
+  se saltean permisos
+- **La evidencia de cada intento** — la revisión y el estado del árbol antes y después, y qué archivos
+  cambiaron con su huella. Con un repositorio sucio o sin git, dice qué no pudo atribuir en vez de
+  inventarlo
+- **Dos claves opcionales de `harness.config.json`** — `ejecucion.comandoHost` y
+  `ejecucion.limiteSegundos` (1800 por defecto). El modelo de cada unidad sale de `modelRouting.perfiles`
+- **[ADR-0015](docs/adr/0015-el-motor-minimo-de-ejecucion.md)**, con la «Enmienda post-refutación»
+
+### Cambiado
+
+- **`dev-harness.py` pasa a tener trece subcomandos**, con `ejecutar`. Ver [UPGRADE.md](UPGRADE.md)
+- **HARNESS lanza el Host y nunca llama a un modelo** — el modelo canónico decía que HARNESS no lanza
+  agentes; ahora el motor puede lanzarlo, y el agente y el modelo los corre Claude Code. No hay un SDK de
+  modelos, ni LangGraph, ni un segundo runtime de agentes
+- **El modelo canónico y el `README.md` dicen lo que ahora es verdad** — Execution tiene un motor, y el
+  plan sigue siendo un documento que no ejecuta
+
+### Lo que sigue abierto, sin maquillar
+
+- **Desde una sesión interactiva de Claude Code, `ejecutar` pasa solo si la tarea puede avanzar:** la
+  política de herramientas no tiene una fila para él. Desde una terminal no hay diferencia
+- **En Windows la sesión del Host no tiene `Bash`:** una unidad con `tests.run` se admite y su agente no
+  puede correr los tests
+- **Un Host puede sobrevivir al motor en Windows**, y una `REQUESTED` huérfana bloquea su clave hasta que
+  una persona la cancele
+- **Una corrida de `ME-E18` falló una vez en la compuerta** y no se repitió: una ventana de
+  microsegundos en la sonda del candado, más probable con workers. Se cierra con una reserva y es input de
+  Task 5
+
+### Cómo se verificó
+
+El contrato (Task 3) cerró con 70 escenarios sostenidos sobre 0.31.0, sin contradichos. El motor (Task 4)
+cerró con 56 escenarios sostenidos por la suite, 1 leído, y 32 invariantes sostenidos: 0 contradichos y 0
+sin sustento. **Task 4 fue refutada, corregida y reverificada antes del cierre:** la refutación del
+09-10-2026 contradijo cuatro escenarios, entre ellos la corrida real contra Claude Code, que con `--agent`
+no devolvía `structured_output`. El único escenario de lectura, ME-E50, lo leyó y firmó una persona el
+13-10-2026 (`docs/cambios/minimal-execution-engine/lectura.md`), y vale menos que un `sostenido`. La
+suite pasó de 42484 a 43775 aserciones.
+
 ## [0.31.0] — 2026-10-07
 
 **El harness gobierna el flujo de una tarea: sabe en qué etapa está, qué la frena y quién tiene que

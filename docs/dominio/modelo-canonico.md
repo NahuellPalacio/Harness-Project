@@ -6,6 +6,14 @@ producto. Sale del relevamiento de 0.29.0 y de la spec que lo aprobó:
 decisiones de largo plazo están en
 [ADR-0013](../adr/0013-modelo-de-dominio-canonico.md).
 
+Execution entró después, como el décimo contexto, con
+[`docs/cambios/execution-contract/spec.md`](../cambios/execution-contract/spec.md) y
+[ADR-0014](../adr/0014-el-contrato-de-ejecucion.md), y desde Task 4 tiene un motor mínimo
+([`docs/cambios/minimal-execution-engine/spec.md`](../cambios/minimal-execution-engine/spec.md) y
+[ADR-0015](../adr/0015-el-motor-minimo-de-ejecucion.md)): una WorkUnit por invocación de `ejecutar`.
+Con 0.31.0 convive con Flow Governance, cuyos seis conceptos viven en Work Intake, Planning y
+Guardrails: el flujo no es un contexto.
+
 📌 **Cómo se lee.** Los nombres canónicos están en inglés, como pide
 [ADR-0011](../adr/0011-el-idioma-de-un-archivo-lo-decide-quien-lo-lee.md) para los
 identificadores. El código, el CLI y los archivos de estado siguen mayormente en español, y este
@@ -59,6 +67,14 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 | Integration | Catalog | Entity | Un sistema externo conectado, con su estado y sus capacidades |
 | HarnessTool | Catalog | Value Object | Un artefacto que HARNESS generaría bajo un contrato; dormido |
 | DatabaseAccessPolicy | Catalog | Domain Policy | Qué operación sobre una base puede correr en cada ambiente; dormida |
+| Execution | Execution | Aggregate Root | Un intento de llevar a cabo una WorkUnit: su request, su ciclo de vida y su resultado |
+| ExecutionRequest | Execution | Record | La constancia inmutable de que una WorkUnit se admitió para ejecutar |
+| ExecutionResult | Execution | Record | La constancia inmutable de cómo terminó un intento |
+| ExecutionId | Execution | Value Object | La identidad de un intento, generada por HARNESS |
+| ExecutionAdmission | Execution | Domain Service | La regla de entrada, con su precedencia; sin implementación todavía |
+| ExecutionError | Execution | Value Object | Una falla con un código de una lista cerrada |
+| ExecutionEvidence | Execution | Value Object | Lo que el motor observó del árbol: revisión y cambios |
+| AgentReport | Execution | DTO / Contract | Lo que el Host Adapter entrega a Execution: `declaredStatus` y `artifact`; sin autoridad |
 | NormativeStandard | Governance | Value Object | Una norma con su versión |
 | NormativeMatrix | Governance | Domain Policy | Las reglas de una norma, con su aplicabilidad y sus controles |
 | NormativeRule | Governance | Entity | Una regla citable de una norma |
@@ -489,7 +505,8 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 
   Nada la cambia después de armarla.
 - **Invariantes:** su dominio es uno de los del plan, y su estado se deriva al armarla. No tiene
-  resultado, ni ejecutor, ni estado posterior.
+  resultado, ni ejecutor, ni estado posterior. Su ejecución es una Execution, de otro contexto, y la
+  WorkUnit sigue igual.
 - **Crea / cambia / lee:** sale de la propuesta y la completa el código. La leen la refutación, por
   id, y la contabilidad, por `workUnitId` como texto libre.
 - **Persistencia y contrato:** `workUnits[]` de `orchestration-plan.schema.json`. No tiene schema
@@ -757,7 +774,8 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 - **Identidad:** `id`, por frontmatter.
 - **Ciclo y estados:** `INSTALLED`, `DECLARED_NOT_INSTALLED` o `DEPRECATED` en el registro.
 - **Invariantes:** para el plan, existe si el AgentRegistry lo declara válido. El plan no rechaza uno
-  desconocido: lo marca con `agentExists: false`.
+  desconocido: lo marca con `agentExists: false`. Para Execution, existe si el registro lo deja
+  rutear al admitir, y `agentExists` del plan no decide (ADR-0014).
 - **Crea / cambia / lee:** lo declara la fábrica, lo asigna `plan.armar` y lo ejecuta el Host.
 - **Persistencia y contrato:** `agents[]` de `agent-registry.schema.json`, y su `.md` en
   `.claude/agents/`.
@@ -897,6 +915,213 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 - **No es:** una NormativeMatrix ni una Policy. `bases.py` lo dice: no es una regla de ES0901, no
   tiene señal de aplicabilidad, no entra en la matriz normativa y no figura en el registro de
   controles.
+
+### Execution
+
+- **Qué es:** un intento de llevar a cabo una WorkUnit: su ExecutionRequest, su ciclo de vida y, al
+  final, su ExecutionResult. Desde Task 4 la crea el motor mínimo, una por invocación de `ejecutar`.
+- **Contexto:** Execution
+- **Clasificación:** Aggregate Root
+- **Identidad:** su ExecutionId. Un reintento es otra Execution con la misma `idempotencyKey`.
+- **Ciclo y estados:** seis estados y cuatro terminales:
+  - `REQUESTED → RUNNING`, `REQUESTED → REJECTED` y `REQUESTED → CANCELLED`;
+  - `RUNNING → SUCCEEDED`, `RUNNING → FAILED` y `RUNNING → CANCELLED`.
+
+  `RUNNING` empieza cuando el motor la entrega a quien la corre. Ningún estado es `BLOCKED`, y desde
+  un terminal no sale ninguna transición.
+- **Invariantes:**
+  - solo valen las seis transiciones de `TRANSICIONES`;
+  - a lo sumo hay una abierta por `idempotencyKey`, y ninguna nueva después de un `SUCCEEDED` con
+    esa clave; reservar la clave y crear la Execution es atómico;
+  - su estado vive en su propio registro, ni en el Plan ni en la contabilidad;
+  - no escribe el Plan, no replanifica y no refuta.
+- **Crea / cambia / lee:** la crea `ejecutar --unidad` cuando la admisión pasa: existe desde que un
+  turno de intento de su `idempotencyKey` la nombra. La cambia el motor, una transición por vez: la
+  entrega al Host Adapter y escribe su resultado. Si su motor murió, la cierra la recuperación, y una
+  `REQUESTED` huérfana la cierra solo `--cancelar`. La lee `ejecutar --estado`, que no escribe.
+- **Persistencia y contrato:** su request, contra `execution-request.schema.json`
+  (`execution-request/1.0`), y su resultado, contra `execution-result.schema.json`
+  (`execution-result/1.0`). Su registro es `.claude/ejecuciones/<TaskKey>/<executionId>/`:
+  `request.json`, `entrega.json`, `cancelacion.json`, `proceso.json`, `output.md` y `result.json`,
+  cada uno escrito una sola vez, y el candado de vida, `vivo.lock`. Los turnos de intento van en
+  `.claude/ejecuciones/<TaskKey>/claves/<hex>/<NNNNNN>.json`. No hay `state.json`: el estado se deriva
+  de qué archivos existen.
+- **Dónde vive:** el contrato, en `comun/schemas/` y en
+  `harnesses/desarrollo/bin/ejecucion/contrato.py` (`ESTADOS`, `TERMINALES`, `TRANSICIONES`); el
+  motor y su registro, en `bin/ejecucion/motor.py` y `bin/ejecucion/registro.py`.
+- **No es:** el Plan, ni una WorkUnit, ni un AccountingEvent, ni una HostSession. Tampoco es la
+  etapa `EXECUTION` del TaskFlowState, que permite delegar y no es un intento.
+
+### ExecutionRequest
+
+- **Qué es:** la constancia inmutable de que una WorkUnit concreta, de un plan concreto, se admitió
+  para ejecutar.
+- **Contexto:** Execution
+- **Clasificación:** Record
+- **Identidad:** su `executionId`. La `idempotencyKey`, la huella de
+  `[taskKey, planFingerprint, workUnit.id]`, dice "la misma WorkUnit del mismo plan" y no es
+  identidad.
+- **Ciclo y estados:** no aplica: no cambia después de escribirse.
+- **Invariantes:**
+  - identifica exactamente una WorkUnit de un plan, y el plan por `planFingerprint`, porque
+    `plan_version` vuelve a 1 con `plan --propuesta`;
+  - lleva la WorkUnit tal como está en el plan, y la valida contra la definición del plan, que sigue
+    siendo la autoridad de su forma;
+  - registra en `admission` lo que valía al admitir, y el schema rechaza una admisión que no se
+    cumplió;
+  - el plan es `orchestration-plan/2.1`, y la WorkUnit no trae `blockers`: los lleva solo una
+    unidad `BLOCKED`, que no se admite;
+  - del flujo de la tarea lleva solo la decisión, `admission.flow`: ni una copia del TaskFlowState,
+    ni una HumanIntent, ni el SessionTaskBinding;
+  - no lleva nada del Host, ni aprobaciones, ni tools, ni presupuesto, ni timeout, ni número de
+    intento.
+- **Crea / cambia / lee:** la escribe la ExecutionAdmission al pedir, redactada, validada y con su
+  huella ya calculada, y nadie la cambia. La leen el motor, que al entregar no confía en ella y
+  vuelve a derivar todo, y la auditoría.
+- **Persistencia y contrato:** `execution-request.schema.json` (`execution-request/1.0`), guardada
+  una sola vez en `request.json` del registro de su Execution. Las coherencias que el schema no
+  puede decir las hace cumplir `contrato.validar_request`.
+- **Dónde vive:** `comun/schemas/execution-request.schema.json`,
+  `harnesses/desarrollo/bin/ejecucion/contrato.py` y `bin/ejecucion/admision.py`, que la arma.
+- **No es:** el Plan, ni una copia del Plan, ni la PlanProposal.
+
+### ExecutionResult
+
+- **Qué es:** la constancia inmutable de cómo terminó un intento: su estado terminal, su error,
+  cuándo empezó y terminó, lo que declaró el agente y lo que el motor observó del árbol.
+- **Contexto:** Execution
+- **Clasificación:** Record
+- **Identidad:** la de su request: `executionId`, más `requestFingerprint`, que es la huella de la
+  request.
+- **Ciclo y estados:** `SUCCEEDED`, `FAILED`, `CANCELLED` o `REJECTED`. Existe solo cuando el
+  intento es terminal, y no cambia.
+- **Invariantes:**
+  - `SUCCEEDED` si y solo si no hay error, y es mecánico: un AgentReport válido que declara
+    `COMPLETE`, no cumplimiento normativo;
+  - `REJECTED` no corrió: no tiene `startedAt`, ni evidencia, ni informe;
+  - `agentDeclaredStatus` y `output` vienen juntos del mismo AgentReport;
+  - `startedAt` y `endedAt` son el único tiempo del intento;
+  - no lleva consumo, ni prompts, ni el texto del agente.
+- **Crea / cambia / lee:** lo escribe el motor al quedar terminal; si el motor murió, la
+  recuperación, y para una `REQUESTED` huérfana, `--cancelar`. Se escribe una sola vez: un resultado
+  tardío no pisa al primero, y nadie lo cambia.
+- **Persistencia y contrato:** `execution-result.schema.json` (`execution-result/1.0`), guardado una
+  sola vez en `result.json` del registro de su Execution. Las doce coherencias que el schema no puede
+  decir las hace cumplir `contrato.validar_resultado`.
+- **Dónde vive:** `comun/schemas/execution-result.schema.json`,
+  `harnesses/desarrollo/bin/ejecucion/contrato.py` y `bin/ejecucion/motor.py`, que lo escribe.
+- **No es:** un EvaluationResult, ni un RefutationVerdict, ni un veredicto SDD, ni un
+  AccountingEvent, ni el AgentReport.
+
+### ExecutionId
+
+- **Qué es:** la identidad de un intento.
+- **Contexto:** Execution
+- **Clasificación:** Value Object
+- **Identidad:** su valor: `exe_` más 32 hexadecimales al azar.
+- **Ciclo y estados:** no aplica.
+- **Invariantes:** lo genera HARNESS al admitir. No sale del Host, ni de la sesión, ni del
+  contenido, y un reintento lleva otro.
+- **Crea / cambia / lee:** lo genera la ExecutionAdmission (`bin/ejecucion/admision.py`, con
+  `registro.nuevo_id`); lo llevan la request y el resultado.
+  El `executionId` del ledger de seguridad, que hoy siempre es nulo, es su lugar de correlación.
+- **Persistencia y contrato:** el campo `executionId` de `execution-request.schema.json` y de
+  `execution-result.schema.json`.
+- **Dónde vive:** los dos schemas de `comun/schemas/`.
+- **No es:** una HostSession, ni un `session_id`, ni el id de una WorkUnit.
+
+### ExecutionAdmission
+
+- **Qué es:** la regla de entrada: decide si una WorkUnit puede pasar a ejecutarse.
+- **Contexto:** Execution
+- **Clasificación:** Domain Service
+- **Identidad:** no aplica.
+- **Ciclo y estados:** no aplica. Corre dos veces con la misma regla: al pedir y antes de entregar.
+- **Invariantes:**
+  - consume lo que deciden Planning (el Plan y el TaskFlowState), Normative Sources y Catalog sin
+    recalcularlo, y rechaza en vez de replanificar;
+  - informa el primer código que falla de una precedencia cerrada de quince;
+  - `READY_FOR_EXECUTION` y `PENDING` son necesarias y no suficientes. El plan tiene que ser 2.1 y
+    estar listo por los dos lados: lo escrito y `plan.estado_de`;
+  - la tarea tiene que poder delegar ahora: si el TaskFlowState no lo permite, `DELEGATION_NOT_ALLOWED`;
+  - un rechazo al pedir no crea una Execution.
+- **Crea / cambia / lee:** la aplica `bin/ejecucion/admision.py` (ADR-0015). Lee el plan por
+  `plan.aceptar_guardado`; el permiso `delegationAllowed` del TaskFlowState guardado y de su vigencia
+  local, sin reconciliar ni escribir el flujo; el registro de agentes; las capacidades; la compuerta
+  normativa, con las normas de la unidad; y los turnos del registro de ejecuciones, para las
+  dependencias y los duplicados. Al entregar suma el Host Adapter: la definición del agente y las
+  capacidades que le puede dar.
+- **Persistencia y contrato:** no persiste. Su orden es `PRECEDENCIA` en `contrato.py`, y lo que deja
+  escrito es el bloque `admission` de `execution-request.schema.json`.
+- **Dónde vive:** la regla está en ADR-0014 y en `harnesses/desarrollo/bin/ejecucion/contrato.py`
+  (`PRECEDENCIA`); su implementación, en `bin/ejecucion/admision.py`.
+- **No es:** el ConsumptionGate ni la NormativeFreshnessGate: consume sus decisiones. Tampoco es la
+  compuerta del flujo de PreToolUse (`comun/hooks/lib/flow_gate.py`), que decide por llamada de
+  herramienta para la tarea de una sesión; la admisión decide por WorkUnit, y ninguna reemplaza a la
+  otra.
+
+### ExecutionError
+
+- **Qué es:** una falla, con un código de una lista cerrada y un detalle para una persona.
+- **Contexto:** Execution
+- **Clasificación:** Value Object
+- **Identidad:** no aplica.
+- **Ciclo y estados:** veintitrés códigos. Cada uno va solo a donde le corresponde: al pedir,
+  `REJECTED`, `FAILED` o `CANCELLED`.
+- **Invariantes:**
+  - una máquina lee solo `code`;
+  - `detail` está en español, se redacta y tiene hasta 300 caracteres;
+  - `NORMATIVE_GATE_BLOCKED` es de Normative Sources, y no hay un código de Governance ni uno de
+    tools;
+  - `DELEGATION_NOT_ALLOWED` es del TaskFlowState, y ningún código es de la compuerta del flujo, del
+    SessionTaskBinding ni de la HumanIntent.
+- **Crea / cambia / lee:** lo escriben la admisión y el motor. Un rechazo al pedir vuelve al que
+  pidió y no se persiste.
+- **Persistencia y contrato:** `$defs.error` de `execution-result.schema.json`, y `CODIGOS` y
+  `validar_rechazo` en `contrato.py`.
+- **Dónde vive:** `comun/schemas/execution-result.schema.json`.
+- **No es:** una excepción de Python ni texto libre.
+
+### ExecutionEvidence
+
+- **Qué es:** lo que el motor observó del árbol durante un intento: la revisión antes y después, y
+  los archivos que cambiaron, con su huella.
+- **Contexto:** Execution
+- **Clasificación:** Value Object
+- **Identidad:** no aplica.
+- **Ciclo y estados:** la observación de los cambios queda `RESOLVED`, `CHANGES_UNRESOLVED` o
+  `CHANGES_UNATTRIBUTABLE`.
+- **Invariantes:**
+  - no lleva tiempos: el tiempo del intento es del ExecutionResult;
+  - lo que falta no es cero: con un estado que no es `RESOLVED`, la lista va vacía;
+  - la observa el motor, no la declara el agente.
+- **Crea / cambia / lee:** la observa el motor (`bin/ejecucion/evidencia.py`). Puede ser insumo de la
+  refutación, por `scope.json`, y eso es de una Task posterior.
+- **Persistencia y contrato:** el bloque `evidence` de `execution-result.schema.json`.
+- **Dónde vive:** `comun/schemas/execution-result.schema.json`.
+- **No es:** Evidence: no sostiene ninguna afirmación normativa.
+
+### AgentReport
+
+- **Qué es:** lo que el Host Adapter entrega a Execution de la salida del agente: `declaredStatus` y
+  `artifact`, y nada más.
+- **Contexto:** Execution
+- **Clasificación:** DTO / Contract
+- **Identidad:** no aplica.
+- **Ciclo y estados:** `declaredStatus` es `COMPLETE`, `PARTIAL`, `BLOCKED` o `FAILED`: el
+  vocabulario del `agentResult` de los agentes que se pueden ejecutar.
+- **Invariantes:**
+  - no tiene autoridad: `COMPLETE` da `SUCCEEDED`, y lo demás, `FAILED`;
+  - Execution no interpreta el `artifact`: no busca en texto libre, no parsea Markdown y no lee los
+    "Result Statuses" de las skills;
+  - sin un AgentReport válido, el intento que corrió es `FAILED` con `OUTPUT_INVALID`.
+- **Crea / cambia / lee:** lo arma el Host Adapter (`bin/ejecucion/host_claude_code.py`) desde la
+  salida nativa del Host. Lo valida `contrato.validar_informe`.
+- **Persistencia y contrato:** no se persiste como documento y no tiene schema. Su `declaredStatus`
+  queda en `agentDeclaredStatus` de `execution-result.schema.json`, y su `artifact`, redactado, se
+  guarda aparte, referido por `output`.
+- **Dónde vive:** `harnesses/desarrollo/bin/ejecucion/contrato.py` (`validar_informe`).
+- **No es:** el `agentResult`, que es una salida nativa posible, ni el ExecutionResult.
 
 ### NormativeStandard
 
@@ -1430,8 +1655,9 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 - **Ciclo y estados:** no aplica.
 - **Invariantes:** el instalador la crea solo si falta, y los proyectos instalados no reciben claves
   nuevas.
-- **Crea / cambia / lee:** la siembra el instalador, la cambia la persona, y la leen el CLI y los
-  hooks.
+- **Crea / cambia / lee:** la siembra el instalador, la cambia la persona, y la leen el CLI, los
+  hooks y el motor de ejecución. El motor suma dos claves opcionales, `ejecucion.comandoHost` y
+  `ejecucion.limiteSegundos`, con el default en el código (ADR-0015).
 - **Persistencia y contrato:** `.claude/harness.config.json` y `manifest.json`, sin schema.
 - **Dónde vive:** `install.ps1` y `manifest.json`.
 - **No es:** el `.env`.
@@ -1450,7 +1676,8 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 - **Clasificación:** External
 - **Identidad:** no aplica.
 - **Ciclo y estados:** no aplica.
-- **Invariantes:** HARNESS no llama a ningún modelo ni lanza agentes: lo hace el Host.
+- **Invariantes:** HARNESS no llama a ningún modelo. Desde Task 4, el motor de Execution puede lanzar
+  el Host para que corra un agente; el agente y el modelo los corre el Host (ADR-0015).
 - **Crea / cambia / lee:** corre los hooks y la `statusLine`, ejecuta los agentes y las skills, da
   las herramientas y escribe la transcripción.
 - **Persistencia y contrato:** no aplica. Se filtra en `contextWindow.source` =
@@ -1491,7 +1718,7 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 
 ## Mapa de contextos
 
-HARNESS tiene **nueve contextos delimitados**. Cada uno se justifica por su lenguaje, sus
+HARNESS tiene **diez contextos delimitados**. Cada uno se justifica por su lenguaje, sus
 invariantes, su dueño, sus datos y su ciclo de vida.
 
 | Contexto | Lenguaje propio | Invariantes propias | Dueño | Datos | Ciclo de vida |
@@ -1505,11 +1732,12 @@ invariantes, su dueño, sus datos y su ciclo de vida.
 | Guardrails | evento, herramienta, hallazgo, deny, ask | solo los secretos bloquean; hasta ocho avisos; salida 0 | `harness-hook-engineer` | `comun/reglas/secretos.patrones.json`, los checks, `.claude/runtime/sessions/<SAFE>/notice.json` | por llamada de herramienta, sin estado; la huella del aviso del flujo, por sesión |
 | Observability | evento, tokens, costo, ventana, conciliación, presupuesto | id por dedupKey; las fotos no se suman; nadie decide con el ledger | sin dueño declarado | `.claude/runtime/accounting/`, `harness.presupuesto.json` | append-only |
 | Host Integration | instalar, actualizar, lock, huella, reinicio, componente | lo regenerable no se edita; lo de fuera sobrevive; PARCIAL y no BLOQUEADO | `harness-backend-engineer` | `.claude/harness/`, `harness.lock.json`, `harness.installation.json` | instalación, `-Update`, `-Uninstall` |
+| Execution | request, admisión, intento, entrega, terminal, rechazo, clave de idempotencia, informe del agente | una request es una WorkUnit y un intento; seis estados y cuatro terminales, sin `BLOCKED`; precedencia cerrada de admisión; el agente declara y no decide; no escribe el Plan ni lee la contabilidad | sin dueño declarado | `execution-request/1.0` y `execution-result/1.0`; el registro de cada Execution, en `.claude/ejecuciones/` | `REQUESTED → RUNNING → terminal`; una WorkUnit por invocación; Task 5 decide el resto |
 
-**Execution no es un contexto: es un límite reservado.** No tiene lenguaje, ni datos, ni
-invariantes, ni ciclo de vida, ni implementación. Está nombrado para que la próxima Task sepa dónde
-va la ejecución, y está vacío: ningún concepto lo tiene como contexto. Ver
-`## El límite de la ejecución`.
+**Execution es el décimo contexto desde ADR-0014, y desde ADR-0015 tiene un motor mínimo.** El
+contrato es de Task 3; la admisión, el registro, el Host Adapter y el motor que corre una WorkUnit,
+un intento, por invocación de `ejecutar`, son de Task 4. El scheduling, las colas y el reintento
+automático son de Task 5. Ver `## El límite de la ejecución`.
 
 ### Relaciones
 
@@ -1523,6 +1751,12 @@ va la ejecución, y está vacío: ningún concepto lo tiene como contexto. Ver
 | Work Intake y Planning → Guardrails | Cliente-proveedor | El SessionTaskBinding dice qué Task mira la compuerta del flujo de los hooks, y el TaskFlowState si puede avanzar. Los hooks leen el estado del flujo y no lo derivan |
 | Governance → Observability | Publicación | La refutación arma la metadata de atribución de la contabilidad |
 | Host Integration → todos | Proveedor de instalación | Copia, registra y mide la salud, sin interpretar el dominio de nadie |
+| Planning → Execution | Conformista | La WorkUnit tal como está en el plan 2.1, leído por la regla de lectura única, y el permiso `delegationAllowed` del TaskFlowState. Execution no cambia el Plan ni el estado del flujo |
+| Catalog → Execution | Conformista | Si el agente existe, de qué tipo y de qué dominio es, y qué capacidades hay |
+| Normative Sources → Execution | Cliente-proveedor | La decisión de la compuerta normativa: `blocked` da `NORMATIVE_GATE_BLOCKED` |
+| Host → Execution | Capa anticorrupción | El Host Adapter de Claude Code (`bin/ejecucion/host_claude_code.py`): resuelve el agente y las capacidades, lanza `claude -p` con la request y devuelve el AgentReport de su salida estructurada. Es infraestructura, no un concepto |
+| Execution → Observability | Publicación | A futuro: eventos contables con su `executionId`. Observability no decide nada de Execution |
+| Execution → Governance | Publicación | A futuro: la ExecutionEvidence como insumo de la refutación. Governance no cambia el estado de una ejecución |
 
 ## Clasificaciones
 
@@ -1627,7 +1861,9 @@ separado: `comun/schemas/security-ledger-event.schema.json`.
 ### Plan ≠ Execution
 
 `READY_FOR_EXECUTION` es un estado del documento
-(`harnesses/desarrollo/bin/orquestacion/__init__.py`). No existe ninguna ejecución.
+(`harnesses/desarrollo/bin/orquestacion/__init__.py`), y no ejecuta nada. Una Execution la crea el
+motor, una WorkUnit por invocación de `dev-harness.py ejecutar`
+(`harnesses/desarrollo/bin/ejecucion/motor.py`), y el plan no cambia por eso.
 
 ### Execution ≠ Accounting
 
@@ -1642,14 +1878,58 @@ dentro de su alcance (`harnesses/desarrollo/bin/orquestacion/refutacion.py`).
 
 ### Claude Code ≠ HARNESS
 
-Claude Code es el Host. HARNESS no llama a ningún modelo, no lanza agentes y no tiene runtime propio:
-el único `subprocess` es `git` o `markitdown` (`harnesses/desarrollo/bin/contexto/documentos.py`).
+Claude Code es el Host. HARNESS no llama a ningún modelo y no tiene runtime propio. Desde Task 4, el
+motor de Execution lanza el Host, `claude -p`, para que corra el agente de una WorkUnit
+(`harnesses/desarrollo/bin/ejecucion/host_claude_code.py`): el agente y el modelo los corre Claude
+Code, no HARNESS. Fuera del motor, los `subprocess` son `git` o `markitdown`
+(`harnesses/desarrollo/bin/contexto/documentos.py`).
 
 ### Task ≠ HostSession
 
 En el ledger de la barra, la clave es el `session_id` de la sesión
 (`harnesses/desarrollo/bin/contabilidad/statusline.py`). Por eso existe la LedgerKey: una TaskKey o
 una sesión, y no siempre una Task.
+
+### ExecutionResult ≠ EvaluationResult
+
+Uno dice si un intento terminó con un AgentReport válido que declara `COMPLETE`; el otro, si una
+regla o un control se cumple. `SUCCEEDED` no afirma cumplimiento normativo:
+`comun/schemas/execution-result.schema.json`.
+
+### ExecutionEvidence ≠ Evidence
+
+La ExecutionEvidence es lo que el motor observó del árbol. La Evidence sostiene una afirmación
+normativa. La primera puede ser insumo de la refutación, y nunca decide cumplimiento:
+`comun/schemas/execution-result.schema.json`.
+
+### AgentReport ≠ ExecutionResult
+
+Lo que el agente declara, por el Host Adapter, no es lo que el motor registra. El resultado guarda
+solo el `declaredStatus` y la huella del `artifact`, nunca el texto:
+`harnesses/desarrollo/bin/ejecucion/contrato.py`.
+
+### ExecutionId ≠ HostSession
+
+Identidad contra observabilidad. El ExecutionId lo genera HARNESS al admitir; el `session_id` del
+Host va, si el Host lo da, en `result.host.sessionRef`, y no entra a la request:
+`comun/schemas/execution-request.schema.json`.
+
+### `READY_FOR_EXECUTION` ≠ admitida
+
+Necesaria, no suficiente. Desde 0.31.0 un agente que el registro no rutea deja el plan `BLOCKED`
+(`harnesses/desarrollo/bin/orquestacion/plan.py`), pero el registro puede cambiar después de
+planificar, y la admisión rechaza con `AGENT_UNAVAILABLE`. Y un plan listo no dice que la tarea pueda
+seguir: un TaskContext que cambió o una tarea cancelada la frenan en el TaskFlowState
+(`harnesses/desarrollo/bin/flujo/estado.py`), y la admisión rechaza con `DELEGATION_NOT_ALLOWED`. El
+Plan no cambia por eso: decide la ExecutionAdmission.
+
+### `BLOCKED` de la WorkUnit ≠ ningún estado de Execution
+
+`BLOCKED` es un estado de la WorkUnit, del Plan, del TaskFlowState o de la RefutationUnit, o una
+declaración de un AgentReport. Execution no tiene `BLOCKED`: lo que a una WorkUnit le falta se
+rechaza con un código, y lo que el agente declara da `FAILED`
+(`harnesses/desarrollo/bin/ejecucion/contrato.py`, `ESTADOS`). Los `blockers` de una WorkUnit
+`BLOCKED` viajan solo dentro de ella, y una WorkUnit admitida no los tiene.
 
 ## Vocabulario
 
@@ -1683,8 +1963,19 @@ una sesión, y no siempre una Task.
 | proyecto | cuatro sentidos | clave de Jira, proyecto de GitLab, raíz local y `project_id` | **ProjectContext** para `project_id`; los otros tres se nombran por lo que son |
 | adaptador / adapter | integraciones y contabilidad | dos cosas | **Integration**; el adaptador de contabilidad es infraestructura |
 | caché | zona CACHÉ y caché de refutación | dos cosas | zona de **ProjectMemory**; caché de la **Refutation** |
-| execution / ejecución | `execution-accounting-event`, "contabilidad de ejecución" | la actividad de la sesión | **AccountingEvent**; el nombre del archivo no cambia |
-| run / corrida | refutación, una invocación del CLI | el agregado de la refutación, o una invocación | **Refutation**; una invocación no es un concepto |
+| execution / ejecución | `execution-accounting-event`, "contabilidad de ejecución", `execution-summary`, `execution-cost.md` | la actividad de la sesión | **AccountingEvent** o **AccountingSummary**; los nombres no cambian, y no son **Execution** |
+| execution / ejecución, `executionId` | `execution-request`, `execution-result`, `bin/ejecucion/` | un intento de llevar a cabo una WorkUnit | **Execution**; su identidad es **ExecutionId** |
+| intento / attempt | ADR-0014 | un intento | **Execution**; no hay un AttemptId aparte |
+| admisión / admitir | ADR-0014 | la regla de entrada | **ExecutionAdmission** |
+| informe del agente | ADR-0014 | lo que entrega el Host Adapter, `{declaredStatus, artifact}` | **AgentReport** |
+| `agentResult` | `agents/*.md` | el bloque en prosa de los especialistas | no es un concepto: es una salida nativa posible del agente, que lee el Host Adapter. De ahí sale el vocabulario de **AgentReport** |
+| "Result Statuses" | `skills/*/SKILL.md` | los estados en prosa de siete skills | no es un concepto de Execution |
+| Host Adapter | ADR-0014, ADR-0015 | la pieza del motor que habla con un Host: hoy, `host_claude_code.py`, que lanza `claude -p` | no es un concepto: es infraestructura de **Execution** |
+| turno de intento | ADR-0015, `bin/ejecucion/registro.py` | el archivo que reserva la `idempotencyKey` para una Execution; se crea de forma exclusiva y no se borra | no es un concepto: es infraestructura de **Execution** |
+| candado de vida / `vivo.lock` | ADR-0015, `bin/ejecucion/registro.py` | el candado del sistema operativo que el motor tiene tomado mientras vive | no es un concepto: es infraestructura de **Execution** |
+| run / corrida | refutación, una invocación del CLI | el agregado de la refutación, o una invocación | **Refutation**; una invocación no es un concepto, y en **Execution** no se usa: entregar es pasar a `RUNNING` |
+| `BLOCKED` | plan, refutación, `agentResult`, `flujo/estado.py` | una unidad o un plan que no puede seguir, una unidad de refutación sin alcance, una tarea frenada, o un agente que no pudo seguir | un estado de **WorkUnit**, del **Plan**, del **TaskFlowState** o de **RefutationUnit**, o una declaración de **AgentReport**; nunca un estado de **Execution** |
+| etapa `EXECUTION` / `delegationAllowed` | `flujo/estado.py`, `task-flow-state` | la etapa del flujo que permite delegar, y ese permiso | una etapa del **TaskFlowState**, no una **Execution**; la **ExecutionAdmission** lee el permiso y lo deja en `admission.flow` |
 | `SESSION_COMPLETED` | `contrato.py` | la foto acumulada del proveedor | un tipo de **AccountingEvent**; no cambia de nombre |
 | `PENDING` de una unidad | `plan.py` | planificada, sin nada que la frene | un estado de **WorkUnit** |
 | estado de la tarea / estado del flujo / `task-flow-state` | `flujo/estado.py`, `flujo --status` | la etapa y la condición de la tarea | **TaskFlowState**; el `status` del documento de plan es del **Plan** |
@@ -1698,50 +1989,100 @@ una sesión, y no siempre una Task.
 
 ## El límite de la ejecución
 
-### Lo que existe en 0.29
+Desde ADR-0014, Execution es un contexto, y desde ADR-0015 tiene un motor mínimo. **HARNESS ejecuta
+una WorkUnit por invocación de `dev-harness.py ejecutar`, un intento, sincrónico:** la admite, crea
+la Execution, la entrega al Host y deja su resultado. Elegir la siguiente, en qué orden y cuántas a
+la vez, es de quien invoca, y de Task 5.
+
+### Lo que existe ahora
+
+Lo que trajo ADR-0014:
+
+- Execution, el décimo contexto, con sus ocho conceptos: Execution, ExecutionRequest,
+  ExecutionResult, ExecutionId, ExecutionAdmission, ExecutionError, ExecutionEvidence y AgentReport.
+- Dos schemas, que ADR-0014 dejó sin productor y que desde Task 4 escribe el motor:
+  `execution-request.schema.json` (`execution-request/1.0`) y `execution-result.schema.json`
+  (`execution-result/1.0`).
+- Un validador puro, `harnesses/desarrollo/bin/ejecucion/contrato.py`: constantes y validadores. No
+  lee planes, no escribe y no lanza nada. Lo importan la admisión y el motor.
+- Un ciclo de vida: `REQUESTED → RUNNING → terminal`, con cuatro terminales y sin `BLOCKED`.
+
+Lo que trajo ADR-0015 (`docs/cambios/minimal-execution-engine/spec.md`, Task 4):
+
+- El motor, `bin/ejecucion/motor.py`, detrás del subcomando `ejecutar`: una WorkUnit, un intento,
+  por invocación. `--cancelar` pide cancelar, `--estado` solo lee y `--recuperar` cierra las
+  huérfanas.
+- La admisión implementada, `bin/ejecucion/admision.py`: la regla de quince condiciones, al pedir y
+  al entregar, leyendo a cada dueño. Lee el TaskFlowState guardado y su vigencia local, y no lo
+  escribe.
+- El almacenamiento de ejecuciones, `bin/ejecucion/registro.py`: el registro de cada Execution bajo
+  `.claude/ejecuciones/`, de archivos que se escriben una sola vez, con turnos de intento por
+  `idempotencyKey` y un candado de vida del sistema operativo.
+- El Host Adapter de Claude Code, `bin/ejecucion/host_claude_code.py`: lanza `claude -p` con el
+  texto del agente como prompt de sistema, solo las herramientas de la unidad y salida estructurada,
+  y de ahí sale un AgentReport real. Lo que observa el motor del
+  árbol es ExecutionEvidence (`bin/ejecucion/evidencia.py`).
+
+Lo que sumó la integración con 0.31.0 (`docs/cambios/execution-contract/spec.md`, sección
+«Integración con HARNESS 0.31.0»):
+
+- La request admite solo un plan `orchestration-plan/2.1`, y una WorkUnit sin `blockers`.
+- La admisión exige que el TaskFlowState deje delegar, y la request guarda solo esa decisión,
+  `admission.flow`. Si no deja, el código es `DELEGATION_NOT_ALLOWED`.
+
+Lo que ya estaba, sin cambios:
 
 - El Plan en `READY_FOR_EXECUTION`, que es un estado del documento.
-- La WorkUnit en `PENDING`, que quiere decir que nada la frena.
+- La WorkUnit en `PENDING`, que quiere decir que nada la frenó al armarla.
 - `executionOrder`, un orden topológico que no es un cronograma.
 - La `ModelPolicy` con el tier de cada unidad, y la ModelTierApproval en `PENDING`.
 - El vocabulario de contabilidad sin productor: `TASK_STARTED`, `TASK_COMPLETED`,
   `WORKUNIT_STARTED`, `WORKUNIT_COMPLETED`, `AGENT_RUN_STARTED`, `AGENT_RUN_COMPLETED`,
   `TOOL_CALL_COMPLETED` y `MODEL_ESCALATION_REQUESTED`.
-- Contratos de salida en prosa: el `agentResult` de los especialistas, con
-  `COMPLETE|PARTIAL|BLOCKED|FAILED`, y los "Result Statuses" de las skills, con otro conjunto. No
-  tienen schema, nadie los lee y no coinciden entre sí.
+- El `agentResult` de los especialistas, en prosa, con `COMPLETE|PARTIAL|BLOCKED|FAILED`: el
+  vocabulario del AgentReport sale de ahí. Los "Result Statuses" de las skills siguen siendo otro
+  conjunto, y no son del contrato.
 - Campos que nadie lee: `sessionBudget.maxRetries`, `modelPolicy.allowEscalation`, `modelo.escalar`
   sin quien lo llame, y `retryPolicy` y `timeoutSeconds` del `tool-contract`.
 - La refutación, como precedente de "HARNESS entrega, el Host corre, HARNESS registra y valida".
 - La revisión automática de fuentes, como el único ciclo de intentos que persiste.
 
-### Lo que no existe
+### Lo que todavía no existe
 
-- Un agregado `Execution`.
-- Un `ExecutionRequest` o un `ExecutionResult`.
-- Un estado posterior a `READY_FOR_EXECUTION`.
-- Un ejecutor.
-- Un estado de corrida persistido por WorkUnit o por corrida de agente.
-- Un ciclo `PENDING → RUNNING → terminal`.
-- Un reintento, una reanudación o un checkpoint genéricos.
-- Un cliente de modelo.
-- Un vínculo entre una corrida de agente y una WorkUnit, salvo el texto libre de `--unidad` y
-  `--agente` en contabilidad.
+- Un ejecutor de lotes o de grafos: el motor corre una WorkUnit por invocación, y nada elige la
+  siguiente.
+- Un scheduler, colas, workers o paralelismo.
+- Un reintento automático, una reanudación o un checkpoint: un reintento es otra Execution que pide
+  una persona, y una Execution interrumpida no se vuelve a entregar.
+- Un estado de corrida persistido fuera de Execution: ni el Plan, ni la WorkUnit, ni la
+  contabilidad tienen uno. El de cada intento vive en el registro de su Execution.
+- Un estado del Plan posterior a `READY_FOR_EXECUTION`, o un ciclo `PENDING → RUNNING → terminal`
+  en la WorkUnit: Execution tiene su propio ciclo, y la WorkUnit sigue sin uno.
+- Un cliente de modelo: HARNESS lanza el Host, y el modelo lo llama el Host.
+- Un vínculo contable entre una corrida de agente y una WorkUnit, salvo el texto libre de `--unidad`
+  y `--agente` en contabilidad. El resultado de una Execution guarda `host.sessionRef`, y los eventos
+  `WORKUNIT_*` siguen sin productor.
 
-### Lo que queda fijado para la próxima Task
+### Lo que sigue intacto
 
-Dos invariantes que valen hoy, y que solo se pueden romper con una decisión escrita:
+Los dos invariantes de ADR-0013 §4. ADR-0014 los conserva, y solo se pueden romper con una
+decisión escrita:
 
 1. **La contabilidad no es estado de ejecución.** Nada fuera de Observability lee un ledger para
-   decidir.
-2. **El estado del Plan se deriva del contenido del Plan.** Nadie lo cambia después de armarlo.
+   decidir, y Execution va a publicar en la contabilidad sin leerla.
+2. **El estado del Plan se deriva del contenido del Plan.** Nadie lo cambia después de armarlo, y
+   Execution no lo escribe.
 
-Tres preguntas que la Task de ejecución tiene que contestar en su propia spec:
+### Las tres preguntas, contestadas
 
-1. Dónde vive el estado de una ejecución.
-2. Qué forma tiene lo que vuelve de un agente, distinguiendo EvaluationResult de Evidence.
-3. Si el contrato de salida es el `agentResult` de los agentes, los "Result Statuses" de las skills,
-   o ninguno de los dos.
+ADR-0014 contesta las tres preguntas que Task 2 dejó para la Task de ejecución:
+
+1. **Dónde vive el estado de una ejecución:** en el registro de cada Execution, ni en el Plan ni en
+   la contabilidad.
+2. **Qué forma tiene lo que vuelve de un agente:** un AgentReport, `{declaredStatus, artifact}`, que
+   arma el Host Adapter. Lo que observa el motor es ExecutionEvidence, que no es Evidence.
+3. **El contrato de salida** no es ni el `agentResult` de los agentes ni los "Result Statuses" de las
+   skills: es el AgentReport, con el vocabulario de cuatro valores del `agentResult`.
 
 ## Fuera del producto
 

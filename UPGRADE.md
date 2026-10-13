@@ -23,6 +23,31 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.31.0 → 0.32.0
+
+`-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala los seis módulos de
+`bin/ejecucion/`, los dos schemas de ejecución y el subcomando `ejecutar` de `dev-harness.py`. Un
+proyecto que no corre `ejecutar` no nota nada: ningún hook ni regla cambia.
+
+Si lo corrés, hay que saber:
+
+- **Necesita `claude` en el `PATH`.** Si no está, `ejecutar` sale con 2 antes de crear nada. Se puede
+  apuntar a otro programa con `ejecucion.comandoHost` en `.claude/harness.config.json`, y cambiar el
+  límite de una corrida con `ejecucion.limiteSegundos` (1800 segundos por defecto). Las dos claves son
+  opcionales. Un `comandoHost` con banderas que arma el adaptador, como `--agent`, `--bare` o
+  `--dangerously-skip-permissions`, se rechaza.
+- **Crea `.claude/ejecuciones/`** en el proyecto, con un registro por cada intento. Es estado de
+  ejecución, no código del harness.
+- **Desde una sesión interactiva de Claude Code, `ejecutar` pasa solo mientras la tarea puede avanzar.**
+  La política de herramientas no tiene una fila para él, así que con una tarea esperando una decisión
+  humana se niega. Corrido desde una terminal, no hay diferencia.
+- **En Windows, una unidad que pide `tests.run` se admite y su agente no tiene `Bash`** para correr los
+  tests: la sesión del Host no lo trae.
+- **Cada corrida es una sesión de Claude Code y tiene su costo.** El motor no le pone tope; elige el
+  modelo por el tier de la unidad, con `modelRouting.perfiles` de `harness.config.json`.
+
+---
+
 ## 0.30.0 → 0.31.0
 
 `-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala los módulos del flujo, sus

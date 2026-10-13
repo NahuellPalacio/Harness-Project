@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "execution-result/1.0",
+  "title": "EXECUTION_RESULT",
+  "description": "La constancia inmutable de como termino un intento del contexto Execution (docs/cambios/execution-contract/spec.md, secciones 11, 14 y 18; ADR-0014). Existe solo cuando el intento es terminal, y se escribe una sola vez. SUCCEEDED es mecanico: dice que el intento termino con un AgentReport valido que declara COMPLETE, no que el trabajo cumple una norma ni una spec. No lleva tokens, ni costo, ni referencias contables, ni prompts, ni transcripciones, ni llamadas a tools, ni el texto del agente. Hoy no lo produce nadie: el motor es de la Task siguiente. Las coherencias que el subconjunto de JSON Schema no puede decir las hace cumplir bin/ejecucion/contrato.py (validar_resultado). Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["schema_version", "executionId", "requestFingerprint", "status", "error",
+               "startedAt", "endedAt", "agentDeclaredStatus", "output", "evidence", "host"],
+  "additionalProperties": false,
+  "properties": {
+
+    "schema_version": { "type": "string", "enum": ["execution-result/1.0"] },
+
+    "executionId": {
+      "description": "El de su request.",
+      "type": "string",
+      "pattern": "^exe_[0-9a-f]{32}$"
+    },
+
+    "requestFingerprint": {
+      "description": "La huella de su request: una request tocada despues ya no es la suya.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+
+    "status": {
+      "description": "Solo los cuatro terminales. REQUESTED y RUNNING son estados de una Execution abierta, y una Execution abierta no tiene resultado.",
+      "type": "string",
+      "enum": ["SUCCEEDED", "FAILED", "CANCELLED", "REJECTED"]
+    },
+
+    "error": {
+      "description": "null si y solo si status es SUCCEEDED.",
+      "$ref": "#/$defs/error"
+    },
+
+    "startedAt": {
+      "description": "Cuando se entrego, en UTC. null si nunca se entrego. Con endedAt, es el unico lugar donde vive el tiempo del intento: la evidencia no lleva tiempos.",
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+
+    "endedAt": {
+      "description": "Cuando quedo terminal, en UTC.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+
+    "agentDeclaredStatus": {
+      "description": "El declaredStatus del AgentReport que entrego el Host Adapter. null si no hubo un AgentReport valido. Es una declaracion, y nunca decide sola.",
+      "enum": ["COMPLETE", "PARTIAL", "BLOCKED", "FAILED", null]
+    },
+
+    "output": {
+      "description": "El artifact del AgentReport, redactado y guardado aparte: aca van su ruta relativa y su huella, nunca el texto. null si no hubo un AgentReport valido.",
+      "type": ["object", "null"],
+      "required": ["path", "fingerprint"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+
+    "evidence": {
+      "description": "ExecutionEvidence: lo que el motor observo del arbol. No lleva tiempos. null si el intento nunca se entrego.",
+      "type": ["object", "null"],
+      "required": ["repoRevisionBefore", "repoRevisionAfter", "changes"],
+      "additionalProperties": false,
+      "properties": {
+        "repoRevisionBefore": { "type": ["string", "null"] },
+        "repoRevisionAfter": { "type": ["string", "null"] },
+        "changes": {
+          "description": "Los cambios observados y el estado de esa observacion. Lo que falta no es cero: con un estado que no es RESOLVED, files va vacio.",
+          "type": "object",
+          "required": ["state", "files"],
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": ["RESOLVED", "CHANGES_UNRESOLVED", "CHANGES_UNATTRIBUTABLE"]
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["path", "change", "fingerprint"],
+                "additionalProperties": false,
+                "properties": {
+                  "path": { "type": "string" },
+                  "change": { "type": "string", "enum": ["ADDED", "MODIFIED", "DELETED"] },
+                  "fingerprint": {
+                    "description": "La huella del archivo despues del cambio. null si se borro.",
+                    "type": ["string", "null"],
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "host": {
+      "description": "La correlacion con el Host, opaca y opcional: solo observabilidad, nunca identidad. Texto libre, sin enum, para que el contrato sirva con cualquier Host.",
+      "type": ["object", "null"],
+      "required": ["kind", "sessionRef", "runRef"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string" },
+        "sessionRef": { "type": ["string", "null"] },
+        "runRef": { "type": ["string", "null"] }
+      }
+    }
+  },
+
+  "$defs": {
+    "error": {
+      "description": "ExecutionError. code es de una lista cerrada y es lo unico que lee una maquina; detail es texto en espanol para una persona, redactado y de hasta 300 caracteres. Tambien es la forma de un rechazo al pedir, que no se persiste.",
+      "type": ["object", "null"],
+      "required": ["code", "detail"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": ["CONTRACT_INVALID", "PLAN_UNREADABLE", "TASK_KEY_MISMATCH", "PLAN_CHANGED",
+                   "PLAN_NOT_READY", "DELEGATION_NOT_ALLOWED", "WORK_UNIT_NOT_FOUND",
+                   "WORK_UNIT_NOT_PENDING",
+                   "NORMATIVE_GATE_BLOCKED", "AGENT_UNAVAILABLE", "AGENT_NOT_EXECUTABLE",
+                   "AGENT_DOMAIN_MISMATCH", "CAPABILITY_UNAVAILABLE", "DEPENDENCY_NOT_SATISFIED",
+                   "DUPLICATE_EXECUTION", "HOST_FAILURE", "HOST_INTERRUPTED", "PROVIDER_FAILURE",
+                   "TIMEOUT", "OUTPUT_INVALID", "AGENT_DECLARED_NOT_COMPLETE", "ENGINE_FAILURE",
+                   "CANCELLED"]
+        },
+        "detail": { "type": "string" }
+      }
+    }
+  }
+}

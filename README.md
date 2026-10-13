@@ -109,9 +109,17 @@ python .claude\harness\bin\desarrollo\dev-harness.py plan GCBA-1234 --propuesta 
 ```
 
 La plantilla la completa el agente `dev-orchestrator`, y `--propuesta` la valida y la guarda en
-`.claude/planes/` como `orchestration-plan/2.0`. **El harness planifica y no ejecuta:** nada toma
-una unidad de trabajo y la lleva a cabo. Execution está reservado en el
-[modelo de dominio](docs/dominio/modelo-canonico.md), sin implementar.
+`.claude/planes/` como `orchestration-plan/2.1`. **El plan no ejecuta nada: es un documento.** Una
+unidad la lleva a cabo `ejecutar`, de a una por invocación y con un solo intento, a través de
+`claude` (tiene que estar en el `PATH`):
+
+```powershell
+python .claude\harness\bin\desarrollo\dev-harness.py ejecutar GCBA-1234 --unidad analizar-api
+```
+
+La admite, deja su registro en `.claude/ejecuciones/` y termina en un resultado: `SUCCEEDED`,
+`FAILED`, `CANCELLED` o `REJECTED`. Elegir la siguiente unidad y en qué orden sigue siendo de quien
+invoca. Execution es un contexto del [modelo de dominio](docs/dominio/modelo-canonico.md).
 
 Y con la tarea corriendo, contar lo que costó: tokens, tiempo y plata, con lo que no se pudo medir
 dicho en vez de puesto en cero.

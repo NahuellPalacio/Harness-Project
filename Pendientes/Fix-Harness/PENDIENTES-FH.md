@@ -1643,6 +1643,14 @@ Fix. The first three are text. The fifth is one assertion next to E-18b or E-19 
 `tests/casos/64_modelo_de_dominio.py`. The fourth is a decision, not a typo: if an unregistered
 agent should hold readiness, it changes behaviour and needs its own spec.
 
+The fourth is now decided, on 2026-10-07, by ADR-0014 and `docs/cambios/execution-contract/spec.md`
+(D3, EC-01): `READY_FOR_EXECUTION` stays a document state and does not look at `agentExists`. The
+execution admission rejects a unit whose agent the registry does not route, with
+`AGENT_UNAVAILABLE`. Since 0.31.0 Planning says it too: an agent the registry does not route leaves
+its unit `BLOCKED`, with the `agents.routing` blocker, and the plan `BLOCKED` (`plan.py:373-378`).
+The admission keeps its check for a registry that changes after planning. The bullet leaves this
+file when the version closes.
+
 ## What the Flow Governance integration left open
 
 Written on 2026-10-07 while closing `docs/cambios/integracion-flow-governance-0-31` (0.31.0). Its
@@ -1686,6 +1694,309 @@ do it, and did not in 0.29.0 either. The long map's Fig. 6 repeated the claim an
 
 Fix. Correct the comment. If warning about a typed secret is wanted, it is a new behaviour with its
 own spec, not a comment.
+
+## What the execution contract found and left open
+
+Found on 2026-10-07 while specifying `docs/cambios/execution-contract/spec.md`. The contract
+decides how Execution behaves at each of these points, and none of them is fixed here: they belong
+to Planning, to Catalog, to the agent prompts or to the engine. Each one names its contradiction
+`EC-nn` in section 6 of that spec. Line numbers refer to `0f8b725`.
+
+### An executing agent cannot reach the integration capabilities the plan counts as available
+
+EC-08. `capacidades.disponibles` counts as available every integration capability the environment
+validation left `ENABLED`, such as `jira.issue.read`, plus the four local ones of `roster.json`
+(`bin/orquestacion/capacidades.py:22-26`). `ENABLED` means the harness CLI can reach Jira with its
+own HTTP client (`bin/integraciones/jira.py:19`). No agent's `tools:` reaches Jira or GitLab
+(`agents/dev-backend.md:4`), and nobody verifies that the session has the tools behind the local
+ones: the plan says so itself (`bin/orquestacion/plan.py:252-255`). A unit can be planned
+`PENDING` with a capability its executing agent will never have.
+
+Fix. Known only in its shape. The execution contract already rejects it at delivery with
+`CAPABILITY_UNAVAILABLE`: available for Catalog and provided by the Host Adapter. The next Task
+decides how the adapter declares what it provides (spec P7). Whether Planning should also see it is
+a decision of its own.
+
+### The agent registry gives two answers for the same orphan agent
+
+EC-10. For an id with an `.md` on disk and no declaration, `roster.validacion_de_agente` answers
+`AGENT_NOT_FOUND` (`bin/orquestacion/roster.py:181-192`) and
+`registro_agentes.resolver_ruteo` answers `ORPHAN_AGENT` (`bin/orquestacion/registro_agentes.py:380-386`).
+The plan therefore never writes `ORPHAN_AGENT`, although it is in the `agentValidation` enum
+(`comun/schemas/orchestration-plan.schema.json:157-160`). The execution contract reads `routable`
+and not the reason, so it is not affected.
+
+Fix. One answer, from one function, used by the plan and by the routing. Which of the two is right
+is a Catalog decision.
+
+### A plan accepts an agent from another domain without a word
+
+EC-22. `assignedAgent` keeps whatever the proposal asks for (`bin/orquestacion/plan.py:313`), and
+`agentExists` checks only that the registry routes it (`plan.py:337`), not that it owns the unit's
+domain. The registry declares one owner per domain, and the unit's context slice is cut for its
+domain (`CONTEXTO_POR_DOMINIO`). A backend unit assigned to `dev-frontend` comes out `PENDING`, and
+the plan reaches `READY_FOR_EXECUTION`.
+
+Fix. The execution admission rejects it with `AGENT_DOMAIN_MISMATCH` (spec D6). Planning should
+say it too, as a warning or a rejection, and that is a decision of its own.
+
+### Agent prompts describe a result flow and an existence check that belong to someone else
+
+EC-12 and EC-13. `agents/dev-integration.md:86-96` tells the agent to emit `agentExists: true` and
+`SPECIALIZED_SKILL_GAP`, but whether an agent exists is decided by the registry. The specialists say
+they return structured results to `dev-orchestrator` (`agents/dev-backend.md:13`), and
+`dev-orchestrator` receives nothing: it writes the proposal and runs `plan`
+(`agents/dev-orchestrator.md:43-53`). Under ADR-0014 the receiver is Execution, through the Host
+Adapter, as an AgentReport.
+
+Fix. Text in the agent `.md` files, when the next Task builds the Host Adapter and knows what it
+reads. The specialist `.md` files are not part of the refutation cache key, `dev-refutador.md` is.
+
+### Two texts still say the disk decides whether an agent exists
+
+EC-21. `docs/orquestacion.md:327-329` still says the seven specialists "todavía no tienen su .md",
+and `roster.huecos` says "declarado en el roster y no tiene su .md" for any agent the registry does
+not route (`bin/orquestacion/roster.py:224-225`). Since the agent registry, the registry decides and
+the disk only diagnoses, and the seven specialists have their files.
+
+Fix. Text: name the registry state instead of the file. `roster.huecos` can use the `validation`
+it already receives.
+
+## What the minimal execution engine left open
+
+Found on 2026-10-08 while building `docs/cambios/minimal-execution-engine/spec.md` (Task 4,
+ADR-0015). The engine runs one WorkUnit per `ejecutar` and leaves these on purpose: section 30 of
+that spec says which Task each one waits for, and section 33.1 lists the accepted risks.
+
+### `dev-harness.py ejecutar` falls to `UNRESOLVED_TOOL_CLASS` in the tool policy
+
+ME-22 and R4. `comun/hooks/lib/tool_policy.py` has no row for the new subcommand, so from an
+interactive Claude Code session `ejecutar` passes only while the task can advance, and is denied
+while any task waits for a human decision. Run from a terminal, it is the same engine. The same gap
+exists for `presupuesto` (see that idea in `Pendientes/Ideas-Harness/PENDIENTES-I.md`).
+
+Fix. A row in `tool_policy._harness`, by `harness-hook-engineer`. Task 4 does not touch the hooks.
+
+### A Host that outlives its engine keeps running after the Execution is closed
+
+R1 and MP-01. On Windows a child does not die with its parent, and the recovery never kills by pid,
+because a pid can be reused by another process. A Host can go on writing while its Execution already
+says `FAILED` or `CANCELLED`; the evidence of that Execution says `CHANGES_UNATTRIBUTABLE` if the tree
+changed, and `ejecutar --estado` warns when the pid of `proceso.json` is still alive.
+
+Fix. A Job Object on Windows and the equivalent on POSIX, when a real case asks for it.
+
+### `bin/ejecucion/proceso.py` repeats the process algorithm of `flujo/repositorio.py`
+
+MD-14. Output to temporary files, a process group of its own on POSIX and `taskkill /F /T` on
+Windows: the same algorithm as `_correr_con_limite` and `_matar_arbol`, written again because those
+are private to Flow Governance. The two copies can drift.
+
+Fix. One public helper used by both, by `harness-staff-engineer`, behaviour frozen.
+
+### Execution publishes nothing yet: no `WORKUNIT_*` events, no `executionId` metadata, no evidence for refutation
+
+Task 3's P4 and P5, deferred again as MP-02. The engine does not emit `WORKUNIT_STARTED` or
+`WORKUNIT_COMPLETED`, does not add `executionId` to the accounting metadata, and does not project its
+ExecutionEvidence into the refutation or the security ledger. The correlation today is
+`host.sessionRef` and the existing `contabilidad --ingerir --unidad --agente`. Related:
+«Block 4 has thirteen event types and only one producer».
+
+Fix. The Task that connects Execution with Observability and Governance.
+
+### The engine runs with no per-run budget
+
+MP-03. The adapter never passes `--max-budget-usd`; the unit's tier, which already went through the
+ConsumptionGate, picks the model through `modelRouting.perfiles`. Every `ejecutar` is a Host session
+with its model, and nothing caps what one run spends.
+
+Fix. When the consumption policy asks for a per-run limit.
+
+### Execution and its schemas have no owner in the factory
+
+Task 3, §34.3.10. The owners table of `CLAUDE.md` names no agent for `bin/ejecucion/` nor for the two
+execution schemas, and Task 4 added six modules there.
+
+Fix. A factory decision in `CLAUDE.md`, with `harness-budget-auditor`. The spec's proposal is
+`harness-backend-engineer`.
+
+## What the refutation of the minimal execution engine left open
+
+Found on 2026-10-09 by `harness-spec-refuter` on Task 4, numbered as in the section «Lo que queda
+abierto» of `docs/cambios/minimal-execution-engine/verificacion.md`. The correction pass of the same
+day (spec §34) fixed the four blocking scenarios and items 10, 11 (as a declared limit), 12, 19, 20,
+21, 22, 25 and half of 26. What follows is not blocking and is not fixed.
+
+### ME-E19 and ME-E44 are sustained by tests that cover one half each
+
+Item 8. ME-E19's test does not cover «o SUCCEEDED» and ME-E44's does not cover «otra tarea del mismo
+proyecto»; the refuter established both halves by reproduction. ME-E09 alone, without ME-E29, does
+not tell the unit's norms from the default norm.
+
+Fix. One assertion per missing half in `tests/casos/72_motor_de_ejecucion.py`, with its red seen.
+
+### A cancel request that saw the engine alive ends `CANCELLED` even if the cut came first
+
+Item 9, ME-I22, MD-24. If `--cancelar` sees the engine alive and the engine dies before the request is
+written, the recovery closes the Execution `CANCELLED`. It follows from MD-24's rule; the refuter
+classified it as documentary precision. Whether it contradicts ME-I22's «nunca al revés» is a
+person's decision.
+
+Fix. Either a sentence in MD-24 that names this order, or a behaviour change with its own scenario.
+
+### A tampered `request.json` leaves its Execution unreadable and blocks the key until replanning
+
+Item 13, R6 of the spec. Since §34 the delivery rejects a request whose fingerprint changed, and the
+result keeps the fingerprint the engine wrote. Read against the tampered request it no longer matches,
+so the Execution is unreadable, counts as open, and the key only frees by replanning. Nothing rewrites
+the request or deletes the Execution, on purpose.
+
+Fix. A recovery path for an unreadable Execution, decided with a spec: it is a new behaviour.
+
+### Three engine paths end in a traceback instead of a command error
+
+Item 14. `ejecutar --recuperar` with a key that carries `\n`; `--cancelar` racing a recovery that
+deletes its temporary file; and an edited `entrega.json` that leaves `recuperar` in `ErrorDelComando`
+for the whole task.
+
+Fix. Each one caught where it is raised, with a scenario per path.
+
+### Three historical tests were loosened more than Task 4 needed
+
+Item 15. E-22 no longer limits which admission functions use the plan path; EX-E51 no longer fixes
+the source of E-41; EX-G11 guards `dev-harness.py` only in its subcommands.
+
+Fix. Tighten each one back to what Task 4 actually changed.
+
+### `resolver_agente` reads the agent front matter literally
+
+Item 16. A quoted `name:` or a `tools:` written as a YAML list is not recognised, and the agent comes
+out unavailable. Every agent the harness ships today uses the literal form.
+
+Fix. Read the two keys the way `registro_agentes` reads them, or document the form as the contract.
+
+### An evidence path with a secret in its name is not redacted
+
+Item 17. MD-19 and MD-19′ list what text is redacted, and paths in the ExecutionEvidence are not on
+the list.
+
+Fix. Run the paths through `limpieza.redactar` before writing the evidence, with a scenario.
+
+### Suite 72 leaves files in `%TEMP%`
+
+Item 18. Scripts, echoes, grandchildren, shims and `me72-hijo-*.py` stay behind after a green run.
+
+Fix. Create them under one per-run folder and remove it at the end, like the installer cases do.
+
+### The `DELEGATION_NOT_ALLOWED` detail recommends `--status`, which does not reconcile
+
+Item 23. The command that reconciles is `--resume`.
+
+Fix. Text in the detail, with the assertion that names it.
+
+### MD-17 says PreToolUse reaches every tool of the agent
+
+Item 24. `Read`, `Glob`, `Grep` and `Skill` do not go through the hook in this harness.
+
+Fix. Text in MD-17: the hooks that matter for an executing agent are the ones on the tools that write
+or run.
+
+### `Bash` does not exist in the Host session on Windows
+
+Item 26 and R5 of the spec. Claude Code on Windows drops `Bash` from `--tools` in silence, because its
+shell is PowerShell (§34.2, E8). A unit with `tests.run` is admitted and its agent has nothing to run
+the tests with. The other half of item 26, `Edit` and `Write` offered to a read-only unit, is fixed by
+`--tools` and `--strict-mcp-config`.
+
+Fix. Map `tests.run` per platform, or reject it at admission where the Host cannot provide it. Either
+is a change to MD-18 with its own scenario.
+
+**Input for Task 5 discovery.**
+
+### A Host killed from outside on Windows is `HOST_FAILURE`, not `HOST_INTERRUPTED`
+
+Item 11 and R7 of the spec. `taskkill /F` leaves exit code 1, the same as an ordinary failure, and
+there is no other signal. §34 decided the engine does not guess.
+
+Fix. Only if the Host starts reporting it, or a Job Object lets the engine know it was the killer.
+
+### The lock probe can land between `O_EXCL` and the lock of `Vida`
+
+Item 27 and N1. A window of microseconds, more likely once there are workers. It is the mechanism
+compatible with the one `ME-E18` assertion that failed in the first full run of the reverification
+(2026-10-10): one Execution and one turn were left, and the loser did not return
+`DUPLICATE_EXECUTION`. The reverification forced the window and did not observe it in that run.
+
+Fix. When Task 5 adds concurrency: take the lock before the file is visible, or probe twice.
+
+**Input for Task 5 discovery.**
+
+### An internal junction duplicates a physical file in the evidence
+
+Item 28. A file reachable through a junction inside the project is counted twice.
+
+Fix. Deduplicate by file identity when walking the tree.
+
+### No test pins that the reservation's exclusivity comes from the file system
+
+Item 29. The race tests pass, and none of them would fail if the exclusivity came from a check in
+Python instead of `os.link`.
+
+Fix. A scenario that replaces the link with a non-exclusive write and sees the race tests go red.
+
+## What the reverification of the minimal execution engine left open
+
+Found on 2026-10-10 and 2026-10-13 by `harness-spec-refuter`, numbered N2 to N8 as in the section
+«Hallazgos nuevos» of `docs/cambios/minimal-execution-engine/verificacion.md`. None blocks. N1 is the
+lock probe above, N6 was fixed with the 0.32.0 close, N9 is part of «The shared secret catalogue
+misses five credential forms, and its sample leaks twelve characters» and N10 of «Suite 72 leaves
+files in `%TEMP%`».
+
+### A `REQUESTED` Execution whose engine died blocks its key until a person cancels it
+
+R2 of the spec, ME-E34 and ADR-0015 decision 4. A `REQUESTED` has no `entrega.json`, so it has no
+`RUNNING` to recover: the recovery leaves it open and `ejecutar --cancelar` is the only way out. It
+counts as open, so a new `ejecutar` of the same unit is `DUPLICATE_EXECUTION` meanwhile. Accepted on
+purpose: the engine does not guess that a person gave up.
+
+### The real Host refuses `Write` under an 8.3 short path on Windows
+
+N2. With the project at `C:\Users\204350~1\…`, `Write` shows up in `permission_denials` even with
+`acceptEdits` («la ruta contiene `204350~1`… requiere aprobación manual»). It is not the adapter: under
+the long path a unit with `repository.write` ends `SUCCEEDED` and the file appears in the evidence as
+`ADDED`. Observed with Claude Code 2.1.296. A project under this user's `%TEMP%` falls into it.
+
+### `comandoHost` lets through Host options that MD-22′ does not list, and a flag wrapped in quotes
+
+N3 and N4. The spec lists what the configuration cannot carry and the code meets it. Twenty-three
+other options of `claude --help` pass, among them `--add-dir`, `--plugin-dir`, `--resume`,
+`--max-budget-usd`, `--fallback-model`, `--permission-prompt-tool`, `--worktree` and `--file`. And
+`"--bare"` or `'--bare'` as one argument passes the validation and reaches the Host as a literal that
+does not start with `-`: inert, seen with the fake Host and not with the real one.
+
+Fix. A decision first: keep MD-22′'s list and say the owner of `comandoHost` is trusted, or validate
+against what the adapter may let through.
+
+### `admision.al_entregar` skips the request fingerprint check when `huella` is `None`
+
+N5. Its only caller passes it, so today the check always runs. A future caller that omits it turns
+the check off without a word.
+
+Fix. Make `huella` required.
+
+### `error_max_structured_output_retries` has two readings and the real Host never emitted it
+
+N8. Spec §21 sends it to `OUTPUT_INVALID`; MD-10′ sends every non-zero exit that is neither the
+provider nor a signal to `HOST_FAILURE`, and with exit 1 the engine gives `HOST_FAILURE`. The real Host
+could not be made to produce that `subtype`, so nobody knows which exit code it carries.
+
+Fix. Decide when a real one is seen.
+
+### ADR-0015 decision 2 does not list `prompt-de-sistema.md`
+
+N7. The decision names six files of the registry; the «Enmienda post-refutación» names the seventh.
+
+Fix. Text in the decision, or leave the amendment as the only place.
 
 ## Verification that was not done
 

@@ -585,40 +585,41 @@ def test_e02_s5_un_hueco_pesa_mas_que_una_aprobacion_pendiente(t):
             "entonces READY_FOR_EXECUTION", list(orden), encontrados)
 
 
-def test_e03_nueve_contextos_y_execution_reservado(t):
-    """E-03 — el mapa declara nueve contextos y, aparte, Execution como limite reservado. El
-    Contexto de cada concepto es uno de los nueve o External; External solo para un concepto
-    External; cada contexto tiene al menos un concepto; ninguno es de Execution."""
+# ADR-0014 (docs/cambios/execution-contract/spec.md) hizo de Execution el decimo contexto. El
+# supuesto de 0.30.0 -nueve contextos, y Execution aparte como limite reservado y sin conceptos- ya
+# no vale por esa decision escrita, que es la que ADR-0013 dejaba prevista en su revision. E-03 pide
+# lo mismo de antes sobre los diez, y lo de Execution lo protege EX-E44 de 65_contrato_de_ejecucion.
+DIEZ = NUEVE + ["Execution"]
+
+
+def test_e03_diez_contextos_con_execution(t):
+    """E-03 — el mapa declara diez contextos: los nueve de Task 2 y Execution (ADR-0014). El
+    Contexto de cada concepto es uno de los diez o External; External solo para un concepto
+    External; cada contexto tiene al menos un concepto."""
     m = _modelo()
     mapa = _seccion(m["texto"], "Mapa de contextos")
     tablas = _tablas(mapa)
     contextos = [f[0] for f in tablas[0][1:]] if tablas else []
-    t.igual("E-03 el mapa declara los nueve contextos", sorted(NUEVE), sorted(contextos))
-    t.igual("E-03 son nueve, sin repetir", 9, len(set(contextos)))
-    texto_mapa = "\n".join(mapa)
-    t.verdadero("E-03 Execution figura aparte, como limite reservado y no como contexto",
-                re.search(r"Execution no es un contexto: es un límite reservado", texto_mapa))
-    t.vacio("E-03 Execution no esta en la tabla de contextos",
-            [c for c in contextos if "Execution" in c])
+    t.igual("E-03 el mapa declara los diez contextos", sorted(DIEZ), sorted(contextos))
+    t.igual("E-03 son diez, sin repetir", 10, len(set(contextos)))
+    t.verdadero("E-03 Execution es un contexto de la tabla, ya no un limite reservado (ADR-0014)",
+                "Execution" in contextos)
     por_contexto = {}
-    malos, externos, de_execution, distintos = [], [], [], []
+    malos, externos, distintos = [], [], []
     filas = {f[0]: f for f in m["filas"] if len(f) >= 3}
     for nombre, campos in m["campos"].items():
         ctx, cls = _valor(campos.get("Contexto")), _valor(campos.get("Clasificación"))
         por_contexto.setdefault(ctx, []).append(nombre)
-        if ctx not in NUEVE + ["External"]:
+        if ctx not in DIEZ + ["External"]:
             malos.append("%s: %s" % (nombre, ctx))
         if ctx == "External" and cls != "External":
             externos.append(nombre)
-        if "Execution" in ctx:
-            de_execution.append(nombre)
         if nombre in filas and filas[nombre][1] != ctx:
             distintos.append("%s: tabla %s, bloque %s" % (nombre, filas[nombre][1], ctx))
-    t.vacio("E-03 el Contexto de cada concepto es uno de los nueve o External", malos)
+    t.vacio("E-03 el Contexto de cada concepto es uno de los diez o External", malos)
     t.vacio("E-03 solo un concepto External tiene Contexto External", externos)
-    t.vacio("E-03 cada uno de los nueve tiene al menos un concepto",
-            [c for c in NUEVE if not por_contexto.get(c)])
-    t.vacio("E-03 ningun concepto tiene Execution como contexto", de_execution)
+    t.vacio("E-03 cada uno de los diez tiene al menos un concepto",
+            [c for c in DIEZ if not por_contexto.get(c)])
     t.vacio("E-03 la tabla y el bloque dicen el mismo contexto", distintos)
 
 
@@ -657,20 +658,31 @@ SCHEMAS_DE_FLOW_GOVERNANCE = ("flow-required-inputs.schema.json", "human-decisio
 SCHEMAS_DE_0_30 = 46
 
 
+# ADR-0014 agrego dos schemas, execution-request y execution-result: a los 52 de 0.31.0 se suman dos,
+# y son 54. Su tabla es la de la seccion 22 de la spec de ejecucion, que S4 lee junto con 3.2 y D7. Lo
+# de los dos nuevos lo protege EX-E45 de 65_contrato_de_ejecucion.
+SCHEMAS_DE_EJECUCION = ("execution-request.schema.json", "execution-result.schema.json")
+
+
 def test_e05_cada_schema_tiene_su_concepto(t):
-    """E-05 — cada uno de los 52 archivos de comun/schemas/ figura en Persistencia y contrato de
+    """E-05 â€” cada uno de los 54 archivos de comun/schemas/ figura en Persistencia y contrato de
     al menos un concepto, y todo schema que nombra el documento existe en disco.
 
     Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md (D7): eran 46; con los seis
-    de Flow Governance son 52 (E-21 de esa spec)."""
+    de Flow Governance son 52 (E-21 de esa spec). Con los dos de ADR-0014
+    (docs/cambios/execution-contract/spec.md, seccion 22), 54."""
     m = _modelo()
     en_disco = sorted(p.name for p in SCHEMAS.iterdir() if p.is_file())
-    # Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md (D7)
-    t.igual("E-05 son los 52 de comun/schemas/: 46 de 0.30.0 y 6 de Flow Governance (D7 de la "
-            "integracion)", SCHEMAS_DE_0_30 + len(SCHEMAS_DE_FLOW_GOVERNANCE), len(en_disco))
+    # Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md (D7), y por ADR-0014
+    t.igual("E-05 son los 54 de comun/schemas/: 46 de 0.30.0, 6 de Flow Governance (D7 de la "
+            "integracion) y 2 del contrato de ejecucion (ADR-0014)",
+            SCHEMAS_DE_0_30 + len(SCHEMAS_DE_FLOW_GOVERNANCE) + len(SCHEMAS_DE_EJECUCION),
+            len(en_disco))
     # Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md (D7)
     t.vacio("E-05 E-21 (integracion) los seis schemas de Flow Governance estan en comun/schemas/",
             [s for s in SCHEMAS_DE_FLOW_GOVERNANCE if s not in en_disco])
+    t.vacio("E-05 los dos schemas del contrato de ejecucion estan en comun/schemas/",
+            [s for s in SCHEMAS_DE_EJECUCION if s not in en_disco])
     nombrados = set()
     for campos in m["campos"].values():
         nombrados |= set(SCHEMA_NOMBRADO.findall(campos.get("Persistencia y contrato") or ""))
@@ -678,6 +690,18 @@ def test_e05_cada_schema_tiene_su_concepto(t):
             [s for s in en_disco if s not in nombrados])
     t.vacio("E-05 todo schema que nombra el documento existe en disco",
             sorted({s for s in SCHEMA_NOMBRADO.findall(m["texto"]) if s not in en_disco}))
+
+
+# La spec de Task 3 mapea sus dos schemas en la seccion 22, con las mismas columnas que la 3.2 de
+# esta: S4 lee las dos. Sin esto, S4 pediria que la spec cerrada de Task 2 nombre schemas que
+# trajo ADR-0014, y esa spec es historia: no se reescribe.
+SPEC_EJECUCION = RAIZ / "docs" / "cambios" / "execution-contract" / "spec.md"
+COLUMNAS_DE_SCHEMAS = ["Schema", "Concepto", "Productor", "Runtime", "Persistencia", "Clase"]
+
+
+def _tabla_de_schemas_de_la_spec_de_ejecucion():
+    tablas = _tablas(_seccion(_texto(SPEC_EJECUCION), "22. Schemas")) if SPEC_EJECUCION.is_file() else []
+    return next((tb for tb in tablas if tb and tb[0] == COLUMNAS_DE_SCHEMAS), [])
 
 
 def _conceptos_de_la_spec_3_2(catalogo):
@@ -694,11 +718,22 @@ def _conceptos_de_d7(catalogo):
     return _conceptos_de_la_tabla(_seccion(_texto(SPEC_INTEGRACION), TITULO_D7, nivel=3), catalogo)
 
 
+def _conceptos_de_la_seccion_22(catalogo):
+    """{schema: [conceptos]} de la tabla de schemas de la seccion 22 de la spec de ejecucion, leida
+    igual que 3.2 y que D7. Es la segunda tabla de esa seccion: se la busca por sus columnas."""
+    return _conceptos_de_las_filas(_tabla_de_schemas_de_la_spec_de_ejecucion()[1:], catalogo)
+
+
 def _conceptos_de_la_tabla(lineas, catalogo):
     """{schema: [conceptos]} de la primera tabla de `lineas`, con las columnas de 3.2."""
     tablas = _tablas(lineas)
+    return _conceptos_de_las_filas(tablas[0][1:] if tablas else [], catalogo)
+
+
+def _conceptos_de_las_filas(filas, catalogo):
+    """{schema: [conceptos]} de las filas de una tabla con las columnas de 3.2."""
     salida = {}
-    for fila in (tablas[0][1:] if tablas else []):
+    for fila in filas:
         if len(fila) < 2:
             continue
         schema = fila[0].strip().strip("`") + ".schema.json"
@@ -741,12 +776,22 @@ def test_e05_s4_cada_schema_esta_en_el_concepto_que_dice_la_spec(t):
     t.igual("E-05 S4 E-21 (integracion) la tabla de D7 tiene los seis schemas de Flow Governance",
             sorted(SCHEMAS_DE_FLOW_GOVERNANCE), sorted(de_d7))
     t.vacio("E-05 S4 ningun schema esta a la vez en 3.2 y en D7", sorted(set(de_3_2) & set(de_d7)))
+    # ADR-0014: la tabla de la seccion 22 de la spec de ejecucion trae sus dos schemas
+    de_22 = _conceptos_de_la_seccion_22(m["catalogo"])
+    t.verdadero("E-05 S4 la seccion 22 de la spec de ejecucion trae su tabla de schemas",
+                len(_tabla_de_schemas_de_la_spec_de_ejecucion()) > 1)
+    t.igual("E-05 S4 la tabla de la seccion 22 tiene los dos schemas del contrato de ejecucion",
+            sorted(SCHEMAS_DE_EJECUCION), sorted(de_22))
+    t.vacio("E-05 S4 ningun schema de la seccion 22 esta en 3.2 o en D7",
+            sorted(set(de_22) & (set(de_3_2) | set(de_d7))))
     de_la_spec = dict(de_3_2)
     de_la_spec.update(de_d7)
+    de_la_spec.update(de_22)
     en_disco = sorted(p.name for p in SCHEMAS.iterdir() if p.is_file())
-    t.igual("E-05 S4 la tabla de 3.2 de la spec y la de D7 de la integracion tienen los schemas de "
-            "comun/schemas/", en_disco, sorted(de_la_spec))
-    t.vacio("E-05 S4 cada celda Concepto de 3.2 y de D7 nombra un concepto del documento",
+    t.igual("E-05 S4 las tablas de 3.2 de la spec, de D7 de la integracion y de la seccion 22 de la "
+            "spec de ejecucion tienen los schemas de comun/schemas/", en_disco, sorted(de_la_spec))
+    t.vacio("E-05 S4 cada celda Concepto de 3.2, de D7 y de la seccion 22 nombra un concepto del "
+            "documento",
             sorted(s for s, c in de_la_spec.items() if not c))
     persistencia = {n: set(SCHEMA_NOMBRADO.findall(c.get("Persistencia y contrato") or ""))
                     for n, c in m["campos"].items()}
@@ -786,16 +831,32 @@ def _desigualdades_de_la_spec():
     return [f[0] for f in tablas[0][1:]] if tablas else []
 
 
+def _desigualdades_de_la_spec_de_ejecucion():
+    """Las seis de la lista de 26.1 de la spec de ejecucion: el titulo en negrita, sin el punto."""
+    if not SPEC_EJECUCION.is_file():
+        return []
+    lineas = _seccion(_texto(SPEC_EJECUCION), "26.1 `docs/dominio/modelo-canonico.md`", nivel=3)
+    return [m.group(1).rstrip(".").strip() for l in lineas
+            for m in [re.match(r"^\d+\.\s+\*\*(.+?)\*\*", l)] if m]
+
+
+# ADR-0014 agrego seis desigualdades, que la spec de ejecucion lista en 26.1. El apartado tiene ahora
+# las catorce de Task 2 mas esas seis, y la regla de citar una ruta que existe vale para las veinte.
+# Lo de las seis lo protege EX-E46 de 65_contrato_de_ejecucion.
 def test_e06_las_catorce_desigualdades(t):
     """E-06 — `## Lo que no es lo mismo` tiene un apartado por cada una de las catorce
-    desigualdades de 4.3, y cada apartado cita al menos una ruta del repo que existe."""
+    desigualdades de 4.3 y por cada una de las seis de ADR-0014, y ninguno mas; cada apartado cita
+    al menos una ruta del repo que existe."""
     m = _modelo()
     esperadas = _desigualdades_de_la_spec()
     t.igual("E-06 la spec trae catorce desigualdades", 14, len(esperadas))
+    de_ejecucion = _desigualdades_de_la_spec_de_ejecucion()
+    t.igual("E-06 la spec de ejecucion trae seis mas", 6, len(de_ejecucion))
     apartados = _apartados(_seccion(m["texto"], "Lo que no es lo mismo"))
     titulos = [a for a, _ in apartados]
-    t.igual("E-06 un apartado por cada desigualdad de 4.3", sorted(esperadas), sorted(titulos))
-    t.igual("E-06 son catorce apartados", 14, len(titulos))
+    t.igual("E-06 un apartado por cada desigualdad de 4.3 y de 26.1 de la spec de ejecucion",
+            sorted(esperadas + de_ejecucion), sorted(titulos))
+    t.igual("E-06 son veinte apartados", 20, len(titulos))
     for titulo, lineas in apartados:
         rutas = [r for r in re.findall(r"`([^`\s]+)`", "\n".join(lineas))
                  if "/" in r and (RAIZ / r).exists()]
@@ -1005,32 +1066,44 @@ def _limite_de_la_spec():
 ANCLAS_EXISTE = ("READY_FOR_EXECUTION", "PENDING", "executionOrder", "ModelPolicy",
                  "TASK_STARTED", "agentResult", "maxRetries", "refutación",
                  "revisión automática de fuentes")
-ANCLAS_NO_EXISTE = ("`Execution`", "ExecutionRequest", "posterior a `READY_FOR_EXECUTION`",
+# ADR-0014 hizo existir el contrato: el agregado `Execution` y `ExecutionRequest` salen de lo que no
+# existe y pasan a lo que existe. Lo demas de 10.1 sigue sin existir y se sigue pidiendo, junto con
+# los anclajes de EX-E47 de 65_contrato_de_ejecucion: el motor, la admision implementada, el
+# almacenamiento, el Host Adapter y el scheduler.
+# Pisado por docs/cambios/minimal-execution-engine/spec.md (§24, §26.2): ADR-0015 hizo existir el
+# motor, la admision implementada, el almacenamiento y el Host Adapter, que pasan de lo que no existe
+# a lo que existe ahora. Siguen sin existir el scheduler, el reintento automatico, la reanudacion y
+# el cliente de modelo, y el resto de 10.1.
+ANCLAS_NO_EXISTE = ("posterior a `READY_FOR_EXECUTION`",
                     "ejecutor", "estado de corrida persistido", "PENDING → RUNNING → terminal",
-                    "reintento", "cliente de modelo", "`--unidad`")
+                    "reintento", "cliente de modelo", "`--unidad`", "scheduler")
+ANCLAS_EXISTE_AHORA = ("décimo contexto", "ExecutionRequest", "execution-request.schema.json",
+                       "contrato.py", "motor", "admisión", "almacenamiento", "Host Adapter")
+APARTADOS_DEL_LIMITE = ("Lo que existe ahora", "Lo que todavía no existe", "Lo que sigue intacto",
+                        "Las tres preguntas, contestadas")
 
 
 def test_e09_el_limite_de_la_ejecucion(t):
-    """E-09 — `## El límite de la ejecución` tiene, como items, lo que existe y lo que no de 10.1,
-    los dos invariantes y las tres preguntas."""
+    """E-09 — `## El límite de la ejecución` tiene, como items, lo que existe, lo que de 10.1 sigue
+    sin existir, los dos invariantes y las tres preguntas, ahora contestadas por ADR-0014. Con
+    ADR-0014 el contrato existe: sus apartados y sus anclajes son los de EX-E47."""
     m = _modelo()
     limite = _seccion(m["texto"], "El límite de la ejecución")
     partes = dict(_apartados(limite))
-    for titulo in ("Lo que existe en 0.29", "Lo que no existe",
-                   "Lo que queda fijado para la próxima Task"):
+    for titulo in APARTADOS_DEL_LIMITE:
         t.verdadero("E-09 tiene el apartado %s" % titulo, titulo in partes)
     existe_spec, no_existe_spec = _limite_de_la_spec()
-    existe = _items(partes.get("Lo que existe en 0.29", []))
-    no_existe = _items(partes.get("Lo que no existe", []))
+    existe = _items(partes.get("Lo que existe ahora", []))
+    no_existe = _items(partes.get("Lo que todavía no existe", []))
     t.verdadero("E-09 la spec trae los items de 10.1", existe_spec and no_existe_spec)
-    t.igual("E-09 lo que existe: tantos items como en 10.1", len(existe_spec), len(existe))
-    t.igual("E-09 lo que no existe: tantos items como en 10.1", len(no_existe_spec), len(no_existe))
-    for nombre, anclas, items in (("existe", ANCLAS_EXISTE, existe),
-                                  ("no existe", ANCLAS_NO_EXISTE, no_existe)):
+    t.verdadero("E-09 lo que existe: al menos los items de 10.1", len(existe) >= len(existe_spec))
+    for nombre, anclas, items in (("existe", ANCLAS_EXISTE + ANCLAS_EXISTE_AHORA, existe),
+                                  ("todavía no existe", ANCLAS_NO_EXISTE, no_existe)):
         for ancla in anclas:
             t.verdadero("E-09 lo que %s nombra %s" % (nombre, ancla),
                         any(ancla in i for i in items))
-    fijado = partes.get("Lo que queda fijado para la próxima Task", [])
+    fijado = (partes.get("Lo que sigue intacto", [])
+              + partes.get("Las tres preguntas, contestadas", []))
     numerados = [l for l in fijado if re.match(r"^\d+\.\s", l)]
     t.igual("E-09 dos invariantes y tres preguntas", 5, len(numerados))
     texto = " ".join(fijado)
@@ -1862,11 +1935,24 @@ def test_e22_un_solo_escritor_y_una_sola_regla_de_lectura(t):
     # Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md: Flow Governance suma
     # tres. estado_de_tarea/decisiones.py reescribe el plan por plan.escribir; flujo/interaccion.py
     # y flujo/precondiciones.py lo leen para la compuerta.
+    # Pisado por docs/cambios/minimal-execution-engine/spec.md (§26.2, contradiccion ME-27): la
+    # admision de Execution lee el plan guardado, y arma su ruta ella misma porque Execution no
+    # importa la refutacion (MD-13, EX-E08). Lee y no escribe: lo cuidan las dos aserciones de abajo.
     con_planes = sorted(p.relative_to(BIN).as_posix() for p in _py_de(BIN)
                         if "planes" in _constantes(p))
     t.igual("E-22 solo estos modulos de bin/ arman una ruta bajo .claude/planes/",
-            ["dev-harness.py", "estado_de_tarea/decisiones.py", "flujo/interaccion.py",
-             "flujo/precondiciones.py", "orquestacion/refutacion.py"], con_planes)
+            ["dev-harness.py", "ejecucion/admision.py", "estado_de_tarea/decisiones.py",
+             "flujo/interaccion.py", "flujo/precondiciones.py", "orquestacion/refutacion.py"],
+            con_planes)
+    admision = _arbol_py(BIN / "ejecucion" / "admision.py")
+    t.verdadero("E-22 la admision lee el plan por la regla de lectura, aceptar_guardado",
+                any(_nombre(c.func).endswith("aceptar_guardado") for c in _llamadas(admision)))
+    t.vacio("E-22 y no escribe el plan: no abre nada para escribir ni llama a plan.escribir",
+            [c.lineno for c in _llamadas(admision)
+             if _nombre(c.func).endswith(("plan.escribir", "orq_plan.escribir"))
+             or (_nombre(c.func) in ("open", "io.open") and any(
+                 isinstance(a, ast.Constant) and set(str(a.value)) & set("wax+")
+                 for a in c.args[1:2]))])
     decisiones = _arbol_py(BIN / "estado_de_tarea" / "decisiones.py")
     t.vacio("E-22 decisiones.py no abre un archivo: el plan lo escribe plan.escribir",
             [c.lineno for c in _llamadas(decisiones) if _nombre(c.func) in ("open", "io.open")])
@@ -2771,23 +2857,40 @@ def _lanzamientos(ruta):
 # Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md: Flow Governance mata con
 # taskkill el arbol de un `git remote -v` vencido en Windows (flujo/repositorio.py,
 # _matar_arbol). Es el unico otro programa, y solo desde ahi.
-OTROS_PERMITIDOS = {"taskkill": "harnesses/desarrollo/bin/flujo/repositorio.py"}
+# Pisado por docs/cambios/minimal-execution-engine/spec.md (§26.2; ME-01, MD-08, MD-14): el
+# motor de Execution mata con taskkill el arbol del Host desde ejecucion/proceso.py, que repite el
+# algoritmo de flujo/repositorio.py en vez de importar sus privadas.
+OTROS_PERMITIDOS = {"taskkill": ("harnesses/desarrollo/bin/flujo/repositorio.py",
+                                 "harnesses/desarrollo/bin/ejecucion/proceso.py")}
+# Pisado por la misma spec: HARNESS lanza el Host, nunca un modelo (ME-01). El comando es
+# configuracion del motor (`ejecucion.comandoHost`, o `claude` del PATH), asi que ejecucion/
+# proceso.py lanza un parametro: el unico lanzamiento de un parametro permitido es ese, y solo lo
+# llama host_claude_code.py, que lo arma con el Host. Lo cuida la ultima asercion.
+LANZA_UN_PARAMETRO = ("harnesses/desarrollo/bin/ejecucion/proceso.py",
+                      "<argumentos sin quien lo llame>")
+LANZA_EL_HOST = "harnesses/desarrollo/bin/ejecucion/host_claude_code.py"
 
 
 def test_e41_todo_subprocess_lanza_git_o_markitdown(t):
     """E-41 — todo subprocess del codigo de bin/ y comun/ lanza git o markitdown, salvo el
-    taskkill de flujo/repositorio.py (OTROS_PERMITIDOS)."""
-    vistos, ajenos = set(), []
+    taskkill de flujo/repositorio.py y de ejecucion/proceso.py (OTROS_PERMITIDOS), y el Host, que
+    lanza solo ejecucion/proceso.py y por pedido de host_claude_code.py (Task 4)."""
+    vistos, ajenos, lanzan = set(), [], []
     for p in _py_de(BIN) + _py_de(RAIZ / "comun"):
         rel = p.relative_to(RAIZ).as_posix()
         for linea, programa in _lanzamientos(p):
             vistos.add(programa)
-            if programa not in ("git", "markitdown") and OTROS_PERMITIDOS.get(programa) != rel:
+            if (programa not in ("git", "markitdown") and rel not in OTROS_PERMITIDOS.get(programa, ())
+                    and (rel, programa) != LANZA_UN_PARAMETRO):
                 ajenos.append("%s:%d %s" % (rel, linea, programa))
+        lanzan += ["%s:%d" % (rel, c.lineno) for c in _llamadas(_arbol_py(p))
+                   if _nombre(c.func).endswith("proceso.lanzar")]
     t.verdadero("E-41 se encontraron los lanzamientos de git y de markitdown",
                 {"git", "markitdown"} <= vistos)
     t.vacio("E-41 nada lanza otra cosa que git o markitdown (o taskkill desde "
-            "flujo/repositorio.py)", ajenos)
+            "flujo/repositorio.py y ejecucion/proceso.py, o el Host)", ajenos)
+    t.verdadero("E-41 el Host lo lanza solo host_claude_code.py, por proceso.lanzar",
+                lanzan and all(l.startswith(LANZA_EL_HOST + ":") for l in lanzan))
 
 
 def test_e42_orquestacion_no_lee_la_contabilidad(t):

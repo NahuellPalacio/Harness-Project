@@ -8,6 +8,7 @@
     python .claude/harness/bin/desarrollo/dev-harness.py seguridad GCBA-1234 [--conocimiento] [--resumen] [--reporte] [--refutacion]
     python .claude/harness/bin/desarrollo/dev-harness.py refute GCBA-1234 --compile|--status|--unit REF-001|--record <v.json>|--summary
     python .claude/harness/bin/desarrollo/dev-harness.py flujo GCBA-1234 --status [--json]
+    python .claude/harness/bin/desarrollo/dev-harness.py ejecutar GCBA-1234 --unidad <id>|--cancelar <exe_...>|--estado|--recuperar [--pedido-por <quien>] [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py harness [--json] [--verbose] [--reiniciar-bienvenida]
     python .claude/harness/bin/desarrollo/dev-harness.py presupuesto [--context-defaults]
 
@@ -78,6 +79,8 @@ from orquestacion import plan as orq_plan                         # noqa: E402
 from orquestacion import refutacion as orq_refutacion             # noqa: E402
 from orquestacion import registro_fuentes as orq_fuentes         # noqa: E402
 from orquestacion import roster as orq_roster                     # noqa: E402
+
+from ejecucion import motor as ejec_motor                         # noqa: E402
 
 from contabilidad import agregacion as cont_agregacion            # noqa: E402
 from contabilidad import barra as cont_barra                      # noqa: E402
@@ -1097,6 +1100,100 @@ def compuerta_normativa(args, proyecto, rutas, consola, clave, transporte=None,
     return veredicto
 
 
+# -- ejecutar ------------------------------------------------------------------
+
+def ejecutar(args, proyecto, rutas, consola, transporte=None, transporte_bytes=None):
+    """Una WorkUnit, un intento, sincronico (docs/cambios/minimal-execution-engine/spec.md).
+
+    `--unidad` admite, crea la Execution, la entrega al Host y espera su resultado: sale con 0
+    solo si quedo SUCCEEDED. `--cancelar` recupera primero y pide despues; `--estado` solo lee;
+    `--recuperar` cierra las RUNNING huerfanas. La compuerta normativa es la de `plan`, con las
+    normas de la unidad: la llama la admision, dos veces.
+    """
+    clave = args.argumento
+    try:
+        if args.ejecutar_estado:
+            filas = ejec_motor.estado(proyecto, clave)
+            if args.json:
+                sys.stdout.write(json.dumps(filas, ensure_ascii=False, indent=2) + "\n")
+                return 0
+            consola.linea("Ejecuciones de %s: %d turno(s)" % (clave, len(filas)))
+            for f in filas:
+                avisos = [a for a, si in (("huérfana sospechada", f["huerfana"]),
+                                          ("el pid del Host sigue vivo", f["hostVivo"])) if si]
+                consola.linea("  turno %d  %s  %s%s%s" % (
+                    f["turno"], f["executionId"] or "?", f["estado"],
+                    " · " + f["motivo"] if f["motivo"] else "",
+                    " · " + ", ".join(avisos) if avisos else ""))
+                if f["huerfana"] and f["estado"] == "REQUESTED":
+                    consola.linea("      su motor murió antes de entregarla: se cancela con "
+                                  "`ejecutar %s --cancelar %s`" % (clave, f["executionId"]))
+            return 0
+        if args.ejecutar_recuperar:
+            cerradas = ejec_motor.recuperar(proyecto, clave)
+            if args.json:
+                sys.stdout.write(json.dumps(cerradas, ensure_ascii=False, indent=2) + "\n")
+                return 0
+            consola.linea("Recuperación de %s: %d Execution(s) cerrada(s)" % (clave, len(cerradas)))
+            for c in cerradas:
+                consola.linea("  %s  %s %s%s" % (c["executionId"], c["status"], c["code"],
+                                                 " · el pid del Host sigue vivo" if c["hostVivo"]
+                                                 else ""))
+            return 0
+        if args.ejecutar_cancelar:
+            salida = ejec_motor.cancelar(proyecto, clave, args.ejecutar_cancelar,
+                                         ejec_motor.quien_pide(args.pedido_por,
+                                                               _config_harness(rutas)))
+            if args.json:
+                sys.stdout.write(json.dumps(salida, ensure_ascii=False, indent=2) + "\n")
+                return 0
+            if salida["recuperada"]:
+                consola.linea("%s ya estaba cortada: su motor había muerto, y la recuperación la "
+                              "cerró %s. No se pidió cancelar." % (salida["executionId"],
+                                                                  salida["despues"]))
+            elif not salida["pedido"]:
+                consola.linea("%s ya era %s: no se cambió nada." % (salida["executionId"],
+                                                                    salida["despues"]))
+            else:
+                consola.linea("Se pidió cancelar %s: ahora está %s." % (salida["executionId"],
+                                                                       salida["despues"]))
+            return 0
+
+        config = ejec_motor.configuracion(proyecto)
+        observador = _observador_de_jira(args, proyecto, rutas, consola, transporte,
+                                         transporte_bytes)
+        canal = orq_refresco.canal_previsto(proyecto)
+
+        def compuerta(requeridas):
+            return orq_refresco.ensure_normative_knowledge_fresh(
+                proyecto, observador, _capacidades(rutas), canal, requeridas=requeridas)
+
+        consola.evento("ejecucion.pedida", tarea=clave, unidad=args.unidad)
+        resultado, error = ejec_motor.ejecutar(
+            proyecto, clave, args.unidad, ejec_motor.quien_pide(args.pedido_por, config),
+            config=config, compuerta=compuerta)
+    except ejec_motor.ErrorDelComando as e:
+        raise FallaDelHarness(str(e))
+
+    if error is not None:
+        if args.json:
+            sys.stdout.write(json.dumps(error, ensure_ascii=False, indent=2) + "\n")
+        else:
+            consola.linea("No se admitió %s de %s: %s · %s" % (args.unidad, clave, error["code"],
+                                                              error["detail"]))
+        return 2
+    if args.json:
+        sys.stdout.write(json.dumps(resultado, ensure_ascii=False, indent=2) + "\n")
+    else:
+        motivo = resultado["error"] or {}
+        consola.linea("%s %s: %s%s" % (resultado["executionId"], args.unidad, resultado["status"],
+                                        " · %s · %s" % (motivo["code"], motivo["detail"])
+                                        if motivo else ""))
+        if resultado["output"]:
+            consola.linea("  informe del agente: %s" % resultado["output"]["path"])
+    return 0 if resultado["status"] == "SUCCEEDED" else 2
+
+
 def resolver_contexto(args, proyecto, rutas, config, almacen, timeout, consola,
                       transporte, transporte_bytes):
     """Bloque 2: de una clave de Jira a un TaskContext.
@@ -1948,6 +2045,9 @@ def comando(args, transporte=None, transporte_bytes=None):
     if args.comando == "flujo":
         return mostrar_flujo(args, proyecto, rutas, consola, almacen, timeout, transporte)
 
+    if args.comando == "ejecutar":
+        return ejecutar(args, proyecto, rutas, consola, transporte, transporte_bytes)
+
     # Todo lo que sigue toca integraciones: primero el .env, despues el resto.
     config = resolver_configuracion(rutas)
 
@@ -1996,7 +2096,7 @@ def parser():
         description="Integraciones y contexto de tarea del harness de desarrollo.")
     p.add_argument("comando", choices=("setup", "estado", "reconfigurar", "contexto", "plan",
                                        "contabilidad", "fuentes", "seguridad", "harness",
-                                       "refute", "flujo", "presupuesto"))
+                                       "refute", "flujo", "presupuesto", "ejecutar"))
     p.add_argument("argumento", nargs="?",
                    help="la integracion, para reconfigurar; la clave de Jira, para contexto")
     p.add_argument("--archivo", default="",
@@ -2016,7 +2116,16 @@ def parser():
     p.add_argument("--adaptador", default="claude-code",
                    help="contabilidad: que adaptador lee la fuente")
     p.add_argument("--unidad", default="",
-                   help="contabilidad: a que unidad de trabajo se atribuye lo ingerido")
+                   help="contabilidad: a que unidad de trabajo se atribuye lo ingerido; "
+                        "ejecutar: la WorkUnit del plan que se ejecuta")
+    p.add_argument("--cancelar", dest="ejecutar_cancelar", default="",
+                   help="ejecutar: pide cancelar esa Execution (exe_...), despues de recuperar")
+    p.add_argument("--estado", dest="ejecutar_estado", action="store_true",
+                   help="ejecutar: los turnos de la tarea y su estado, sin escribir nada")
+    p.add_argument("--recuperar", dest="ejecutar_recuperar", action="store_true",
+                   help="ejecutar: cierra las RUNNING huerfanas y barre los residuos")
+    p.add_argument("--pedido-por", dest="pedido_por", default="",
+                   help="ejecutar: quien pide. Por defecto, el usuario configurado")
     p.add_argument("--agente", default="",
                    help="contabilidad: a que agente se atribuye lo ingerido")
     p.add_argument("--reporte", action="store_true",
@@ -2131,6 +2240,18 @@ def main(argv=None, transporte=None, transporte_bytes=None):
             "flujo necesita una clave de Jira, con la forma PROYECTO-123. "
             "Ejemplo: dev-harness.py flujo GCBA-1234 --status\n")
         return 2
+
+    if args.comando == "ejecutar":
+        if not CLAVE_JIRA.match(str(args.argumento or "")):
+            sys.stderr.write(
+                "ejecutar necesita una clave de Jira, con la forma PROYECTO-123. "
+                "Ejemplo: dev-harness.py ejecutar GCBA-1234 --unidad implementar-endpoint\n")
+            return 2
+        if len([a for a in (args.unidad, args.ejecutar_cancelar, args.ejecutar_estado,
+                            args.ejecutar_recuperar) if a]) != 1:
+            sys.stderr.write("ejecutar necesita una sola de --unidad, --cancelar, --estado o "
+                             "--recuperar.\n")
+            return 2
 
     if args.comando == "seguridad":
         # Antes de tocar el disco: un `..` o una barra sacarian la carpeta de la tarea de

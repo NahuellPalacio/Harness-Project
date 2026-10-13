@@ -391,12 +391,34 @@ try {
         Assert-Igual 'E-22 con disparador INSTALL' 'INSTALL' ([string](Get-HuEstado $huB).knowledgeRefresh.trigger)
 
         if ($huBaseOk) {
+            # Un cambio posterior, docs/cambios/execution-contract (ADR-0014), instala a proposito
+            # cuatro archivos nuevos: el contrato de ejecucion, sin productor. No son de harness-unico:
+            # se suman a lo esperado en E-15 y se saltean en E-16, para que los dos sigan cuidando lo
+            # suyo. Que se instalen lo protege EX-E53 de 65-contrato-de-ejecucion-instalador.ps1.
+            $huAgregadosPorContratoDeEjecucion = @(
+                '.claude\harness\bin\desarrollo\ejecucion\__init__.py',
+                '.claude\harness\bin\desarrollo\ejecucion\contrato.py',
+                '.claude\harness\schemas\execution-request.schema.json',
+                '.claude\harness\schemas\execution-result.schema.json')
+            # Y docs/cambios/minimal-execution-engine (Task 4, ADR-0015) instala a proposito los seis
+            # modulos del motor minimo. Tampoco son de harness-unico: se suman a lo esperado en E-15 y
+            # se saltean en E-16. Que se instalen y corran lo protege ME-E26 de
+            # 72-motor-de-ejecucion-instalador.ps1.
+            $huAgregadosPorMotorDeEjecucion = @(
+                '.claude\harness\bin\desarrollo\ejecucion\admision.py',
+                '.claude\harness\bin\desarrollo\ejecucion\evidencia.py',
+                '.claude\harness\bin\desarrollo\ejecucion\host_claude_code.py',
+                '.claude\harness\bin\desarrollo\ejecucion\motor.py',
+                '.claude\harness\bin\desarrollo\ejecucion\proceso.py',
+                '.claude\harness\bin\desarrollo\ejecucion\registro.py')
+
             # E-15
-            $esperadas = @($huARutas | Where-Object { $huManifiestosViejos -notcontains $_ })
-            Assert-Igual 'E-15 las rutas del lock son las de 0.28.0 sin los dos manifiestos' ($esperadas -join '|') ($huBRutas -join '|')
+            $esperadas = @(@($huARutas | Where-Object { $huManifiestosViejos -notcontains $_ }) + $huAgregadosPorContratoDeEjecucion + $huAgregadosPorMotorDeEjecucion | Sort-Object)
+            Assert-Igual 'E-15 las rutas del lock son las de 0.28.0 sin los dos manifiestos, mas las cuatro del contrato de ejecucion y las seis del motor' ($esperadas -join '|') ($huBRutas -join '|')
             # Eran 259 sobre 0.28.0 sola; sobre ea2dff7 suman los archivos de Flow Governance
-            # (integracion-flow-governance-0-31).
-            Assert-Igual 'E-15 son 282' 282 $huBRutas.Count
+            # (integracion-flow-governance-0-31): 282. Con las cuatro del contrato de ejecucion, 286, y
+            # con las seis del motor minimo, 292.
+            Assert-Igual 'E-15 son 292: las 282 de ea2dff7, las cuatro del contrato de ejecucion y las seis del motor' 292 $huBRutas.Count
 
             # E-16
             $tocados = @('.claude\settings.json', '.claude\harness\run-hook.cmd', '.claude\harness\hooks\session-start.py',
@@ -428,6 +450,8 @@ try {
             foreach ($ruta in $huBRutas) {
                 if ($tocados -contains $ruta) { continue }
                 if ($huTocadosPorModeloDeDominio -contains $ruta) { continue }
+                if ($huAgregadosPorContratoDeEjecucion -contains $ruta) { continue }
+                if ($huAgregadosPorMotorDeEjecucion -contains $ruta) { continue }
                 if (-not $huAHash.ContainsKey($ruta)) { $distintos += "$ruta (no estaba)"; continue }
                 if ((Get-HuHash (Join-Path $huB $ruta)) -ne $huAHash[$ruta]) { $distintos += $ruta }
             }

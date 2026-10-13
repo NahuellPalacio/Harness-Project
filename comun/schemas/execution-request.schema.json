@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "execution-request/1.0",
+  "title": "EXECUTION_REQUEST",
+  "description": "La constancia inmutable de que una WorkUnit concreta, de un plan concreto, se admitio para ejecutar: el contrato de entrada del contexto Execution (docs/cambios/execution-contract/spec.md, seccion 10; ADR-0014). Una request es una WorkUnit y un intento. La escribe la admision y nadie la modifica. Hoy no la produce nadie: la admision y el motor son de la Task siguiente. No lleva nada del Host, ni tools, ni aprobaciones, ni presupuesto, ni timeout, ni modelo concreto, ni numero de intento. Las coherencias que el subconjunto de JSON Schema no puede decir las hace cumplir bin/ejecucion/contrato.py (validar_request). Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["schema_version", "executionId", "idempotencyKey", "createdAt", "requestedBy",
+               "taskKey", "plan", "taskContextRef", "workUnit", "workUnitFingerprint", "admission"],
+  "additionalProperties": false,
+  "properties": {
+
+    "schema_version": { "type": "string", "enum": ["execution-request/1.0"] },
+
+    "executionId": {
+      "description": "La identidad de un intento: exe_ mas 32 hexadecimales al azar. La genera la admision; no sale del Host, ni de la sesion, ni del contenido.",
+      "type": "string",
+      "pattern": "^exe_[0-9a-f]{32}$"
+    },
+
+    "idempotencyKey": {
+      "description": "La huella de [taskKey, planFingerprint, workUnit.id]: esta WorkUnit de este documento de plan. Distingue un reintento de un duplicado; no es la identidad.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+
+    "createdAt": {
+      "description": "Cuando se admitio, en UTC.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+
+    "requestedBy": {
+      "description": "Quien pidio la ejecucion: una persona o una automatizacion nombrada. Se redacta antes de escribir.",
+      "type": "string",
+      "pattern": "\\S"
+    },
+
+    "taskKey": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$" },
+
+    "plan": {
+      "description": "De que documento de plan sale la WorkUnit. plan_version no alcanza, porque plan --propuesta vuelve a 1: la identidad es planFingerprint, la huella del plan tal como se leyo.",
+      "type": "object",
+      "required": ["planId", "planVersion", "planFingerprint", "schemaVersion"],
+      "additionalProperties": false,
+      "properties": {
+        "planId": { "type": "string", "pattern": "^pln_[A-Za-z][A-Za-z0-9_]*-[0-9]+$" },
+        "planVersion": { "type": "integer", "minimum": 1 },
+        "planFingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "schemaVersion": {
+          "description": "La version con que se leyo el plan, por la regla de lectura unica (plan.aceptar_guardado). Esa regla lee 2.1, 2.0 y 1.0, pero solo un 2.1 puede estar READY_FOR_EXECUTION por los dos lados: un 2.0 o un 1.0 se lee y no se admite, se replanifica (HARNESS 0.31.0, leer no es compilar).",
+          "type": "string",
+          "enum": ["orchestration-plan/2.1"]
+        }
+      }
+    },
+
+    "taskContextRef": {
+      "description": "Una referencia al TaskContext, copiada de meta.task_context_ref del plan. No es una copia, y el hash se registra sin compararse: hoy no es determinista.",
+      "type": "object",
+      "required": ["path", "contextHash"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "contextHash": { "type": "string" }
+      }
+    },
+
+    "workUnit": {
+      "description": "La WorkUnit tal como esta en el plan. Este contrato no repite su forma: restringe seis campos, y validar_request valida el resto contra workUnits.items de orchestration-plan.schema.json, que sigue siendo la autoridad.",
+      "type": "object",
+      "required": ["id", "domain", "assignedAgent", "requiredCapabilities", "dependencies", "status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "domain": { "type": "string" },
+        "assignedAgent": {
+          "description": "El patron del AgentRegistry. Un agente en blanco no se admite.",
+          "type": "string",
+          "pattern": "^dev-[a-z0-9-]+$"
+        },
+        "requiredCapabilities": {
+          "description": "Capabilities con forma de capability, nunca un nombre de herramienta del Host.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+        },
+        "status": { "type": "string", "enum": ["PENDING"] }
+      }
+    },
+
+    "workUnitFingerprint": {
+      "description": "La huella de workUnit.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+
+    "admission": {
+      "description": "Lo que valia al admitir. Una condicion que no se cumplio no valida: la precondicion queda en el contrato. El motor no confia en estos valores: los vuelve a derivar al entregar.",
+      "type": "object",
+      "required": ["planStatus", "flow", "agent", "capabilities", "normativeGate", "dependencies"],
+      "additionalProperties": false,
+      "properties": {
+        "planStatus": { "type": "string", "enum": ["READY_FOR_EXECUTION"] },
+        "flow": {
+          "description": "La decision del flujo de la tarea, de su TaskFlowState vigente (Planning): que permisos() dio delegationAllowed. Es el unico dato del flujo que viaja: ni la etapa, ni los bloqueos, ni una copia del estado. Otra decision no se admite.",
+          "type": "string",
+          "enum": ["DELEGATION_ALLOWED"]
+        },
+        "agent": {
+          "description": "Lo que dijo el AgentRegistry del agente asignado, al admitir. domain tiene que ser el de la WorkUnit.",
+          "type": "object",
+          "required": ["validation", "type", "domain"],
+          "additionalProperties": false,
+          "properties": {
+            "validation": { "type": "string", "enum": ["VALID", "VALID_WITH_PENDING_SKILLS"] },
+            "type": { "type": "string", "enum": ["SPECIALIST_AGENT", "INFRASTRUCTURE_AGENT"] },
+            "domain": { "type": "string" }
+          }
+        },
+        "capabilities": {
+          "description": "Que todas las requiredCapabilities estaban disponibles.",
+          "type": "string",
+          "enum": ["ALL_AVAILABLE"]
+        },
+        "normativeGate": {
+          "description": "La decision de la compuerta normativa, de Normative Sources. blocked no se admite.",
+          "type": "string",
+          "enum": ["allowed", "unresolved"]
+        },
+        "dependencies": {
+          "description": "La Execution SUCCEEDED, del mismo plan por su huella, que satisfizo cada dependencia de la WorkUnit.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["workUnitId", "executionId"],
+            "additionalProperties": false,
+            "properties": {
+              "workUnitId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+              "executionId": { "type": "string", "pattern": "^exe_[0-9a-f]{32}$" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
