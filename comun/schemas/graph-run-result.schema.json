@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "graph-run-result/1.0",
+  "title": "GRAPH_RUN_RESULT",
+  "description": "La constancia inmutable de como termino un GraphRun del contexto Execution: un intento de llevar todas las WorkUnits de un plan, bajo una huella, a un terminal, pidiendo Executions de a una (docs/cambios/graph-execution/spec.md, secciones 9, 22 y 23). Existe solo cuando el GraphRun es terminal, y se escribe una sola vez. SUCCEEDED es mecanico: dice que todas las unidades del conjunto congelado quedaron SATISFIED bajo la huella, no que el trabajo cumple una norma ni una spec. Es una foto con ids, numeros de turno y codigos: no lleva evidencia, archivos, output ni artifact, ni el texto de un agente o de un Host, que viven en cada Execution y se referencian por executionId. Las coherencias que el subconjunto de JSON Schema no puede decir las hace cumplir bin/ejecucion/grafo.py (validar_resultado). Lo valida el interprete de subconjunto de contexto-armar.py.",
+  "type": "object",
+  "required": ["schema_version", "graphRunId", "taskKey", "planFingerprint", "requestedBy",
+               "startedAt", "endedAt", "status", "error", "cancelRequested", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+
+    "schema_version": { "type": "string", "enum": ["graph-run-result/1.0"] },
+
+    "graphRunId": {
+      "description": "El del GraphRun, el mismo de su inicio.json.",
+      "type": "string",
+      "pattern": "^grf_[0-9a-f]{32}$"
+    },
+
+    "taskKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*-[0-9]+$"
+    },
+
+    "planFingerprint": {
+      "description": "F: la huella del plan a la que quedo atado el GraphRun al crearse. La huella, no la version, es la identidad del plan.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+
+    "requestedBy": {
+      "description": "Quien pidio el GraphRun, redactado con el catalogo de secretos.",
+      "type": "string"
+    },
+
+    "startedAt": {
+      "description": "Cuando se creo el GraphRun, en UTC: el startedAt de su inicio.json.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+
+    "endedAt": {
+      "description": "Cuando quedo terminal, en UTC.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+
+    "status": {
+      "description": "Solo los tres terminales. Un GraphRun abierto no tiene resultado: es un inicio.json sin result.json.",
+      "type": "string",
+      "enum": ["SUCCEEDED", "FAILED", "CANCELLED"]
+    },
+
+    "error": {
+      "description": "null salvo con FAILED, donde es obligatorio: el codigo de la causa del cierre.",
+      "$ref": "#/$defs/error"
+    },
+
+    "cancelRequested": {
+      "description": "Si existia la marca de cancelacion del GraphRun al cerrar. Un GraphRun SUCCEEDED puede traerla en true: todo estaba terminado cuando llego el pedido.",
+      "type": "boolean"
+    },
+
+    "nodes": {
+      "description": "Una entrada por unidad del conjunto congelado de su inicio.json, en el orden de `order`: el estado derivado de cada una al cerrar, con el numero de turno. Una foto para auditar: quien decide vuelve a derivar.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/nodo" }
+    }
+  },
+
+  "$defs": {
+    "error": {
+      "description": "GraphRunError. code es de una lista cerrada de nueve y es lo unico que lee una maquina. Un ExecutionError aparece solo como causa referenciada, en executionCode. detail es texto del GraphRun en espanol, redactado y de hasta 300 caracteres: ids, codigos y el comando que sigue; nunca texto del agente, del Host ni el detail de un ExecutionError.",
+      "type": ["object", "null"],
+      "required": ["code", "workUnitId", "executionId", "executionStatus", "executionCode", "detail"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": ["GRAPH_ALREADY_ACTIVE", "GRAPH_PLAN_UNREADABLE", "GRAPH_STRUCTURE_INVALID",
+                   "WORK_UNIT_NOT_SUCCEEDED", "ADMISSION_REJECTED", "TASK_EXECUTION_OPEN",
+                   "PLAN_FINGERPRINT_CHANGED", "DISPATCH_FAILED", "GRAPH_INTERRUPTED"]
+        },
+        "workUnitId": {
+          "description": "La unidad de la causa, o null. Es una de las de nodes.",
+          "type": ["string", "null"]
+        },
+        "executionId": {
+          "description": "La Execution de la causa, o null. En DISPATCH_FAILED es la preasignada, aunque ningun turno la nombre.",
+          "type": ["string", "null"],
+          "pattern": "^exe_[0-9a-f]{32}$"
+        },
+        "executionStatus": {
+          "description": "Su estado derivado del registro, o null si ningun turno la nombra.",
+          "enum": ["REQUESTED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED", "REJECTED",
+                   "ILEGIBLE", null]
+        },
+        "executionCode": {
+          "description": "El code de su ExecutionError o del rechazo al pedir, o null.",
+          "enum": ["CONTRACT_INVALID", "PLAN_UNREADABLE", "TASK_KEY_MISMATCH", "PLAN_CHANGED",
+                   "PLAN_NOT_READY", "DELEGATION_NOT_ALLOWED", "WORK_UNIT_NOT_FOUND",
+                   "WORK_UNIT_NOT_PENDING",
+                   "NORMATIVE_GATE_BLOCKED", "AGENT_UNAVAILABLE", "AGENT_NOT_EXECUTABLE",
+                   "AGENT_DOMAIN_MISMATCH", "CAPABILITY_UNAVAILABLE", "DEPENDENCY_NOT_SATISFIED",
+                   "DUPLICATE_EXECUTION", "HOST_FAILURE", "HOST_INTERRUPTED", "PROVIDER_FAILURE",
+                   "TIMEOUT", "OUTPUT_INVALID", "AGENT_DECLARED_NOT_COMPLETE", "ENGINE_FAILURE",
+                   "CANCELLED", null]
+        },
+        "detail": { "type": "string" }
+      }
+    },
+
+    "nodo": {
+      "description": "El estado derivado de una unidad bajo F al cerrar (spec, 9.2). Nunca se persiste como autoridad.",
+      "type": "object",
+      "required": ["workUnitId", "state", "executionId", "turn", "dispatched"],
+      "additionalProperties": false,
+      "properties": {
+        "workUnitId": { "type": "string" },
+        "state": {
+          "description": "SATISFIED: ultimo turno SUCCEEDED. NOT_SATISFIED: FAILED, CANCELLED o REJECTED. OPEN: REQUESTED o RUNNING. UNREADABLE: ILEGIBLE, que cuenta como abierto. NOT_STARTED: ningun turno.",
+          "type": "string",
+          "enum": ["SATISFIED", "NOT_SATISFIED", "OPEN", "UNREADABLE", "NOT_STARTED"]
+        },
+        "executionId": {
+          "description": "La Execution del ultimo turno de la unidad bajo F, o null si no tiene turno o el turno no se lee.",
+          "type": ["string", "null"],
+          "pattern": "^exe_[0-9a-f]{32}$"
+        },
+        "turn": {
+          "description": "El numero de ese turno, o null si la unidad no tiene.",
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "dispatched": {
+          "description": "Si la Execution de ese turno la despacho este GraphRun, o si es de otro actor: una manual o de un GraphRun anterior, adoptada.",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

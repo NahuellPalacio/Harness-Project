@@ -1775,7 +1775,12 @@ interactive Claude Code session `ejecutar` passes only while the task can advanc
 while any task waits for a human decision. Run from a terminal, it is the same engine. The same gap
 exists for `presupuesto` (see that idea in `Pendientes/Ideas-Harness/PENDIENTES-I.md`).
 
-Fix. A row in `tool_policy._harness`, by `harness-hook-engineer`. Task 4 does not touch the hooks.
+Task 5 adds `--grafo`, `--grafo --estado` and `--cancelar grf_…` to the same subcommand (GP-06). An
+agent that could launch a graph would launch one Host session per unit of the plan, so the row has to
+take `--grafo` into account.
+
+Fix. A row in `tool_policy._harness`, by `harness-hook-engineer`, with `--grafo`. Neither Task 4 nor
+Task 5 touches the hooks.
 
 ### A Host that outlives its engine keeps running after the Execution is closed
 
@@ -1815,7 +1820,8 @@ Fix. When the consumption policy asks for a per-run limit.
 ### Execution and its schemas have no owner in the factory
 
 Task 3, §34.3.10. The owners table of `CLAUDE.md` names no agent for `bin/ejecucion/` nor for the two
-execution schemas, and Task 4 added six modules there.
+execution schemas, and Task 4 added six modules there. Task 5 adds `bin/ejecucion/grafo.py` and
+`comun/schemas/graph-run-result.schema.json` (GP-01) and decides nothing about the owner.
 
 Fix. A factory decision in `CLAUDE.md`, with `harness-budget-auditor`. The spec's proposal is
 `harness-backend-engineer`.
@@ -1853,11 +1859,11 @@ the request or deletes the Execution, on purpose.
 
 Fix. A recovery path for an unreadable Execution, decided with a spec: it is a new behaviour.
 
-### Three engine paths end in a traceback instead of a command error
+### Two engine paths end in a traceback instead of a command error
 
-Item 14. `ejecutar --recuperar` with a key that carries `\n`; `--cancelar` racing a recovery that
-deletes its temporary file; and an edited `entrega.json` that leaves `recuperar` in `ErrorDelComando`
-for the whole task.
+Item 14. `ejecutar --recuperar` with a key that carries `\n`, and an edited `entrega.json` that
+leaves `recuperar` in `ErrorDelComando` for the whole task. A third path of the original item closed
+with Task 5 (N1, `GE-E55`), in 0.33.0: it is in `docs/versiones/0.33.0.md`.
 
 Fix. Each one caught where it is raised, with a scenario per path.
 
@@ -1901,35 +1907,12 @@ Item 24. `Read`, `Glob`, `Grep` and `Skill` do not go through the hook in this h
 Fix. Text in MD-17: the hooks that matter for an executing agent are the ones on the tools that write
 or run.
 
-### `Bash` does not exist in the Host session on Windows
-
-Item 26 and R5 of the spec. Claude Code on Windows drops `Bash` from `--tools` in silence, because its
-shell is PowerShell (§34.2, E8). A unit with `tests.run` is admitted and its agent has nothing to run
-the tests with. The other half of item 26, `Edit` and `Write` offered to a read-only unit, is fixed by
-`--tools` and `--strict-mcp-config`.
-
-Fix. Map `tests.run` per platform, or reject it at admission where the Host cannot provide it. Either
-is a change to MD-18 with its own scenario.
-
-**Input for Task 5 discovery.**
-
 ### A Host killed from outside on Windows is `HOST_FAILURE`, not `HOST_INTERRUPTED`
 
 Item 11 and R7 of the spec. `taskkill /F` leaves exit code 1, the same as an ordinary failure, and
 there is no other signal. §34 decided the engine does not guess.
 
 Fix. Only if the Host starts reporting it, or a Job Object lets the engine know it was the killer.
-
-### The lock probe can land between `O_EXCL` and the lock of `Vida`
-
-Item 27 and N1. A window of microseconds, more likely once there are workers. It is the mechanism
-compatible with the one `ME-E18` assertion that failed in the first full run of the reverification
-(2026-10-10): one Execution and one turn were left, and the loser did not return
-`DUPLICATE_EXECUTION`. The reverification forced the window and did not observe it in that run.
-
-Fix. When Task 5 adds concurrency: take the lock before the file is visible, or probe twice.
-
-**Input for Task 5 discovery.**
 
 ### An internal junction duplicates a physical file in the evidence
 
@@ -1947,10 +1930,10 @@ Fix. A scenario that replaces the link with a non-exclusive write and sees the r
 ## What the reverification of the minimal execution engine left open
 
 Found on 2026-10-10 and 2026-10-13 by `harness-spec-refuter`, numbered N2 to N8 as in the section
-«Hallazgos nuevos» of `docs/cambios/minimal-execution-engine/verificacion.md`. None blocks. N1 is the
-lock probe above, N6 was fixed with the 0.32.0 close, N9 is part of «The shared secret catalogue
-misses five credential forms, and its sample leaks twelve characters» and N10 of «Suite 72 leaves
-files in `%TEMP%`».
+«Hallazgos nuevos» of `docs/cambios/minimal-execution-engine/verificacion.md`. None blocks. N1, the
+lock probe, closed with Task 5 in 0.33.0 and is in `docs/versiones/0.33.0.md`, N6 was fixed with the 0.32.0 close, N9
+is part of «The shared secret catalogue misses five credential forms, and its sample leaks twelve
+characters» and N10 of «Suite 72 leaves files in `%TEMP%`».
 
 ### A `REQUESTED` Execution whose engine died blocks its key until a person cancels it
 
@@ -1997,6 +1980,149 @@ Fix. Decide when a real one is seen.
 N7. The decision names six files of the registry; the «Enmienda post-refutación» names the seventh.
 
 Fix. Text in the decision, or leave the amendment as the only place.
+
+## What graph execution left open
+
+Found on 2026-10-13 while specifying `docs/cambios/graph-execution/spec.md` (Task 5, ADR-0016) and
+written here on 2026-10-14, when the change was built. A GraphRun takes a whole plan to a terminal,
+one WorkUnit at a time, and leaves these on purpose: section 30.3 of that spec says who owns each one.
+GP-01 and GP-06 are not entries of their own, they extend «Execution and its schemas have no owner in
+the factory» and «`dev-harness.py ejecutar` falls to `UNRESOLVED_TOOL_CLASS` in the tool policy». GP-03
+and GP-04 are ideas, in `Pendientes/Ideas-Harness/PENDIENTES-I.md`.
+
+### `tests.run` is not mapped to `PowerShell` on Windows, so no unit that asks for it runs there
+
+GP-02 and what is left of R5, which closed in 0.33.0 for the behaviour defined here (see
+`docs/versiones/0.33.0.md`). Since Task 5 (GD-21) the Host Adapter knows that `Bash` is not offered in
+`win32`, so a unit with `tests.run` ends `REJECTED CAPABILITY_UNAVAILABLE` at delivery, before
+`entrega.json`, with no Host and no model, in place of the false `SUCCEEDED` it had. The spec counts
+seventeen skills of `harnesses/desarrollo/skills/` that name `tests.run`: on Windows none of their
+units runs through the engine, alone or inside a GraphRun, until there is a mapping. It was left out on
+purpose. Nobody has seen `--tools PowerShell` work in a headless Host session, and almost no agent
+carries `PowerShell` in its `tools:`.
+
+Fix. A Task with its own spec: one reading of the real Host with `--tools PowerShell`, the `tools:` of
+the agents that carry `tests.run`, and a review of the hooks that see `PowerShell`. Until then the
+rejection is the honest answer.
+
+### Planning does not revalidate cycles or dependencies when it reads a saved plan
+
+GP-05. `plan.aceptar_guardado` does not run the dependency and cycle check that building a plan runs,
+and `orchestration-plan.schema.json` has no `uniqueItems` on `dependencies`, so a repeated dependency
+passes. A plan edited by hand reaches the GraphRun with a cycle, a dependency on a unit that does not
+exist or a repeated dependency, and a unit that cannot be satisfied would wait in
+`DEPENDENCY_NOT_SATISFIED` for good. Task 5 protects itself and does not fix Planning: before it
+creates anything the GraphRun calls `orden_de_ejecucion` and checks for repeated dependencies, and
+stops with `GRAPH_STRUCTURE_INVALID`, with no GraphRun and no Execution created.
+
+Fix. In Planning, by whoever owns `bin/orquestacion/`: `aceptar_guardado` runs the same check, and the
+schema gets `uniqueItems`, each with a scenario. Task 5 does not touch Planning.
+
+### `admission.capabilities` says `ALL_AVAILABLE` before the capability check has run
+
+GP-07. `admision.al_pedir` writes `admission.capabilities: ALL_AVAILABLE` into the request, and
+condition 13b only runs at delivery. The request of an Execution that then ends `REJECTED
+CAPABILITY_UNAVAILABLE`, which is what R5 turned a unit with `tests.run` into on Windows, says
+something its own result contradicts. It is not an error of the GraphRun, which never reads that field.
+
+Fix. Pass the adapter to `al_pedir` so the field is written with the real answer. It changes Task 4's
+behaviour and no case of the GraphRun asks for it, so it needs its own spec.
+
+### `proceso.esperar` says the exit code wins and looks at the cancel request first
+
+GP-08. The docstring of `bin/ejecucion/proceso.py::esperar` says «Si el proceso ya termino, gana su
+codigo», and the loop asks for the cancel request before each `wait`. A Host that finished between two
+segments can end `CANCELADO` while the docstring promises its own code. Found by the discovery of
+Task 5 (WU05, C5). It belongs to Task 4, it was not reproduced, and Task 5 does not touch it.
+
+Fix. Decide which one is true. Either the loop looks at the process first and the docstring stands, or
+the docstring says that the cancel request wins. The first changes what a cancel racing a finished
+Host ends as. By `harness-staff-engineer` or by Task 4's owner. The opposite direction of the same
+loop, a persisted cancellation request that loses against the Host's exit, is in «`proceso.esperar`
+lets the Host's exit win over a persisted cancellation request» below.
+
+## What the verification of graph execution left open
+
+Found on 2026-10-14 and 2026-10-15 by `harness-spec-refuter`, in the twelve invocations recorded in
+`docs/cambios/graph-execution/verificacion.md`, and written here on 2026-10-16 when 0.33.0 closed. None
+blocks: the verification ended with 71 scenarios and 31 invariants `sostenido`. The first two are
+behaviour that section 17 of the Task 5 spec documents as an observation, not as a promise. The other
+two are about tests.
+
+### `proceso.esperar` lets the Host's exit win over a persisted cancellation request
+
+Task 4 code. `bin/ejecucion/proceso.py:63-72` reads the cancel request only at the start of each 1 s
+slice, and `hijo.wait` returns `TERMINO` as soon as the Host exits. A request persisted in the middle
+of a slice loses against a Host that exits in that same slice: the Execution ends with the Host's own
+result (`SUCCEEDED` with exit code 0) and its `cancelacion.json` is on disk. It contradicts the
+expectation of ME-I22 of Task 4 (`docs/cambios/minimal-execution-engine/spec.md:1250`: «un pedido de
+cancelar persistido antes de que la corrida termine … da `CANCELLED`»). It happens with or without a
+GraphRun. Found by refuters C, E and F with the production CLI (1 s sampling) and a fake Host that
+exits right after the request: with `--grafo`, B ended `SUCCEEDED` in 4 of 10 runs. The engine does
+look at the request again in other paths after the Host is gone (`motor.py:296-297`, a Ctrl-C over the
+engine, and `motor.py:335`, a `HOST_INTERRUPTED` failure), so what an Execution gets depends on which
+path it took.
+
+Task 5 does not promise anything about it. Its spec §17.2 lists what the GraphRun guarantees (the
+marker, no new dispatch after it) and §17.3 and §17.4 describe this as an observation.
+
+Fix. Not decided, and it needs its own spec because it changes Task 4 (`proceso.py`, `motor.py`). The
+Task 5 spec lists the options in §30.1: shorten the sampling (it narrows the window and does not close
+it), let the engine look at the graph's marker, or make `esperar` look at the request again after the
+`wait`. The same function has «`proceso.esperar` says the exit code wins and looks at the cancel
+request first» above (GP-08); one decision can close both.
+
+### The canceller's 60 s window can end before a slow conductor reaches the Execution
+
+Task 5, spec §17.4, observed limit 4. `cancelar_grafo` writes the marker and then waits for the
+conductor for `ESPERA = 60` seconds (`bin/ejecucion/grafo.py:601`, exit on expiry at `:668-669`). If
+the conductor takes longer than that between reading the marker and the turn of the unit in flight (in
+production, a slow admission), `--cancelar grf_…` exits 0 with «su conductor sigue…», and the unit runs
+to its end with its own result and no request. The GraphRun then closes by the closing rule, node by
+node: `CANCELLED` was seen at step 7a on A→B→C, and `SUCCEEDED` with `cancelRequested: true` on A→B with
+B `SATISFIED`. It is documented behaviour and not a blocker. Whoever cancelled can repeat
+`--cancelar grf_…` or use `--cancelar exe_…`. Found by refuters F and K (probes `vence.py` and S5a, not
+versioned); the decision of 2026-10-15 was not to touch the code.
+
+Fix. Not decided. The spec names two ways, both code changes in Task 5: a window tied to the life of the
+conductor instead of a fixed number, or the conductor asking the engine to cancel by itself when it
+sees the marker.
+
+### Suite 73 and suite 72 leak temporary files and directories in `%TEMP%`
+
+Same mechanism as «Suite 72 leaves files in `%TEMP%`» above (item 18, N10), which names only suite 72.
+The script file is written under `proy.parent`, the temporary directory the test project hangs from,
+and nobody removes it. Measured by refuters A, B, K and L on 2026-10-14 and 2026-10-15. The series is
+mixed, because several refuters ran on the same `%TEMP%`: `ge73-vuelta-*.guion.json` went from 280 to
+440 to 640 to 682, and the `me72-*` entries from 5143 (24.6 MB) to 7252 to 10107. The clean figure is L's, in a
+folder of its own: **each full run of the suite leaves 20 `ge73-vuelta-*.guion.json`** (one per round
+of GE-E29) **and 236 `me72-*` entries** (188 `.guion`, 37 `.json`, one `-shim` folder and loose files).
+Python prefers `TMPDIR` over `TEMP` and `TMP`, and this environment has `TMPDIR` pointing at the global
+`%TEMP%`: an isolated run has to set the three. Nothing is left inside the repository and no result
+changes.
+
+Fix. As in item 18, for both suites: create what the cases write under one folder per run and remove it
+at the end, like the installer cases do.
+
+### Weak tests found while refuting Task 5
+
+Each one is a mutation or a case that the refuters showed the tests would not catch. None changes a
+verdict: the scenario holds, and what it holds it on is a probe of the refuter or another test.
+
+- The tests that carry the id of GE-E61 only cover the primitives. Mutation `mut-7` does not turn them
+  red; the «real GraphRun» clause is held by E60, ME-E46 and a refuter probe.
+- No test asserts that the marker is written before the first propagation sweep (M03a). The «marker
+  first» order of GE-I18 is held only by the refuter's probe.
+- No test asserts the CLI line «su conductor sigue…» (M11).
+- A `--grafo --estado` that probes the lock with `msvcrt` directly does not turn GE-E70 red (M05b).
+- GM-12 read literally, `O_EXCL` plus delete on release, leaves GE-E28 and GE-E43 green. Only the
+  primitive tests of GE-I15 turn red.
+- No test exercises `motor.py:335` with a request (grep for `senal=True` finds nothing).
+- The cancellation tests run with `intervalo=0.2` and short waits, not with the production 1 s / 60 s.
+  The refuters covered E46, E47 and E49 to E52 with the real CLI and all were green.
+
+Fix. Add or tighten each one, with the id of its scenario in the title or in a comment, and check that
+it turns red with its mutation.
 
 ## Verification that was not done
 

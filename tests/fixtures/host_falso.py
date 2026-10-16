@@ -16,17 +16,62 @@ del motor. Lee su guion de un archivo JSON cuya ruta esta en HOST_FALSO_GUION:
     stderr         texto para stderr
     resultado      campos que pisan los del objeto `type: result` (subtype, is_error, result,
                    structured_output, error...). `structured_output: null` lo saca.
+
+Task 5 (docs/cambios/graph-execution/spec.md, GD-27 paso 6) suma dos claves, y sin ellas el Host
+hace lo de siempre:
+
+    por_unidad     {workUnitId: {claves del guion}}: un guion distinto por WorkUnit. El workUnitId se
+                   lee del prompt, del bloque ```json donde `host_claude_code.prompt` pone la WorkUnit.
+                   Las claves de la unidad pisan las de arriba; una WorkUnit que no figura usa el
+                   guion de arriba, y una sin workUnitId legible tambien.
+    bitacora       ruta de un archivo con una linea JSON por escritura: {id, workUnitId, pid, inicio,
+                   fin}. Cada invocacion escribe su linea al empezar, con `fin: null`, y la misma
+                   linea con el `fin` al terminar, antes de contestar o de morir: quien la lee toma la
+                   ultima de cada `id`. Asi una invocacion que muere desde afuera (el arbol del Host
+                   terminado, el conductor muerto) igual cuenta, y una que termino tiene su intervalo.
+                   `inicio` y `fin` son `time.time()`: se comparan entre procesos.
 """
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
 import time
 
+# El bloque ```json de `host_claude_code.prompt`: es la unica WorkUnit que viaja en el prompt.
+BLOQUE_DE_LA_UNIDAD = re.compile(r"```json\r?\n(.*?)\r?\n```", re.S)
+
 
 def _argumento(argv, nombre):
     return argv[argv.index(nombre) + 1] if nombre in argv[:-1] else None
+
+
+def _unidad_del_prompt(entrada):
+    """El workUnitId de la WorkUnit que viaja en el prompt, o None."""
+    bloque = BLOQUE_DE_LA_UNIDAD.search(entrada)
+    try:
+        unidad = json.loads(bloque.group(1)) if bloque else None
+    except ValueError:
+        return None
+    return unidad.get("id") if isinstance(unidad, dict) else None
+
+
+def _anotar(ruta, linea):
+    """Una linea a la bitacora, en un solo write con el archivo abierto para agregar: otro Host que
+    escribe a la vez agrega la suya entera."""
+    with open(ruta, "ab") as f:
+        f.write((json.dumps(linea, ensure_ascii=False) + "\n").encode("utf-8"))
+
+
+def _bitacora(ruta, unidad):
+    """Anota que esta invocacion empezo, y devuelve lo que anota que termino."""
+    if not ruta:
+        return lambda: None
+    linea = {"id": "%d-%d" % (os.getpid(), time.time_ns()), "workUnitId": unidad,
+             "pid": os.getpid(), "inicio": time.time(), "fin": None}
+    _anotar(ruta, linea)
+    return lambda: _anotar(ruta, dict(linea, fin=time.time()))
 
 
 def main():
@@ -34,6 +79,10 @@ def main():
     entrada = sys.stdin.buffer.read().decode("utf-8", "replace")
     with open(os.environ["HOST_FALSO_GUION"], encoding="utf-8") as f:
         guion = json.load(f)
+
+    unidad = _unidad_del_prompt(entrada) if guion.get("por_unidad") or guion.get("bitacora") else None
+    guion.update((guion.pop("por_unidad", None) or {}).get(unidad) or {})
+    cerrar_la_bitacora = _bitacora(guion.get("bitacora"), unidad)
 
     if guion.get("eco"):
         sistema = _argumento(argv, "--system-prompt-file")
@@ -87,12 +136,14 @@ def main():
         sys.stderr.flush()
 
     if guion.get("senal"):
+        cerrar_la_bitacora()
         if os.name == "nt":
             os._exit(143)
         os.kill(os.getpid(), signal.SIGTERM)
         time.sleep(5)
 
     if "sin_json" in guion:
+        cerrar_la_bitacora()
         sys.stdout.write(guion["sin_json"])
         sys.stdout.flush()
         return int(guion.get("salida", 1))
@@ -105,6 +156,7 @@ def main():
     resultado.update(guion.get("resultado") or {})
     if resultado.get("structured_output") is None:
         resultado.pop("structured_output", None)
+    cerrar_la_bitacora()
     sys.stdout.write(json.dumps(resultado, ensure_ascii=False))
     sys.stdout.flush()
     return int(guion.get("salida", 0))

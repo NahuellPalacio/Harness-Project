@@ -11,8 +11,18 @@
         proceso.json        el pid del Host, solo para avisar
         output.md           el artifact redactado
         result.json         execution-result/1.0
+      grafos/               los GraphRuns de la tarea (Task 5, GD-12): ninguna funcion de Execution
+                            lo nombra ni lo toca
+        vivo.lock           el candado de la tarea (§14.1): archivo estable, sin O_EXCL, que no se
+                            borra al soltarlo; solo cuenta si esta tomado
+        <graphRunId>/
+          inicio.json         el GraphRun existe: una vez, al crear
+          despachos/<NNN>.json  una vez cada uno, antes de llamar al motor
+          cancelacion.json    una vez, a pedido
+          result.json         graph-run-result/1.0, una vez, al cerrar
 
 docs/cambios/minimal-execution-engine/spec.md, secciones 12 a 14.
+docs/cambios/graph-execution/spec.md, secciones 13, 14.1 y 16.
 
 🔴 Todo se escribe una sola vez (MD-05): un archivo que existe no se pisa nunca, ni el turno, ni la
 request, ni el resultado. No hay un archivo de estado: el estado se deriva de cuales existen
@@ -46,6 +56,8 @@ else:
 
 RAIZ = (".claude", "ejecuciones")
 CLAVES = "claves"
+GRAFOS = "grafos"
+DESPACHOS = "despachos"
 
 REQUEST = "request.json"
 CANCELACION = "cancelacion.json"
@@ -54,13 +66,17 @@ PROCESO = "proceso.json"
 OUTPUT = "output.md"
 RESULT = "result.json"
 VIVO = "vivo.lock"
+INICIO = "inicio.json"
 
 # Los ids que se vuelven carpetas se validan con fullmatch, nunca con `$`: un `\n` final no pasa
 # (MD-15, ME-14).
 ID = re.compile(r"exe_[0-9a-f]{32}")
+ID_DE_GRAFO = re.compile(r"grf_[0-9a-f]{32}")
 CLAVE_DE_TAREA = re.compile(r"[A-Za-z][A-Za-z0-9_]*-[0-9]+")
 HEX = re.compile(r"[0-9a-f]{64}")
+HUELLA = re.compile(r"sha256:[0-9a-f]{64}")
 TURNO = re.compile(r"[0-9]{6}\.json")
+DESPACHO = re.compile(r"[0-9]{3}\.json")
 TEMPORAL = re.compile(r"\..+\.tmp")
 
 # Un residuo previo a la publicacion se barre recien con el candado libre y mas de diez minutos.
@@ -69,6 +85,17 @@ UMBRAL_DE_RESIDUO = 600
 REQUESTED, RUNNING = "REQUESTED", "RUNNING"
 ILEGIBLE = "ILEGIBLE"
 ABIERTOS = (REQUESTED, RUNNING)
+
+# El estado de un GraphRun (GD-04): ACTIVE es un `inicio.json` sin `result.json`.
+ACTIVE = "ACTIVE"
+TERMINALES_DE_GRAFO = ("SUCCEEDED", "FAILED", "CANCELLED")
+
+# Las claves de cada marca del GraphRun, cerradas: las marcas no tienen schema (GD-12).
+CLAVES_DE_INICIO = frozenset(("graphRunId", "taskKey", "planFingerprint", "planId", "planVersion",
+                              "requestedBy", "startedAt", "nodes", "order"))
+CLAVES_DE_NODO = frozenset(("workUnitId", "dependencies"))
+CLAVES_DE_DESPACHO = frozenset(("numero", "workUnitId", "executionId", "dispatchedAt"))
+CLAVES_DE_PEDIDO = frozenset(("pedidoEn", "pedidoPor"))
 
 
 class RegistroInvalido(Exception):
@@ -83,6 +110,12 @@ def ahora():
 def nuevo_id():
     """`exe_` y 128 bits del generador criptografico del sistema (MD-15)."""
     return "exe_" + secrets.token_hex(16)
+
+
+def nuevo_id_de_grafo():
+    """`grf_` y 128 bits del generador criptografico del sistema (GD-03). No sale de la TaskKey, de la
+    huella del plan, del pid, de la sesion ni de la hora: un GraphRun que se vuelve a lanzar es otro."""
+    return "grf_" + secrets.token_hex(16)
 
 
 def es(patron, valor):
@@ -525,11 +558,13 @@ def residuos(proyecto, clave):
 
 def barrer(proyecto, clave, umbral=UMBRAL_DE_RESIDUO):
     """Borra los residuos previos a la publicacion con el candado libre y mas de `umbral`
-    segundos. El candado decide, y la edad es la guarda. Devuelve los que borro."""
+    segundos. El candado decide y la edad es la guarda, y la guarda va primero: una carpeta nueva
+    puede ser una admision en curso, entre su `O_EXCL` y el candado de `Vida`, y una sonda que la
+    toca la hace fallar (Task 5 / GD-20, F1). Devuelve los que borro."""
     borrados = []
     for execution_id in residuos(proyecto, clave):
         carpeta = carpeta_de(proyecto, clave, execution_id)
-        if candado_libre(carpeta) is False or _edad(carpeta) <= umbral:
+        if _edad(carpeta) <= umbral or candado_libre(carpeta) is False:
             continue
         if execution_id in set(e for _, _, e, _ in nombradas(proyecto, clave) if e):
             continue
@@ -546,15 +581,27 @@ def _temporales(carpeta):
         return []
 
 
+def _vencido(ruta, umbral):
+    """Si el temporal tiene mas de `umbral` segundos, por su propia fecha."""
+    try:
+        return time.time() - os.stat(ruta).st_mtime > umbral
+    except OSError:
+        return False
+
+
 def limpiar_temporales(proyecto, clave, umbral=UMBRAL_DE_RESIDUO):
-    """Los temporales de escritura de toda carpeta con el candado libre, y los de los turnos con
-    mas de `umbral` segundos: una escritura dura milisegundos. Devuelve cuantos borro."""
+    """Los temporales de escritura con mas de `umbral` segundos, por su propia fecha: una escritura
+    dura milisegundos. En una carpeta de Execution, y solo si hay alguno vencido, se sondea el
+    candado, y si esta libre se borran solo esos (Task 5 / GD-20, F2'): un temporal nuevo puede ser
+    de una escritura en curso de otro proceso, y una carpeta sin vencidos no se sondea. Devuelve
+    cuantos borro."""
     borrados = 0
     for execution_id in carpetas(proyecto, clave):
         carpeta = carpeta_de(proyecto, clave, execution_id)
-        if candado_libre(carpeta) is False:
+        vencidos = [r for r in _temporales(carpeta) if _vencido(r, umbral)]
+        if not vencidos or candado_libre(carpeta) is False:
             continue
-        for ruta in _temporales(carpeta):
+        for ruta in vencidos:
             try:
                 os.unlink(ruta)
                 borrados += 1
@@ -563,9 +610,399 @@ def limpiar_temporales(proyecto, clave, umbral=UMBRAL_DE_RESIDUO):
     for hexa in claves_de(proyecto, clave):
         for ruta in _temporales(carpeta_de_clave(proyecto, clave, "sha256:" + hexa)):
             try:
-                if time.time() - os.stat(ruta).st_mtime > umbral:
+                if _vencido(ruta, umbral):
                     os.unlink(ruta)
                     borrados += 1
             except OSError:
                 pass
+    return borrados
+
+
+# -- el GraphRun: cuatro marcas de una sola escritura (Task 5, GD-12, §14.1, §16) -----------------
+#
+# Todo lo que el GraphRun escribe en disco pasa por aca (ME-E46, GE-I29): `grafo.py` lee y llama a
+# estas funciones. Ninguna funcion de arriba nombra `grafos/`: no es una Execution, no es un residuo
+# y no cuenta como otra entrega (GE-E62). No hay un `state.json`, ni un puntero a la unidad actual,
+# ni un contador: el estado sale de las marcas y del registro de Executions (GD-12).
+# Una segunda escritura de una marca levanta FileExistsError, sin tocar la que estaba: gana la primera.
+
+def carpeta_de_grafos(proyecto, clave):
+    return os.path.join(carpeta_de_tarea(proyecto, clave), GRAFOS)
+
+
+def carpeta_de_grafo(proyecto, clave, graph_run_id):
+    return os.path.join(carpeta_de_grafos(proyecto, clave),
+                        _exigir(ID_DE_GRAFO, graph_run_id, "el graphRunId"))
+
+
+def ruta_del_despacho(proyecto, clave, graph_run_id, numero):
+    if not isinstance(numero, int) or isinstance(numero, bool) or not 0 < numero < 1000:
+        raise RegistroInvalido("el despacho %r no se puede usar como ruta" % (numero,))
+    return os.path.join(carpeta_de_grafo(proyecto, clave, graph_run_id), DESPACHOS,
+                        "%03d.json" % numero)
+
+
+# -- las claves cerradas de cada marca
+
+def _texto(valor):
+    return isinstance(valor, str) and re.search(r"\S", valor) is not None
+
+
+def _fecha(valor):
+    return isinstance(valor, str) and contrato.UTC.fullmatch(valor) is not None
+
+
+def _entero(valor, desde, hasta=None):
+    return (isinstance(valor, int) and not isinstance(valor, bool) and valor >= desde
+            and (hasta is None or valor <= hasta))
+
+
+def _lista_de_textos(valor):
+    return isinstance(valor, list) and all(_texto(v) for v in valor)
+
+
+def _motivo_de_inicio(doc):
+    """Por que `doc` no es un inicio.json valido, o None."""
+    if not isinstance(doc, dict) or set(doc) != CLAVES_DE_INICIO:
+        return "no tiene exactamente las claves de inicio.json"
+    if not es(ID_DE_GRAFO, doc["graphRunId"]):
+        return "graphRunId no es grf_ y 32 hexadecimales"
+    if not es(CLAVE_DE_TAREA, doc["taskKey"]):
+        return "taskKey no es una TaskKey"
+    if not es(HUELLA, doc["planFingerprint"]):
+        return "planFingerprint no es una huella"
+    if not _texto(doc["planId"]):
+        return "planId no es un texto"
+    if not _entero(doc["planVersion"], 1):
+        return "planVersion no es un entero desde 1"
+    if not _texto(doc["requestedBy"]):
+        return "requestedBy no es un texto"
+    if not _fecha(doc["startedAt"]):
+        return "startedAt no es una fecha UTC"
+    nodos = doc["nodes"]
+    if not isinstance(nodos, list) or not nodos:
+        return "nodes no es una lista con al menos una unidad"
+    for nodo in nodos:
+        if not isinstance(nodo, dict) or set(nodo) != CLAVES_DE_NODO:
+            return "un nodo no tiene exactamente workUnitId y dependencies"
+        if not _texto(nodo["workUnitId"]) or not _lista_de_textos(nodo["dependencies"]):
+            return "un nodo no tiene un workUnitId y una lista de dependencias, de textos"
+    ids = [n["workUnitId"] for n in nodos]
+    if len(set(ids)) != len(ids):
+        return "nodes repite un workUnitId"
+    if not _lista_de_textos(doc["order"]) or sorted(doc["order"]) != sorted(ids):
+        return "order no es una permutacion de los workUnitId de nodes"
+    return None
+
+
+def _motivo_de_despacho(doc, numero=None):
+    """Por que `doc` no es una marca de despacho valida, o None. Con `numero`, el del archivo."""
+    if not isinstance(doc, dict) or set(doc) != CLAVES_DE_DESPACHO:
+        return "no tiene exactamente las claves de una marca de despacho"
+    if not _entero(doc["numero"], 1, 999) or (numero is not None and doc["numero"] != numero):
+        return "numero no es el del archivo"
+    if not _texto(doc["workUnitId"]):
+        return "workUnitId no es un texto"
+    if not es(ID, doc["executionId"]):
+        return "executionId no es exe_ y 32 hexadecimales"
+    if not _fecha(doc["dispatchedAt"]):
+        return "dispatchedAt no es una fecha UTC"
+    return None
+
+
+def _motivo_de_pedido(doc):
+    """Por que `doc` no es un cancelacion.json valido, o None."""
+    if not isinstance(doc, dict) or set(doc) != CLAVES_DE_PEDIDO:
+        return "no tiene exactamente pedidoEn y pedidoPor"
+    if not _fecha(doc["pedidoEn"]):
+        return "pedidoEn no es una fecha UTC"
+    if not _texto(doc["pedidoPor"]):
+        return "pedidoPor no es un texto"
+    return None
+
+
+def _motivo_de_terminal(doc, clave, graph_run_id):
+    """Por que `doc` no sirve como result.json, o None. Solo lo que hace falta para derivar el
+    estado: el schema y las coherencias de graph-run-result/1.0 son de quien lo arma."""
+    if not isinstance(doc, dict):
+        return "no es un objeto"
+    if doc.get("status") not in TERMINALES_DE_GRAFO:
+        return "status no es SUCCEEDED, FAILED ni CANCELLED"
+    if doc.get("graphRunId") != graph_run_id or doc.get("taskKey") != clave:
+        return "no es de este GraphRun"
+    return None
+
+
+def _leer_marca(ruta, motivo_de):
+    """(doc, None), (None, None) si no esta, o (None, motivo)."""
+    doc, motivo = leer_json(ruta)
+    if doc is None:
+        return None, motivo or ("%s: no es un objeto" % os.path.basename(ruta)
+                                if os.path.exists(ruta) else None)
+    razon = motivo_de(doc)
+    if razon is not None:
+        return None, "%s no es valido: %s" % (os.path.basename(ruta), razon)
+    return doc, None
+
+
+# -- las escrituras
+
+def _con_inicio(proyecto, clave, graph_run_id):
+    """La carpeta de un GraphRun que existe: lo que lo hace existir es su inicio.json (GD-04)."""
+    carpeta = carpeta_de_grafo(proyecto, clave, graph_run_id)
+    if not os.path.exists(os.path.join(carpeta, INICIO)):
+        raise RegistroInvalido("el GraphRun %s no existe: no tiene inicio.json" % graph_run_id)
+    return carpeta
+
+
+def crear_grafo(proyecto, inicio):
+    """Crea la carpeta del GraphRun y su `inicio.json`, que es lo que lo hace existir. `inicio` trae
+    el `graphRunId` y la TaskKey: el que lo escribe tiene tomado el candado de la tarea (§14.1), y
+    quien lo llama, el conductor, es quien lo toma. Si el id ya tiene carpeta levanta FileExistsError.
+    Una falla antes de publicar `inicio.json` borra la carpeta; una carpeta sin `inicio.json` que
+    quede de un corte la barre el proximo que toma el candado (`barrer_grafos`)."""
+    razon = _motivo_de_inicio(inicio)
+    if razon is not None:
+        raise RegistroInvalido("el inicio.json no valida: %s" % razon)
+    clave, graph_run_id = inicio["taskKey"], inicio["graphRunId"]
+    carpeta = carpeta_de_grafo(proyecto, clave, graph_run_id)
+    os.makedirs(carpeta_de_grafos(proyecto, clave), exist_ok=True)
+    os.mkdir(carpeta)
+    try:
+        os.mkdir(os.path.join(carpeta, DESPACHOS))
+        escribir_json(os.path.join(carpeta, INICIO), inicio)
+    except BaseException:
+        if not os.path.exists(os.path.join(carpeta, INICIO)):
+            shutil.rmtree(carpeta, ignore_errors=True)
+        raise
+
+
+def _siguiente_despacho(carpeta):
+    try:
+        nombres = os.listdir(os.path.join(carpeta, DESPACHOS))
+    except FileNotFoundError:
+        return 1
+    return max([int(n[:3]) for n in nombres if es(DESPACHO, n)] or [0]) + 1
+
+
+def registrar_despacho(proyecto, clave, graph_run_id, work_unit_id, execution_id):
+    """La marca de despacho, antes de llamar al motor: nombra el `executionId` preasignado. El numero
+    es el siguiente al ultimo que hay, desde 001. Devuelve la marca escrita."""
+    carpeta = _con_inicio(proyecto, clave, graph_run_id)
+    doc = {"numero": _siguiente_despacho(carpeta), "workUnitId": work_unit_id,
+           "executionId": execution_id, "dispatchedAt": ahora()}
+    razon = _motivo_de_despacho(doc)
+    if razon is not None:
+        raise RegistroInvalido("la marca de despacho no valida: %s" % razon)
+    escribir_json(ruta_del_despacho(proyecto, clave, graph_run_id, doc["numero"]), doc)
+    return doc
+
+
+def marcar_cancelacion(proyecto, clave, graph_run_id, pedido_por):
+    """La marca de cancelacion del GraphRun. La escribe quien cancela, con el conductor vivo: no pide
+    el candado de la tarea. `pedido_por` ya viene redactado. Si ya estaba, FileExistsError."""
+    carpeta = _con_inicio(proyecto, clave, graph_run_id)
+    doc = {"pedidoEn": ahora(), "pedidoPor": pedido_por}
+    razon = _motivo_de_pedido(doc)
+    if razon is not None:
+        raise RegistroInvalido("el cancelacion.json no valida: %s" % razon)
+    escribir_json(os.path.join(carpeta, CANCELACION), doc)
+    return doc
+
+
+def escribir_terminal(proyecto, clave, graph_run_id, resultado):
+    """El `result.json` del GraphRun, una sola vez: gana el primero (GD-04). Lo escribe quien tiene el
+    candado de la tarea: el conductor, o el que cierra un huerfano."""
+    carpeta = _con_inicio(proyecto, clave, graph_run_id)
+    razon = _motivo_de_terminal(resultado, clave, graph_run_id)
+    if razon is not None:
+        raise RegistroInvalido("el result.json no sirve: %s" % razon)
+    escribir_json(os.path.join(carpeta, RESULT), resultado)
+
+
+# -- las lecturas
+
+def _ids_de_grafos(proyecto, clave):
+    """Los graphRunId que tienen carpeta en la tarea, sean GraphRuns o residuos de la creacion."""
+    try:
+        return sorted(n for n in os.listdir(carpeta_de_grafos(proyecto, clave))
+                      if es(ID_DE_GRAFO, n))
+    except FileNotFoundError:
+        return []
+
+
+def grafos_de(proyecto, clave):
+    """Los graphRunId de los GraphRuns de la tarea: los que tienen `inicio.json`."""
+    return [g for g in _ids_de_grafos(proyecto, clave)
+            if os.path.exists(os.path.join(carpeta_de_grafo(proyecto, clave, g), INICIO))]
+
+
+def residuos_de_grafos(proyecto, clave):
+    """Las carpetas `grf_...` sin `inicio.json`: un residuo de la creacion, no un GraphRun."""
+    return [g for g in _ids_de_grafos(proyecto, clave)
+            if not os.path.exists(os.path.join(carpeta_de_grafo(proyecto, clave, g), INICIO))]
+
+
+def cancelada(proyecto, clave, graph_run_id):
+    """Si existe la marca de cancelacion del GraphRun. Existe o no existe: como la de una Execution
+    (`motor.py`), no se lee lo que dice para decidir."""
+    return os.path.exists(os.path.join(carpeta_de_grafo(proyecto, clave, graph_run_id), CANCELACION))
+
+
+def despachos(proyecto, clave, graph_run_id):
+    """[(numero, marca, motivo)] de las marcas de despacho, en orden. `marca` es None, con su motivo,
+    si la que hay no valida."""
+    carpeta = os.path.join(carpeta_de_grafo(proyecto, clave, graph_run_id), DESPACHOS)
+    try:
+        nombres = sorted(n for n in os.listdir(carpeta) if es(DESPACHO, n))
+    except FileNotFoundError:
+        return []
+    salida = []
+    for nombre in nombres:
+        numero = int(nombre[:3])
+        marca, motivo = _leer_marca(os.path.join(carpeta, nombre),
+                                    lambda d, n=numero: _motivo_de_despacho(d, n))
+        salida.append((numero, marca, None if marca is not None else (motivo or "no esta")))
+    return salida
+
+
+def leer_grafo(proyecto, clave, graph_run_id):
+    """None si no hay un GraphRun con ese id. Si no, {graphRunId, estado, motivo, inicio,
+    cancelada, cancelacion, resultado, despachos}.
+
+    `estado` es ACTIVE (`inicio.json` sin `result.json`), el `status` del terminal, o ILEGIBLE si el
+    `inicio.json` o el `result.json` no validan: no se cierra, y el motivo dice por que. Un ACTIVE que
+    ve quien tiene el candado de la tarea es un huerfano (§14.1). El estado de cada nodo no se
+    escribe: se deriva del registro de Executions (§9.2)."""
+    carpeta = carpeta_de_grafo(proyecto, clave, graph_run_id)
+    if not os.path.exists(os.path.join(carpeta, INICIO)):
+        return None
+    salida = {"graphRunId": graph_run_id, "estado": ILEGIBLE, "motivo": None, "inicio": None,
+              "cancelada": cancelada(proyecto, clave, graph_run_id), "cancelacion": None,
+              "resultado": None, "despachos": despachos(proyecto, clave, graph_run_id)}
+    inicio, motivo = _leer_marca(os.path.join(carpeta, INICIO), _motivo_de_inicio)
+    if inicio is not None and (inicio["graphRunId"] != graph_run_id or inicio["taskKey"] != clave):
+        inicio, motivo = None, "inicio.json no es de este GraphRun"
+    if inicio is None:
+        salida["motivo"] = motivo or "inicio.json no esta"
+        return salida
+    salida["inicio"] = inicio
+    salida["cancelacion"], _ = _leer_marca(os.path.join(carpeta, CANCELACION), _motivo_de_pedido)
+    if not os.path.exists(os.path.join(carpeta, RESULT)):
+        salida["estado"] = ACTIVE
+        return salida
+    resultado, motivo = _leer_marca(os.path.join(carpeta, RESULT),
+                                    lambda d: _motivo_de_terminal(d, clave, graph_run_id))
+    if resultado is None:
+        salida["motivo"] = motivo or "result.json no esta"
+        return salida
+    salida.update(estado=resultado["status"], resultado=resultado)
+    return salida
+
+
+def activos(proyecto, clave):
+    """Los GraphRuns ACTIVE de la tarea. Para quien tiene el candado, todos son huerfanos: son los que
+    hay que cerrar (§16.1). Sin el candado, no se puede afirmar que lo sean."""
+    return [g for g in grafos_de(proyecto, clave)
+            if leer_grafo(proyecto, clave, g)["estado"] == ACTIVE]
+
+
+def propias(proyecto, clave, graph_run_id):
+    """[{numero, workUnitId, executionId, estado}] de las Executions del GraphRun: las que nombra una
+    de sus marcas de despacho y a la vez nombra un turno (ME-I21). Una marca que ningun turno nombra
+    (el corte G2) no es una Execution. `estado` es el derivado, REQUESTED, RUNNING, ILEGIBLE o un
+    terminal. Nunca incluye una Execution de la tarea que ninguna marca suya nombra."""
+    con_turno = set(e for _, _, e, _ in nombradas(proyecto, clave) if e)
+    return [{"numero": numero, "workUnitId": marca["workUnitId"],
+             "executionId": marca["executionId"],
+             "estado": estado(proyecto, clave, marca["executionId"])["estado"]}
+            for numero, marca, _ in despachos(proyecto, clave, graph_run_id)
+            if marca is not None and marca["executionId"] in con_turno]
+
+
+# -- el candado de la tarea (§14.1)
+
+class CandadoDeTarea(object):
+    """Ser el conductor de un GraphRun es tener tomado este candado: `grafos/vivo.lock`, con la misma
+    primitiva del sistema operativo que el candado de vida, sin esperar. Se toma antes de crear el
+    GraphRun y se suelta despues de su terminal; si el proceso muere, lo suelta el sistema.
+
+    El archivo es estable: se abre con O_CREAT y sin O_EXCL, y no se borra nunca, tampoco al soltarlo.
+    Que exista no dice nada, solo cuenta si esta tomado: asi no hay un instante en que "existe y no
+    esta tomado" quiera decir "el conductor murio" (GD-20, N1). Es falso si otro lo tiene; si no se
+    puede ni abrir el archivo (disco, permisos) levanta OSError, que no es lo mismo que "lo tiene otro"."""
+
+    def __init__(self, proyecto, clave):
+        os.makedirs(carpeta_de_grafos(proyecto, clave), exist_ok=True)
+        self.ruta = os.path.join(carpeta_de_grafos(proyecto, clave), VIVO)
+        self.descriptor = None
+        descriptor = os.open(self.ruta, os.O_CREAT | os.O_RDWR)
+        try:
+            _bloquear(descriptor)
+        except OSError:
+            os.close(descriptor)
+            return
+        self.descriptor = descriptor
+
+    def __bool__(self):
+        return self.descriptor is not None
+
+    __nonzero__ = __bool__
+
+    def soltar(self):
+        if self.descriptor is not None:
+            try:
+                _soltar(self.descriptor)
+            except OSError:
+                pass
+            os.close(self.descriptor)
+            self.descriptor = None
+
+
+def tiene_el_candado(candado, proyecto, clave):
+    """Si `candado` es el de la tarea `clave` de este proyecto y esta tomado. Lo exige quien borra de
+    `grafos/` y quien cierra un GraphRun huerfano (GD-10, 16.1): solo con el candado se puede afirmar que
+    ningun otro conductor vive en la tarea (Task 5 / 5b: grafo.py lo pregunta aca en vez de repetir la
+    comparacion de rutas)."""
+    return (isinstance(candado, CandadoDeTarea) and bool(candado)
+            and candado.ruta == os.path.join(carpeta_de_grafos(proyecto, clave), VIVO))
+
+
+def _exigir_candado(candado, proyecto, clave, que):
+    """Quien borra de `grafos/` tiene que tener el candado de esa tarea: sin el, una carpeta sin
+    `inicio.json` puede ser un GraphRun que un conductor vivo esta creando."""
+    if not tiene_el_candado(candado, proyecto, clave):
+        raise RegistroInvalido("%s exige tener el candado de la tarea %s" % (que, clave))
+
+
+def barrer_grafos(proyecto, clave, candado):
+    """Borra las carpetas `grf_...` sin `inicio.json`, que el conductor anterior no alcanzo a
+    publicar (§16.2, G1 antes de `inicio.json`). Sin edad: con el candado tomado ningun otro
+    conductor vive en la tarea, asi que ninguna esta en creacion. Devuelve las que borro."""
+    _exigir_candado(candado, proyecto, clave, "barrer los GraphRuns sin inicio.json")
+    borrados = []
+    for graph_run_id in residuos_de_grafos(proyecto, clave):
+        carpeta = carpeta_de_grafo(proyecto, clave, graph_run_id)
+        shutil.rmtree(carpeta, ignore_errors=True)
+        if not os.path.exists(carpeta):
+            borrados.append(graph_run_id)
+    return borrados
+
+
+def limpiar_temporales_de_grafos(proyecto, clave, candado, umbral=UMBRAL_DE_RESIDUO):
+    """Los temporales de escritura de las carpetas `grf_...` con mas de `umbral` segundos, por su
+    propia fecha, como `limpiar_temporales` (GD-20, F2'): un `--cancelar` escribe `cancelacion.json`
+    sin el candado, y su temporal nuevo no se toca. Devuelve cuantos borro."""
+    _exigir_candado(candado, proyecto, clave, "limpiar los temporales de los GraphRuns")
+    borrados = 0
+    for graph_run_id in _ids_de_grafos(proyecto, clave):
+        carpeta = carpeta_de_grafo(proyecto, clave, graph_run_id)
+        for sitio in (carpeta, os.path.join(carpeta, DESPACHOS)):
+            for ruta in _temporales(sitio):
+                try:
+                    if _vencido(ruta, umbral):
+                        os.unlink(ruta)
+                        borrados += 1
+                except OSError:
+                    pass
     return borrados

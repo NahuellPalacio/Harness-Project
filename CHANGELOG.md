@@ -3,6 +3,83 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.33.0] — 2026-10-16
+
+**HARNESS lleva un plan entero a un terminal: ejecuta sus unidades de a una, en el orden de sus
+dependencias, y se detiene en la primera que falla.**
+
+Hasta 0.32.0 el motor corría una sola WorkUnit por invocación y nada elegía la siguiente: llevar un plan
+completo era correr `ejecutar --unidad` por cada unidad, mirando las dependencias a mano. Esta versión trae
+el GraphRun (Task 5): `ejecutar <KEY> --grafo` ejecuta todas las unidades del plan, con identidad, registro
+y resultado propios, y sabe recuperarse, cancelarse y mostrar su estado. Sigue sin haber paralelismo,
+reintento automático ni reanudación, y no se usa LangGraph. Cierra N1 y R5, los dos riesgos de 0.32.0 que
+el scheduling agranda.
+
+### Agregado
+
+- **`dev-harness.py ejecutar <KEY> --grafo`** — ejecuta todas las WorkUnits del plan, serial y fail-fast: una
+  unidad corre solo con sus dependencias `SUCCEEDED`, y el grafo se detiene en la primera que no lo queda.
+  Cada unidad es una Execution de `motor.ejecutar`, con sus dos admisiones. Sale con 0 solo si todo quedó
+  `SUCCEEDED`. Sigue habiendo trece subcomandos: `--grafo` es una opción
+- **GraphRun, el segundo agregado raíz del contexto Execution** — identidad `grf_…`, atado a la huella del
+  plan (si el plan cambia a mitad de camino, se detiene con `PLAN_FINGERPRINT_CHANGED`) y con un ciclo
+  `ACTIVE → SUCCEEDED`, `FAILED` o `CANCELLED`. Lo que ya está `SUCCEEDED` bajo la misma huella se adopta,
+  también lo que corrió una persona con `--unidad`. Sin reintento automático y sin reanudación: seguir es
+  otro GraphRun
+- **El registro del grafo** — `.claude/ejecuciones/<KEY>/grafos/<graphRunId>/`, de archivos que se escriben
+  una sola vez (`inicio.json`, `despachos/<NNN>.json`, `cancelacion.json`, `result.json`), sin archivo de
+  estado y con un candado de vida por tarea: un solo conductor a la vez
+- **Recuperación, cancelación y estado** — quien toma el candado cierra los GraphRuns huérfanos con
+  `GRAPH_INTERRUPTED`; `--cancelar grf_…` escribe una marca persistida y después de ella no se despacha
+  ninguna Execution nueva; `--grafo --estado` solo lee
+- **`graph-run-result/1.0`** — el resultado del GraphRun, en `comun/schemas/graph-run-result.schema.json`,
+  con un `GraphRunError` propio de nueve códigos. Un error de Execution aparece solo como causa referenciada
+- **[ADR-0016](docs/adr/0016-la-ejecucion-de-un-grafo.md)**, que revisa ADR-0015 en lo que dejaba para Task 5
+  sin editarlo
+
+### Cambiado
+
+- 🔴 **En Windows, una unidad con `tests.run` se rechaza antes de entregar.** Sale `REJECTED` con
+  `CAPABILITY_UNAVAILABLE`, sin lanzar el Host: la sesión del Host no ofrece `Bash` y 0.32.0 la admitía con un
+  agente que no podía correr los tests. Ver [UPGRADE.md](UPGRADE.md)
+- **El modelo canónico suma `GraphRun` y `GraphRunError`** (85 conceptos) y dice lo que ahora es verdad: un
+  GraphRun elige la siguiente unidad, de a una
+
+### Corregido
+
+- **N1, la sonda del candado ya no toca una Execution en creación** — `barrer` mira la edad de la carpeta antes
+  de sondear el candado, y `limpiar_temporales` solo lo sondea si hay temporales con más de diez minutos. Es la
+  causa compatible con la aserción de `ME-E18` que falló una vez en 0.32.0. Cierra también un camino que
+  terminaba en un traceback (`--cancelar` contra una recuperación)
+- **R5, `tests.run` en Windows** — pasa de una ejecución aparente a `CAPABILITY_UNAVAILABLE`: el Host Adapter
+  sabe qué herramientas ofrece cada plataforma. Mapear `tests.run` a otra herramienta queda para una Task con su
+  propia lectura del Host real
+
+### Lo que sigue abierto, sin maquillar
+
+- **Una cancelación puede perder contra la salida del Host.** Lo que el grafo garantiza es una marca persistida
+  y que después de ella no se despacha nada nuevo. La Execution que ya estaba en vuelo puede terminar
+  `SUCCEEDED` aunque su pedido de cancelar esté escrito: es del motor de Task 4 (`proceso.esperar`), choca con
+  ME-I22 y arreglarlo es una spec propia
+- **El cancelador espera 60 s al conductor.** Si el conductor tarda más en llegar a la unidad, el comando sale
+  con 0 y la unidad corre entera
+- **En Windows ninguna unidad con `tests.run` corre por el motor**, sola ni dentro de un grafo, hasta que haya un
+  mapeo comprobado
+- **Ninguna corrida de `--grafo` se hizo contra Claude Code real.** La cancelación, la recuperación y las
+  carreras se probaron con el Host falso del repo, procesos reales y la CLI de producción
+- **Un grafo lanza una sesión del Host por unidad y no hay tope de costo**, y la evidencia se degrada con archivos
+  sucios compartidos. Desde una sesión interactiva, `--grafo` sigue sin fila propia en la política de
+  herramientas, como `ejecutar`
+
+### Cómo se verificó
+
+El cambio cerró con 71 escenarios sostenidos por la suite y 31 invariantes sostenidos: 0 contradichos, 0
+leídos y 0 sin sustento. Ningún escenario de Task 5 es de un modelo, así que no hubo lecturas. **La refutación
+independiente, de doce invocaciones, contradijo siete veces el texto de la cancelación (§17 de la spec) y
+ninguna vez el código:** la spec prometía de la cancelación más de lo que garantiza el motor de Task 4. Se
+corrigió la spec, que ahora separa lo que Task 5 garantiza de lo que solo se observó, y el código productivo no
+cambió. La suite pasó de 43775 a 45534 aserciones.
+
 ## [0.32.0] — 2026-10-13
 
 **HARNESS ejecuta una unidad de trabajo: la admite, la entrega a Claude Code como un intento único y

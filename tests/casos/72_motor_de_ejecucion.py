@@ -2250,7 +2250,8 @@ ADR_13 = "docs/adr/0013-modelo-de-dominio-canonico.md"
 ADR_14 = RAIZ / "docs" / "adr" / "0014-el-contrato-de-ejecucion.md"
 # ADR-0014 es de Task 3, todavia sin commitear: su huella es la del arbol de la base de Task 4.
 HUELLA_ADR_14 = "446b2e1d2aae65eaa2a45ecaa57c71d6e1f625c036b3e9a267ed2c419bb62a79"
-CONCEPTOS = 83
+# Task 5 / GD-23: suman GraphRun y GraphRunError (docs/cambios/graph-execution/spec.md, seccion 28 y 27.1 F): de 83 a 85.
+CONCEPTOS = 85
 
 
 def _git_raiz(*args):

@@ -113,8 +113,11 @@ def ruta_del_plan(proyecto, clave):
     return os.path.join(proyecto, ".claude", "planes", clave + ".json")
 
 
-def _leer_plan(proyecto, clave):
-    """El plan por la regla de lectura de Planning. Levanta Rechazo(PLAN_UNREADABLE)."""
+def leer_plan(proyecto, clave):
+    """El plan por la regla de lectura de Planning. Levanta Rechazo(PLAN_UNREADABLE).
+
+    Publico desde Task 5 (GD-27, paso 3): el GraphRun lee el plan con esta misma regla, sin duplicarla.
+    Es el unico lector del plan de la admision."""
     ruta = ruta_del_plan(proyecto, clave)
     try:
         with io.open(ruta, "rb") as f:
@@ -249,10 +252,13 @@ def _duplicado(clave, ultimo):
 # -- la regla --------------------------------------------------------------------------------
 
 def _regla(proyecto, clave, unidad_id, compuerta, cargar_registro, request=None,
-           adaptador=None):
+           adaptador=None, huella_esperada=None):
     """Las condiciones en el orden de la precedencia. Sin `request` es al pedir; con ella, al
-    entregar. Devuelve lo derivado, o levanta el Rechazo de la primera que falla."""
-    plan = _leer_plan(proyecto, clave)                                         # 2
+    entregar. Devuelve lo derivado, o levanta el Rechazo de la primera que falla.
+
+    `huella_esperada` (Task 5, GD-16) solo cuenta al entregar: si viene y la request guardada se armo
+    con otra huella del plan, es la condicion 4, PLAN_CHANGED, en su lugar de la precedencia."""
+    plan = leer_plan(proyecto, clave)                                          # 2
     meta = plan.get("meta") if isinstance(plan.get("meta"), dict) else {}
     if meta.get("task_key") != clave:                                          # 3
         raise Rechazo("TASK_KEY_MISMATCH", "el plan guardado es de %s y se pidio %s"
@@ -264,6 +270,10 @@ def _regla(proyecto, clave, unidad_id, compuerta, cargar_registro, request=None,
             if de_plan is None or contrato.huella(de_plan) != request["workUnitFingerprint"] \
                     or contrato.huella(request["workUnit"]) != contrato.huella(de_plan):
                 raise Rechazo("CONTRACT_INVALID", "la WorkUnit de request.json no es la del plan")
+            if huella_esperada is not None \
+                    and huella_esperada != request["plan"]["planFingerprint"]:         # 4, esperada
+                raise Rechazo("PLAN_CHANGED", "la request se armo con una huella del plan que no es "
+                              "la que esperaba quien la pidio: el plan cambio antes de leerlo")
         else:                                                                  # 4
             raise Rechazo("PLAN_CHANGED", "el plan cambio desde que se creo la Execution: su "
                           "huella ya no es la de la request")
@@ -379,7 +389,8 @@ def _request(derivado, clave, pedido_por, execution_id):
     }
 
 
-def al_entregar(proyecto, request, adaptador, compuerta=None, cargar_registro=None, huella=None):
+def al_entregar(proyecto, request, adaptador, compuerta=None, cargar_registro=None, huella=None,
+                huella_esperada=None):
     """(None, lo derivado) si se puede entregar, o (Rechazo, None). Las quince condiciones sobre
     la request guardada, derivando todo otra vez, y el adaptador: la definicion del agente
     (condicion 10) y las capacidades que provee (13). La condicion 15 excluye a la propia.
@@ -387,7 +398,11 @@ def al_entregar(proyecto, request, adaptador, compuerta=None, cargar_registro=No
     `huella` es la que el motor calculo al crear la request (MD-23). La primera comprobacion de la
     condicion 1 es que la request guardada la tenga: cualquier cambio de su contenido, en la
     WorkUnit, en `admission`, en `requestedBy` o en `createdAt`, la rechaza (MD-11′). Reescribirla
-    con el mismo contenido no la cambia, porque `contrato.huella` es de la estructura."""
+    con el mismo contenido no la cambia, porque `contrato.huella` es de la estructura.
+
+    `huella_esperada` es la del plan a la que esta atado quien pidio la Execution (Task 5, GD-16):
+    si viene y `request.plan.planFingerprint` es otra, PLAN_CHANGED en el lugar de la condicion 4.
+    Sin ella, igual que antes."""
     compuerta = compuerta or compuerta_por_defecto(proyecto)
     cargar_registro = cargar_registro or registro_agentes.cargar
     try:
@@ -400,7 +415,7 @@ def al_entregar(proyecto, request, adaptador, compuerta=None, cargar_registro=No
         clave, unidad_id = request["taskKey"], request["workUnit"]["id"]
         _forma(clave, unidad_id, request["requestedBy"])
         derivado = _regla(proyecto, clave, unidad_id, compuerta, cargar_registro, request,
-                          adaptador)
+                          adaptador, huella_esperada)
     except Rechazo as r:
         return r, None
     return None, derivado

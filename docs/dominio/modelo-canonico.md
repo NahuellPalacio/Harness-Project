@@ -10,7 +10,10 @@ Execution entró después, como el décimo contexto, con
 [`docs/cambios/execution-contract/spec.md`](../cambios/execution-contract/spec.md) y
 [ADR-0014](../adr/0014-el-contrato-de-ejecucion.md), y desde Task 4 tiene un motor mínimo
 ([`docs/cambios/minimal-execution-engine/spec.md`](../cambios/minimal-execution-engine/spec.md) y
-[ADR-0015](../adr/0015-el-motor-minimo-de-ejecucion.md)): una WorkUnit por invocación de `ejecutar`.
+[ADR-0015](../adr/0015-el-motor-minimo-de-ejecucion.md)): una WorkUnit por invocación de `ejecutar --unidad`. Desde Task 5 tiene también el GraphRun
+([`docs/cambios/graph-execution/spec.md`](../cambios/graph-execution/spec.md) y
+[ADR-0016](../adr/0016-la-ejecucion-de-un-grafo.md)): `ejecutar --grafo` lleva un plan entero a un
+terminal, de a una WorkUnit por vez.
 Con 0.31.0 convive con Flow Governance, cuyos seis conceptos viven en Work Intake, Planning y
 Guardrails: el flujo no es un contexto.
 
@@ -75,6 +78,8 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 | ExecutionError | Execution | Value Object | Una falla con un código de una lista cerrada |
 | ExecutionEvidence | Execution | Value Object | Lo que el motor observó del árbol: revisión y cambios |
 | AgentReport | Execution | DTO / Contract | Lo que el Host Adapter entrega a Execution: `declaredStatus` y `artifact`; sin autoridad |
+| GraphRun | Execution | Aggregate Root | Un intento de llevar todas las WorkUnits de un plan a un terminal, pidiendo Executions de a una |
+| GraphRunError | Execution | Value Object | Una falla de un GraphRun con un código de una lista cerrada, propia: no es un ExecutionError |
 | NormativeStandard | Governance | Value Object | Una norma con su versión |
 | NormativeMatrix | Governance | Domain Policy | Las reglas de una norma, con su aplicabilidad y sus controles |
 | NormativeRule | Governance | Entity | Una regla citable de una norma |
@@ -1020,10 +1025,11 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 - **Clasificación:** Value Object
 - **Identidad:** su valor: `exe_` más 32 hexadecimales al azar.
 - **Ciclo y estados:** no aplica.
-- **Invariantes:** lo genera HARNESS al admitir. No sale del Host, ni de la sesión, ni del
-  contenido, y un reintento lleva otro.
+- **Invariantes:** lo genera HARNESS: la admisión, o un GraphRun al registrar un despacho, que se lo
+  pasa a la admisión. No sale del Host, ni de la sesión, ni del contenido, y un reintento lleva otro.
 - **Crea / cambia / lee:** lo genera la ExecutionAdmission (`bin/ejecucion/admision.py`, con
-  `registro.nuevo_id`); lo llevan la request y el resultado.
+  `registro.nuevo_id`), o `bin/ejecucion/grafo.py`, con la misma función, antes de llamar al motor;
+  lo llevan la request y el resultado.
   El `executionId` del ledger de seguridad, que hoy siempre es nulo, es su lugar de correlación.
 - **Persistencia y contrato:** el campo `executionId` de `execution-request.schema.json` y de
   `execution-result.schema.json`.
@@ -1122,6 +1128,70 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
   guarda aparte, referido por `output`.
 - **Dónde vive:** `harnesses/desarrollo/bin/ejecucion/contrato.py` (`validar_informe`).
 - **No es:** el `agentResult`, que es una salida nativa posible, ni el ExecutionResult.
+
+### GraphRun
+
+- **Qué es:** un intento de llevar todas las WorkUnits de un plan, atado a una huella, a un
+  terminal, pidiendo las Executions de a una. Orquesta Executions y no las redefine: cada una sigue
+  siendo un intento de exactamente una WorkUnit.
+- **Contexto:** Execution
+- **Clasificación:** Aggregate Root
+- **Identidad:** su `graphRunId`: `grf_` más 32 hexadecimales al azar, atado a una TaskKey y a la
+  huella del plan (`planFingerprint`) al crearlo. No sale del contenido, del Host ni de la sesión, y
+  volver a lanzarlo es otro GraphRun.
+- **Ciclo y estados:** uno abierto y tres terminales: `ACTIVE → SUCCEEDED`, `ACTIVE → FAILED` y
+  `ACTIVE → CANCELLED`. Existe desde que se escribe su `inicio.json`, y desde un terminal no sale
+  ninguna transición. Un huérfano no es un estado: es un `ACTIVE` sin conductor vivo, y lo cierra
+  quien toma el candado de la tarea. No tiene `BLOCKED`, `PENDING` ni `RUNNING`.
+- **Invariantes:**
+  - queda atado a una (TaskKey, huella) al crearse y cuenta solo las Executions de esa huella: nunca
+    adopta otra (GE-I03);
+  - nunca despacha una unidad que ya tiene un turno bajo esa huella, y despacha cada una a lo sumo
+    una vez: no hay reintento automático (GE-I10);
+  - `SUCCEEDED` si y solo si todas las unidades del plan quedaron `SUCCEEDED` bajo su huella, y es
+    mecánico, como el de una Execution (GE-I13);
+  - a lo sumo hay uno `ACTIVE` por TaskKey: ser su conductor es tener el candado de la tarea
+    (GE-I15);
+  - no se reanuda: un huérfano lo cierra quien toma el candado, y seguir es otro GraphRun (GE-I16).
+- **Crea / cambia / lee:** lo crea y lo lleva a su terminal `bin/ejecucion/grafo.py`, por
+  `ejecutar --grafo`, serial y en el mismo proceso: pide cada Execution a `motor.ejecutar`, sin crear
+  una request ni escribir adentro de una. Lo cierra quien tiene el candado de la tarea: su conductor,
+  o el próximo que lo toma si el conductor murió. `ejecutar --cancelar grf_…` escribe su cancelación.
+  Lo lee `ejecutar --grafo --estado`, que no escribe, no recupera y no cierra nada. No escribe el Plan
+  ni lee la contabilidad.
+- **Persistencia y contrato:** su resultado, contra `graph-run-result.schema.json`
+  (`graph-run-result/1.0`), guardado una sola vez en `result.json`. Su registro es
+  `.claude/ejecuciones/<TaskKey>/grafos/<graphRunId>/`: `inicio.json`, `despachos/<NNN>.json`,
+  `cancelacion.json` y `result.json`, cada uno escrito una sola vez, y el candado de la tarea,
+  `.claude/ejecuciones/<TaskKey>/grafos/vivo.lock`. No hay `state.json`: el estado se deriva de qué
+  archivos existen y del registro de las Executions. Las coherencias que el schema no puede decir las
+  hace cumplir el código.
+- **Dónde vive:** `comun/schemas/graph-run-result.schema.json`, y en
+  `harnesses/desarrollo/bin/ejecucion/` el conductor, `grafo.py`, y las marcas, `registro.py`.
+- **No es:** una Execution ni un grafo de Executions, ni el Plan ni un estado del Plan, ni un
+  scheduler concurrente: pide las Executions de a una y no las vuelve un grafo.
+
+### GraphRunError
+
+- **Qué es:** una falla de un GraphRun, con un código de una lista cerrada y un detalle para una
+  persona. Es propia del GraphRun: un ExecutionError aparece solo como la causa que se referencia.
+- **Contexto:** Execution
+- **Clasificación:** Value Object
+- **Identidad:** no aplica.
+- **Ciclo y estados:** nueve códigos. Cada uno va solo a donde le corresponde: al arrancar, sin
+  GraphRun, o a un GraphRun `FAILED`. `SUCCEEDED` y `CANCELLED` no llevan error.
+- **Invariantes:**
+  - una máquina lee solo `code`;
+  - `detail` es del GraphRun y tiene hasta 300 caracteres: ids, códigos y el comando que sigue. No
+    lleva texto del agente, del Host ni el `detail` de un ExecutionError;
+  - no reutiliza los veintitrés códigos de ExecutionError: la causa de una Execution va en
+    `executionCode`, y `PLAN_FINGERPRINT_CHANGED` no es `PLAN_CHANGED`.
+- **Crea / cambia / lee:** lo arma `bin/ejecucion/grafo.py`. Un rechazo al arrancar vuelve al que
+  pidió y no se persiste, porque no hay un GraphRun donde guardarlo.
+- **Persistencia y contrato:** `$defs.error` de `graph-run-result.schema.json`, y `CODIGOS` en
+  `grafo.py`.
+- **Dónde vive:** `comun/schemas/graph-run-result.schema.json`.
+- **No es:** un ExecutionError, ni una excepción de Python ni texto libre.
 
 ### NormativeStandard
 
@@ -1732,12 +1802,14 @@ invariantes, su dueño, sus datos y su ciclo de vida.
 | Guardrails | evento, herramienta, hallazgo, deny, ask | solo los secretos bloquean; hasta ocho avisos; salida 0 | `harness-hook-engineer` | `comun/reglas/secretos.patrones.json`, los checks, `.claude/runtime/sessions/<SAFE>/notice.json` | por llamada de herramienta, sin estado; la huella del aviso del flujo, por sesión |
 | Observability | evento, tokens, costo, ventana, conciliación, presupuesto | id por dedupKey; las fotos no se suman; nadie decide con el ledger | sin dueño declarado | `.claude/runtime/accounting/`, `harness.presupuesto.json` | append-only |
 | Host Integration | instalar, actualizar, lock, huella, reinicio, componente | lo regenerable no se edita; lo de fuera sobrevive; PARCIAL y no BLOQUEADO | `harness-backend-engineer` | `.claude/harness/`, `harness.lock.json`, `harness.installation.json` | instalación, `-Update`, `-Uninstall` |
-| Execution | request, admisión, intento, entrega, terminal, rechazo, clave de idempotencia, informe del agente | una request es una WorkUnit y un intento; seis estados y cuatro terminales, sin `BLOCKED`; precedencia cerrada de admisión; el agente declara y no decide; no escribe el Plan ni lee la contabilidad | sin dueño declarado | `execution-request/1.0` y `execution-result/1.0`; el registro de cada Execution, en `.claude/ejecuciones/` | `REQUESTED → RUNNING → terminal`; una WorkUnit por invocación; Task 5 decide el resto |
+| Execution | request, admisión, intento, entrega, terminal, rechazo, clave de idempotencia, informe del agente, GraphRun, despacho | una request es una WorkUnit y un intento; seis estados y cuatro terminales, sin `BLOCKED`; precedencia cerrada de admisión; el agente declara y no decide; no escribe el Plan ni lee la contabilidad; un GraphRun es un plan entero bajo una huella, y pide las Executions de a una | sin dueño declarado | `execution-request/1.0`, `execution-result/1.0` y `graph-run-result/1.0`; el registro de cada Execution y las marcas de cada GraphRun, en `.claude/ejecuciones/` | `REQUESTED → RUNNING → terminal`, una WorkUnit por intento; el GraphRun, `ACTIVE → terminal`: un GraphRun lleva un plan entero, serial, sin reintento ni reanudación |
 
 **Execution es el décimo contexto desde ADR-0014, y desde ADR-0015 tiene un motor mínimo.** El
 contrato es de Task 3; la admisión, el registro, el Host Adapter y el motor que corre una WorkUnit,
-un intento, por invocación de `ejecutar`, son de Task 4. El scheduling, las colas y el reintento
-automático son de Task 5. Ver `## El límite de la ejecución`.
+un intento, por invocación de `ejecutar`, son de Task 4. El scheduling serial es de Task 5
+([ADR-0016](../adr/0016-la-ejecucion-de-un-grafo.md)): un GraphRun, el segundo agregado de Execution.
+Las colas, el paralelismo y el reintento automático siguen sin existir. Ver
+`## El límite de la ejecución`.
 
 ### Relaciones
 
@@ -1973,7 +2045,8 @@ rechaza con un código, y lo que el agente declara da `FAILED`
 | Host Adapter | ADR-0014, ADR-0015 | la pieza del motor que habla con un Host: hoy, `host_claude_code.py`, que lanza `claude -p` | no es un concepto: es infraestructura de **Execution** |
 | turno de intento | ADR-0015, `bin/ejecucion/registro.py` | el archivo que reserva la `idempotencyKey` para una Execution; se crea de forma exclusiva y no se borra | no es un concepto: es infraestructura de **Execution** |
 | candado de vida / `vivo.lock` | ADR-0015, `bin/ejecucion/registro.py` | el candado del sistema operativo que el motor tiene tomado mientras vive | no es un concepto: es infraestructura de **Execution** |
-| run / corrida | refutación, una invocación del CLI | el agregado de la refutación, o una invocación | **Refutation**; una invocación no es un concepto, y en **Execution** no se usa: entregar es pasar a `RUNNING` |
+| run / corrida | refutación, una invocación del CLI | el agregado de la refutación, o una invocación | **Refutation**; una invocación no es un concepto, y en **Execution** se usa solo como **GraphRun**, nunca para una Execution: entregar es pasar a `RUNNING` |
+| grafo / GraphRun | `bin/ejecucion/grafo.py`, `ejecutar --grafo` | un intento de llevar un plan entero a un terminal | **GraphRun**; no es una **Execution** ni un estado del **Plan** |
 | `BLOCKED` | plan, refutación, `agentResult`, `flujo/estado.py` | una unidad o un plan que no puede seguir, una unidad de refutación sin alcance, una tarea frenada, o un agente que no pudo seguir | un estado de **WorkUnit**, del **Plan**, del **TaskFlowState** o de **RefutationUnit**, o una declaración de **AgentReport**; nunca un estado de **Execution** |
 | etapa `EXECUTION` / `delegationAllowed` | `flujo/estado.py`, `task-flow-state` | la etapa del flujo que permite delegar, y ese permiso | una etapa del **TaskFlowState**, no una **Execution**; la **ExecutionAdmission** lee el permiso y lo deja en `admission.flow` |
 | `SESSION_COMPLETED` | `contrato.py` | la foto acumulada del proveedor | un tipo de **AccountingEvent**; no cambia de nombre |
@@ -1989,10 +2062,11 @@ rechaza con un código, y lo que el agente declara da `FAILED`
 
 ## El límite de la ejecución
 
-Desde ADR-0014, Execution es un contexto, y desde ADR-0015 tiene un motor mínimo. **HARNESS ejecuta
-una WorkUnit por invocación de `dev-harness.py ejecutar`, un intento, sincrónico:** la admite, crea
-la Execution, la entrega al Host y deja su resultado. Elegir la siguiente, en qué orden y cuántas a
-la vez, es de quien invoca, y de Task 5.
+Desde ADR-0014, Execution es un contexto; desde ADR-0015 tiene un motor mínimo, y desde ADR-0016, el
+GraphRun. **HARNESS ejecuta una WorkUnit por invocación de `dev-harness.py ejecutar --unidad`, un
+intento, sincrónico:** la admite, crea la Execution, la entrega al Host y deja su resultado. **Con
+`ejecutar --grafo`, un GraphRun elige la siguiente, en el orden de `orden_de_ejecucion`, de a una:**
+cada una pasa por el mismo motor y por las mismas dos admisiones. Más de una a la vez no existe.
 
 ### Lo que existe ahora
 
@@ -2030,6 +2104,18 @@ Lo que sumó la integración con 0.31.0 (`docs/cambios/execution-contract/spec.m
 - La admisión exige que el TaskFlowState deje delegar, y la request guarda solo esa decisión,
   `admission.flow`. Si no deja, el código es `DELEGATION_NOT_ALLOWED`.
 
+Lo que trajo ADR-0016 (`docs/cambios/graph-execution/spec.md`, Task 5):
+
+- El GraphRun, el segundo agregado de Execution, y su GraphRunError: un intento de llevar todas las
+  WorkUnits de un plan, atado a una huella, a un terminal. Es serial, de a una Execution propia, en el
+  orden de `orden_de_ejecucion`, y no tiene reintento ni reanudación. Lo lleva
+  `bin/ejecucion/grafo.py`.
+- `ejecutar <KEY> --grafo`, con `--grafo --estado` y `--cancelar grf_…`: una opción más sobre
+  `ejecutar`, sin un subcomando nuevo. `--unidad`, `--estado`, `--recuperar` y `--cancelar exe_…` no
+  cambian.
+- `graph-run-result/1.0` (`graph-run-result.schema.json`) y las marcas del GraphRun, de archivos que
+  se escriben una sola vez, bajo `.claude/ejecuciones/<TaskKey>/grafos/`.
+
 Lo que ya estaba, sin cambios:
 
 - El Plan en `READY_FOR_EXECUTION`, que es un estado del documento.
@@ -2049,9 +2135,8 @@ Lo que ya estaba, sin cambios:
 
 ### Lo que todavía no existe
 
-- Un ejecutor de lotes o de grafos: el motor corre una WorkUnit por invocación, y nada elige la
-  siguiente.
-- Un scheduler, colas, workers o paralelismo.
+- Un ejecutor paralelo o distribuido: el GraphRun elige la siguiente, de a una.
+- Un scheduler concurrente, colas, workers o paralelismo.
 - Un reintento automático, una reanudación o un checkpoint: un reintento es otra Execution que pide
   una persona, y una Execution interrumpida no se vuelve a entregar.
 - Un estado de corrida persistido fuera de Execution: ni el Plan, ni la WorkUnit, ni la

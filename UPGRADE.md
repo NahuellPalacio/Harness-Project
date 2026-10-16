@@ -23,6 +23,29 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.32.0 → 0.33.0
+
+`-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala `bin/ejecucion/grafo.py`, el schema
+`graph-run-result.schema.json` y la opción `--grafo` de `ejecutar`. Un proyecto que no corre `ejecutar` no
+nota nada: ningún hook ni regla cambia.
+
+Si lo corrés, hay que saber:
+
+- **`ejecutar <KEY> --grafo` es nuevo.** Ejecuta todas las unidades del plan, de a una y en el orden de sus
+  dependencias, y se detiene en la primera que falla. `--grafo --estado` lee sin tocar nada y
+  `--cancelar grf_…` pide cancelar. `--unidad` y el resto de las opciones de `ejecutar` no cambian. Crea
+  `.claude/ejecuciones/<KEY>/grafos/` con el primer `--grafo`.
+- **Cada unidad del grafo es una sesión de Claude Code y tiene su costo.** El grafo no le pone tope.
+- **En Windows, una unidad que pide `tests.run` ahora se rechaza.** Sale `REJECTED` con
+  `CAPABILITY_UNAVAILABLE` antes de entregar, sin lanzar el Host. En 0.32.0 se admitía y su agente corría sin
+  `Bash`. Hasta que haya un mapeo a `PowerShell`, esas unidades no corren por el motor, solas ni dentro de un
+  grafo. En las otras plataformas no cambia nada.
+- **Desde una sesión interactiva de Claude Code, `--grafo` pasa en las mismas condiciones que `ejecutar`**: la
+  política de herramientas sigue sin una fila para él, y con una tarea esperando una decisión humana se
+  niega. Corrido desde una terminal, no hay diferencia.
+
+---
+
 ## 0.31.0 → 0.32.0
 
 `-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala los seis módulos de

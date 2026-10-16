@@ -411,14 +411,24 @@ try {
                 '.claude\harness\bin\desarrollo\ejecucion\motor.py',
                 '.claude\harness\bin\desarrollo\ejecucion\proceso.py',
                 '.claude\harness\bin\desarrollo\ejecucion\registro.py')
+            # Task 5 / GD-25: y docs/cambios/graph-execution (Task 5, ADR-0016) instala a proposito dos
+            # archivos nuevos: el conductor del GraphRun y el schema de su resultado. Tampoco son de
+            # harness-unico: se suman a lo esperado en E-15 y se saltean en E-16, como los de Task 3 y
+            # Task 4. Que se instalen y corran lo protege GE-E66 de
+            # 73-ejecucion-de-grafo-instalador.ps1.
+            $huAgregadosPorEjecucionDeGrafo = @(
+                '.claude\harness\bin\desarrollo\ejecucion\grafo.py',
+                '.claude\harness\schemas\graph-run-result.schema.json')
 
             # E-15
-            $esperadas = @(@($huARutas | Where-Object { $huManifiestosViejos -notcontains $_ }) + $huAgregadosPorContratoDeEjecucion + $huAgregadosPorMotorDeEjecucion | Sort-Object)
-            Assert-Igual 'E-15 las rutas del lock son las de 0.28.0 sin los dos manifiestos, mas las cuatro del contrato de ejecucion y las seis del motor' ($esperadas -join '|') ($huBRutas -join '|')
+            # Task 5 / GD-25: se suman las dos de la ejecucion de un grafo.
+            $esperadas = @(@($huARutas | Where-Object { $huManifiestosViejos -notcontains $_ }) + $huAgregadosPorContratoDeEjecucion + $huAgregadosPorMotorDeEjecucion + $huAgregadosPorEjecucionDeGrafo | Sort-Object)
+            Assert-Igual 'E-15 las rutas del lock son las de 0.28.0 sin los dos manifiestos, mas las cuatro del contrato de ejecucion, las seis del motor y las dos de la ejecucion de un grafo' ($esperadas -join '|') ($huBRutas -join '|')
             # Eran 259 sobre 0.28.0 sola; sobre ea2dff7 suman los archivos de Flow Governance
-            # (integracion-flow-governance-0-31): 282. Con las cuatro del contrato de ejecucion, 286, y
-            # con las seis del motor minimo, 292.
-            Assert-Igual 'E-15 son 292: las 282 de ea2dff7, las cuatro del contrato de ejecucion y las seis del motor' 292 $huBRutas.Count
+            # (integracion-flow-governance-0-31): 282. Con las cuatro del contrato de ejecucion, 286, con
+            # las seis del motor minimo, 292, y con las dos de la ejecucion de un grafo (Task 5 / GD-25),
+            # 294.
+            Assert-Igual 'E-15 son 294: las 282 de ea2dff7, las cuatro del contrato de ejecucion, las seis del motor y las dos de la ejecucion de un grafo' 294 $huBRutas.Count
 
             # E-16
             $tocados = @('.claude\settings.json', '.claude\harness\run-hook.cmd', '.claude\harness\hooks\session-start.py',
@@ -452,6 +462,8 @@ try {
                 if ($huTocadosPorModeloDeDominio -contains $ruta) { continue }
                 if ($huAgregadosPorContratoDeEjecucion -contains $ruta) { continue }
                 if ($huAgregadosPorMotorDeEjecucion -contains $ruta) { continue }
+                # Task 5 / GD-25: tampoco los dos de la ejecucion de un grafo, que se instalan a proposito.
+                if ($huAgregadosPorEjecucionDeGrafo -contains $ruta) { continue }
                 if (-not $huAHash.ContainsKey($ruta)) { $distintos += "$ruta (no estaba)"; continue }
                 if ((Get-HuHash (Join-Path $huB $ruta)) -ne $huAHash[$ruta]) { $distintos += $ruta }
             }

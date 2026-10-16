@@ -1156,15 +1156,18 @@ def test_ex_e44_execution_es_el_decimo_contexto(t):
 
 def test_ex_e45_los_schemas_nuevos_en_su_concepto(t):
     """EX-E45 — execution-request en ExecutionRequest, execution-result en ExecutionResult, y el
-    documento nombra los 54 schemas. Pisado por la integracion con 0.31.0: eran 48, y Flow
-    Governance trajo seis (D7 de docs/cambios/integracion-flow-governance-0-31/spec.md)."""
+    documento nombra los 55 schemas. Pisado por la integracion con 0.31.0: eran 48, y Flow
+    Governance trajo seis (D7 de docs/cambios/integracion-flow-governance-0-31/spec.md). Pisado
+    por Task 5 / GD-23: el del GraphRun, graph-run-result.schema.json, hace 55."""
     m = M64._modelo()
     for concepto, schema in (("ExecutionRequest", "execution-request.schema.json"),
                              ("ExecutionResult", "execution-result.schema.json")):
         t.contiene("EX-E45 %s nombra %s en Persistencia y contrato" % (concepto, schema), schema,
                    (m["campos"].get(concepto) or {}).get("Persistencia y contrato"))
     en_disco = sorted(p.name for p in SCHEMAS.iterdir() if p.is_file())
-    t.igual("EX-E45 son 54 schemas", 54, len(en_disco))
+    # Task 5 / GD-23: graph-run-result.schema.json entra a comun/schemas/ a proposito (docs/cambios/
+    # graph-execution/spec.md, GD-23 y 27.1 A): de 54 a 55.
+    t.igual("EX-E45 son 55 schemas", 55, len(en_disco))
     nombrados = set()
     for campos in m["campos"].values():
         nombrados |= set(M64.SCHEMA_NOMBRADO.findall(campos.get("Persistencia y contrato") or ""))

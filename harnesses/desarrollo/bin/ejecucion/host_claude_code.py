@@ -1,10 +1,11 @@
 """El Host Adapter de Claude Code: una sesion headless, `claude -p`, con salida estructurada.
 
 docs/cambios/minimal-execution-engine/spec.md, MD-08 a MD-10 y MD-18, enmendados en §34 (MD-08′,
-MD-10′, MD-18′, MD-19′, MD-22′).
+MD-10′, MD-18′, MD-19′, MD-22′). docs/cambios/graph-execution/spec.md, GD-21: `provee` conoce la
+plataforma.
 
     resolver_agente   la definicion del agente en el Host, antes de la entrega
-    provee            que capabilities de la unidad le puede dar al agente
+    provee            que capabilities de la unidad le puede dar al agente, en esta plataforma
     entregar          lanza el Host, espera y devuelve (informe, falla, como)
 
 🔴 HARNESS lanza el Host, nunca un modelo: el agente y el modelo los corre Claude Code. Nunca con
@@ -28,6 +29,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import tempfile
 import uuid
 
@@ -49,6 +51,14 @@ HERRAMIENTAS = {
     "tests.run": ("Bash",),
 }
 SKILL = "Skill"
+
+# Las herramientas que el Host no ofrece en una plataforma aunque se las pidan, y aunque el agente las
+# tenga en su `tools:` (GD-21, R5). Un hecho observado de Claude Code: en Windows la sesion no trae
+# `Bash`. Medido el 09-10-2026 con 2.1.295 (T4 §34.2, E8) y comprobado de nuevo el 13-10-2026 con
+# 2.1.296 (`--tools Read,Bash` da solo `Read`). Envejece con una version nueva del Host: no se
+# descubre a la corrida, se corrige aca, con fecha. `herramientas` no la mira (ME-E40): una unidad
+# que `provee` rechazo nunca llega a armar `--tools`.
+NO_OFRECIDAS = {"win32": ("Bash",)}
 
 # Las banderas que arma el adaptador o que tocan la seguridad de la sesion. La configuracion no
 # puede traer ninguna, ni como `--opcion=valor`, ni con otras mayusculas (MD-22′).
@@ -159,15 +169,21 @@ class Adaptador(object):
     """El Host Adapter. `comando` es la lista ya resuelta y validada de `ejecucion.comandoHost`,
     o lo que dio `shutil.which("claude")`; `limite`, los segundos de `ejecucion.limiteSegundos`;
     `perfiles`, el `modelRouting.perfiles` de harness.config.json. Levanta ValueError si el comando
-    o los perfiles traen algo que no les toca (MD-22′): la misma regla que la configuracion."""
+    o los perfiles traen algo que no les toca (MD-22′): la misma regla que la configuracion.
 
-    def __init__(self, comando, limite, perfiles=None):
+    `plataforma` es la del Host (`sys.platform` por defecto): se inyecta para probar las dos ramas
+    de `provee` en cualquier maquina (GD-21). Un valor que no es un texto no vacio es un ValueError."""
+
+    def __init__(self, comando, limite, perfiles=None, plataforma=None):
         motivo = comando_invalido(list(comando)) or perfiles_invalidos(perfiles)
         if motivo:
             raise ValueError(motivo)
+        if plataforma is not None and not (isinstance(plataforma, str) and plataforma.strip()):
+            raise ValueError("la plataforma tiene que ser un texto no vacio")
         self.comando = list(comando)
         self.limite = limite
         self.perfiles = perfiles if isinstance(perfiles, dict) else {}
+        self.plataforma = plataforma if plataforma is not None else sys.platform
 
     # -- antes de la entrega ----------------------------------------------------------------
 
@@ -192,10 +208,26 @@ class Adaptador(object):
                 "cuerpo": cuerpo}, None
 
     def provee(self, capacidades, definicion):
-        """Las capabilities de la unidad que el adaptador no le puede dar al agente."""
+        """Las capabilities de la unidad que el adaptador no le puede dar al agente.
+
+        Una no se da si el Host no ofrece su herramienta en esta plataforma (GD-21), aunque el agente
+        la tenga en su `tools:`; si no es una de las cuatro locales; o si al agente le falta alguna de
+        sus herramientas. La primera razon va con su explicacion, que la admision junta tal cual en el
+        `detail` del rechazo: el id de la capability y, entre parentesis, que herramienta no se ofrece
+        y en que plataforma. Las otras dos, con el id solo."""
         tiene = set((definicion or {}).get("tools") or [])
-        return [c for c in capacidades
-                if c not in HERRAMIENTAS or not set(HERRAMIENTAS[c]) <= tiene]
+        ausentes = NO_OFRECIDAS.get(self.plataforma, ())
+        faltan = []
+        for c in capacidades:
+            herramientas = HERRAMIENTAS.get(c)
+            if herramientas is None:
+                faltan.append(c)
+            elif any(h in ausentes for h in herramientas):
+                faltan.append("%s (el Host no ofrece %s en %s)" % (
+                    c, ", ".join(h for h in herramientas if h in ausentes), self.plataforma))
+            elif not set(herramientas) <= tiene:
+                faltan.append(c)
+        return faltan
 
     def herramientas(self, capacidades, definicion):
         """`--tools` y `--allowedTools`: las de las capabilities, solo las que el agente tiene, y

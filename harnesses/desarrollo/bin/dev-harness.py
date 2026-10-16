@@ -9,6 +9,7 @@
     python .claude/harness/bin/desarrollo/dev-harness.py refute GCBA-1234 --compile|--status|--unit REF-001|--record <v.json>|--summary
     python .claude/harness/bin/desarrollo/dev-harness.py flujo GCBA-1234 --status [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py ejecutar GCBA-1234 --unidad <id>|--cancelar <exe_...>|--estado|--recuperar [--pedido-por <quien>] [--json]
+    python .claude/harness/bin/desarrollo/dev-harness.py ejecutar GCBA-1234 --grafo|--grafo --estado|--cancelar <grf_...> [--pedido-por <quien>] [--json]
     python .claude/harness/bin/desarrollo/dev-harness.py harness [--json] [--verbose] [--reiniciar-bienvenida]
     python .claude/harness/bin/desarrollo/dev-harness.py presupuesto [--context-defaults]
 
@@ -81,6 +82,7 @@ from orquestacion import registro_fuentes as orq_fuentes         # noqa: E402
 from orquestacion import roster as orq_roster                     # noqa: E402
 
 from ejecucion import motor as ejec_motor                         # noqa: E402
+from ejecucion import grafo as ejec_grafo                         # noqa: E402
 
 from contabilidad import agregacion as cont_agregacion            # noqa: E402
 from contabilidad import barra as cont_barra                      # noqa: E402
@@ -1102,6 +1104,95 @@ def compuerta_normativa(args, proyecto, rutas, consola, clave, transporte=None,
 
 # -- ejecutar ------------------------------------------------------------------
 
+# `--cancelar` elige por el prefijo del id: `grf_...` es de un GraphRun, y todo lo demas sigue el
+# camino de Execution, que valida `exe_...` y falla cerrado con lo que no lo es (GD-24).
+PREFIJO_DE_GRAFO = "grf_"
+
+
+def _correr_un_graphrun(args, proyecto, consola, clave, config, compuerta):
+    """`ejecutar <KEY> --grafo` (GD-24): un GraphRun hasta su terminal, con el mismo adaptador, la misma
+    configuracion y la misma compuerta que `--unidad`. Sale con 0 solo si quedo SUCCEEDED; con FAILED,
+    CANCELLED o un rechazo al arrancar, con 2. Un error del comando (configuracion, catalogo de secretos,
+    candado) levanta `ErrorDelComando`, y `ejecutar` lo vuelve una falla del harness."""
+    consola.evento("grafo.pedido", tarea=clave)
+    resultado, error = ejec_grafo.conducir(
+        proyecto, clave, ejec_motor.quien_pide(args.pedido_por, config), config=config,
+        compuerta=compuerta)
+    if error is not None:
+        if args.json:
+            sys.stdout.write(json.dumps(error, ensure_ascii=False, indent=2) + "\n")
+        else:
+            consola.linea("No arrancó el GraphRun de %s: %s · %s" % (clave, error["code"],
+                                                                     error["detail"]))
+        return 2
+    if args.json:
+        sys.stdout.write(json.dumps(resultado, ensure_ascii=False, indent=2) + "\n")
+    else:
+        consola.linea("%s %s: %s%s" % (resultado["graphRunId"], clave, resultado["status"],
+                                        " · con pedido de cancelación" if resultado["cancelRequested"]
+                                        else ""))
+        if resultado["error"]:
+            consola.linea("  %s · %s" % (resultado["error"]["code"], resultado["error"]["detail"]))
+        for nodo in resultado["nodes"]:
+            consola.linea("  %s  %s%s%s" % (
+                nodo["workUnitId"], nodo["state"],
+                "  " + nodo["executionId"] if nodo["executionId"] else "",
+                "  (la despachó este GraphRun)" if nodo["dispatched"] else ""))
+    return 0 if resultado["status"] == "SUCCEEDED" else 2
+
+
+def _estado_de_los_graphruns(args, proyecto, consola, clave):
+    """`ejecutar <KEY> --grafo --estado` (GD-24, GE-I30): solo lee. No recupera, no cierra huerfanos, no
+    sondea el candado y no escribe. Un ACTIVE puede ser un conductor vivo o uno muerto, y desde afuera no
+    se sabe cual: dice con que comando se cierra, si su proceso murio. Sale con 0."""
+    filas = ejec_grafo.estado_de_grafos(proyecto, clave)
+    if args.json:
+        sys.stdout.write(json.dumps(filas, ensure_ascii=False, indent=2) + "\n")
+        return 0
+    consola.linea("GraphRuns de %s: %d" % (clave, len(filas)))
+    for f in filas:
+        consola.linea("  %s  %s%s%s" % (
+            f["graphRunId"], f["estado"], " · " + f["motivo"] if f["motivo"] else "",
+            " · con pedido de cancelación" if f["cancelRequested"] else ""))
+        consola.linea("      plan %s · pedido por %s · desde %s%s" % (
+            f["planFingerprint"], f["requestedBy"], f["startedAt"],
+            " · hasta %s" % f["endedAt"] if f["endedAt"] else ""))
+        for d in f["despachos"]:
+            consola.linea("      despacho %s  %s  %s  %s" % (
+                "%03d" % d["numero"] if isinstance(d["numero"], int) else d["numero"],
+                d["workUnitId"] or "?", d["executionId"] or "?",
+                d["estado"] or "sin turno que la nombre"))
+        if f["error"]:
+            consola.linea("      %s · %s" % (f["error"]["code"], f["error"]["detail"]))
+        if f["estado"] == "ACTIVE":
+            consola.linea("      si su proceso murió, lo cierra `%s` o `%s`" % tuple(f["comandos"]))
+    return 0
+
+
+def _cancelar_un_graphrun(args, proyecto, rutas, consola, clave):
+    """`ejecutar <KEY> --cancelar grf_...` (GD-11, GD-24): una marca, propagada solo a lo propio. Sale con
+    0, como `--cancelar` de una Execution, aunque el conductor siga: el pedido quedo persistido y lo va a
+    cumplir."""
+    salida = ejec_grafo.cancelar_grafo(
+        proyecto, clave, args.ejecutar_cancelar,
+        ejec_motor.quien_pide(args.pedido_por, _config_harness(rutas)))
+    if args.json:
+        sys.stdout.write(json.dumps(salida, ensure_ascii=False, indent=2) + "\n")
+        return 0
+    if not salida["pedido"]:
+        consola.linea("%s ya era %s: no se cambió nada." % (salida["graphRunId"], salida["despues"]))
+        return 0
+    consola.linea("Se pidió cancelar %s: ahora está %s." % (salida["graphRunId"], salida["despues"]))
+    if salida["cerradoAqui"]:
+        consola.linea("  su conductor ya no estaba: se cerró acá, con el candado de la tarea.")
+    for execution_id in salida["canceladas"]:
+        consola.linea("  se pidió cancelar %s, que es de este GraphRun." % execution_id)
+    if salida["sigue"]:
+        consola.linea("  su conductor sigue: el pedido quedó escrito y lo va a cumplir. Mirá "
+                      "`ejecutar %s --grafo --estado`." % clave)
+    return 0
+
+
 def ejecutar(args, proyecto, rutas, consola, transporte=None, transporte_bytes=None):
     """Una WorkUnit, un intento, sincronico (docs/cambios/minimal-execution-engine/spec.md).
 
@@ -1109,9 +1200,18 @@ def ejecutar(args, proyecto, rutas, consola, transporte=None, transporte_bytes=N
     solo si quedo SUCCEEDED. `--cancelar` recupera primero y pide despues; `--estado` solo lee;
     `--recuperar` cierra las RUNNING huerfanas. La compuerta normativa es la de `plan`, con las
     normas de la unidad: la llama la admision, dos veces.
+
+    Task 5 (docs/cambios/graph-execution/spec.md, GD-24) suma tres usos sin cambiar los de arriba:
+    `--grafo` corre un GraphRun hasta su terminal y sale con 0 solo si quedo SUCCEEDED;
+    `--grafo --estado` solo lee los GraphRuns de la tarea; `--cancelar grf_...` marca la
+    cancelacion de un GraphRun (`--cancelar` elige por el prefijo del id). `--recuperar` no toca
+    GraphRuns: cerrar un huerfano exige el candado de la tarea, y lo toman `--grafo` y
+    `--cancelar grf_...`.
     """
     clave = args.argumento
     try:
+        if args.ejecutar_estado and args.ejecutar_grafo:
+            return _estado_de_los_graphruns(args, proyecto, consola, clave)
         if args.ejecutar_estado:
             filas = ejec_motor.estado(proyecto, clave)
             if args.json:
@@ -1140,6 +1240,8 @@ def ejecutar(args, proyecto, rutas, consola, transporte=None, transporte_bytes=N
                                                  " · el pid del Host sigue vivo" if c["hostVivo"]
                                                  else ""))
             return 0
+        if args.ejecutar_cancelar.startswith(PREFIJO_DE_GRAFO):
+            return _cancelar_un_graphrun(args, proyecto, rutas, consola, clave)
         if args.ejecutar_cancelar:
             salida = ejec_motor.cancelar(proyecto, clave, args.ejecutar_cancelar,
                                          ejec_motor.quien_pide(args.pedido_por,
@@ -1167,6 +1269,9 @@ def ejecutar(args, proyecto, rutas, consola, transporte=None, transporte_bytes=N
         def compuerta(requeridas):
             return orq_refresco.ensure_normative_knowledge_fresh(
                 proyecto, observador, _capacidades(rutas), canal, requeridas=requeridas)
+
+        if args.ejecutar_grafo:
+            return _correr_un_graphrun(args, proyecto, consola, clave, config, compuerta)
 
         consola.evento("ejecucion.pedida", tarea=clave, unidad=args.unidad)
         resultado, error = ejec_motor.ejecutar(
@@ -2119,7 +2224,11 @@ def parser():
                    help="contabilidad: a que unidad de trabajo se atribuye lo ingerido; "
                         "ejecutar: la WorkUnit del plan que se ejecuta")
     p.add_argument("--cancelar", dest="ejecutar_cancelar", default="",
-                   help="ejecutar: pide cancelar esa Execution (exe_...), despues de recuperar")
+                   help="ejecutar: pide cancelar esa Execution (exe_...), despues de recuperar, o "
+                        "ese GraphRun (grf_...)")
+    p.add_argument("--grafo", dest="ejecutar_grafo", action="store_true",
+                   help="ejecutar: lleva el plan entero a un terminal, de a una unidad por vez; "
+                        "con --estado, solo lista los GraphRuns de la tarea")
     p.add_argument("--estado", dest="ejecutar_estado", action="store_true",
                    help="ejecutar: los turnos de la tarea y su estado, sin escribir nada")
     p.add_argument("--recuperar", dest="ejecutar_recuperar", action="store_true",
@@ -2247,10 +2356,12 @@ def main(argv=None, transporte=None, transporte_bytes=None):
                 "ejecutar necesita una clave de Jira, con la forma PROYECTO-123. "
                 "Ejemplo: dev-harness.py ejecutar GCBA-1234 --unidad implementar-endpoint\n")
             return 2
-        if len([a for a in (args.unidad, args.ejecutar_cancelar, args.ejecutar_estado,
-                            args.ejecutar_recuperar) if a]) != 1:
-            sys.stderr.write("ejecutar necesita una sola de --unidad, --cancelar, --estado o "
-                             "--recuperar.\n")
+        # `--grafo` es un modo, y `--grafo --estado` la unica combinacion: lista los GraphRuns. Cada
+        # una de las otras es sola.
+        if len([a for a in (args.unidad, args.ejecutar_cancelar, args.ejecutar_recuperar,
+                            args.ejecutar_estado or args.ejecutar_grafo) if a]) != 1:
+            sys.stderr.write("ejecutar necesita una sola de --unidad, --cancelar, --estado, "
+                             "--recuperar o --grafo (y --grafo --estado, juntas).\n")
             return 2
 
     if args.comando == "seguridad":

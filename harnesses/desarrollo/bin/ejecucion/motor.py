@@ -187,13 +187,20 @@ def _del_adaptador(informe, falla):
 
 def ejecutar(proyecto, clave, unidad, pedido_por, adaptador=None, config=None,
              catalogo=None, compuerta=None, cargar_registro=None, antes_de_reservar=None,
-             antes_de_entregar=None):
+             antes_de_entregar=None, execution_id=None, huella_esperada=None):
     """(resultado, None) o (None, ExecutionError). Levanta ErrorDelComando sin crear nada.
 
     `catalogo` carga el catalogo de secretos (por defecto, el de la SecretGate); `compuerta` y
     `cargar_registro` son los duenos de las condiciones 9 y 10. `antes_de_reservar` y
     `antes_de_entregar` son los puntos de encuentro de los tests: la ventana de la carrera (MD-04b)
     y la de un cambio entre la creacion y la entrega.
+
+    Task 5 (GD-16, GD-27 paso 4), los dos opcionales y sin ellos igual que en Task 4:
+    `execution_id` es el id preasignado del intento, el que `al_pedir` ya acepta de afuera: quien lo
+    pasa sabe cual es su Execution aunque el comando falle. Uno invalido o ya usado no se inventa
+    nada: lo dicen `al_pedir` y el registro. `huella_esperada` es la huella del plan a la que esta
+    atado quien pide; llega hasta `al_entregar`, que rechaza con PLAN_CHANGED si la request se armo
+    con otra.
     """
     config = config or configuracion(proyecto)
     if adaptador is None:
@@ -212,7 +219,7 @@ def ejecutar(proyecto, clave, unidad, pedido_por, adaptador=None, config=None,
     try:
         request, error, leido, huella = admision.al_pedir(
             proyecto, clave, unidad, pedido_por, _catalogo(cargar_catalogo), compuerta,
-            cargar_registro)
+            cargar_registro, execution_id)
     except admision.SinCatalogo as e:
         raise ErrorDelComando(str(e))
     if error is not None:
@@ -228,13 +235,13 @@ def ejecutar(proyecto, clave, unidad, pedido_por, adaptador=None, config=None,
                 leido + 1), _catalogo(cargar_catalogo))
     try:
         return _correr(proyecto, request, huella, adaptador, cargar_catalogo, compuerta,
-                       cargar_registro, antes_de_entregar), None
+                       cargar_registro, antes_de_entregar, huella_esperada), None
     finally:
         vida.soltar()
 
 
 def _correr(proyecto, request, huella, adaptador, cargar_catalogo, compuerta, cargar_registro,
-            antes_de_entregar):
+            antes_de_entregar, huella_esperada=None):
     """Desde la Execution publicada hasta su resultado. Con el candado de vida tomado.
 
     `request` y `huella` son las que el motor persistio. Al entregar no se confia en lo guardado:
@@ -242,6 +249,9 @@ def _correr(proyecto, request, huella, adaptador, cargar_catalogo, compuerta, ca
     aplica la regla entera (ME-I06). Al Host se le entrega la request del disco, ya probada igual.
     Si alguien la cambio, el resultado REJECTED lleva la huella de lo que el motor escribio: la
     diferencia queda a la vista, y no se falsifica ninguna huella (R6).
+
+    `huella_esperada` (Task 5) llega a `al_entregar` tal cual, y ahi se compara con la huella del plan
+    con la que se armo la request del disco.
     """
     carpeta = registro.carpeta_de(proyecto, request["taskKey"], request["executionId"])
 
@@ -257,7 +267,7 @@ def _correr(proyecto, request, huella, adaptador, cargar_catalogo, compuerta, ca
     guardada, _ = registro.leer_json(os.path.join(carpeta, registro.REQUEST))
     rechazo, derivado = admision.al_entregar(
         proyecto, guardada if isinstance(guardada, dict) else {}, adaptador, compuerta,
-        cargar_registro, huella)
+        cargar_registro, huella, huella_esperada)
     if rechazo is not None:
         catalogo = _catalogo(cargar_catalogo)
         texto = rechazo.detalle if catalogo is not None else "rechazada al entregar: %s" % \

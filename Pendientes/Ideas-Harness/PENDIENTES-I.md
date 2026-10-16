@@ -343,3 +343,41 @@ revision of 0013 and 0014), the map of contexts, the six concepts moved, the Pla
 relation, and the tests. No code changes.
 
 Status. Open. Left as an open question in D7 of the integration spec; not decided by anyone yet.
+
+### Run the independent units of a GraphRun in parallel
+
+A GraphRun takes a whole plan to a terminal one WorkUnit at a time (ADR-0016). The idea is to dispatch
+together the units whose dependencies are already satisfied, with a bounded number of workers or with
+all of them. Written on 2026-10-14 as GP-03 of `docs/cambios/graph-execution/spec.md`.
+
+Problem it solves. The time of a GraphRun is the sum of the time of its Executions, even when the plan
+has branches that do not depend on each other.
+
+Cost. It cannot be had without changing Task 4, and the spec of Task 5 says why. The evidence rule is
+per project (T4 MD-20) and the working tree is one, so two Executions that overlap make each other's
+evidence `CHANGES_UNATTRIBUTABLE`. The guards close both ways of getting there: ME-E47 of Task 4
+forbids importing `threading`, `multiprocessing`, `asyncio` and `concurrent`, and E-41 of
+`64_modelo_de_dominio.py`, adapted inside ME-E47, lets `subprocess` launch only `git`, `markitdown`,
+`taskkill` and the Host. It also multiplies R1, a Host that outlives its engine, by the number of
+workers. A Task with its own spec would need: evidence attributed per Execution, a revision of ME-E47
+and E-41 with an ADR, and a way to keep the working tree of each Execution apart.
+
+Status. Open, not planned. ADR-0016 chose serial on purpose, and its review clause names parallelism
+as one of the reasons to revisit it.
+
+### Keep going with the independent branches after a unit fails
+
+A GraphRun is fail-fast: the first unit that does not end `SUCCEEDED` closes it, and the independent
+units that came after it in the order are not run (GC-17 of the Task 5 spec). The idea is to go on with
+every unit that does not depend, directly or not, on the one that failed. Written on 2026-10-14 as
+GP-04 of that spec.
+
+Problem it solves. A plan with independent branches loses all of them when one fails. A person has to
+fix the unit, run `ejecutar --unidad` if the unit has to be retried, and launch the graph again, which
+adopts what already ended `SUCCEEDED` and runs the rest.
+
+Cost. A Task with its own spec: which units stay eligible after a failure, what the result says about
+the ones left unrun, and a revision of the fail-fast decision of ADR-0016. It does not need
+parallelism, and it should not be bundled with it.
+
+Status. Open, not planned. ADR-0016 names it among the reasons to review the decision.

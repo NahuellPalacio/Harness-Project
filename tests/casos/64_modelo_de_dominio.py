@@ -663,26 +663,37 @@ SCHEMAS_DE_0_30 = 46
 # de los dos nuevos lo protege EX-E45 de 65_contrato_de_ejecucion.
 SCHEMAS_DE_EJECUCION = ("execution-request.schema.json", "execution-result.schema.json")
 
+# Task 5 / GD-23: la ejecucion de un grafo agrego un schema, graph-run-result: a los 54 se suma uno,
+# y son 55. Su tabla es la de GD-23 de docs/cambios/graph-execution/spec.md (enmienda del
+# 14-10-2026, 27.1 A), que S4 lee junto con 3.2, D7 y la seccion 22.
+SCHEMAS_DE_GRAFO = ("graph-run-result.schema.json",)
+
 
 def test_e05_cada_schema_tiene_su_concepto(t):
-    """E-05 â€” cada uno de los 54 archivos de comun/schemas/ figura en Persistencia y contrato de
+    """E-05 â€” cada uno de los 55 archivos de comun/schemas/ figura en Persistencia y contrato de
     al menos un concepto, y todo schema que nombra el documento existe en disco.
 
     Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md (D7): eran 46; con los seis
     de Flow Governance son 52 (E-21 de esa spec). Con los dos de ADR-0014
-    (docs/cambios/execution-contract/spec.md, seccion 22), 54."""
+    (docs/cambios/execution-contract/spec.md, seccion 22), 54. Con el del GraphRun (Task 5 / GD-23,
+    docs/cambios/graph-execution/spec.md, 27.1 A), 55."""
     m = _modelo()
     en_disco = sorted(p.name for p in SCHEMAS.iterdir() if p.is_file())
     # Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md (D7), y por ADR-0014
-    t.igual("E-05 son los 54 de comun/schemas/: 46 de 0.30.0, 6 de Flow Governance (D7 de la "
-            "integracion) y 2 del contrato de ejecucion (ADR-0014)",
-            SCHEMAS_DE_0_30 + len(SCHEMAS_DE_FLOW_GOVERNANCE) + len(SCHEMAS_DE_EJECUCION),
+    # Task 5 / GD-23: y 1 del grafo (graph-run-result), de 54 a 55
+    t.igual("E-05 son los 55 de comun/schemas/: 46 de 0.30.0, 6 de Flow Governance (D7 de la "
+            "integracion), 2 del contrato de ejecucion (ADR-0014) y 1 del grafo (Task 5)",
+            SCHEMAS_DE_0_30 + len(SCHEMAS_DE_FLOW_GOVERNANCE) + len(SCHEMAS_DE_EJECUCION)
+            + len(SCHEMAS_DE_GRAFO),
             len(en_disco))
     # Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md (D7)
     t.vacio("E-05 E-21 (integracion) los seis schemas de Flow Governance estan en comun/schemas/",
             [s for s in SCHEMAS_DE_FLOW_GOVERNANCE if s not in en_disco])
     t.vacio("E-05 los dos schemas del contrato de ejecucion estan en comun/schemas/",
             [s for s in SCHEMAS_DE_EJECUCION if s not in en_disco])
+    # Task 5 / GD-23
+    t.vacio("E-05 el schema del grafo esta en comun/schemas/",
+            [s for s in SCHEMAS_DE_GRAFO if s not in en_disco])
     nombrados = set()
     for campos in m["campos"].values():
         nombrados |= set(SCHEMA_NOMBRADO.findall(campos.get("Persistencia y contrato") or ""))
@@ -697,6 +708,11 @@ def test_e05_cada_schema_tiene_su_concepto(t):
 # trajo ADR-0014, y esa spec es historia: no se reescribe.
 SPEC_EJECUCION = RAIZ / "docs" / "cambios" / "execution-contract" / "spec.md"
 COLUMNAS_DE_SCHEMAS = ["Schema", "Concepto", "Productor", "Runtime", "Persistencia", "Clase"]
+
+# Task 5 / GD-23: la spec de la ejecucion de un grafo mapea su schema en la seccion 23 (GD-23), con
+# las mismas columnas que la 3.2 y que la 22 de la spec de ejecucion: S4 la lee junto con las otras
+# (enmienda del 14-10-2026, 27.1 A). Esa spec tambien es historia una vez cerrada: no se reescribe.
+SPEC_GRAFO = RAIZ / "docs" / "cambios" / "graph-execution" / "spec.md"
 
 
 def _tabla_de_schemas_de_la_spec_de_ejecucion():
@@ -722,6 +738,20 @@ def _conceptos_de_la_seccion_22(catalogo):
     """{schema: [conceptos]} de la tabla de schemas de la seccion 22 de la spec de ejecucion, leida
     igual que 3.2 y que D7. Es la segunda tabla de esa seccion: se la busca por sus columnas."""
     return _conceptos_de_las_filas(_tabla_de_schemas_de_la_spec_de_ejecucion()[1:], catalogo)
+
+
+# Task 5 / GD-23
+def _tabla_de_schemas_de_la_spec_de_grafo():
+    tablas = _tablas(_seccion(_texto(SPEC_GRAFO), "23. Result")) if SPEC_GRAFO.is_file() else []
+    return next((tb for tb in tablas if tb and tb[0] == COLUMNAS_DE_SCHEMAS), [])
+
+
+# Task 5 / GD-23
+def _conceptos_de_gd_23(catalogo):
+    """{schema: [conceptos]} de la tabla de schemas de GD-23 de la spec de la ejecucion de un grafo,
+    leida igual que 3.2, D7 y la seccion 22. Es la segunda tabla de la seccion 23: se la busca por
+    sus columnas."""
+    return _conceptos_de_las_filas(_tabla_de_schemas_de_la_spec_de_grafo()[1:], catalogo)
 
 
 def _conceptos_de_la_tabla(lineas, catalogo):
@@ -766,7 +796,10 @@ def test_e05_s4_cada_schema_esta_en_el_concepto_que_dice_la_spec(t):
 
     Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md (D7): la tabla es la de 3.2
     mas la de D7 de esa spec, que trae los seis schemas de Flow Governance (E-21 de esa spec). Las
-    dos no comparten ningun schema."""
+    dos no comparten ningun schema.
+
+    Task 5 / GD-23: a esas tablas se suma la de schemas de GD-23 de docs/cambios/graph-execution/
+    spec.md (27.1 A), buscada por sus columnas como la de la seccion 22 de la spec de ejecucion."""
     m = _modelo()
     # Pisado por docs/cambios/integracion-flow-governance-0-31/spec.md (D7)
     de_3_2 = _conceptos_de_la_spec_3_2(m["catalogo"])
@@ -784,19 +817,29 @@ def test_e05_s4_cada_schema_esta_en_el_concepto_que_dice_la_spec(t):
             sorted(SCHEMAS_DE_EJECUCION), sorted(de_22))
     t.vacio("E-05 S4 ningun schema de la seccion 22 esta en 3.2 o en D7",
             sorted(set(de_22) & (set(de_3_2) | set(de_d7))))
+    # Task 5 / GD-23: la tabla de schemas de GD-23 de la spec de la ejecucion de un grafo
+    de_gd_23 = _conceptos_de_gd_23(m["catalogo"])
+    t.verdadero("E-05 S4 la seccion 23 de la spec de la ejecucion de un grafo trae su tabla de "
+                "schemas", len(_tabla_de_schemas_de_la_spec_de_grafo()) > 1)
+    t.igual("E-05 S4 la tabla de GD-23 tiene el schema del grafo", sorted(SCHEMAS_DE_GRAFO),
+            sorted(de_gd_23))
+    t.vacio("E-05 S4 ningun schema de GD-23 esta en 3.2, en D7 o en la seccion 22",
+            sorted(set(de_gd_23) & (set(de_3_2) | set(de_d7) | set(de_22))))
     de_la_spec = dict(de_3_2)
     de_la_spec.update(de_d7)
     de_la_spec.update(de_22)
+    de_la_spec.update(de_gd_23)
     en_disco = sorted(p.name for p in SCHEMAS.iterdir() if p.is_file())
-    t.igual("E-05 S4 las tablas de 3.2 de la spec, de D7 de la integracion y de la seccion 22 de la "
-            "spec de ejecucion tienen los schemas de comun/schemas/", en_disco, sorted(de_la_spec))
-    t.vacio("E-05 S4 cada celda Concepto de 3.2, de D7 y de la seccion 22 nombra un concepto del "
-            "documento",
+    t.igual("E-05 S4 las tablas de 3.2 de la spec, de D7 de la integracion, de la seccion 22 de la "
+            "spec de ejecucion y de GD-23 de la spec del grafo tienen los schemas de comun/schemas/",
+            en_disco, sorted(de_la_spec))
+    t.vacio("E-05 S4 cada celda Concepto de 3.2, de D7, de la seccion 22 y de GD-23 nombra un "
+            "concepto del documento",
             sorted(s for s, c in de_la_spec.items() if not c))
     persistencia = {n: set(SCHEMA_NOMBRADO.findall(c.get("Persistencia y contrato") or ""))
                     for n, c in m["campos"].items()}
-    t.vacio("E-05 S4 cada concepto que 3.2 o D7 le da a un schema lo nombra en su "
-            "Persistencia y contrato",
+    t.vacio("E-05 S4 cada concepto que 3.2, D7, la seccion 22 o GD-23 le da a un schema lo nombra en "
+            "su Persistencia y contrato",
             ["%s: %s" % (s, c) for s, conceptos in sorted(de_la_spec.items()) for c in conceptos
              if s not in persistencia.get(c, set())])
     for schema in SCHEMAS_DE_BASES:
