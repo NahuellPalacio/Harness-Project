@@ -3,6 +3,82 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.34.0] — 2026-10-19
+
+**HARNESS tiene una frontera de lectura de conocimiento: quien necesita un documento del proyecto lo pide por
+su identidad y lo recibe con su cita, su revisión y lo que no se pudo mirar.**
+
+Hasta 0.33.0, quien leía un documento del proyecto sabía dónde estaba: el resolvedor de repositorio armaba la
+ruta de `project-context.json` y abría el archivo, y nada de lo leído traía su cita ni su revisión. Esta
+versión trae Knowledge Access (Task 6), el undécimo contexto del modelo canónico: `lookup` y `search` sobre
+cuatro corpus, con un resultado cerrado, `knowledge-result/1.0`. Es una interfaz de Python interna, de solo
+lectura y sin estado, sin REST, subcomando, servidor MCP ni capability. Ni Planning, ni Execution, ni los
+agentes la consumen todavía: Task 7 pondrá un recuperador más rico detrás de la misma frontera.
+
+### Agregado
+
+- **Knowledge Access** — `harnesses/desarrollo/bin/conocimiento/` (`acceso.py`, `corpus.py`,
+  `recuperador_local.py` y `__init__.py`): sin persistencia y sin caché entre consultas. `lookup` trae un
+  documento por su identidad `(corpus, document)`, exacto; `search` trae tramos literales de los corpus
+  pedidos, con un corte en 20 ítems que se declara
+- **Cuatro corpus, en una tabla cerrada en código** — `adr` (`docs/adr/`), `dominio` (`docs/dominio/`),
+  `codebase` (`rutaCodebase`, por defecto `docs/codebase`) y `memoria` (`rutaMemoria`, por defecto
+  `docs/conocimiento`). Solo esas dos rutas salen de la configuración, y se validan: una inválida deja el
+  corpus no disponible, sin caer al defecto
+- **`knowledge-result/1.0`** — cerrado en todos los niveles. Cada ítem trae su cita
+  `(corpus, document, anchor)`, su revisión (el sha256 del texto normalizado del documento entero), un
+  localizador relativo, el tramo literal y su derivación (`PRIMARY` o `GENERATED`, que declara el corpus). Siete
+  errores cerrados y sin texto libre; lo que no se pudo mirar es un hueco con su motivo, y un resultado vacío
+  con cobertura completa es un éxito. Sin schema, sin score y sin reloj: una clave o un valor nuevo piden otra
+  versión
+- **El recuperador, detrás de un puerto** — `local-lexico/1`, léxico, local y determinista, solo con la
+  biblioteca estándar. Recibe una vista inmutable y propone candidatos; la fachada valida, corta el tramo de
+  su propia lectura, redacta y declara. Es permanente: uno más rico se suma detrás del mismo contrato
+- **Seguridad que no depende del consumidor** — contención por `realpath` y `commonpath` en cada carpeta y
+  cada archivo, el deny del proyecto antes de abrir, el catálogo de secretos sobre todo el resultado (un error
+  incluido), lectura acotada, y falla cerrada con `POLICY_UNAVAILABLE` sin catálogo o sin un deny legible
+- **El primer consumidor** — `bin/contexto/repositorio.py` pide el `project-context` por `lookup` y deja de
+  conocer dónde está
+- **[ADR-0017](docs/adr/0017-la-frontera-del-conocimiento.md)**, que revisa ADR-0013 sin editarlo
+
+### Cambiado
+
+- **El modelo canónico suma Knowledge Access** — once contextos y 89 conceptos (KnowledgeQuery,
+  KnowledgeResult, KnowledgeCitation y KnowledgeCorpus), con sus relaciones y su vocabulario
+- **`repositorio.resolver` pierde el parámetro `ruta_codebase`**, y `dev-harness.py` deja de pasarlo: la
+  ubicación la resuelve Knowledge Access. Con la configuración por defecto, la salida de `contexto` es la de
+  0.33.0. Lo que cambia en los otros casos está en [UPGRADE.md](UPGRADE.md)
+- **`-Update` instala cuatro archivos nuevos** en `.claude/harness/bin/desarrollo/conocimiento/`: el lock pasa
+  de 294 a 298 rutas
+
+### Lo que sigue abierto, sin maquillar
+
+- **La regex `credenciales-en-url` del catálogo de secretos es cuadrática**, y está en una zona protegida. Un
+  `lookup` de un documento de 1 MiB sin cortes llevaría unos 70 minutos (extrapolado de 64 KiB en 16,5 s, no
+  medido). Es riesgo de colgarse, no de filtrar; `search` no lo sufre
+- **Un alias interno dentro de una raíz esquiva el deny por ruta** (KP-15), y hay objetos hostiles dentro del
+  proceso que pueden forjar una cita (KP-16). Hoy nadie del repo los usa
+- **La refutación sigue leyendo `project-context.json` por una ruta fija**: dos lectores del mismo archivo lo
+  buscan distinto (KP-01). Migrarla enmienda las guardas EX-G11, ME-E49 y KA-E53
+- **Ningún agente llega a Knowledge Access, y `search` no tiene un consumidor de producto**: su forma no tiene
+  evidencia de uso real
+- **La suite completa tarda de 47 a 101 minutos** según la carga, y el runner paralelo sigue sin construirse
+- **Una decisión sigue pendiente de quien encargó la Task**: si, sin catálogo de secretos, el error de `lookup`
+  devuelve `error.document` en `null` en vez de repetirlo
+
+Los KP-01 a KP-24 están en `Pendientes/`, con su `Status.`.
+
+### Cómo se verificó
+
+El cambio cerró con 57 escenarios y 32 invariantes sostenidos: 0 contradichos, 0 leídos y 0 sin sustento.
+Ningún escenario de Task 6 es de un modelo, así que no hubo lecturas. La primera ronda de refutación
+independiente encontró un contradicho, KA-I19: un `lookup` con un deny ilegible repetía en claro un `document`
+con forma de secreto, con la suite en verde. Se corrigió, se re-verificó en una segunda ronda y quedó
+sostenido: **no cerró con un contradicho.** La suite completa falló una vez sobre el árbol verificado, en un
+test de Task 4 (`ME-E34`, un `PermissionError` al armar su propio fixture); se aisló, dio verde solo y sobre una
+copia de `v0.33.0`, y se clasificó como una carrera preexistente, no reproducida aislada. La suite pasó de 45534
+a 47957 aserciones.
+
 ## [0.33.0] — 2026-10-16
 
 **HARNESS lleva un plan entero a un terminal: ejecuta sus unidades de a una, en el orden de sus

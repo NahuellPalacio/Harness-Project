@@ -419,16 +419,28 @@ try {
             $huAgregadosPorEjecucionDeGrafo = @(
                 '.claude\harness\bin\desarrollo\ejecucion\grafo.py',
                 '.claude\harness\schemas\graph-run-result.schema.json')
+            # Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3, KA-E57): Knowledge Access
+            # instala a proposito los cuatro archivos de bin/conocimiento/ (el paquete, el corpus, el
+            # recuperador local y la fachada). Tampoco son de harness-unico: se suman a lo esperado en E-15
+            # y se saltean en E-16, como los de Task 3, 4 y 5. Que se instalen y funcionen lo protege KA-E54
+            # de 74-knowledge-api-instalador.ps1.
+            $huAgregadosPorKnowledgeApi = @(
+                '.claude\harness\bin\desarrollo\conocimiento\__init__.py',
+                '.claude\harness\bin\desarrollo\conocimiento\acceso.py',
+                '.claude\harness\bin\desarrollo\conocimiento\corpus.py',
+                '.claude\harness\bin\desarrollo\conocimiento\recuperador_local.py')
 
             # E-15
             # Task 5 / GD-25: se suman las dos de la ejecucion de un grafo.
-            $esperadas = @(@($huARutas | Where-Object { $huManifiestosViejos -notcontains $_ }) + $huAgregadosPorContratoDeEjecucion + $huAgregadosPorMotorDeEjecucion + $huAgregadosPorEjecucionDeGrafo | Sort-Object)
-            Assert-Igual 'E-15 las rutas del lock son las de 0.28.0 sin los dos manifiestos, mas las cuatro del contrato de ejecucion, las seis del motor y las dos de la ejecucion de un grafo' ($esperadas -join '|') ($huBRutas -join '|')
+            # Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3): se suman tambien las
+            # cuatro de Knowledge Access.
+            $esperadas = @(@($huARutas | Where-Object { $huManifiestosViejos -notcontains $_ }) + $huAgregadosPorContratoDeEjecucion + $huAgregadosPorMotorDeEjecucion + $huAgregadosPorEjecucionDeGrafo + $huAgregadosPorKnowledgeApi | Sort-Object)
+            Assert-Igual 'E-15 las rutas del lock son las de 0.28.0 sin los dos manifiestos, mas las cuatro del contrato de ejecucion, las seis del motor, las dos de la ejecucion de un grafo y las cuatro de Knowledge Access' ($esperadas -join '|') ($huBRutas -join '|')
             # Eran 259 sobre 0.28.0 sola; sobre ea2dff7 suman los archivos de Flow Governance
             # (integracion-flow-governance-0-31): 282. Con las cuatro del contrato de ejecucion, 286, con
-            # las seis del motor minimo, 292, y con las dos de la ejecucion de un grafo (Task 5 / GD-25),
-            # 294.
-            Assert-Igual 'E-15 son 294: las 282 de ea2dff7, las cuatro del contrato de ejecucion, las seis del motor y las dos de la ejecucion de un grafo' 294 $huBRutas.Count
+            # las seis del motor minimo, 292, con las dos de la ejecucion de un grafo (Task 5 / GD-25),
+            # 294, y con las cuatro de Knowledge Access (Task 6, docs/cambios/knowledge-api/spec.md), 298.
+            Assert-Igual 'E-15 son 298: las 282 de ea2dff7, las cuatro del contrato de ejecucion, las seis del motor, las dos de la ejecucion de un grafo y las cuatro de Knowledge Access' 298 $huBRutas.Count
 
             # E-16
             $tocados = @('.claude\settings.json', '.claude\harness\run-hook.cmd', '.claude\harness\hooks\session-start.py',
@@ -456,14 +468,27 @@ try {
                 '.claude\harness\bin\desarrollo\flujo\estado.py',
                 '.claude\harness\bin\desarrollo\estado_de_tarea\decisiones.py',
                 '.claude\harness\hooks\lib\tool_policy.py')
+            # Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3, KA-E57): la migracion
+            # del primer consumidor (seccion 34.2) modifica a proposito este archivo instalado de la
+            # base 0.28.0. No es una excepcion de harness-unico: se saltea en E-16 como los del modelo
+            # de dominio, para que E-16 siga cuidando lo suyo. NO se suma a E-15, porque ya esta en el
+            # lock (E-15 sigue en 298). dev-harness.py tambien lo toca, y ya esta entre las cinco de
+            # $tocados.
+            $huTocadosPorKnowledgeApi = @('.claude\harness\bin\desarrollo\contexto\repositorio.py')
             $distintos = @()
             foreach ($ruta in $huBRutas) {
                 if ($tocados -contains $ruta) { continue }
                 if ($huTocadosPorModeloDeDominio -contains $ruta) { continue }
+                # Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3, KA-E57): tampoco
+                # repositorio.py, que modifica a proposito la migracion del primer consumidor.
+                if ($huTocadosPorKnowledgeApi -contains $ruta) { continue }
                 if ($huAgregadosPorContratoDeEjecucion -contains $ruta) { continue }
                 if ($huAgregadosPorMotorDeEjecucion -contains $ruta) { continue }
                 # Task 5 / GD-25: tampoco los dos de la ejecucion de un grafo, que se instalan a proposito.
                 if ($huAgregadosPorEjecucionDeGrafo -contains $ruta) { continue }
+                # Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3): tampoco los cuatro
+                # de Knowledge Access, que se instalan a proposito.
+                if ($huAgregadosPorKnowledgeApi -contains $ruta) { continue }
                 if (-not $huAHash.ContainsKey($ruta)) { $distintos += "$ruta (no estaba)"; continue }
                 if ((Get-HuHash (Join-Path $huB $ruta)) -ne $huAHash[$ruta]) { $distintos += $ruta }
             }

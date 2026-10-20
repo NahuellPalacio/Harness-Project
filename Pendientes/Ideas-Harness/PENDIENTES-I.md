@@ -381,3 +381,77 @@ the ones left unrun, and a revision of the fail-fast decision of ADR-0016. It do
 parallelism, and it should not be bundled with it.
 
 Status. Open, not planned. ADR-0016 names it among the reasons to review the decision.
+
+### Serve the normative extracts as a Knowledge Access corpus
+
+Add `normativa/extractos/` as a fifth corpus of Knowledge Access, next to `adr`, `dominio`, `codebase` and
+`memoria`, with the state of Normative Sources read without refreshing it. Written on 2026-10-18 as KP-04
+of `docs/cambios/knowledge-api/spec.md`; KC-22 of that spec left it out of Task 6 and wrote the rule for
+when it comes in: only together with that state, and never as current if its owner does not say so.
+
+Problem it solves. No code reads the content of an extract: `bin/orquestacion/frescura.py:170-180`
+(`version_de_extracto`) reads only the version in its header. A consumer that needs a passage of a standard
+cannot ask for it with a citation and a revision, as it can for an ADR.
+
+Cost. A catalogue row in `bin/conocimiento/corpus.py`, and an amendment of ADR-0017 and of the canonical
+model. The three reasons it was left out are the real cost. There is no consumer. The factory has no
+`.claude/harness.fuentes.json` (its `.claude/` holds `agents`, `skills` and `scheduled_tasks.lock`), so
+every extract would come out unverified. And the normative gate writes the RefreshAgenda, the SourceState
+and downloads, so consulting it is not a read-only act.
+
+Status. Open, not planned. Without a consumer it would be a corpus nobody reads, and Task 6 chose to build
+none ahead of the one that needs it.
+
+### A channel from the agents to Knowledge Access
+
+Today an agent reads with `repository.read` and `repository.search`. The idea is to give it Knowledge
+Access: either the capabilities `knowledge.lookup` and `knowledge.search`, one per operation like the
+`repository.*` pair, with a real provider, or the hybrid, with references in the plan and the content read
+through `repository.read`, which needs `orchestration-plan/2.2` and `execution-request/1.1`. The name
+`knowledge.retrieve` is discarded because it names the mechanism (KC-46). Written on 2026-10-18 as KP-05 of
+`docs/cambios/knowledge-api/spec.md`.
+
+Problem it solves. Knowledge Access exists and no agent can reach it. A pull capability needs a Host tool
+that reaches a `.py`: `Bash` is not offered on Windows (`bin/ejecucion/host_claude_code.py:55-61`) and an MCP
+server is ruled out by ADR-0008 (`docs/adr/0008-lo-externo-nunca-es-requisito.md:40-41`). Declaring a
+capability with no provider would show it as available in every plan and reject it at delivery
+(`bin/orquestacion/capacidades.py:28-32`, `bin/ejecucion/admision.py:301-305`).
+
+Cost. It depends on GP-02 (the Host offering a shell tool on Windows, see «`tests.run` is not mapped to
+`PowerShell` on Windows, so no unit that asks for it runs there» in `PENDIENTES-FH.md`) or on a spec that
+accepts the 2.2 plus 1.1 chain. It touches the Host Adapter, the roster, the permissions and `tools:` of each
+agent, two closed contracts, and the guards EX-G11, ME-E49, GE-E65 and KA-E53.
+
+Status. Open, not planned. Task 6 declared no channel (KD-23 and KD-24) because none was needed for the
+contract to exist and be proved; it is the direction of Task 7 and Task 8.
+
+### More corpora for Knowledge Access: specs, `Pendientes/` and version notes
+
+Add the specs, `Pendientes/`, `CLAUDE.md` and the version notes as corpora of Knowledge Access, each with its
+own root, extensions and derivation. Written on 2026-10-18 as KP-13 of
+`docs/cambios/knowledge-api/spec.md`, which left them out of Task 6 (KC-24).
+
+Problem it solves. None today: no consumer asks for them (KC-24). It is written down so that the list of
+corpora is not widened out of habit, and is not forgotten when a consumer does ask.
+
+Cost. A catalogue row in `bin/conocimiento/corpus.py` per corpus, a scenario for each, and an amendment of
+ADR-0017 and of the `KnowledgeCorpus` concept of the canonical model.
+
+Status. Open, not planned. It comes back with the first consumer that names the corpus it needs.
+
+### An operation that states absence
+
+`lookup` is exact and `search` does not prove absence: an empty `search` does not show that the corpus does
+not say it, and even `complete: true` only means that every corpus asked for could be examined by the
+strategy in use, not that the examination was exhaustive in meaning. The idea is an operation built to
+affirm that something is not there. Written on 2026-10-18 as KP-14 of `docs/cambios/knowledge-api/spec.md`
+(KC-38).
+
+Problem it solves. A consumer that wants to say «the docs do not mention X» has nowhere to get it, and the
+risk is that it reads an empty `search` as that answer, which the contract forbids.
+
+Cost. A contract of its own, with a definition of «exhaustive» that holds for each retriever, and a
+consumer to design it against. It also interacts with Task 7, which brings retrievers that are not lexical.
+
+Status. Open, not planned. KC-38 chose not to build it: no code asserts absence by retrieval today, and it
+is to be revisited when the first consumer that needs it appears.

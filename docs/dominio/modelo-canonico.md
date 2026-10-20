@@ -17,6 +17,12 @@ terminal, de a una WorkUnit por vez.
 Con 0.31.0 convive con Flow Governance, cuyos seis conceptos viven en Work Intake, Planning y
 Guardrails: el flujo no es un contexto.
 
+Knowledge Access entró después, como el undécimo contexto, con
+[`docs/cambios/knowledge-api/spec.md`](../cambios/knowledge-api/spec.md) y
+[ADR-0017](../adr/0017-la-frontera-del-conocimiento.md) (Task 6): una frontera de solo lectura y sin estado
+por la que un consumidor pide un documento de un corpus declarado con `lookup`, o tramos de varios con
+`search`, y recibe cada uno con su cita y su revisión. Planning, Execution y los agentes todavía no la consumen.
+
 📌 **Cómo se lee.** Los nombres canónicos están en inglés, como pide
 [ADR-0011](../adr/0011-el-idioma-de-un-archivo-lo-decide-quien-lo-lee.md) para los
 identificadores. El código, el CLI y los archivos de estado siguen mayormente en español, y este
@@ -80,6 +86,10 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 | AgentReport | Execution | DTO / Contract | Lo que el Host Adapter entrega a Execution: `declaredStatus` y `artifact`; sin autoridad |
 | GraphRun | Execution | Aggregate Root | Un intento de llevar todas las WorkUnits de un plan a un terminal, pidiendo Executions de a una |
 | GraphRunError | Execution | Value Object | Una falla de un GraphRun con un código de una lista cerrada, propia: no es un ExecutionError |
+| KnowledgeQuery | Knowledge Access | Value Object | Lo que pide un consumidor: un `lookup` `{corpus, document}` o un `search` `{text, scope}` |
+| KnowledgeResult | Knowledge Access | DTO / Contract | Lo que devuelve la fachada: ítems con procedencia, huecos y cobertura, o un error; sin autoridad |
+| KnowledgeCitation | Knowledge Access | Value Object | La identidad estable de lo que se cita: `(corpus, document, anchor)` |
+| KnowledgeCorpus | Knowledge Access | Domain Policy | Un conjunto de documentos que se puede consultar: su id, su raíz lógica, qué archivos entran, cómo se identifica cada uno y su derivación |
 | NormativeStandard | Governance | Value Object | Una norma con su versión |
 | NormativeMatrix | Governance | Domain Policy | Las reglas de una norma, con su aplicabilidad y sus controles |
 | NormativeRule | Governance | Entity | Una regla citable de una norma |
@@ -206,8 +216,9 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 - **Persistencia y contrato:** `.claude/contextos/<KEY>.json`, contra `task-context.schema.json`
   (`task-context/1.0`), validado antes de escribir.
 - **Dónde vive:** `harnesses/desarrollo/bin/contexto/ensamblador.py`.
-- **No es:** Knowledge ni ProjectContext. Un adjunto de la Ficha que no está en el registro es
-  documentación del TaskContext, no una ManagedSource.
+- **No es:** NormativeKnowledge ni ProjectContext, ni lo que devuelve una consulta, que es un
+  KnowledgeResult. Un adjunto de la Ficha que no está en el registro es documentación del TaskContext,
+  no una ManagedSource.
 
 ### ProvenanceRef
 
@@ -237,7 +248,7 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 - **Persistencia y contrato:** el campo `knowledge_status` de `task-context.schema.json` y de
   `project-context.schema.json`.
 - **Dónde vive:** los resolvedores de `harnesses/desarrollo/bin/contexto/`.
-- **No es:** Knowledge, aunque el campo se llame `knowledge_status`.
+- **No es:** NormativeKnowledge, aunque el campo se llame `knowledge_status`.
 
 ### ContextGap
 
@@ -322,7 +333,8 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
   las zonas de `comun/hooks/lib/zonas.py` y en los `techoZona*` de `manifest.json`, sin schema.
 - **Dónde vive:** `comun/hooks/lib/zonas.py`, `comun/agents/flush-memoria.md` y
   `comun/checks/claude-md-zonas.py`.
-- **No es:** Knowledge, ni Source, ni Context, ni un documento.
+- **No es:** NormativeKnowledge, ni Source, ni Context, ni un documento, ni un KnowledgeCorpus: un
+  corpus es lo que Knowledge Access puede consultar, y ProjectMemory es la política de lo escrito.
 
 ### ManagedSource
 
@@ -1193,6 +1205,84 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 - **Dónde vive:** `comun/schemas/graph-run-result.schema.json`.
 - **No es:** un ExecutionError, ni una excepción de Python ni texto libre.
 
+### KnowledgeQuery
+
+- **Qué es:** lo que pide un consumidor a Knowledge Access: un `lookup` con `{corpus, document}`, o un
+  `search` con `{text, scope}`. Dos consultas iguales dan el mismo resultado.
+- **Contexto:** Knowledge Access
+- **Clasificación:** Value Object
+- **Identidad:** no aplica: se define por su valor. No hay un `queryId`, porque los ids al azar existen
+  solo donde hay ciclo de vida.
+- **Ciclo y estados:** no aplica.
+- **Invariantes:**
+  - sin ruta ni mecanismo: el consumidor no nombra un archivo ni elige el recuperador;
+  - `scope` es una lista de corpus nombrados, sin «todo» implícito;
+  - el texto de un `search` se redacta antes del recuperador.
+- **Crea / cambia / lee:** la arma el consumidor; `conocimiento.acceso` la valida antes de abrir un archivo
+  o de llamar al recuperador.
+- **Persistencia y contrato:** no se persiste; sin schema.
+- **Dónde vive:** `harnesses/desarrollo/bin/conocimiento/acceso.py`.
+- **No es:** un ExecutionRequest ni un PlanProposal.
+
+### KnowledgeResult
+
+- **Qué es:** lo que devuelve `lookup` o `search`: ítems con su procedencia, huecos y cobertura, o un
+  error. Una salida sin autoridad: nadie la toma como decisión.
+- **Contexto:** Knowledge Access
+- **Clasificación:** DTO / Contract
+- **Identidad:** no aplica.
+- **Ciclo y estados:** `status` es `OK` o `ERROR`, y no cambia: el resultado no tiene ciclo de vida.
+- **Invariantes:**
+  - cada ítem trae su cita y su revisión;
+  - lo que no se miró es un hueco con un motivo de una lista cerrada, y `complete` es `true` solo sin
+    huecos;
+  - ningún secreto de confianza alta sale en el resultado;
+  - claves cerradas: `knowledge-result/1.0` no gana una clave, un valor de enum ni una forma, y algo
+    nuevo pide otra versión del contrato.
+- **Crea / cambia / lee:** lo arma `conocimiento.acceso`; lo lee el resolvedor de repositorio de Work
+  Intake.
+- **Persistencia y contrato:** `knowledge-result/1.0`, sin schema: lo fijan la spec de Task 6 y la suite
+  `tests/casos/74_knowledge_api.py`. No cruza procesos y no se persiste.
+- **Dónde vive:** `harnesses/desarrollo/bin/conocimiento/acceso.py`.
+- **No es:** Evidence, un RefutationVerdict ni un TaskContext.
+
+### KnowledgeCitation
+
+- **Qué es:** la identidad estable de lo que se cita: `(corpus, document, anchor)`. Quien necesita volver a
+  un tramo guarda la cita, no una copia.
+- **Contexto:** Knowledge Access
+- **Clasificación:** Value Object
+- **Identidad:** `(corpus, document, anchor)`: el corpus, el id lógico del documento en ese corpus y el
+  ancla, que es el documento entero o una de sus secciones.
+- **Ciclo y estados:** no aplica.
+- **Invariantes:** no lleva revisión, ruta, reloj ni nada del recuperador: el mismo documento en otra raíz
+  da la misma cita. Si el documento se renombra, la cita queda colgada y se ve: `lookup` da
+  `DOCUMENT_NOT_FOUND`.
+- **Crea / cambia / lee:** la arma la fachada, de su propia lectura, para cada ítem de un KnowledgeResult.
+- **Persistencia y contrato:** parte de KnowledgeResult: la `citation` de cada ítem. No se persiste.
+- **Dónde vive:** `harnesses/desarrollo/bin/conocimiento/acceso.py`.
+- **No es:** la `citation` de un RefutationVerdict ni un ProvenanceRef.
+
+### KnowledgeCorpus
+
+- **Qué es:** un conjunto de documentos que se puede consultar: su id, su raíz lógica, qué archivos entran,
+  cómo se identifica cada uno y su derivación. Son cuatro: `adr`, `dominio`, `codebase` y `memoria`.
+- **Contexto:** Knowledge Access
+- **Clasificación:** Domain Policy
+- **Identidad:** el id del corpus.
+- **Ciclo y estados:** no aplica: se instala con el harness.
+- **Invariantes:**
+  - catálogo cerrado: una tabla en código que ningún consumidor amplía y en la que ninguna configuración
+    suma una raíz;
+  - un id nunca se vuelve ruta: `lookup` enumera el corpus y compara ids;
+  - la derivación la declara el corpus y nunca el contenido: `adr` y `dominio` son `PRIMARY`, `codebase`
+    y `memoria` son `GENERATED`.
+- **Crea / cambia / lee:** lo declara la fábrica; lo lee la fachada.
+- **Persistencia y contrato:** la tabla de `harnesses/desarrollo/bin/conocimiento/corpus.py`; no se
+  persiste.
+- **Dónde vive:** `harnesses/desarrollo/bin/conocimiento/corpus.py`.
+- **No es:** una ManagedSource ni ProjectMemory.
+
 ### NormativeStandard
 
 - **Qué es:** una norma con su versión: ES0901 6.3, ES0902 y las demás del registro.
@@ -1788,7 +1878,7 @@ un contrato: si aparece mejor evidencia, el catálogo se corrige.
 
 ## Mapa de contextos
 
-HARNESS tiene **diez contextos delimitados**. Cada uno se justifica por su lenguaje, sus
+HARNESS tiene **once contextos delimitados**. Cada uno se justifica por su lenguaje, sus
 invariantes, su dueño, sus datos y su ciclo de vida.
 
 | Contexto | Lenguaje propio | Invariantes propias | Dueño | Datos | Ciclo de vida |
@@ -1803,6 +1893,7 @@ invariantes, su dueño, sus datos y su ciclo de vida.
 | Observability | evento, tokens, costo, ventana, conciliación, presupuesto | id por dedupKey; las fotos no se suman; nadie decide con el ledger | sin dueño declarado | `.claude/runtime/accounting/`, `harness.presupuesto.json` | append-only |
 | Host Integration | instalar, actualizar, lock, huella, reinicio, componente | lo regenerable no se edita; lo de fuera sobrevive; PARCIAL y no BLOQUEADO | `harness-backend-engineer` | `.claude/harness/`, `harness.lock.json`, `harness.installation.json` | instalación, `-Update`, `-Uninstall` |
 | Execution | request, admisión, intento, entrega, terminal, rechazo, clave de idempotencia, informe del agente, GraphRun, despacho | una request es una WorkUnit y un intento; seis estados y cuatro terminales, sin `BLOCKED`; precedencia cerrada de admisión; el agente declara y no decide; no escribe el Plan ni lee la contabilidad; un GraphRun es un plan entero bajo una huella, y pide las Executions de a una | sin dueño declarado | `execution-request/1.0`, `execution-result/1.0` y `graph-run-result/1.0`; el registro de cada Execution y las marcas de cada GraphRun, en `.claude/ejecuciones/` | `REQUESTED → RUNNING → terminal`, una WorkUnit por intento; el GraphRun, `ACTIVE → terminal`: un GraphRun lleva un plan entero, serial, sin reintento ni reanudación |
+| Knowledge Access | consulta, `lookup`, `search`, corpus, documento, cita, ancla, revisión, tramo, cobertura, hueco, recuperador | solo lectura; cada ítem trae su cita y su revisión; lo no mirado se declara; ningún secreto sale; un id nunca se vuelve ruta; nadie decide con un resultado más que su consumidor | sin dueño declarado | ninguno propio persistido; el catálogo de corpus, en `bin/conocimiento/corpus.py` | por consulta, sin estado |
 
 **Execution es el décimo contexto desde ADR-0014, y desde ADR-0015 tiene un motor mínimo.** El
 contrato es de Task 3; la admisión, el registro, el Host Adapter y el motor que corre una WorkUnit,
@@ -1810,6 +1901,13 @@ un intento, por invocación de `ejecutar`, son de Task 4. El scheduling serial e
 ([ADR-0016](../adr/0016-la-ejecucion-de-un-grafo.md)): un GraphRun, el segundo agregado de Execution.
 Las colas, el paralelismo y el reintento automático siguen sin existir. Ver
 `## El límite de la ejecución`.
+
+**Knowledge Access es el undécimo contexto desde ADR-0017** ([ADR-0017](../adr/0017-la-frontera-del-conocimiento.md)).
+Es de solo lectura y no tiene estado ni agregado raíz: `lookup` trae un documento por su identidad lógica,
+y `search` trae tramos literales de los corpus pedidos, por un recuperador que es infraestructura detrás de
+la fachada. Cada ítem lleva su cita y su revisión, y lo que no se pudo mirar se declara. Los documentos
+siguen siendo de sus dueños. Ni Planning, ni Execution, ni los agentes lo consumen todavía: su primer
+consumidor es el resolvedor de repositorio de Work Intake.
 
 ### Relaciones
 
@@ -1829,6 +1927,9 @@ Las colas, el paralelismo y el reintento automático siguen sin existir. Ver
 | Host → Execution | Capa anticorrupción | El Host Adapter de Claude Code (`bin/ejecucion/host_claude_code.py`): resuelve el agente y las capacidades, lanza `claude -p` con la request y devuelve el AgentReport de su salida estructurada. Es infraestructura, no un concepto |
 | Execution → Observability | Publicación | A futuro: eventos contables con su `executionId`. Observability no decide nada de Execution |
 | Execution → Governance | Publicación | A futuro: la ExecutionEvidence como insumo de la refutación. Governance no cambia el estado de una ejecución |
+| Project Knowledge → Knowledge Access | Conformista | Los documentos de `docs/codebase/` y `docs/conocimiento/`, leídos sin autoridad sobre ellos: Knowledge Access no los escribe ni los regenera |
+| Guardrails → Knowledge Access | Conformista | El catálogo de secretos y el deny, consumidos sin copiarlos: no se abre un archivo denegado, y lo que sale pasa por el catálogo |
+| Knowledge Access → Work Intake | Cliente-proveedor | El `lookup` del `project-context` que hace el resolvedor de repositorio. Work Intake guarda la referencia y no copia el contenido |
 
 ## Clasificaciones
 
@@ -1869,12 +1970,14 @@ Plan: `harnesses/desarrollo/bin/orquestacion/plan.py`.
 El TaskContext es un snapshot de la tarea; NormativeKnowledge es lo aceptado de las fuentes. Un
 adjunto que no está en el registro es documentación del contexto, no una fuente gestionada
 (`comun/schemas/source-registry.schema.json`). La palabra se cruza en `knowledge_status`, que es
-SectionConfidence.
+SectionConfidence. Ahí «Knowledge» es NormativeKnowledge, y lo que devuelve una consulta es un
+KnowledgeResult, que no es ninguno de los dos.
 
 ### Knowledge ≠ Source
 
 Una ManagedSource es la identidad de un documento. NormativeKnowledge es lo que quedó `CURRENT`
-después de observar y aceptar: `harnesses/desarrollo/bin/orquestacion/frescura.py`.
+después de observar y aceptar: `harnesses/desarrollo/bin/orquestacion/frescura.py`. Ahí «Knowledge» es
+NormativeKnowledge, y lo que devuelve una consulta es un KnowledgeResult, que no es ninguno de los dos.
 
 ### Capability ≠ Tool
 
@@ -2029,7 +2132,11 @@ rechaza con un código, y lo que el agente declara da `FAILED`
 | salida / output | variables locales, tokens de salida | — | no es un concepto |
 | approval / aprobación | seis sentidos | costo, seguridad externa, fuentes y herramientas | **ModelTierApproval**, **ExternalSecurityApproval** o **SourceAcceptance**; el `HUMAN_APPROVAL_REQUIRED` del presupuesto es una evaluación del **CostBudget** |
 | source / fuente | siete sentidos | documento, canal, procedencia y otros | **ManagedSource**, **Channel** o **ProvenanceRef** |
-| knowledge / conocimiento | cuatro sentidos | normas, notas, confianza de sección y Ficha | **NormativeKnowledge**, **ProjectMemory**, **SectionConfidence** o **Ficha** |
+| knowledge / conocimiento | cinco sentidos | normas, notas, confianza de sección, Ficha y lo que devuelve una consulta | **NormativeKnowledge**, **ProjectMemory**, **SectionConfidence**, **Ficha** o **KnowledgeResult** |
+| Knowledge API / `conocimiento.acceso` | ADR-0017, `bin/conocimiento/acceso.py` | la frontera de lectura de Knowledge Access: `lookup` y `search`; «Knowledge API» es el nombre de trabajo de Task 6 | **KnowledgeQuery** para lo que se pide y **KnowledgeResult** para lo que vuelve |
+| corpus | ADR-0017, `bin/conocimiento/corpus.py` | un conjunto de documentos que se puede consultar: `adr`, `dominio`, `codebase` y `memoria` | **KnowledgeCorpus** |
+| cita / citation | `bin/conocimiento/acceso.py`, `refutacion.py` | la identidad estable de lo que se cita, o la cita de un veredicto de la refutación | **KnowledgeCitation** en Knowledge Access; la de la refutación es parte de **RefutationVerdict** |
+| recuperador / retriever | ADR-0017, `bin/conocimiento/recuperador_local.py` | la pieza detrás de `search` que propone candidatos; hoy, `local-lexico/1` | no es un concepto: es infraestructura de Knowledge Access |
 | contexto / context | cinco sentidos | tarea, proyecto, recorte, ventana y SessionStart | **TaskContext**, **ProjectContext**, **ContextSlice** o **ContextBarState** |
 | ficha | Jira y `docs/codebase` | la Ficha de Proyecto, o una ficha de módulo | **Ficha**; la ficha de módulo es parte del **ProjectContext** |
 | proyecto | cuatro sentidos | clave de Jira, proyecto de GitLab, raíz local y `project_id` | **ProjectContext** para `project_id`; los otros tres se nombran por lo que son |

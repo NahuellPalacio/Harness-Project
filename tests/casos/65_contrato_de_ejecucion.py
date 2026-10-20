@@ -1125,13 +1125,15 @@ def test_ex_e43_la_workunit_la_valida_el_schema_del_plan(t):
 # =============================================================================================
 
 def test_ex_e44_execution_es_el_decimo_contexto(t):
-    """EX-E44 — el documento declara diez contextos, Execution entre ellos, y ya no dice que es un
-    limite reservado; los ocho conceptos de 8.2 tienen fila y bloque, con los diez campos,
-    Contexto Execution y su clasificacion."""
+    """EX-E44 — el documento declara once contextos (diez al escribirse esta guarda), Execution entre
+    ellos, y ya no dice que es un limite reservado; los ocho conceptos de 8.2 tienen fila y bloque, con
+    los diez campos, Contexto Execution y su clasificacion."""
     m = M64._modelo()
     mapa = M64._tablas(M64._seccion(m["texto"], "Mapa de contextos"))
     contextos = [f[0] for f in mapa[0][1:]] if mapa else []
-    t.igual("EX-E44 el mapa declara diez contextos", sorted(M64.NUEVE + ["Execution"]), sorted(contextos))
+    # Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3, KA-E57): el mapa suma Knowledge
+    # Access (ADR-0017), asi que son once contextos. Lo de Execution que protege esta guarda no cambia.
+    t.igual("EX-E44 el mapa declara once contextos", sorted(M64.NUEVE + ["Execution", "Knowledge Access"]), sorted(contextos))
     t.no_contiene("EX-E44 el documento ya no dice que Execution es un limite reservado",
                   "Execution no es un contexto: es un límite reservado", m["texto"])
     esperados = _tabla_8_2()
@@ -1698,15 +1700,17 @@ CONTEXTOS_DEL_FLUJO = {"SessionTaskBinding": "Work Intake", "FlowRequiredInput":
 
 
 def test_ex_g12_el_modelo_canonico_integrado(t):
-    """EX-G12 — el mapa tiene diez contextos y ninguno es el flujo; los seis conceptos de Flow
-    Governance siguen en los contextos de 0.31.0; Planning -> Execution nombra el TaskFlowState y
-    delegationAllowed; ExecutionAdmission dice que no es la compuerta del flujo; Execution, que no es
-    la etapa EXECUTION; ExecutionError cuenta veintitres; y la idea del flujo como contexto ya no
-    dice decimo y nombra ADR-0014."""
+    """EX-G12 — el mapa tiene once contextos (diez al escribirse esta guarda) y ninguno es el flujo; los
+    seis conceptos de Flow Governance siguen en los contextos de 0.31.0; Planning -> Execution nombra el
+    TaskFlowState y delegationAllowed; ExecutionAdmission dice que no es la compuerta del flujo;
+    Execution, que no es la etapa EXECUTION; ExecutionError cuenta veintitres; y la idea del flujo como
+    contexto ya no dice decimo y nombra ADR-0014."""
     m = M64._modelo()
     mapa = M64._tablas(M64._seccion(m["texto"], "Mapa de contextos"))
     contextos = [f[0] for f in mapa[0][1:]] if mapa else []
-    t.igual("EX-G12 diez contextos", 10, len(contextos))
+    # Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3, KA-E57): Knowledge Access es el
+    # undecimo contexto (ADR-0017), asi que el mapa pasa de diez a once. Lo del flujo que protege no cambia.
+    t.igual("EX-G12 once contextos", 11, len(contextos))
     t.vacio("EX-G12 ninguno es el flujo", [c for c in contextos if re.search(r"(?i)flow|flujo", c)])
     t.igual("EX-G12 los seis de Flow Governance, en sus contextos de 0.31.0", CONTEXTOS_DEL_FLUJO,
             {n: M64._valor((m["campos"].get(n) or {}).get("Contexto")) for n in CONTEXTOS_DEL_FLUJO})

@@ -13,14 +13,19 @@ Si no esta en ninguno de los dos, la seccion queda vacia con su hueco y no se bu
 adivinar el repositorio por el nombre del proyecto Jira es exactamente la clase de
 inferencia invisible que este contrato existe para no hacer.
 
-Ademas referencia -no copia- el `project-context.json` que dejo el recorrido del codigo.
-Son dos contratos distintos: duplicar uno adentro del otro los desincroniza en la primera
-actualizacion.
+Ademas referencia -no copia- el contexto del codigo (`project-context`) que dejo el
+recorrido del codigo. Son dos contratos distintos: duplicar uno adentro del otro los
+desincroniza en la primera actualizacion.
+
+El contexto del codigo se le pide a Knowledge Access (`conocimiento.acceso.lookup`, spec
+docs/cambios/knowledge-api/spec.md, 34.2): este modulo ya no arma la ruta ni abre el archivo.
+La ubicacion (`rutaCodebase`), el deny del proyecto y la redaccion de secretos son de esa
+frontera, y el resolvedor ya no recibe la ruta del codebase.
 """
-import io
 import json
-import os
 import re
+
+from conocimiento import acceso
 
 RE_URL_GITLAB = re.compile(r"https?://[^\s)]*gitlab[^\s)]*", re.IGNORECASE)
 
@@ -62,12 +67,10 @@ def referencia_de_proyecto(config_gitlab, ficha):
     return "", ""
 
 
-def resolver(gitlab, clave_tarea, config_gitlab, ficha, acumulador, raiz_proyecto,
-             ruta_codebase="docs/codebase"):
+def resolver(gitlab, clave_tarea, config_gitlab, ficha, acumulador, raiz_proyecto):
     """La seccion `repository`. Nunca levanta."""
     seccion = seccion_vacia()
-    seccion["code_context_ref"] = _contexto_de_codigo(raiz_proyecto, ruta_codebase,
-                                                      acumulador)
+    seccion["code_context_ref"] = _contexto_de_codigo(raiz_proyecto, acumulador)
 
     referencia, de_donde = referencia_de_proyecto(config_gitlab, ficha)
     if not referencia:
@@ -159,21 +162,47 @@ def _merge_requests(gitlab, id_proyecto, clave, acumulador):
     return salida
 
 
-def _contexto_de_codigo(raiz_proyecto, ruta_codebase, acumulador):
-    """El puntero a project-context.json. Se referencia, no se copia."""
-    ruta = os.path.join(raiz_proyecto, ruta_codebase.replace("/", os.sep),
-                        "project-context.json")
-    if not os.path.isfile(ruta):
-        acumulador.falta(
-            "el contexto del codigo: no hay %s. Lo escribe dev-iniciador-code al recorrer "
-            "el proyecto por primera vez." % os.path.join(ruta_codebase, "project-context.json"))
+def _contexto_de_codigo(raiz_proyecto, acumulador):
+    """El puntero al contexto del codigo. Se referencia, no se copia.
+
+    Se le pide a Knowledge Access, que resuelve donde esta (`rutaCodebase`), aplica el deny
+    del proyecto y le saca los secretos al tramo antes de entregarlo (spec 34.2). Lo que
+    devuelve `lookup` decide la referencia y lo que se anota:
+
+        OK, y el tramo es un JSON         la ruta relativa que dio Knowledge Access y el
+                                          `meta.context_hash` (vacio si el JSON no lo trae);
+                                          la fuente `project-context`
+        OK, y el tramo no es un JSON      la ruta relativa y el hash vacio, con un hueco que
+                                          la nombra; la fuente `project-context`. Un JSON que
+                                          la redaccion de secretos dejo invalido es esto
+        DOCUMENT_NOT_FOUND                la referencia vacia y el hueco de siempre: no hay
+        o CORPUS_UNAVAILABLE              contexto del codigo y lo escribe dev-iniciador-code
+        cualquier otro error              la referencia vacia y un hueco que nombra el codigo
+                                          (y su motivo, que es de una lista cerrada); sin
+                                          fuente: no se entrego nada
+
+    La ruta absoluta del proyecto no sale nunca: ni en la referencia ni en un hueco.
+    """
+    resultado = acceso.lookup(raiz_proyecto, {"corpus": "codebase", "document": "project-context"})
+    if resultado["status"] != "OK":
+        error = resultado["error"]
+        if error["code"] in ("DOCUMENT_NOT_FOUND", "CORPUS_UNAVAILABLE"):
+            acumulador.falta(
+                "el contexto del codigo: no hay project-context. Lo escribe dev-iniciador-code "
+                "al recorrer el proyecto por primera vez.")
+        else:
+            acumulador.falta("el contexto del codigo: Knowledge Access no lo entrego (%s%s)" % (
+                error["code"], " / " + error["reason"] if error["reason"] else ""))
         return {"path": "", "context_hash": ""}
+    item = resultado["items"][0]
+    relativa = item["locator"]["path"]
     hash_ = ""
     try:
-        with io.open(ruta, encoding="utf-8-sig") as f:
-            hash_ = str(((json.load(f) or {}).get("meta") or {}).get("context_hash") or "")
-    except (ValueError, OSError):
-        acumulador.falta("el contexto del codigo: %s no se pudo leer" % ruta)
-    relativa = os.path.join(ruta_codebase, "project-context.json").replace(os.sep, "/")
+        documento = json.loads(item["excerpt"]["text"])
+    except (ValueError, RecursionError):
+        acumulador.falta("el contexto del codigo: %s no se pudo leer" % relativa)
+    else:
+        meta = documento.get("meta") if isinstance(documento, dict) else None
+        hash_ = str((meta.get("context_hash") if isinstance(meta, dict) else None) or "")
     acumulador.fuente("project-context", "project_context", relativa)
     return {"path": relativa, "context_hash": hash_}

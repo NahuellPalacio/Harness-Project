@@ -590,36 +590,43 @@ def test_e02_s5_un_hueco_pesa_mas_que_una_aprobacion_pendiente(t):
 # no vale por esa decision escrita, que es la que ADR-0013 dejaba prevista en su revision. E-03 pide
 # lo mismo de antes sobre los diez, y lo de Execution lo protege EX-E44 de 65_contrato_de_ejecucion.
 DIEZ = NUEVE + ["Execution"]
+# Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3, KA-E57): ADR-0017 hizo de Knowledge
+# Access el undecimo contexto. E-03 pide lo mismo de antes sobre los once: `DIEZ` mas `Knowledge Access`, once
+# contextos sin repetir. Lo de Knowledge Access que protege KA-E55 de 74_knowledge_api.py.
+ONCE = DIEZ + ["Knowledge Access"]
 
 
-def test_e03_diez_contextos_con_execution(t):
-    """E-03 — el mapa declara diez contextos: los nueve de Task 2 y Execution (ADR-0014). El
-    Contexto de cada concepto es uno de los diez o External; External solo para un concepto
-    External; cada contexto tiene al menos un concepto."""
+def test_e03_once_contextos_con_knowledge_access(t):
+    """E-03 — el mapa declara once contextos: los nueve de Task 2, Execution (ADR-0014) y Knowledge
+    Access (ADR-0017). El Contexto de cada concepto es uno de los once o External; External solo para
+    un concepto External; cada contexto tiene al menos un concepto. Pisado por
+    docs/cambios/knowledge-api/spec.md (seccion 34.3): eran diez."""
     m = _modelo()
     mapa = _seccion(m["texto"], "Mapa de contextos")
     tablas = _tablas(mapa)
     contextos = [f[0] for f in tablas[0][1:]] if tablas else []
-    t.igual("E-03 el mapa declara los diez contextos", sorted(DIEZ), sorted(contextos))
-    t.igual("E-03 son diez, sin repetir", 10, len(set(contextos)))
+    t.igual("E-03 el mapa declara los once contextos", sorted(ONCE), sorted(contextos))
+    t.igual("E-03 son once, sin repetir", 11, len(set(contextos)))
     t.verdadero("E-03 Execution es un contexto de la tabla, ya no un limite reservado (ADR-0014)",
                 "Execution" in contextos)
+    t.verdadero("E-03 Knowledge Access es un contexto de la tabla (ADR-0017)",
+                "Knowledge Access" in contextos)
     por_contexto = {}
     malos, externos, distintos = [], [], []
     filas = {f[0]: f for f in m["filas"] if len(f) >= 3}
     for nombre, campos in m["campos"].items():
         ctx, cls = _valor(campos.get("Contexto")), _valor(campos.get("Clasificación"))
         por_contexto.setdefault(ctx, []).append(nombre)
-        if ctx not in DIEZ + ["External"]:
+        if ctx not in ONCE + ["External"]:
             malos.append("%s: %s" % (nombre, ctx))
         if ctx == "External" and cls != "External":
             externos.append(nombre)
         if nombre in filas and filas[nombre][1] != ctx:
             distintos.append("%s: tabla %s, bloque %s" % (nombre, filas[nombre][1], ctx))
-    t.vacio("E-03 el Contexto de cada concepto es uno de los diez o External", malos)
+    t.vacio("E-03 el Contexto de cada concepto es uno de los once o External", malos)
     t.vacio("E-03 solo un concepto External tiene Contexto External", externos)
-    t.vacio("E-03 cada uno de los diez tiene al menos un concepto",
-            [c for c in DIEZ if not por_contexto.get(c)])
+    t.vacio("E-03 cada uno de los once tiene al menos un concepto",
+            [c for c in ONCE if not por_contexto.get(c)])
     t.vacio("E-03 la tabla y el bloque dicen el mismo contexto", distintos)
 
 

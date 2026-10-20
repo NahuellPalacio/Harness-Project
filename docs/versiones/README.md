@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.34.0](0.34.0.md) | 19-10-2026 | Knowledge Access: una frontera de lectura de conocimiento, con cita y revisión (`lookup` y `search`, Task 6, ADR-0017); el undécimo contexto del modelo canónico |
 | [0.33.0](0.33.0.md) | 16-10-2026 | Graph Execution: el GraphRun lleva un plan entero a un terminal, de a una WorkUnit por vez (`ejecutar --grafo`, Task 5, ADR-0016); cierra N1 y R5 de 0.32.0 |
 | [0.32.0](0.32.0.md) | 13-10-2026 | Execution: el contrato de ejecución (Task 3, ADR-0014) y el motor mínimo (Task 4, ADR-0015): `ejecutar` admite una WorkUnit, la entrega a Claude Code como un intento único y deja un resultado terminal que valida contra el contrato |
 | [0.31.0](0.31.0.md) | 07-10-2026 | Flow Governance: el estado del flujo por tarea, la compuerta en `PreToolUse`, la intención humana por el chat y la autoridad de `.claude/` y `.git/` protegida; el plan pasa a `orchestration-plan/2.1` con `BLOCKED` y `blockers` |

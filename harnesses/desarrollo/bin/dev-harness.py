@@ -1343,8 +1343,7 @@ def resolver_contexto(args, proyecto, rutas, config, almacen, timeout, consola,
     consola.evento("contexto.documentos", documentos=len(documentation["items"]))
 
     repository = contexto_repositorio.resolver(
-        gitlab, clave, config.de("gitlab"), project["ficha"], acumulador, proyecto,
-        str(_config_harness(rutas).get("rutaCodebase") or "docs/codebase"))
+        gitlab, clave, config.de("gitlab"), project["ficha"], acumulador, proyecto)
     consola.evento("contexto.repositorio",
                    ramas=len(repository["branches"]), mrs=len(repository["merge_requests"]))
 

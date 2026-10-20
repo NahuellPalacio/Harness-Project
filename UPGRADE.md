@@ -23,6 +23,27 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.33.0 → 0.34.0
+
+`-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala los cuatro archivos de
+`bin/conocimiento/` y el `repositorio.py` nuevo. Ningún hook, regla ni subcomando cambia, y Knowledge Access no
+se invoca desde ningún comando: es una interfaz de Python interna.
+
+Lo único que se nota es en `dev-harness.py contexto`, que ahora pide el `project-context` a Knowledge Access:
+
+- **Con la configuración por defecto, la salida es la de 0.33.0.**
+- **Una `rutaCodebase` absoluta o con `..` deja de leerse.** En 0.33.0 se leía aunque quedara afuera del
+  proyecto; ahora el corpus queda no disponible y `code_context_ref` sale vacío, sin volver al defecto. Una ruta
+  relativa que queda adentro del proyecto se sigue leyendo.
+- **Exige un deny legible y el catálogo de secretos.** Hace falta un `.claude/settings.json` con JSON válido y
+  `permissions.deny` (si no existe, rige el de la fábrica) y el catálogo; sin alguno de los dos no sale
+  contenido y `code_context_ref` queda vacío. Lo escribe el instalador: solo lo nota quien lo editó a mano y
+  lo dejó roto.
+- **El texto del hueco cuando falta el documento cambió:** dice que no hay `project-context` donde antes
+  nombraba la ruta.
+
+---
+
 ## 0.32.0 → 0.33.0
 
 `-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala `bin/ejecucion/grafo.py`, el schema
