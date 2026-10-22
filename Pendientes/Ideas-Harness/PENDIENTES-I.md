@@ -455,3 +455,158 @@ consumer to design it against. It also interacts with Task 7, which brings retri
 
 Status. Open, not planned. KC-38 chose not to build it: no code asserts absence by retrieval today, and it
 is to be revisited when the first consumer that needs it appears.
+
+### Measure the suite with and without Defender exclusions
+
+Run the same benchmark pair (serial and parallel, same tree hash, same conditions) twice: with the temporary
+directory, the repository and the resource lock excluded from Windows Defender and without. Written on 2026-10-22
+as VX-01 of `docs/cambios/verification-pipeline-performance/spec.md` (Task 6.1).
+
+Problem it solves. Risk R15 of that spec: Defender or the indexer can slow the temporary directories and the lock
+file of the parallel runner, and it was never measured. Without the number nobody can tell whether an exclusion is
+worth asking for, or whether the 0.7089 ratio of 2026-10-22 owes something to it.
+
+Cost. Small in work and large in access: an exclusion needs a policy or an administrator (spec section 8.2), and
+the benchmark of a pair takes about 1.5 hours of machine. It touches no file of the repository.
+
+Status. Open, not planned. 6.1 left it out for needing a permission it does not have.
+
+### Run the suite in parallel in CI
+
+Use the parallel runner, or one equivalent, in a continuous integration job. Written on 2026-10-22 as VX-02 of
+`docs/cambios/verification-pipeline-performance/spec.md` (Task 6.1).
+
+Problem it solves. Whoever pushes would get the fast result without waiting for a person to run the suite. Today
+the gate runs only on the machine of whoever builds.
+
+Cost. Not estimated. A different environment from the one the suite was measured in (a different machine, a
+different `PATH`, no Git Bash by default), and it needs the preconditions of the oracle written down first (see
+«The preconditions of the oracle are in a version note and not in «The gate» of `CLAUDE.md`» in
+`PENDIENTES-FH.md`). The spec declared CI/CD, containers and remote execution «another problem, another machine»
+(section 8.2).
+
+Status. Open, not planned. 6.1 is local and Windows PowerShell 5.1 only.
+
+### Run the suite remotely or in shards
+
+Split the case files among several machines or runs, and combine their reports in the same shapes as the oracle.
+Written on 2026-10-22 as VX-03 of `docs/cambios/verification-pipeline-performance/spec.md` (Task 6.1).
+
+Problem it solves. The runner of 6.1 is bounded by one machine and by N = 2 on this one; the measured floor of the
+suites in a lane (`motor`, 15.8 min on `d86b285`) and the sum of all of them (51.8 min) do not shrink with more
+processes on the same machine.
+
+Cost. Large. It needs a way to launch and to collect, the same equivalence rule across machines (same tree hash,
+same totals suite by suite, spec section 20.4) and a decision about who trusts a remote green. It touches
+`tests/Invoke-Tests-Parallel.ps1` and `tests/Compare-TestRuns.ps1`.
+
+Status. Open, not planned. Out of scope in 6.1 (section 8.2).
+
+### Promote the parallel runner to the oracle
+
+Make `tests/Invoke-Tests-Parallel.ps1` the command that closes a change, a verdict and a release, replacing
+`.\tests\Invoke-Tests.ps1` as the gate. It is phase D of the migration in section 28 of
+`docs/cambios/verification-pipeline-performance/spec.md`, written on 2026-10-22 as VX-04.
+
+Problem it solves. While the oracle is the only command that closes, every closing pays the serial wall clock
+(49:36 on 2026-10-22) and the runner is a feedback tool only.
+
+Cost. A new ADR that replaces ADR-0018, a refutation and the approval of a person. The spec asks for pairs over at
+least two Tasks and trees, and for the drift of `30_b4_contabilidad`, `33_bases_de_datos` and `19_contexto` E-29 to
+be solved or contemplated. It would change `CLAUDE.md` under «The gate», the refuter, the staff engineer and
+`close-a-version`; `install.ps1` would not change.
+
+Status. Open, not planned. It waits for phases B and C to run and for the pairs of evidence; 6.1 only builds phase A.
+
+### A Job Object per worker of the parallel runner
+
+Put each worker of the parallel runner in a Windows Job Object so that killing the runner kills its whole tree.
+Written on 2026-10-22 as VX-08 of `docs/cambios/verification-pipeline-performance/spec.md` (Task 6.1).
+
+Problem it solves. Today a cancelled run kills the tree of each worker with `taskkill /T /F` (VD-11, VD-12), but if
+the runner itself dies the operating system releases both locks with the load still alive (R20, WU10:CW4 of the
+6.1 discovery) and a grandchild can survive and keep something in `%TEMP%` (spec section 18; risk R4). The same
+orphans exist in serial: `72_motor_de_ejecucion.py` leaves them on purpose (`72:299-305`).
+
+Cost. Not estimated: a Job Object from PowerShell 5.1, and tests of the cut. The precedent of the repo defers it
+«when a real case asks for it» (ME:1697 of the execution engine spec, MP-01 applied to tests).
+
+Status. Open, not planned. It is built when a real orphan appears after a cut; none has been seen.
+
+### The role of the parallel runner in the refutation
+
+Decide whether `harness-spec-refuter` may explore with the runner, and under what rule. Written on 2026-10-22 as
+VX-14 of `docs/cambios/verification-pipeline-performance/spec.md` (Task 6.1, section 28 phase C; WU05:B3 of the
+discovery).
+
+Problem it solves. A refuter that runs the suite many times pays the serial wall clock each time. The spec's
+candidate rule: it explores with the runner, and a `sostenido` that closes cites the oracle or
+`python tests\correr.py -k <suite>` and never the runner (ADR-0018 section 4).
+
+Cost. A note in `.claude/agents/harness-spec-refuter.md`, only if it is decided, and the equivalence record of
+phase B to rely on. It is phase C of the migration and belongs to Task 8.
+
+Status. Open, not planned. It depends on phase B closing without discrepancies, and on Task 8.
+
+### Choose the suites to run by the files a Task touched, and reuse a result by tree hash
+
+Two ways of running less, not of running faster: pick the case files that a Task's changed files can affect, and
+reuse the result of a suite when the hash of its inputs is the same. Written on 2026-10-22 as VX-15 of
+`docs/cambios/verification-pipeline-performance/spec.md` (Task 6.1); first named in «The full test suite takes 45
+to 70 minutes and every Task pays for it many times» of `PENDIENTES-FH.md`.
+
+Problem it solves. Even with two workers a Task pays 35 minutes each time it runs the whole tree.
+
+Cost. A map from files to suites that nobody has and that goes stale, and a hash of what a suite reads, which the
+discovery found to be much more than `tests/` (suites read `comun/`, `harnesses/`, `docs/`, `manifest.json` and
+git tags: spec sections 1.3 and 5.2). A wrong reuse is a false green, the one thing the runner must not give.
+
+Status. Open, not planned. 6.1 left it out (section 8.2).
+
+### Wait for the resource lock, with a witness of reentry
+
+Let the runner wait with a deadline for `pesada.lock` when another runner holds it, and add a test witness that a
+process can reenter. Written on 2026-10-22 as VX-16 of
+`docs/cambios/verification-pipeline-performance/spec.md` (Task 6.1, section 19.3; WU10:D5 and D6 of the discovery).
+
+Problem it solves. Today a second runner exits 2 at once with `LOCK_OCUPADO` and runs nothing; a person who launches
+two has to retry by hand.
+
+Cost. Small, but the lock of 6.1 is one operation, try to take, and avoids the probe that takes and releases that
+Graph Execution had to remove (N1, `docs/cambios/graph-execution/spec.md:872-899`). Waiting with a deadline means a
+loop of such attempts.
+
+Status. Open, not planned. 6.1 chose to fail fast (section 19.3).
+
+### A RAM floor for a parallel run
+
+Set a minimum of free RAM below which the runner or the measurer refuses to start, or lowers N. Written on
+2026-10-22 as VX-28 of `docs/cambios/verification-pipeline-performance/spec.md` (Task 6.1, section 5.2).
+
+Problem it solves. The rule of the discovery was «the peak of a parallel run plus 2 GB of margin», and it was
+never fixed. The measurer samples `FreePhysicalMemory`, which is that of the whole machine, with no sampling by
+process; in the closing pair (2026-10-22) the free RAM fell to 3.20 GB at 2001.7 s of the parallel leg, 8.91 GB
+below its first sample, and could not be attributed: 5.5 GB were still free at the end with no process of the run
+alive. The other legs bottomed at 11.55 to 14.31 GB.
+
+Cost. Medium. It first needs the run's own consumption measured, by process, to know what the peak is; the floor is
+a number after that.
+
+Status. Open, not planned. 6.1 recorded the minima and set no floor (section 5.2).
+
+### Normalize the volatile names of green rows, or declare that the comparator's fifth point does not apply to the real tree
+
+About 129 rows that are `ok` in existing suites carry data that changes on every run in their name: the time in
+`57_aceptar_fuentes` E-19, paths of the temporary directory and pids in `63_compuerta_del_flujo` E-28, E-31 and
+E-65, and observed values in `75_runner_paralelo`. Written on 2026-10-22 as VX-29 of
+`docs/cambios/verification-pipeline-performance/spec.md` (Task 6.1, D-T5).
+
+Problem it solves. Point 5 of the equivalence (section 20.4, same multiset of `(group, name, ok)` rows with
+`-Detallado`) can never hold on the real tree, not even between two serial runs: pair 1b of WU03-b
+(2026-10-21/22) came out `NO_EQUIVALENTE` only by that point. 6.1 got out of it with D-T5, by running the pairs
+without `-Detallado`, so the point is defined and proved on synthetic layouts and is not evaluated on the real one.
+
+Cost. Either rename about 129 rows in their suites, which changes names that tests, specs and verdicts may cite, or
+declare in the spec of phase B that point 5 does not apply to the real tree. It has to be decided before phase B.
+
+Status. Open, not planned. It is for phase B (Task 7).

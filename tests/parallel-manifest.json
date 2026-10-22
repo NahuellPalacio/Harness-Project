@@ -1,0 +1,797 @@
+{
+  "schema": "parallel-manifest/1",
+  "suites": [
+    {
+      "suite": "00-encoding-fuentes.ps1",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.2,
+      "timeoutSeconds": 1200,
+      "reason": "P·árbol: recorre el repo (WU02, no releído); 1,0 s en WU03-a"
+    },
+    {
+      "suite": "03-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 269.1,
+      "timeoutSeconds": 1200,
+      "reason": "I; fábricas aisladas (`isolated-factory.ps1:68-85`); la segunda más larga; 269,1 s en WU03-a"
+    },
+    {
+      "suite": "08-bitacora.ps1",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 0.9,
+      "timeoutSeconds": 1200,
+      "reason": "P·árbol: lee CHANGELOG y `docs/versiones` (WU02); 0,8 s en WU03-a"
+    },
+    {
+      "suite": "11-codebase-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 14.1,
+      "timeoutSeconds": 1200,
+      "reason": "I; 14,0 s en WU03-a"
+    },
+    {
+      "suite": "14-contexto-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 28.5,
+      "timeoutSeconds": 1200,
+      "reason": "I; nombrada en la falla del 22-09 (FH:1011); 26,1 s en WU03-a"
+    },
+    {
+      "suite": "17-env-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 25.7,
+      "timeoutSeconds": 1200,
+      "reason": "I; 23,9 s en WU03-a"
+    },
+    {
+      "suite": "18-integraciones-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 27.3,
+      "timeoutSeconds": 1200,
+      "reason": "I; compila el bin del repo para E-33 (`18-integraciones-instalador.ps1:35-48`); 24,0 s en WU03-a"
+    },
+    {
+      "suite": "19-contexto-tarea-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 27.3,
+      "timeoutSeconds": 1200,
+      "reason": "I; 24,9 s en WU03-a"
+    },
+    {
+      "suite": "20-orquestacion-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 25.5,
+      "timeoutSeconds": 1200,
+      "reason": "I; 25,5 s en WU03-a"
+    },
+    {
+      "suite": "30-contabilidad-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 27.8,
+      "timeoutSeconds": 1200,
+      "reason": "I; 24,5 s en WU03-a"
+    },
+    {
+      "suite": "54-context-bar-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 46.4,
+      "timeoutSeconds": 1200,
+      "reason": "I; `WaitForExit(60000)` (`54-context-bar-instalador.ps1:49`); Git Bash (WU02); 39,1 s en WU03-a"
+    },
+    {
+      "suite": "57-aceptar-fuentes-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 33.9,
+      "timeoutSeconds": 1200,
+      "reason": "I; 29,7 s en WU03-a"
+    },
+    {
+      "suite": "60-entorno-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 26.1,
+      "timeoutSeconds": 1200,
+      "reason": "I; 18,3 s en WU03-a"
+    },
+    {
+      "suite": "61-auto-refresco-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 23.0,
+      "timeoutSeconds": 1200,
+      "reason": "I; 18,1 s en WU03-a"
+    },
+    {
+      "suite": "62-context-bar-consumo-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 73.1,
+      "timeoutSeconds": 1200,
+      "reason": "I; `WaitForExit(60000)` (`62-context-bar-consumo-instalador.ps1:54`); Git Bash (WU02); 58,5 s en WU03-a"
+    },
+    {
+      "suite": "63-harness-unico-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 225.8,
+      "timeoutSeconds": 1200,
+      "reason": "I; `WaitForExit(300000)` (`63-harness-unico-instalador.ps1:70`); 223,5 s MEASURED-BASELINE (≈ 5,4 min MEASURED-previa)"
+    },
+    {
+      "suite": "64-modelo-de-dominio-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 52.7,
+      "timeoutSeconds": 1200,
+      "reason": "I; `WaitForExit(300000)` (`64-modelo-de-dominio-instalador.ps1:51`); 52,7 s en WU03-a"
+    },
+    {
+      "suite": "65-contrato-de-ejecucion-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 11.6,
+      "timeoutSeconds": 1200,
+      "reason": "I; `65-contrato-de-ejecucion-instalador.ps1:38`; pisa `$nombre` en `:97` (VX-19); 11,6 s en WU03-a"
+    },
+    {
+      "suite": "66-integrity-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 10.6,
+      "timeoutSeconds": 1200,
+      "reason": "I; `-Doctor` (WU02); pisa `$nombre` en `:18, 46` (VX-19); 10,6 s en WU03-a"
+    },
+    {
+      "suite": "68-isolated-factory.ps1",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 25.4,
+      "timeoutSeconds": 1200,
+      "reason": "P·árbol: compara `git status --untracked-files=all` (`68-isolated-factory.ps1:15-21, 53`); enumera `harness-fabrica-*` del temporal (`:23-33`), que con VD-05 es el de la suite; QG1 E-05b exige no elevado (`:170-181`); 25,4 s en WU03-a"
+    },
+    {
+      "suite": "69-instalador-sin-consola.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 37.3,
+      "timeoutSeconds": 1200,
+      "reason": "I; consola oculta real, 180 s (WU02, no releído); 30,3 s en WU03-a"
+    },
+    {
+      "suite": "72-motor-de-ejecucion-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 15.6,
+      "timeoutSeconds": 1200,
+      "reason": "I; `WaitForExit(300000)` (`72-motor-de-ejecucion-instalador.ps1:41`); 13,3 s en WU03-a"
+    },
+    {
+      "suite": "73-ejecucion-de-grafo-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 20.0,
+      "timeoutSeconds": 1200,
+      "reason": "I; `WaitForExit(300000)` (`73-ejecucion-de-grafo-instalador.ps1:42`); 17,5 s en WU03-a"
+    },
+    {
+      "suite": "74-knowledge-api-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 14.1,
+      "timeoutSeconds": 1200,
+      "reason": "I: corre el `install.ps1` real (`:97-98`); su carpeta por `GetTempPath()` (`:21`), sin mutar `TEMP`; quita `PYTHONPATH` y `CLAUDE_PROJECT_DIR` del hijo (`:37-40`); lanza `python -I -B` por nombre (`:54`); `WaitForExit(300000)` (`:46`); `Set-Grupo` (`:17`); sin junctions, git ni bash (leído; discoverer); 12,4 s en WU03-a"
+    },
+    {
+      "suite": "01_hook_lib.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.4,
+      "timeoutSeconds": 1200,
+      "reason": "P; marcas con `session_id` fijo, en su propio temporal (VC-11); 1,9 s en WU03-a"
+    },
+    {
+      "suite": "02_hook_contrato.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.3,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,5 s en WU03-a"
+    },
+    {
+      "suite": "04_secretos.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.0,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,1 s en WU03-a"
+    },
+    {
+      "suite": "05_memoria.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 6.4,
+      "timeoutSeconds": 1200,
+      "reason": "P; git en temporal; 5,0 s en WU03-a"
+    },
+    {
+      "suite": "06_reglas.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.1,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,2 s en WU03-a"
+    },
+    {
+      "suite": "07_checks.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.1,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,2 s en WU03-a"
+    },
+    {
+      "suite": "08_checks_borde.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,2 s en WU03-a"
+    },
+    {
+      "suite": "09_zonas.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.1,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,2 s en WU03-a"
+    },
+    {
+      "suite": "10_codebase.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 13.6,
+      "timeoutSeconds": 1200,
+      "reason": "P; `git check-ignore` con cwd = raíz (WU02); 11,1 s en WU03-a"
+    },
+    {
+      "suite": "12_mapa_nodos.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.3,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,4 s en WU03-a"
+    },
+    {
+      "suite": "13_contexto.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 40.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; 33,0 s en WU03-a"
+    },
+    {
+      "suite": "15_contexto_paso4.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 26.0,
+      "timeoutSeconds": 1200,
+      "reason": "P; 21,5 s en WU03-a"
+    },
+    {
+      "suite": "16_refutador_contrato.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.1,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,1 s en WU03-a"
+    },
+    {
+      "suite": "18_integraciones.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.5,
+      "timeoutSeconds": 1200,
+      "reason": "P; `HTTPServer` en `127.0.0.1`, puerto 0 (WU02); 1,3 s en WU03-a"
+    },
+    {
+      "suite": "19_contexto.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; E-29 depende del reloj (defecto, FH:1028-1033): la carga lo hace más probable, el carril no lo arregla (VX-10); 1,0 s en WU03-a"
+    },
+    {
+      "suite": "20_orquestacion.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 10.8,
+      "timeoutSeconds": 1200,
+      "reason": "P; 10,5 s en WU03-a"
+    },
+    {
+      "suite": "21_tools.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,3 s en WU03-a"
+    },
+    {
+      "suite": "22_registro_agentes.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.5,
+      "timeoutSeconds": 1200,
+      "reason": "P; 2,0 s en WU03-a"
+    },
+    {
+      "suite": "23_matriz_normativa.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.6,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,4 s en WU03-a"
+    },
+    {
+      "suite": "24_g1_tecnologias.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.7,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,8 s en WU03-a"
+    },
+    {
+      "suite": "25_g2_buenas_practicas.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.5,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,7 s en WU03-a"
+    },
+    {
+      "suite": "26_d1_autenticacion_ciudadana.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,4 s en WU03-a"
+    },
+    {
+      "suite": "27_d2_delegacion_credenciales.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,3 s en WU03-a"
+    },
+    {
+      "suite": "28_d3_diseno_orientado_a_objetos.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.9,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,1 s en WU03-a"
+    },
+    {
+      "suite": "29_d4_comportamiento_responsive.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.9,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,9 s en WU03-a"
+    },
+    {
+      "suite": "30_b4_contabilidad.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 3.1,
+      "timeoutSeconds": 1200,
+      "reason": "P·árbol: una aserción por `*.json` de `comun/` y `harnesses/` (WU02); deriva del 22-09 (VC-05); 1,5 s en WU03-a"
+    },
+    {
+      "suite": "31_d6_visualizacion_georreferenciada.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.8,
+      "timeoutSeconds": 1200,
+      "reason": "P; 2,0 s en WU03-a"
+    },
+    {
+      "suite": "32_d5_normalizacion_catastral.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 3.3,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,5 s en WU03-a"
+    },
+    {
+      "suite": "33_bases_de_datos.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 7.0,
+      "timeoutSeconds": 1200,
+      "reason": "P·árbol: cinco aserciones por `*.md` de agents/skills (WU02); deriva del 22-09 (VC-05); 1,8 s en WU03-a"
+    },
+    {
+      "suite": "34_d7_almacenamiento_de_archivos.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 4.5,
+      "timeoutSeconds": 1200,
+      "reason": "P; 2,1 s en WU03-a"
+    },
+    {
+      "suite": "35_d8_proteccion_con_token.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 12.4,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,3 s en WU03-a"
+    },
+    {
+      "suite": "36_p1_frameworks_homologados.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 3.3,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,8 s en WU03-a"
+    },
+    {
+      "suite": "37_es0902_seguridad.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 3.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,2 s en WU03-a"
+    },
+    {
+      "suite": "38_integridad_de_repositorio.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 15.8,
+      "timeoutSeconds": 1200,
+      "reason": "P; mira `sys.modules` (WU02): un proceso propio no lo cambia; 1,3 s en WU03-a"
+    },
+    {
+      "suite": "39_es0902_o1_normativa_gcba.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.6,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,0 s en WU03-a"
+    },
+    {
+      "suite": "40_es0902_o2_autoridad_de_control.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.6,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,5 s en WU03-a"
+    },
+    {
+      "suite": "41_es0902_c1_openid_connect.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.7,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,6 s en WU03-a"
+    },
+    {
+      "suite": "42_es0902_c2_aprobacion_en_qa.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.1,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,0 s en WU03-a"
+    },
+    {
+      "suite": "43_es0902_c3_herramientas_versionadas.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.9,
+      "timeoutSeconds": 1200,
+      "reason": "P; 2,4 s en WU03-a"
+    },
+    {
+      "suite": "44_es0902_vu1_proteccion_de_autenticacion.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,2 s en WU03-a"
+    },
+    {
+      "suite": "45_conocimiento_fuentes.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 4.8,
+      "timeoutSeconds": 1200,
+      "reason": "P; 3,4 s en WU03-a"
+    },
+    {
+      "suite": "46_es0902_vu2_datos_sensibles_en_transito.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; 0,9 s en WU03-a"
+    },
+    {
+      "suite": "47_es0902_vu3_cierre_de_sesion.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 2.7,
+      "timeoutSeconds": 1200,
+      "reason": "P; 1,6 s en WU03-a"
+    },
+    {
+      "suite": "48_reporte_de_seguridad.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 7.1,
+      "timeoutSeconds": 1200,
+      "reason": "P; 4,8 s en WU03-a"
+    },
+    {
+      "suite": "49_es0902_vu4_vencimiento_por_inactividad.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 7.0,
+      "timeoutSeconds": 1200,
+      "reason": "P; 5,4 s en WU03-a"
+    },
+    {
+      "suite": "50_es0902_vu5_validacion_espejada.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 5.5,
+      "timeoutSeconds": 1200,
+      "reason": "P; 5,1 s en WU03-a"
+    },
+    {
+      "suite": "51_bienvenida.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 24.0,
+      "timeoutSeconds": 1200,
+      "reason": "P·árbol: suma una aserción si existe `RAIZ/.claude/harness.fuentes.json` (`51:865-867`); 20,3 s en WU03-a"
+    },
+    {
+      "suite": "52_es0902_vu6_mensajes_de_error.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 5.4,
+      "timeoutSeconds": 1200,
+      "reason": "P; 3,8 s en WU03-a"
+    },
+    {
+      "suite": "53_context_bar.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 24.4,
+      "timeoutSeconds": 1200,
+      "reason": "P; `sleep(1.1)` es cota inferior, no superior (WU02); 21,2 s en WU03-a"
+    },
+    {
+      "suite": "54_es0902_vu7_software_de_base.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 6.1,
+      "timeoutSeconds": 1200,
+      "reason": "P; 4,0 s en WU03-a"
+    },
+    {
+      "suite": "55_refutacion_atomica.py",
+      "class": "lane",
+      "lane": "ventana",
+      "maxSeconds": 78.0,
+      "timeoutSeconds": 1200,
+      "reason": "V: E-58 falló una vez bajo carga ajena (FH:1042); la causa es el `remotos` de 10 s no estricto (VC-06); 68,5 s en WU03-a"
+    },
+    {
+      "suite": "56_es0902_vu8_perfiles_y_roles.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 12.7,
+      "timeoutSeconds": 1200,
+      "reason": "P; carga 55 como módulo (WU02); 9,9 s en WU03-a"
+    },
+    {
+      "suite": "57_aceptar_fuentes.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 19.2,
+      "timeoutSeconds": 1200,
+      "reason": "P·git: `git archive` de un SHA fijo (WU01); 19,2 s en WU03-a"
+    },
+    {
+      "suite": "58_es0902_vu9_control_de_uso_publico.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 16.3,
+      "timeoutSeconds": 1200,
+      "reason": "P; carga 55; 15,9 s en WU03-a"
+    },
+    {
+      "suite": "59_es0902_vu10_guia_owasp.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 8.5,
+      "timeoutSeconds": 1200,
+      "reason": "P; carga 55; 7,8 s en WU03-a"
+    },
+    {
+      "suite": "60_entorno_primero.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 4.1,
+      "timeoutSeconds": 1200,
+      "reason": "P; 2,6 s en WU03-a"
+    },
+    {
+      "suite": "61_conocimiento_auto_refresco.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 8.6,
+      "timeoutSeconds": 1200,
+      "reason": "P; ocho hilos propios (WU02); 8,6 s en WU03-a"
+    },
+    {
+      "suite": "61_flujo_precondiciones.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 24.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; carga 55; 24,0 s en WU03-a"
+    },
+    {
+      "suite": "62_context_bar_consumo.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 11.4,
+      "timeoutSeconds": 1200,
+      "reason": "P; `os.environ.clear()` con restauración, en su proceso (WU02); 11,2 s en WU03-a"
+    },
+    {
+      "suite": "62_estado_del_flujo.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 63.7,
+      "timeoutSeconds": 1200,
+      "reason": "P; carga 55; 58,5 s en WU03-a"
+    },
+    {
+      "suite": "63_compuerta_del_flujo.py",
+      "class": "lane",
+      "lane": "ventana",
+      "maxSeconds": 110.7,
+      "timeoutSeconds": 1200,
+      "reason": "V: `demora < limite + 1.5` y `< limite + 3` (`63_compuerta_del_flujo.py:1732-1733, 1779-1780`, discoverer); límite de 1,5 s de la compuerta (`flow_gate.py:38-42`); E-38 necesita Git Bash primero (§5.2, VX-09); 102,0 s en WU03-a"
+    },
+    {
+      "suite": "63_harness_unico.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 23.2,
+      "timeoutSeconds": 1200,
+      "reason": "P·árbol: `git ls-files --others` del repo (WU02); E-61 recorre `tests/` (`63_harness_unico.py:678-697`); P·git: base `ea2dff7` (discoverer); 23,2 s en WU03-a"
+    },
+    {
+      "suite": "64_interaccion_humana.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 131.0,
+      "timeoutSeconds": 1200,
+      "reason": "P; cuatro procesos propios a la vez, espera 120 s (`64_interaccion_humana.py:904`); 116,4 s en WU03-a"
+    },
+    {
+      "suite": "64_modelo_de_dominio.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 123.5,
+      "timeoutSeconds": 1200,
+      "reason": "P·árbol; subproceso con `timeout=600` (`64_modelo_de_dominio.py:235`); P·git: base `4c6f0f3` (discoverer); 123,5 s MEASURED-BASELINE (≈ 3,3 min MEASURED-previa)"
+    },
+    {
+      "suite": "65_contrato_de_ejecucion.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 71.4,
+      "timeoutSeconds": 1200,
+      "reason": "P; P·git: bases `f9393cf` y `fdca5ce` (discoverer); 71,4 s MEASURED-BASELINE (≈ 1,8 min MEASURED-previa)"
+    },
+    {
+      "suite": "65_fail_closed.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 23.3,
+      "timeoutSeconds": 1200,
+      "reason": "P; 23,3 s en WU03-a"
+    },
+    {
+      "suite": "66_integrity_cleanup.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 118.2,
+      "timeoutSeconds": 1200,
+      "reason": "P; lee el texto del oráculo (`66_integrity_cleanup.py:471-476`); 118,2 s en WU03-a"
+    },
+    {
+      "suite": "67_integracion_frescura.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 31.9,
+      "timeoutSeconds": 1200,
+      "reason": "P; 31,9 s en WU03-a"
+    },
+    {
+      "suite": "70_r11_glob_de_autoridad.py",
+      "class": "lane",
+      "lane": "ventana",
+      "maxSeconds": 95.5,
+      "timeoutSeconds": 1200,
+      "reason": "V: `perf_counter < 1,0 s` (`70:465-469`, discoverer); 95,5 s en WU03-a"
+    },
+    {
+      "suite": "71_plan_2_1.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 24.9,
+      "timeoutSeconds": 1200,
+      "reason": "P·árbol: `glob` de `casos/*.ps1` (`71_plan_2_1.py:501`); 24,7 s en WU03-a"
+    },
+    {
+      "suite": "72_motor_de_ejecucion.py",
+      "class": "lane",
+      "lane": "motor",
+      "maxSeconds": 218.8,
+      "timeoutSeconds": 1200,
+      "reason": "M; `_matar` sin árbol (`72:299-305`) y `_terminar` por pid (`72:355-357`); P·git: base `fdca5ce` (discoverer); una falla única de E34 en el cierre de 0.34.0 (`docs/versiones/0.34.0.md:149-158`, VC-30); 218,8 s MEASURED-BASELINE (≈ 6 min MEASURED-previa)"
+    },
+    {
+      "suite": "73_ejecucion_de_grafo.py",
+      "class": "lane",
+      "lane": "motor",
+      "maxSeconds": 728.8,
+      "timeoutSeconds": 2187,
+      "reason": "M; carga t72; la más larga: 728,8 s MEASURED-BASELINE (≈ 20 min MEASURED-previa), pero con N = 2 no es el camino crítico (§13.3)"
+    },
+    {
+      "suite": "74_knowledge_api.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 30.9,
+      "timeoutSeconds": 1200,
+      "reason": "P·git: depende de git y del tag `v0.33.0` (`BASE`, `74:3643`; KA-E47 compara `19_contexto.py` contra la base, `74:3735`; KA-E53 `cat-file`, `ls-tree`, `diff` y `ls-files --others` restringido a las protegidas, `74:4146-4157`, discoverer); carga como módulo `tests/correr.py` (`74:3737, 4319`), `19_contexto.py` (`74:3738`) y `64_modelo_de_dominio.py` (`74:4219`); junctions con `mklink /J` (`_enlace`, `74:222-233`); su carpeta con `mkdtemp` y `atexit` (`74:94-95`); muta `TEMP`, `TMP`, `TMPDIR` y `tempfile.tempdir` y los repone (KA-E42, `74:3357-3381`); KA-E56 busca «GraphRun» en `adr` (`74:4402-4446`); sin bash, hilos, `sleep` ni medición de tiempo (leído; discoverer). Ninguna escritura en `RAIZ` (guardián): proceso y temporal propios no lo cambian; 24,3 s en WU03-a"
+    },
+    {
+      "suite": "75_manifest_paralelo.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 1.1,
+      "timeoutSeconds": 1200,
+      "reason": "Unidad pura, sin procesos: VP-E24 parte A (VD-15, VC-34); la parte B, con procesos, va en `75_runner_paralelo.py`; 1,1 s en WU03-b (par 1b, paralelo N = 2)"
+    },
+    {
+      "suite": "75_runner_paralelo.py",
+      "class": "lane",
+      "lane": "ventana",
+      "maxSeconds": 299.1,
+      "timeoutSeconds": 1200,
+      "reason": "Lanza runners anidados y procesos reales (VD-15); 299,1 s en WU03-b (par 1b, paralelo N = 2)"
+    }
+  ]
+}

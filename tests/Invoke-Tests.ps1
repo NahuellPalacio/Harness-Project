@@ -8,13 +8,22 @@
 
     Sale con codigo 0 si pasa todo, 1 si falla algo. install.ps1 lo usa como compuerta.
 
+    Con -SoloCaso <archivo> corre exactamente ese archivo de tests\casos\ y nada mas: es
+    una corrida parcial, no la compuerta, y lo dice en su primera linea. Un .ps1 corre solo
+    el motor PowerShell; un .py corre solo python tests/correr.py -k <archivo>.
+
 .EXAMPLE
     .\tests\Invoke-Tests.ps1
     .\tests\Invoke-Tests.ps1 -Detallado
+    .\tests\Invoke-Tests.ps1 -SoloCaso 08-bitacora.ps1
 #>
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding = $false)]
 param(
-    [switch] $Detallado
+    [switch] $Detallado,
+
+    # Nombre exacto de un archivo de tests\casos\. No se llama -Caso: $caso es la variable del
+    # bucle de abajo y PowerShell no distingue mayusculas.
+    [string] $SoloCaso
 )
 
 $ErrorActionPreference = 'Stop'
@@ -157,6 +166,23 @@ function Get-Fixture {
 
 # ── Correr los casos ────────────────────────────────────────────────────────────
 
+# -SoloCaso: corrida parcial. El archivo pedido y su grupo se capturan ACA, del objeto de
+# la enumeracion y antes de cualquier dot-source: un caso puede pisar $caso y $nombre.
+$parcialActivo  = $PSBoundParameters.ContainsKey('SoloCaso')
+$parcialArchivo = $null
+$parcialGrupo   = $null
+if ($parcialActivo) {
+    Write-Host "Corrida parcial (-SoloCaso $SoloCaso): no es la compuerta."
+    $parcialArchivo = Get-ChildItem (Join-Path $PSScriptRoot 'casos') -File -ErrorAction SilentlyContinue |
+                      Where-Object { ($_.Extension -ceq '.ps1' -or $_.Extension -ceq '.py') -and $_.Name -ceq $SoloCaso } |
+                      Select-Object -First 1
+    if (-not $parcialArchivo) {
+        Write-Host "No existe tests\casos\$SoloCaso (nombre exacto de un .ps1 o un .py)." -ForegroundColor Red
+        exit 1
+    }
+    $parcialGrupo = $parcialArchivo.BaseName
+}
+
 Write-Host ''
 Write-Host 'gcba-harness - tests' -ForegroundColor Cyan
 Write-Host ''
@@ -166,7 +192,12 @@ Clear-MarcasHarness
 $casos = Get-ChildItem (Join-Path $PSScriptRoot 'casos') -Filter '*.ps1' -ErrorAction SilentlyContinue |
          Sort-Object Name
 
-if (-not $casos) {
+if ($parcialActivo) {
+    # Un .py no dot-sourcea ningun .ps1; un .ps1 corre solo.
+    $casos = @()
+    if ($parcialArchivo.Extension -ceq '.ps1') { $casos = @($parcialArchivo) }
+}
+elseif (-not $casos) {
     Write-Host 'No hay casos en tests\casos\.' -ForegroundColor Yellow
     exit 1
 }
@@ -176,7 +207,7 @@ foreach ($caso in $casos) {
         . $caso.FullName
     }
     catch {
-        Set-Grupo $caso.BaseName
+        if ($parcialActivo) { Set-Grupo $parcialGrupo } else { Set-Grupo $caso.BaseName }
         Add-Resultado -Nombre 'el archivo de casos se pudo cargar' -Ok $false -Detalle $_.Exception.Message
     }
 }
@@ -230,43 +261,51 @@ if ($fallados.Count -eq 0) {
 # en 08-bitacora.ps1) y delega el resto a Python. Una sola
 # cuenta, un solo codigo de salida: 0 solo si los dos motores pasaron.
 
-Write-Host ''
-Write-Host '── python tests/correr.py ──────────────────────────────────────────' -ForegroundColor Cyan
-Write-Host ''
-
-$argsPython = @((Join-Path $PSScriptRoot 'correr.py'))
-if ($Detallado) { $argsPython += '--detallado' }
-
-$python = $null
-foreach ($c in @('python', 'py', 'python3')) {
-    # El alias de la Microsoft Store tambien responde a Get-Command y no corre nada: el candidato
-    # vale si corre y dice donde esta, como Resolve-Python en install.ps1 (Wave 6).
-    try {
-        $ruta = (& $c -c "import sys; print(sys.executable)" 2>$null | Out-String).Trim()
-        if ($ruta -and (Test-Path $ruta)) { $python = $ruta; break }
-    } catch { }
-}
-
-if (-not $python) {
-    Write-Host '  No se encontró un intérprete de Python (python, py, python3).' -ForegroundColor Red
-    Write-Host '  La mitad de la suite no pudo correr: la compuerta no puede dar OK.' -ForegroundColor Red
-    exit 1
-}
-
-$salidaPython = & $python @argsPython 2>&1 | Out-String
-Write-Host $salidaPython
-$codigoPython = $LASTEXITCODE
-
-$totalPy = 0
-$okPy    = 0
-if ($salidaPython -match '(\d+)/(\d+) pasaron\.') {
-    $okPy    = [int] $Matches[1]
-    $totalPy = [int] $Matches[2]
+if ($parcialActivo -and $parcialArchivo.Extension -ceq '.ps1') {
+    # Un .ps1 pedido no lanza Python, y eso no es un resumen ausente.
+    $codigoPython = 0
+    $totalPy = 0
+    $okPy    = 0
 } else {
-    # La suite Python no imprimió su resumen: se cuenta como una falla propia, no
-    # como "cero tests" — eso escondería que el motor entero se cayó.
-    Write-Host '  No se pudo leer el resumen de python tests/correr.py.' -ForegroundColor Red
-    $codigoPython = 1
+    Write-Host ''
+    Write-Host '── python tests/correr.py ──────────────────────────────────────────' -ForegroundColor Cyan
+    Write-Host ''
+
+    $argsPython = @((Join-Path $PSScriptRoot 'correr.py'))
+    if ($Detallado) { $argsPython += '--detallado' }
+    if ($parcialActivo) { $argsPython += '-k'; $argsPython += $parcialArchivo.Name }
+
+    $python = $null
+    foreach ($c in @('python', 'py', 'python3')) {
+        # El alias de la Microsoft Store tambien responde a Get-Command y no corre nada: el candidato
+        # vale si corre y dice donde esta, como Resolve-Python en install.ps1 (Wave 6).
+        try {
+            $ruta = (& $c -c "import sys; print(sys.executable)" 2>$null | Out-String).Trim()
+            if ($ruta -and (Test-Path $ruta)) { $python = $ruta; break }
+        } catch { }
+    }
+
+    if (-not $python) {
+        Write-Host '  No se encontró un intérprete de Python (python, py, python3).' -ForegroundColor Red
+        Write-Host '  La mitad de la suite no pudo correr: la compuerta no puede dar OK.' -ForegroundColor Red
+        exit 1
+    }
+
+    $salidaPython = & $python @argsPython 2>&1 | Out-String
+    Write-Host $salidaPython
+    $codigoPython = $LASTEXITCODE
+
+    $totalPy = 0
+    $okPy    = 0
+    if ($salidaPython -match '(\d+)/(\d+) pasaron\.') {
+        $okPy    = [int] $Matches[1]
+        $totalPy = [int] $Matches[2]
+    } else {
+        # La suite Python no imprimió su resumen: se cuenta como una falla propia, no
+        # como "cero tests" — eso escondería que el motor entero se cayó.
+        Write-Host '  No se pudo leer el resumen de python tests/correr.py.' -ForegroundColor Red
+        $codigoPython = 1
+    }
 }
 
 

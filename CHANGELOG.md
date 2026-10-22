@@ -3,6 +3,45 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.35.0] — 2026-10-22
+
+**La fábrica tiene un runner paralelo que da lo mismo que `Invoke-Tests.ps1` en menos tiempo, y la regla escrita de que acelera y nunca cierra.**
+
+Hasta 0.34.0 la suite completa corría un archivo detrás de otro y tardaba entre 45 y 70 minutos, que cada Task paga
+muchas veces. Esta versión (Task 6.1) agrega `tests/Invoke-Tests-Parallel.ps1`, un proceso por archivo de casos,
+con el mismo conteo y el mismo exit code. Medido en el par de cierre (N = 2, misma huella del árbol): 49:36 en
+serie contra 35:10 en paralelo, relación 0,709; sobre el árbol final de la refutación, 55:00 contra 34:09,
+relación 0,621; el umbral es 0,75. **Es un cambio solo de la fábrica: no toca `comun/`, `harnesses/`,
+`install.ps1` ni `manifest.json`, y no hace falta reinstalar el harness en los proyectos.**
+
+### Agregado
+
+- **El runner paralelo** — `tests/Invoke-Tests-Parallel.ps1`, de 1 a 4 workers, cada suite con su propio `TEMP`,
+  `TMP` y `TMPDIR`, con timeout que corta el árbol de procesos, cancelación con limpieza y un candado
+  (`pesada.lock`) que excluye un runner de otro. La clase de cada suite vive en `tests/parallel-manifest.json`
+- **El comparador y el medidor** — `tests/Compare-TestRuns.ps1` dice `EQUIVALENTE`, `NO_EQUIVALENTE` o
+  `NO_COMPARABLE` sin tolerancia; `tests/Measure-TestRuns.ps1` corre el par contra un umbral de tiempo
+- **`-SoloCaso <archivo>`** en `tests/Invoke-Tests.ps1`: corre exactamente un archivo de `tests/casos/` y lo dice
+  en su primera línea. Sin el parámetro, el oráculo da lo mismo que en 0.34.0
+- **[ADR-0018](docs/adr/0018-dos-corredores-un-oraculo.md)** — `.\tests\Invoke-Tests.ps1` sin parámetros es el
+  único oráculo y la única compuerta; el runner y `-SoloCaso` nunca cierran un cambio, un veredicto ni un release
+- **Tests** — `tests/casos/75_runner_paralelo.py` y `75_manifest_paralelo.py`, 884 comprobaciones nuevas: la suite
+  completa pasa de 47.957 a 48.841
+
+### Cambiado
+
+- **ADR-0018 §4** lleva «desde la fase C», igual que §2: quien refuta no explora con el runner antes (cierra VX-22)
+- **`.claude/agents/harness-backend-engineer.md`** sigue la regla de ADR-0018: un acelerador es posible, una
+  segunda compuerta no
+
+### Lo que no se cumplió, sin maquillar
+
+- 📌 **El punto F11 de la spec no está implementado.** El runner no detecta una suite `serial` conviviendo con otra
+  desde los intervalos: el scheduler no las solapa y eso está probado, pero el agregador no lo avisa. Anotado en
+  `Pendientes/Fix-Harness/PENDIENTES-FH.md`
+- 📌 **El Ctrl-C real sobre el runner no lo cubre ningún test**; se confirma a mano
+- **Veinticinco escenarios sostenidos, ningún contradicho ni sin sustento**, y 28 puntos abiertos (VX-01 a VX-29, sin VX-22)
+  anotados en los pendientes
 ## [0.34.0] — 2026-10-19
 
 **HARNESS tiene una frontera de lectura de conocimiento: quien necesita un documento del proyecto lo pide por

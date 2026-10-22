@@ -1030,7 +1030,7 @@ fixed tree is measuring something that is not the tree.
 two different `context_hash` values for the same input, and then passed three consecutive runs on
 the untouched tree. The test's own title states the invariant that broke: **the clock counted.**
 Whatever leaks time into `context_hash` is almost certainly the same thing drifting the counts, so
-the two should be chased together.
+the two should be chased together. Task 6.1 (verification-pipeline-performance), VX-10: the parallel runner fixes none of the three and does not tolerate them either. Its comparator demands the same totals suite by suite (spec §20.4, VP-E18), so a drifting count of `30_b4_contabilidad` or `33_bases_de_datos` comes out `NO_EQUIVALENTE` with the suite and both counts, and a red `19_contexto` E-29 is a red row in whichever mode it fired; the source of all three stays here, with the suites that own them.
 
 Fix. Two separate pieces. For the installer cases: retry the subprocess once on a non-zero exit
 before asserting, or serialize them behind a lock, and print the installer's own output on failure
@@ -1039,7 +1039,7 @@ so the next person does not have to reproduce it by hand. For the drifting count
 registry already show the shape of the fix.
 
 
-Seen again on 2026-10-07, closing 0.31.0: `55_refutacion_atomica` E-58 failed once in a full gate run with `REPOSITORY_MISMATCH` from `refutacion.compilar` (the flow gate), while a second agent was rendering pages with Edge headless on the same machine. Run alone right after, the case passed three times in a row (305/305), and the previous full run had passed it. The likely cause is the flow gate's 1.5 s limit on `git remote -v`, which fails closed when the machine is loaded. Not reproduced on purpose; recorded so the next occurrence can be matched.
+Seen again on 2026-10-07, closing 0.31.0: `55_refutacion_atomica` E-58 failed once in a full gate run with `REPOSITORY_MISMATCH` from `refutacion.compilar` (the flow gate), while a second agent was rendering pages with Edge headless on the same machine. Run alone right after, the case passed three times in a row (305/305), and the previous full run had passed it. The likely cause is the flow gate's 1.5 s limit on `git remote -v`, which fails closed when the machine is loaded. Not reproduced on purpose; recorded so the next occurrence can be matched. **Correction (Task 6.1 (verification-pipeline-performance), VX-13, 2026-10-22):** the 1.5 s limit does not fit E-58. `TIMEOUT_REMOTOS = 1.5` (`comun/hooks/lib/flow_gate.py:38-42`) is the hook's, and that gate fails closed with `FLOW_GATE_UNRESOLVED`, not with `REPOSITORY_MISMATCH`. `refutacion.compilar` reaches `refutacion.py:945-952` -> `precondiciones.compuerta_de_refutacion` (`harnesses/desarrollo/bin/flujo/precondiciones.py:149-157`) -> `repositorio.identidad` -> `remotos(proyecto)` with its defaults, `timeout=10, estricto=False` (`harnesses/desarrollo/bin/flujo/repositorio.py:168-198`, called at `:253`): ten seconds, and a `git` that fails is not told apart from a checkout with no remotes. That is why spec 6.1 puts `55_refutacion_atomica.py` in the `ventana` lane (§6, VC-06). What the code does not show is how a slow `git` becomes `REPOSITORY_MISMATCH`: `remotos` returning `None` gives `LOCAL_REPOSITORY_UNRESOLVED` (`repositorio.py:259-260`), and a mismatch needs a non-empty list of remotes with no match (`:261-265`). The mechanism of that single occurrence is still not established.
 
 ### `permissions.deny` blocks `.env.example`, the template the harness itself ships
 
@@ -2129,8 +2129,10 @@ Python prefers `TMPDIR` over `TEMP` and `TMP`, and this environment has `TMPDIR`
 `%TEMP%`: an isolated run has to set the three. Nothing is left inside the repository and no result
 changes.
 
+Task 6.1 (verification-pipeline-performance), VX-20: it is not only these two suites. Measured on 2026-10-20 on `d86b285` (spec §5.6, WU03-a): **760 entries per full run** in an isolated temporary directory, 256 of them from suites 72 and 73 (236 `me72-*`, 20 `ge73-vuelta-*`) and about 504 from some 20 other Python suites (51, 10, 53, 60, 13, 15, 19, 55 and their loaders, 18, 56, 58, 59 and others); no `.ps1` case leaves any, and about 7 are unattributed. Under the parallel runner they land in the suite's own `s<nnn>` folder and go away with it, so the runner hides the problem and does not fix it; the oracle still leaves all of them.
+
 Fix. As in item 18, for both suites: create what the cases write under one folder per run and remove it
-at the end, like the installer cases do.
+at the end, like the installer cases do. The same for the other 20 suites, which spec 6.1 left outside its scope (§8.2).
 
 ### Weak tests found while refuting Task 5
 
@@ -2257,31 +2259,6 @@ over, and declares the medium-confidence ones without changing the text.
 Fix. A short section in `docs/secretos.md`, in Spanish (ADR-0011), that names it, with the rules of section
 22 of the Task 6 spec and ADR-0017.
 
-### The full test suite takes 45 to 70 minutes and every Task pays for it many times
-
-Measured. The full suite, 45534 tests in 0.33.0 (PowerShell 932 and Python 44602), took between 44 and 74
-minutes on a copy in the runs of the verification of Task 5: parts A, B, D, G and L took 66, 74, 44, 57 and 45
-minutes. With Task 6 built, on 2026-10-18, the full suite ran on a copy in 47 minutes (21:03:56 to 21:51:10):
-47571 tests, PowerShell 968 and Python 46603, exit 0. By suite, the same day on this machine:
-`73_ejecucion_de_grafo` about 20 minutes, `72_motor_de_ejecucion` about 6, `63-harness-unico-instalador.ps1`
-about 5.4, `64_modelo_de_dominio` about 3.3, `65_contrato_de_ejecucion` about 1.8 and `74_knowledge_api`
-(1988 assertions) about 40 seconds. A Task runs it
-many times: the builder, whoever coordinates after each stage, the refuter and the closer. `tests/correr.py`
-and `tests/Invoke-Tests.ps1` run the files one at a time. A proof of concept by the coordinator, without
-touching the runner (a script that launches three light suites as separate processes, each with its own
-`TEMP`), ran them without a problem. The person who commissioned the Tasks asked for this explicitly on
-2026-10-18 («no podemos tardar tanto con los tests»). It has no position in «What to take first»: whoever
-prioritizes sets it.
-
-Fix. A parallel runner: one process per test file, each with its own `TEMP`, `TMP` and `TMPDIR` (Python
-prefers `TMPDIR`), with the time-sensitive races (`ME-E18` of suite 72, and those of suite 73) in a serial
-group that runs last and alone, and with the same counts and the same exit code as today's runner. It is a
-task for `harness-staff-engineer` (performance, behaviour frozen), with its own spec and its own refutation.
-Two alternatives that add up: choose which suites to run from the files a Task changed, and reuse the result
-of a suite when the hash of the tree is the same. Raising the load is the condition under which «The installer
-tests fail at random under load» was seen (2026-09-22): measure the installer cases under it before they
-leave the serial group.
-
 ### A catalogue secret pattern is quadratic on long alphanumeric runs, so `lookup` of a 1 MiB document can hang
 
 Measured on 2026-10-18 by the builder of stage 3 of Task 6. The rule `credenciales-en-url` of
@@ -2306,6 +2283,8 @@ changes what that hook reads too. It is a risk of hanging, not of leaking.
 Fix. A rule with bounded repetitions, or an anchor search before the pattern, decided by whoever owns
 `comun/reglas/` (a tree that KA-E53 pins to `v0.33.0`, so the change amends that guard); or, on the facade
 side, a declared cap on redaction. Whichever it is, it needs a scenario with a 1 MiB document with no breaks.
+
+Task 6.1 (verification-pipeline-performance), VX-06: named in the spec of the parallel runner only so it is not mistaken for something 6.1 does. It is not a test-time problem, the runner does not touch it, and it is not fixed there (spec §8.2).
 
 ### A link inside a corpus root that aliases a denied folder of the same root serves the denied content
 
@@ -2537,6 +2516,216 @@ gap of reading is the architect's call, and either way the spec has to say it. A
 make a folder unlistable on Windows inside a test.
 
 Status. Open. Not fixed in this pass: both are text of a frozen spec, and the second needs a scenario of its own.
+
+## What the parallel test runner left open
+
+Written on 2026-10-22, when Task 6.1 was built (`docs/cambios/verification-pipeline-performance/spec.md`,
+section 33; ADR-0018). The parallel runner `tests/Invoke-Tests-Parallel.ps1` runs the same case files as the
+oracle, one per process, and closes nothing: `.\tests\Invoke-Tests.ps1` stays the only command that closes. These
+are what the construction and the benchmark of 2026-10-21 and 2026-10-22 saw outside the scope of 6.1; none is
+resolved there. Each entry names its id in that spec. Line numbers of `tests/Invoke-Tests.ps1` are given as in
+`d86b285` when the spec cites them and as in the tree after 6.1 when they differ.
+
+### Suites 73 and 72 take 30 % of a full run, and nothing makes them faster
+
+Task 6.1 (verification-pipeline-performance), VX-05. Measured on 2026-10-20 on `d86b285`
+(MEASURED-BASELINE, spec section 5.6): `73_ejecucion_de_grafo.py` takes 728.8 s and `72_motor_de_ejecucion.py`
+218.8 s, 947.6 s together out of a sum of 3110.8 s over the 97 suites of that tree. They are the `motor` lane of
+the parallel runner because their races are time-sensitive (`72_motor_de_ejecucion.py:875-923`,
+`73_ejecucion_de_grafo.py:2167-2183`). With N = 2 `73` is not the critical path (spec section 13.3), and the
+measured wall of the runner was 35:10 against 49:36 serial (ratio 0.7089, 2026-10-22). Making the suites faster
+is work on the suites and not on the runner, and 6.1 left it out (section 8.2): it forbids removing cases, mocking integrations
+or changing what a test proves.
+
+Fix. Not decided: each of the two suites needs a look at what its time is spent on. The assertions and the
+counts stay as they are. It is a task for `harness-staff-engineer` (performance, behaviour frozen).
+
+### Nothing but a rule of the workflow keeps a hand-launched test run from wiping the markers of a full oracle
+
+Task 6.1 (verification-pipeline-performance), VX-07. The resource lock of the runner
+(`%LOCALAPPDATA%\gcba-harness\recursos\pesada.lock`) excludes one parallel runner from another and nothing else
+(spec section 19.2): the oracle, `correr.py -k`, `-SoloCaso`, the mutation batches of the refuters, the serial
+leg of `Measure-TestRuns.ps1` and any outside process neither take it nor see it. The rule of section 28 that
+covers the gap says that while a heavy job runs the orchestrator launches no other, and it says in the same breath
+that a focused run does not count. That is the hole. Found by the guardian in the pass after WU03-b
+(2026-10-20): `Clear-MarcasHarness` (`Invoke-Tests.ps1:128-142` and `:164` in `d86b285`, `:137` and `:190` now)
+deletes `%TEMP%\gcba-harness\*.avisado` once, at the start of every oracle run. A `.\tests\Invoke-Tests.ps1
+-SoloCaso <file>` or a `python tests\correr.py -k <suite>` launched by hand with the shared `%TEMP%` runs it too,
+and erases the markers of a full oracle that is running. Three suites depend on them: `01_hook_lib.py` (it builds
+the marker path at `:39`; its E-08 is the case WU04 showed on a shared temporary directory, spec section 7),
+`65_fail_closed.py` and `61_conocimiento_auto_refresco.py`.
+
+Fix. Two parts. The operating rule, now, because it needs no code: a focused run launched by hand sets its own
+`TEMP`, `TMP` and `TMPDIR` (the three that `docs/versiones/0.34.0.md:249-250` already asks for an isolated run;
+Python prefers `TMPDIR`), never the `%TEMP%` that a full oracle is using. It is written nowhere versioned today;
+spec 6.1 says the specs of Task 7 and Task 8 cite section 28. The technical part: an opt-in lock in the oracle,
+in the mutation batches and in the serial leg of the measurer (WU10:D2 and D4 of the 6.1 discovery, not
+versioned). It adds an exit to the oracle's 0/1 contract (WU10:C4), which is why 6.1 did not do it (section 19.2,
+VD-04).
+
+### The preconditions of the oracle are in a version note and not in «The gate» of `CLAUDE.md`
+
+Task 6.1 (verification-pipeline-performance), VX-09. The full suite only gives the result it gave at release when
+three things hold, and `CLAUDE.md` says none of them under «The gate». Git Bash has to come first in the `PATH`:
+`63_compuerta_del_flujo.py` E-38 looks for `bash` with `shutil.which("bash")` (`:1103`) and with the WSL stub first
+it fails even on `v0.33.0` (`docs/versiones/0.34.0.md:163-166`, which says it; the architect of 6.1 did not
+verify it). The process must not be elevated: QG1 E-05b assumes that the start time of System (pid 4) is unreadable
+(`tests/casos/68-isolated-factory.ps1:170-181`). And the clone needs the tags and commits the suites read: `v0.33.0`
+for `74_knowledge_api.py` (`:3643`), `fdca5ce` for `72_motor_de_ejecucion.py`, and `ea2dff7`, `4c6f0f3` and
+`f9393cf` for the cases of `63`, `64` and `65` (discoverer of 6.1; spec section 5.2); a copy made with
+`git archive` has none of them. Today they live only in the 0.34.0 note (`docs/versiones/0.34.0.md:249-251`).
+The benchmark of 6.1 (2026-10-20 to 2026-10-22) set them by hand every time (spec section 5.2).
+
+Fix. Write the three preconditions under «The gate» of `CLAUDE.md`, in English (ADR-0011 puts `CLAUDE.md` with what
+a model loads). `CLAUDE.md` has size ceilings: `harness-budget-auditor` measures the cost before it is merged.
+
+### Suite 72 leaves `HOST_FALSO_GUION` in its process and kills by pid
+
+Task 6.1 (verification-pipeline-performance), VX-11. `tests/casos/72_motor_de_ejecucion.py:137` sets
+`os.environ["HOST_FALSO_GUION"]` and no line of the suite removes it by name (the only other place that writes it,
+`:275`, writes into a copy of the environment). Whatever runs in that process afterwards inherits the fake Host
+script. In the serial oracle that is the next suite loaded by the same Python (`correr.py:61-76` runs them all in one
+process); under the parallel runner each suite has its own process, so it does not cross suites, but it stays a
+dependency on the order. Separately, `_terminar` (`:355-357`) kills by pid whatever `proceso.pid_vivo` says is
+alive, so a pid that was reused is killed. The `motor` lane and N = 2 bound the risk and do not remove it (spec
+section 24, R3 and R16): there are more processes on the machine than in serial. Read, not reproduced.
+
+### Several texts say that `install.ps1` runs the suite and that `03-instalador.ps1` breaks the tree, and neither is so
+
+Task 6.1 (verification-pipeline-performance), VX-12. Read on 2026-10-20 and again on 2026-10-22: `install.ps1`
+mentions neither `Invoke-Tests` nor `correr.py` (0 matches); the gate it runs is `Test-HooksInstalados`
+(`install.ps1:1081`, called at `:1814` and `:2160`). The texts that say it runs the suite: `CLAUDE.md:49-50`,
+`tests/Invoke-Tests.ps1:9`, `.claude/agents/harness-backend-engineer.md:55`, `docs/contrato-hooks.md:272`
+(«`install.ps1` usa `Invoke-Tests.ps1` como compuerta»; found by the guardian in the pass after WU03-b), and two
+more that the 6.1 discovery names without rereading them (WU05). The second half: since 0.34.0 the installer case
+breaks an isolated copy of the factory in `%TEMP%` (`tests/isolated-factory.ps1:1-11`), and in WU03-a the
+fingerprint of the tree stayed the same with `03-instalador.ps1` run three times. Yet
+`.claude/skills/close-a-version/SKILL.md:137-142` and the `CLAUDE.md` of `C:\Work\Project-Harness` still say it
+breaks versioned files and restores them in a `finally` (`CLAUDE.md:52-55` of the working clone already says it
+right). It is not a 6.1 matter and 6.1 changes none of them (section 8.2, VC-15 and VC-16).
+
+Fix. Correct each text to say what `install.ps1` does (`Test-HooksInstalados`, not the suite) and that `03` breaks a
+copy. Each text keeps its own language (ADR-0011): the agent, the skill and `CLAUDE.md` in English,
+`docs/contrato-hooks.md` in Spanish.
+
+### The Graph Execution spec cites `registro._bloquear` at lines it no longer has
+
+Task 6.1 (verification-pipeline-performance), VX-17. `docs/cambios/graph-execution/spec.md:771` cites
+`registro._bloquear` at `registro.py:226-231`. The function is at
+`harnesses/desarrollo/bin/ejecucion/registro.py:259-264` (read on 2026-10-20; the same in `d86b285`). The spec is
+the history of a closed Task and 6.1 does not edit it (VC-18); it is noted so nobody follows the old number. Same
+family as «The spec cites code by line number, and several citations drifted after the correction pass».
+
+Fix. Correct the citation in that spec, or let the next time somebody touches it do it. Not decided.
+
+### The leftovers of a killed parallel run are swept only by another parallel run, and `CLAUDE.md` promises «a later run»
+
+Task 6.1 (verification-pipeline-performance), VX-18. Every parallel run creates `<TempBase>\hpp-<id>.lock` and then
+`<TempBase>\hpp-<id>\`; if it is killed they stay, and the next parallel run sweeps those whose lock it can take,
+under the global lock (spec section 19.4). The oracle does not sweep them, and neither does `correr.py -k`: they
+do not take the lock (section 19.2, VD-04). `CLAUDE.md:52-55` says that a killed run leaves the isolated copy of
+the factory and that «a later run sweeps it once it can prove the process that made it is gone»; read next to the
+runner, a person who killed a parallel run and then only runs the oracle gets no sweep of `hpp-*` (R19 of the
+spec). Nothing leaks into the repository and no result changes: it is `%TEMP%` that stays full.
+
+Fix. Not decided. Two ways: say in `CLAUDE.md` that the runner's leftovers are swept by the runner (it has size
+ceilings: `harness-budget-auditor`), or make the oracle sweep `hpp-*` too, which 6.1 refused because the oracle does
+not change except for `-SoloCaso` (VD-04).
+
+### `03-instalador.ps1` reuses `$caso` inside the oracle's scope, and two installer cases overwrite `$nombre`
+
+Task 6.1 (verification-pipeline-performance), VX-19. A latent defect, only on the failure path. The oracle loads
+each case file by dot-sourcing it inside `foreach ($caso in $casos)`, and its `catch` takes the name of the file
+from `$caso.BaseName` (`Invoke-Tests.ps1:178-180` in `d86b285`, `:209-210` now). `03-instalador.ps1:846` runs its
+own `foreach ($caso in @(@{ Rotulo = ...}))` inside the `try` that opens at `:767`, in the oracle's scope: if `03`
+threw after that point, the `catch` would take `$caso.BaseName` from one of those hashtables and not from the file.
+In the same way `65-contrato-de-ejecucion-instalador.ps1:97` and `66-integrity-instalador.ps1:18` and `:46`
+overwrite `$nombre`, which breaks any copy of the preamble that uses it (the load row of WU03-a, spec section 7).
+The `-SoloCaso` path no longer depends on that: it takes the group from the enumeration (`$parcialGrupo`,
+`Invoke-Tests.ps1:183, 210`; spec section 21). The default path is untouched in 6.1 (VD-04) and stays so. Read,
+not exercised.
+
+Fix. In the default path, take the name of the file from the enumeration and not from a variable a dot-sourced
+case can overwrite, as `-SoloCaso` already does; and rename the loop variables in `03`, `65-` and `66-`. The
+oracle is changed in a Task of its own, with its own spec.
+
+### The oracle takes the first `N/M pasaron.` of the Python output as its summary
+
+Task 6.1 (verification-pipeline-performance), VX-21. `tests/Invoke-Tests.ps1:262` in `d86b285` (`:300` now) reads
+the Python summary with `$salidaPython -match '(\d+)/(\d+) pasaron\.'`, which takes the first match anywhere in the
+output. `correr.py` prints the real summary last (`correr.py:92`), after the detail rows (`:89-91`). With
+`-Detallado`, the name of a row that is `ok` and contains that text hijacks it: in pair 1 of WU03-b (2026-10-21) a
+green row of `75_runner_paralelo.py` was named `VP-E04 (a) el 3/4 pasaron. …`, and the oracle printed `971/972` and
+exited 1 with everything green (`benchmark-2026-10-22.md`, line 106). Without `-Detallado` the same can happen with
+the detail of a `MAL` row, which also comes before the summary. 6.1 sidestepped it by renaming seven rows of
+`75_runner_paralelo.py`; nothing in the suite prevents the next row from doing it. The runner does not have the
+defect: it anchors the pattern to the whole last non-empty line (spec section 15.2).
+
+Fix. Read the last non-empty line and anchor the pattern, as the runner does; and a case with a row named like a
+summary that proves it. The oracle is changed in a Task of its own.
+
+### `harness-backend-engineer.md` calls the engines runners, and 6.1 calls the new script a runner
+
+Task 6.1 (verification-pipeline-performance), VX-23. `.claude/agents/harness-backend-engineer.md:3` («its two
+runners») and `:20` («both runners») mean the PowerShell and the Python engines; `:72` calls the oracle
+`Invoke-Tests.ps1` «the same runner»; and 6.1 calls `Invoke-Tests-Parallel.ps1` the runner. Three meanings for one
+word in one file that a model loads. Found by the guardian in the pass after WU03-b (2026-10-20).
+
+Fix. One word per thing. `CLAUDE.md` already says «two engines» for PowerShell and Python, and the spec says
+«oracle» for `Invoke-Tests.ps1` and «runner» for `Invoke-Tests-Parallel.ps1`. Whoever edits the agent file chooses.
+
+### `75_runner_paralelo.py` takes 5 to 10 minutes of a full run
+
+Task 6.1 (verification-pipeline-performance), VX-24. It is the second longest suite of the tree after
+`73_ejecucion_de_grafo.py`: 364.3 s in the parallel leg of the closing pair (2026-10-22) and 299.1 s in the parallel
+leg of pair 1b (2026-10-21/22), and 592 s alone in stage 9c of the construction. It launches nested
+runners and the start of each worker dominates the time (spec section 24, R18). It is a suite that 6.1 itself added
+to the gate, so the 97 suites of the baseline became 99 and the sum of work grew with it.
+
+Fix. Not decided. A task for `harness-staff-engineer` (performance, behaviour frozen): the scenarios and their counts
+stay as they are.
+
+### `75_runner_paralelo.py` is sensitive to the load of the machine in VP-E08 and VP-E20, and VP-E21 (c) is seen by an exception
+
+Task 6.1 (verification-pipeline-performance), VX-25. Two scenarios depend on timing: in stage 9 (2026-10-21) the
+precondition of VP-E08 came out red 8 times out of 8 with a foreign session at 50 % CPU, and VP-E20 behaves
+likewise. They fail as «inconclusive» and do not pass empty, so the suite does not give a false green; it gives a red
+that is not the runner's. Separately, mutation VM-17b is seen in VP-E21 (c) through an exception that cuts the rest
+of the rows and not through a row of its own (spec section 26, VP-E21: «19/20»). The two weaken the suite as a
+witness, not as a gate.
+
+### The `MAX_PATH` guard of `75_runner_paralelo.py` fires under the runner when the launcher has a long `TEMP`
+
+Task 6.1 (verification-pipeline-performance), VX-26. The suite refuses a `TEMP` longer than 70 characters
+(`tests/casos/75_runner_paralelo.py:35`, raised at `:380`). The runner gives each suite
+`<TempBase>\hpp-<id>\s<nnn>` as `TEMP`, which adds length the oracle does not. In pair 1 of WU03-b (2026-10-21) the
+measurer's `TEMP` was `C:\dev\_build\w3b\…`, and in the parallel leg 26 rows went red at
+`…\tmp-paralelo\hpp-<id>\s099\t61_…` (79 characters against 70) while the same suite was green in the oracle
+(spec section 5.2, R14). A red like that belongs to the test under the runner and not to the code it tests. Today it
+is avoided by launching with a short `TEMP` (`C:\t`), which the benchmark did from then on.
+
+### The progress of the runner prints a PowerShell-style line for a red Python suite
+
+Task 6.1 (verification-pipeline-performance), VX-27. In the progress that follows a red suite,
+`tests/Invoke-Tests-Parallel.ps1:1158` runs `Get-LineasDeFallosPs` (defined at `:766`) and `Get-LineasDeFilasPy` on
+the same record, whichever its engine. For a red Python suite the first one yields a line like `[py_b] fila-01 …`
+(stage 4b of the construction). It is cosmetic and outside the comparable report: no count, no exit and no verdict
+read it.
+
+Fix. Pick the extractor from the engine of the record (`$R.engine`, spec section 15.1).
+
+### The runner does not detect a `serial` suite living alongside another, which the spec promises
+
+Task 6.1 (verification-pipeline-performance), found by the independent refutation of 2026-10-22, not a VX of the
+spec. Spec section 17, row F11, says that when the scheduler loses or repeats a suite, or a `serial` suite lives
+with another, the run fails with `INFRA SUITE_AUSENTE`, `SUITE_DUPLICADA` or `ERROR_INTERNO violación de clase`
+"por los intervalos". The first two exist (`tests/Invoke-Tests-Parallel.ps1:833-834`); the third does not: no
+check over the recorded intervals looks for a `serial` or same-lane overlap. No scenario asks for it: VP-E11
+proves that the scheduler does not let them overlap, not that the aggregator would catch it if it did. The
+refutation ruled VP-E11 upheld on that reading.
+
+Fix. Either add the interval check to the aggregator (the intervals are already in the record, spec section 15.1)
+with its own scenario and mutation, or strike the third outcome from F11. A change to the runner and its spec.
 
 ## Verification that was not done
 

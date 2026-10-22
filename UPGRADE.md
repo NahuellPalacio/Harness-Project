@@ -23,6 +23,9 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.34.0 → 0.35.0
+
+**No hace falta reinstalar ni actualizar nada en los proyectos.** Esta versión es solo de la fábrica: no toca `comun/`, `harnesses/`, `install.ps1` ni `manifest.json`, y el lock no cambia. Un `-Update` no trae nada nuevo; en la máquina donde se escribe el harness basta con el `git pull`. El runner paralelo (`tests/Invoke-Tests-Parallel.ps1`) y `-SoloCaso` son herramientas de quien construye el harness, y la compuerta sigue siendo `.\tests\Invoke-Tests.ps1`.
 ## 0.33.0 → 0.34.0
 
 `-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala los cuatro archivos de

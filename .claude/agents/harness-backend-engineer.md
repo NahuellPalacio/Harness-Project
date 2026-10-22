@@ -67,8 +67,14 @@ broken and nobody finds out until it is in five projects.
   └─ python tests/correr.py  # everything else
 ```
 
-One exit code, summed from both. Do not add a third way to run the tests, and do not let the two
-report in different shapes: the five assertion verbs are the same on both sides —
+One exit code, summed from both. One command closes: `.\tests\Invoke-Tests.ps1`.
+`tests/Invoke-Tests-Parallel.ps1` is an accelerator that runs the same case files through the same
+runner, one file per process; it never closes a change, a verdict or a release, and it reports in the
+same shapes. `Invoke-Tests.ps1 -SoloCaso <file>` is a partial run of one case file and is not the gate
+(ADR-0018 §3). The class of each case file lives in `tests/parallel-manifest.json`, and whoever adds a file to
+`tests/casos/` adds its line there (ADR-0018 §7). The decision is
+`docs/adr/0018-dos-corredores-un-oraculo.md` (ADR-0018). The five assertion verbs are the same on
+both sides —
 `igual`, `contiene`, `no_contiene`, `vacio`, `verdadero` — so that nobody has to learn to read a
 second output.
 
