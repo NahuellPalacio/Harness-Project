@@ -23,6 +23,28 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.35.0 → 0.36.0
+
+`-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala los 23 archivos nuevos (el motor
+`checks/lib/a11y.py` y, en `dev-accessibility`, las carpetas `references/` y `scripts/`) y reemplaza el check
+`dev-accesibilidad-html`, la entrada de `dev-accessibility` y las de `dev-ui`, `dev-responsive` y
+`dev-frontend-implementation`, y `dev-frontend.md`. Ningún hook, regla ni subcomando cambia y el mínimo de Python
+sigue siendo 3.9.
+
+Lo que se nota en un proyecto:
+
+- **El check de accesibilidad contesta distinto.** Ya no avisa por cero o dos `<h1>` (es una recomendación de la
+  revisión completa, no un criterio de WCAG); un `<input id="x">` sin `<label for>` se reporta aunque tenga `id`
+  (un `id` solo no es un nombre); un control envuelto en una `<label>` ya no se reporta; y cada aviso trae su
+  criterio y su nivel, como «(criterio 4.1.2, nivel A)». Ahora también lee JSX y TSX.
+- **La carpeta `dev-accessibility` instalada pesa unos 615 KB**, casi todo en `references/`. No se carga entera:
+  la entrada manda a una guía por tarea o a un comando de `scripts/`.
+- **Si editaste a mano alguno de esos archivos** (`dev-accessibility/SKILL.md`, `dev-ui/SKILL.md`,
+  `dev-responsive/SKILL.md`, `dev-frontend-implementation/SKILL.md`, `agents/dev-frontend.md` o el check),
+  `-Update` no lo pisa: queda como `<archivo>.nuevo` al lado del tuyo para que hagas el merge.
+
+---
+
 ## 0.34.0 → 0.35.0
 
 **No hace falta reinstalar ni actualizar nada en los proyectos.** Esta versión es solo de la fábrica: no toca `comun/`, `harnesses/`, `install.ps1` ni `manifest.json`, y el lock no cambia. Un `-Update` no trae nada nuevo; en la máquina donde se escribe el harness basta con el `git pull`. El runner paralelo (`tests/Invoke-Tests-Parallel.ps1`) y `-SoloCaso` son herramientas de quien construye el harness, y la compuerta sigue siendo `.\tests\Invoke-Tests.ps1`.

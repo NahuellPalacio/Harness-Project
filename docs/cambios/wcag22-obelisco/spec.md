@@ -67,7 +67,9 @@ contrastar un texto), no con más prosa. Son tres evals con una corrida cada una
   evals de la skill adjunta usan archivos que no vienen en el HTML). Se mide lo determinista: tamaños
   cargados y un corpus etiquetado de HTML, plantillas y JSX. No se afirma «mejor calidad» del modelo.
 - **Cerrar la versión.** No se toca `VERSION`, `CHANGELOG.md`, `UPGRADE.md` ni `docs/versiones/`: 0.36.0
-  está reservada a la limpieza de 6.1 (en pausa) y cerrar es otro ritual (`close-a-version`).
+  está reservada a la limpieza de 6.1 (en pausa) y cerrar es otro ritual (`close-a-version`). Enmienda del
+  24-10-2026: la versión se cerró después, por decisión del usuario, como 0.36.0 y con su propio ritual; la
+  limpieza de 6.1 pasa a 0.37.0. Nada de eso cambia un escenario.
 - **Traducir el texto normativo del W3C.** Se importa tal cual, en inglés, con su fuente.
 
 ## Las decisiones, y por qué

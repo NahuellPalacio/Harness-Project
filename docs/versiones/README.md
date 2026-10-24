@@ -38,6 +38,7 @@ decisión, escribí que no está registrado. Un motivo inventado se lee bien y n
 
 | Versión | Fecha | Qué trajo |
 |---|---|---|
+| [0.36.0](0.36.0.md) | 24-10-2026 | WCAG 2.2 con Obelisco V2: criterios de una sola fuente, un check de accesibilidad que no inventa fallos y un registro de evidencia que no certifica; `-Update` alcanza |
 | [0.35.0](0.35.0.md) | 22-10-2026 | Task 6.1: un runner paralelo que acelera la verificación y nunca cierra (ADR-0018, dos corredores y un oráculo); solo de la fábrica, sin reinstalar |
 | [0.34.0](0.34.0.md) | 19-10-2026 | Knowledge Access: una frontera de lectura de conocimiento, con cita y revisión (`lookup` y `search`, Task 6, ADR-0017); el undécimo contexto del modelo canónico |
 | [0.33.0](0.33.0.md) | 16-10-2026 | Graph Execution: el GraphRun lleva un plan entero a un terminal, de a una WorkUnit por vez (`ejecutar --grafo`, Task 5, ADR-0016); cierra N1 y R5 de 0.32.0 |

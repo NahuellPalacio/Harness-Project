@@ -2,7 +2,7 @@
 
 **Estado:** cerrado, con la compuerta completa en verde (ver «La compuerta») · **Fecha:** 24-10-2026 (veredictos del 23-10-2026) · **Versión:** sin versión: rama `wcag22-obelisco` sobre `0.35.0`, sin commit
 
-Este documento es lo que cierra el cambio según [ADR-0006](../../adr/0006-sdd-como-metodo-de-los-proyectos.md): el veredicto por escenario de quien verificó, que no es quien construyó. Los veredictos los emitió `harness-spec-refuter`, que no construyó este cambio y no escribe su propio veredicto en un archivo; quien coordinó lo consolidó acá. Rindió dos veces: la primera dejó 61 sostenidos y 2 contradichos (E-19 y E-30); se resolvieron en el código y en los tests, y la segunda vuelta, con los mismos comandos, dejó los 65 sostenidos. La spec sobre la que rige es `docs/cambios/wcag22-obelisco/spec.md` con SHA256 `ED8A015216CD8F586F7CC6E3D6B94642584029B938FF59150CD3F91D6E79E72C`; el refutador rindió sobre `11CB50F4AE57FD28848CB492E87F2C0878839BD99745C4FF3D8879299C4F0A49`, y la única diferencia es una fila de la tabla «Qué se construye» agregada después (ver «La compuerta»): ningún escenario cambió.
+Este documento es lo que cierra el cambio según [ADR-0006](../../adr/0006-sdd-como-metodo-de-los-proyectos.md): el veredicto por escenario de quien verificó, que no es quien construyó. Los veredictos los emitió `harness-spec-refuter`, que no construyó este cambio y no escribe su propio veredicto en un archivo; quien coordinó lo consolidó acá. Rindió dos veces: la primera dejó 61 sostenidos y 2 contradichos (E-19 y E-30); se resolvieron en el código y en los tests, y la segunda vuelta, con los mismos comandos, dejó los 65 sostenidos. La spec sobre la que rige es `docs/cambios/wcag22-obelisco/spec.md` con SHA256 `16724866061CB24686518D604E5693CCA15C3D354606B481EB2ABF63EBD8215C`; el refutador rindió sobre `11CB50F4AE57FD28848CB492E87F2C0878839BD99745C4FF3D8879299C4F0A49`, y las únicas diferencias son una fila de la tabla «Qué se construye» (ver «La compuerta») y una enmienda sobre el cierre de la versión en «Qué queda afuera»: ningún escenario cambió.
 
 **Resultado: 65 escenarios sostenidos, 0 contradichos, 0 leídos, 0 sin sustento.** E-19 y E-30 fueron contradichos en la primera vuelta y quedaron sostenidos en la segunda.
 
@@ -10,10 +10,10 @@ Este documento es lo que cierra el cambio según [ADR-0006](../../adr/0006-sdd-c
 
 | | |
 |---|---|
-| Spec verificada | `11CB50F4AE57FD28848CB492E87F2C0878839BD99745C4FF3D8879299C4F0A49` por el refutador; hoy `ED8A0152…E72C` (una fila agregada en «Qué se construye», sin tocar escenarios). Cinco escenarios cambiaron de texto después del primer veredicto; ver «Lo que la verificación encontró» |
+| Spec verificada | `11CB50F4AE57FD28848CB492E87F2C0878839BD99745C4FF3D8879299C4F0A49` por el refutador; hoy `16724866…215C` (una fila agregada en «Qué se construye» y una enmienda sobre el cierre de la versión, sin tocar escenarios). Cinco escenarios cambiaron de texto después del primer veredicto; ver «Lo que la verificación encontró» |
 | Baseline | rama `main`, `3a2c48db3f083053641629b490a7ed0c67e8d87f`, tag `v0.35.0`, `VERSION` 0.35.0 |
 | Estado del árbol | worktree `C:\dev\hp-wcag`, rama `wcag22-obelisco`, 22 entradas sin commitear (13 modificadas, 9 sin seguimiento); el refutador no cambió ninguna |
-| Frontera | Sin tocar `C:\dev\Harness-Project`, donde la Task 6.2 espera con `0.36.0` reservada |
+| Frontera | Sin tocar `C:\dev\Harness-Project`, donde la Task 6.2 espera; su borrador marcado `0.36.0` se renumera a `0.37.0` porque esta versión tomó ese número |
 
 ## Método
 
@@ -129,7 +129,7 @@ Todo vive en `Pendientes/Fix-Harness/PENDIENTES-FH.md`, sección «What the WCAG
 - **FH, el testigo de paridad del check se reescribió a mano.** El caso de `dev-accesibilidad-html` en `paridad-checks.json` ya no es la paridad con PowerShell: se rompió a propósito y lo dice la nota del archivo.
 - **I, correr los evals de `wcag22` sobre el Harness integrado.** Los del HTML adjunto tienen n = 1 por eval y miden la skill adjunta, no esta integración.
 - **I, soporte de Vue, Svelte y Razor.** Hoy el check cubre HTML, plantillas y JSX/TSX, y lo demás se lista como no analizado.
-- **Sin commit ni versión.** `0.36.0` está reservada a la limpieza de la Task 6.1 (6.2, en pausa); este cambio se cierra con `close-a-version` cuando se decida su versión. Se esperan conflictos con la 6.2 en `tests/parallel-manifest.json` y en los dos `Pendientes/*`.
+- **La versión se cerró después de esta verificación**, como `0.36.0` y con `close-a-version` (decisión del usuario, 24-10-2026), y la limpieza de la Task 6.1 (6.2, en pausa) pasa a `0.37.0`. Se esperan conflictos con la 6.2 en `tests/parallel-manifest.json`, los dos `Pendientes/*`, `CHANGELOG.md`, `UPGRADE.md` y el índice de versiones.
 - **El corpus lo etiquetó el constructor.** Sus 74 casos miden que el check hace lo que el constructor entiende que debe hacer; no es una verdad externa.
 - **El «original» de E-33 es una copia.** El refutador comparó contra el `contrast_ratio.py` del scratchpad del constructor, no contra el archivo del usuario.
 
@@ -157,4 +157,6 @@ EX-E41 quedó oculto detrás del fallo de E-16 de 64 y apareció recién al arre
 
 Casos corridos de nuevo, aislados, tras las adaptaciones: `61_conocimiento_auto_refresco` 292/292, `72_motor_de_ejecucion` 546/546, `74_knowledge_api` 2.374/2.374, `64_modelo_de_dominio` 1.056/1.056, `65_contrato_de_ejecucion` 675/675, `63_harness_unico` 180/180, `71_plan_2_1` 276/276 y el instalador `63-harness-unico-instalador.ps1` 189/189.
 
-**Segunda corrida completa, sobre el árbol final** (24-10-2026, 111 minutos, mismas condiciones, salida 0): **50.880 de 50.880 pasaron** (PowerShell 1.014/1.014, Python 49.866/49.866), incluidos `78_wcag22_obelisco` y el instalador `78-wcag22-obelisco-instalador.ps1`. Sin fallos. Lo único del árbol que cambió después de esa corrida es el encabezado de este archivo (estado y fecha) y esta línea.
+**Segunda corrida completa, sobre el árbol final** (24-10-2026, 111 minutos, mismas condiciones, salida 0): **50.880 de 50.880 pasaron** (PowerShell 1.014/1.014, Python 49.866/49.866), incluidos `78_wcag22_obelisco` y el instalador `78-wcag22-obelisco-instalador.ps1`. Sin fallos. Después de esa corrida cambiaron el encabezado de este archivo y esta línea, y se cerró la versión (`VERSION`, nota, índice, `CHANGELOG`, `UPGRADE`, un ítem de `Pendientes`).
+
+**Corridas del cierre de versión** (commit `17a02b2`, 24-10-2026): la tercera dio 50.875 de 50.878, con tres filas rojas de `75_runner_paralelo` VP-E22 (c), un caso del runner paralelo que espera 30 s a que un PowerShell frío escriba `pesada.json` y falló con cuatro sesiones de `claude` abiertas; el mismo caso solo, con la máquina quieta, dio 838/838. La cuarta, completa, dio **50.880 de 50.880** (46 minutos, salida 0). El runner no lo toca este cambio; quedó anotado en `PENDIENTES-FH.md`. Los dos textos que cambiaron después (esta nota y la de la versión) no los lee ningún escenario.

@@ -3,6 +3,79 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.36.0] — 2026-10-24
+
+**`dev-accessibility` cuenta los criterios de WCAG 2.2 desde una sola fuente contrastada con el W3C, enlaza cada componente de Obelisco con lo que hay que verificar, y su check deja de inventar fallos; la entrega lleva un registro por criterio que nunca aprueba desde un análisis estático.**
+
+Hasta 0.35.0 la skill era un solo texto de 12.573 caracteres, con conteos que no coincidían entre sí (87 criterios, «A = 32»,
+«30 testable»; WCAG 2.2 tiene 86, A 31), y el check leía HTML con expresiones regulares: tomaba un `id` por una etiqueta,
+reportaba un `<label>` envolvente y un solo `<h1>` como fallos, y no leía JSX. Esta versión integra la skill externa `wcag22`
+con Obelisco V2: 86 criterios en un JSON, 34 componentes y patrones de Obelisco enlazados a sus requisitos, un motor que
+lee HTML, plantillas y JSX/TSX, y un registro de evidencia con cuatro resultados. **Ninguna prueba manual (navegador,
+teclado, lector de pantalla) se hizo**: el registro las deja `not_performed` y un análisis estático limpio no es conformidad.
+
+### Agregado
+
+- **Los criterios, una sola fuente** — `dev-accessibility/references/wcag22-criteria.json`: 86 criterios (A 31 · AA 24 ·
+  AAA 31), 4.1.1 como retirado y sin nivel, y las pruebas manuales que cada criterio requiere. Los tests lo contrastan
+  con el `wcag.json` del W3C (`tests/fixtures/wcag22-w3c.json`)
+- **La matriz de Obelisco** — `references/obelisco-matrix.json`: 34 componentes y patrones más `custom`, con los
+  criterios que la página de cada uno declara, los requisitos que WCAG agrega, su origen (`wcag`, `obelisco` o
+  `harness`) y cómo se verifica. Obelisco no publica accesibilidad para once componentes; ahí los requisitos son `wcag`
+  o `harness` y la matriz lo dice
+- **El objetivo** — WCAG 2.2 AA (55 criterios), propuesto por el harness. Los AAA que Obelisco nombra (2.4.13, 3.1.5,
+  2.2.5, 2.4.8, 1.4.6) son adicionales, solo se exigen si el proyecto los lista y nunca se presentan como AA
+- **El motor y la revisión completa** — `checks/lib/a11y.py` y `dev-accessibility/scripts/review.py`: lectura de HTML,
+  plantillas (Blade, Angular, Twig, Jinja, Handlebars, EJS) y JSX/TSX; hallazgos con criterio, nivel, tipo y origen;
+  cobertura, con lo que no pudo analizar (`<TextField />`, `{...props}`, extensiones fuera de alcance)
+- **El registro de evidencia `a11y-evidence/1`** — `wcag.py register template` y `validate`: aprobado, fallido, no
+  aplicable o no probado por criterio, con lugar, evidencia y corrección. Rechaza un `pass` sin las pruebas manuales
+  que el criterio requiere
+- **Las consultas** — `wcag.py` (`count`, `criterion`, `list`, `task`, `component`, `term`, `levels`) imprime solo lo
+  que se pide, y `levels` marca los pares «criterio / nivel» mal escritos (por ejemplo «1.3.4 Orientation (Level A)»,
+  que es AA)
+- **Cinco guías por tarea** — formularios, teclado y foco, color y contraste, estructura y semántica, contenido dinámico
+  y medios; y `docs/accesibilidad.md`, con un formulario de punta a punta
+- **Tests** — `78_wcag22_obelisco.py` (1.894 comprobaciones) y `78-wcag22-obelisco-instalador.ps1` (45), con un corpus de
+  74 casos: la suite completa da 50.880 de 50.880
+
+### Cambiado
+
+- **`dev-accessibility/SKILL.md`** pasa de 12.573 a 7.527 caracteres: es una entrada que manda a una guía o a un
+  comando. Medido igual antes y después, la entrada baja de 3.143 a 1.863 tokens (−40,7 %) y una unidad de frontend
+  completa sube 0,4 %: **no hay un ahorro total**, el peso pasó a guías que se leen por tarea
+- **`dev-ui`, `dev-responsive`, `dev-frontend-implementation` y `agents/dev-frontend.md`** — `dev-ui` exige una fila
+  `accessibilityLinks` por componente; `dev-responsive` trae zoom, reflujo, espaciado y tamaño de objetivo con sus
+  umbrales; el orden es `dev-ui` → `dev-accessibility` → `dev-responsive`, y `dev-frontend` entrega
+  `accessibilityEvidence`
+- **El check `dev-accesibilidad-html`** corre sobre el motor y emite solo fallos y defectos que el archivo decide solo,
+  con «(criterio X, nivel Y)». Es más lento por archivo (0,41 ms contra 0,23 ms en uno mínimo, 10 ms contra 0,8 ms con
+  300 controles)
+- **Seis guardas de Tasks cerradas se adaptaron** con «Pisado por» (`61`, `63-…-instalador`, `64`, `65`, `72`, `74`):
+  saltan solo lo que esta versión toca a propósito; ninguna se aflojó. Ver [UPGRADE.md](UPGRADE.md) para lo que se nota
+  en un proyecto
+
+### Corregido
+
+- **Un `id` ya no se toma por un nombre accesible**: un `<input id="x">` sin `<label for>` se reporta, y en un fragmento
+  sin `<html>` como defecto, porque la etiqueta puede estar en otro archivo
+- **Un control envuelto en una `<label>` ya no es un falso positivo**; una `<label>` envolvente sin texto sí se reporta
+- **Las referencias ARIA** (`aria-labelledby`) a un id que no existe o a un elemento sin texto se reportan
+- **Cero o dos `<h1>` ya no son un fallo de WCAG**: son una recomendación de la revisión completa, sin criterio ni nivel
+- **El contraste compone la transparencia**: `rgba(0,0,0,0.5)` sobre blanco da 3,95:1, no 21:1; un fondo translúcido
+  sin base no da un número
+- **Los scripts valen en Python 3.9**, el mínimo del harness: el `contrast_ratio.py` de la skill adjunta revienta ahí
+- **Los conteos y 4.1.1**: 86 criterios y 4.1.1 como `not_applicable`, no 87 ni «A = 32»
+
+### Lo que no se cumplió, sin maquillar
+
+- **Las pruebas manuales no se hicieron ni hay quien las ejecute**: navegador, teclado y lector de pantalla
+- **No se midió que la integración mejore lo que un modelo produce.** Los evals de la skill adjunta (tres, una corrida
+  cada uno) dieron 0,963 de aprobación con skill contra 0,967 sin ella, con +67,7 % de tokens y +170 s, y miden la
+  skill adjunta, no esta integración
+- **La matriz de Obelisco es una foto del 23-10-2026**, y los pares de contraste no se leen del código; está todo en
+  `PENDIENTES-FH.md`
+
 ## [0.35.0] — 2026-10-22
 
 **La fábrica tiene un runner paralelo que da lo mismo que `Invoke-Tests.ps1` en menos tiempo, y la regla escrita de que acelera y nunca cierra.**

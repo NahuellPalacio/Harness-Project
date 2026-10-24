@@ -2729,8 +2729,8 @@ with its own scenario and mutation, or strike the third outcome from F11. A chan
 
 ## What the WCAG 2.2 integration with Obelisco left open
 
-Written on 2026-10-23 from `docs/cambios/wcag22-obelisco/spec.md`. The change is built and tested on branch
-`wcag22-obelisco`; it is not released (0.36.0 is reserved for the cleanup of 6.1, and closing is its own ritual).
+Written on 2026-10-23 from `docs/cambios/wcag22-obelisco/spec.md`. The change was built and tested on branch
+`wcag22-obelisco` and closed as 0.36.0 on 2026-10-24; the cleanup of 6.1 (Task 6.2) moves to 0.37.0.
 
 ### The three manual passes of accessibility have no executor
 
@@ -2774,6 +2774,17 @@ generates that file from `.ps1` checks that no longer exist, so regenerating it 
 
 Fix. Retire the generator, or rewrite it over the Python checks, and drop the word «parity» from a case that no
 longer is one.
+
+### `75_runner_paralelo` VP-E22 (c) fails on a loaded machine, because it waits 30 seconds for a cold PowerShell
+
+Seen on 2026-10-24 in the third full gate of 0.36.0 (commit `17a02b2`): 50,875 of 50,878, three rows red, all of
+VP-E22 (c). The new runner never wrote its own `pesada.json` inside the 30 s of `esperar(..., 30, paso=0.05)`
+(`pesada.json` still carried pid 424242, the hand-written marker) and a temporary of that write was left beside the
+lock. Four `claude` sessions were open on the machine. The same suite alone on a quiet machine passed 838/838
+(314 s), and the whole gate passed 50,880/50,880 in the next run (2795 s). The runner was not touched by that
+change. It is the same family as D-T4 of 6.1, where the cold start of `powershell.exe` killed VP-E08 at 3 s.
+
+The remedy is not known: the wait is a clock, and what number is safe under load has not been measured.
 
 ## Verification that was not done
 
@@ -3269,9 +3280,6 @@ below that diverges today will diverge unnoticed.
   all (the early empty return).
 - **`dev.py`** — a file over 512 KB (silently discarded), and `es_ruta_generada` never returning
   `True`: no case runs a check against a path under `node_modules`, `vendor` or the like.
-- **`dev-accesibilidad-html`** — a missing `<h1>` (only the duplicated one is exercised), the
-  `.blade.php` and `.component.html` extensions, and a fragment with no `<html>`, which should
-  skip the lang and heading rules.
 - **`dev-api-rutas`** — `prefijoApi` coming from config (always `null` in the witness), a route
   that already carries its version (to prove it is *not* reported), the deduplication of a
   repeated route, and the documented false negative on camelCase verbs (`posts` vs
