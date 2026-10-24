@@ -792,6 +792,22 @@
       "maxSeconds": 299.1,
       "timeoutSeconds": 1200,
       "reason": "Lanza runners anidados y procesos reales (VD-15); 299,1 s en WU03-b (par 1b, paralelo N = 2)"
+    },
+    {
+      "suite": "78_wcag22_obelisco.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 25.0,
+      "timeoutSeconds": 1200,
+      "reason": "P; solo temporales propios y procesos de python sobre los scripts de la skill, sin tocar RAIZ ni el entorno; tres pruebas de costo con documentos de miles de elementos (E-52); 15,9 s medidos en wcag22-obelisco"
+    },
+    {
+      "suite": "78-wcag22-obelisco-instalador.ps1",
+      "class": "lane",
+      "lane": "instalador",
+      "maxSeconds": 35.0,
+      "timeoutSeconds": 1200,
+      "reason": "I; instala, actualiza y desinstala con el install.ps1 real sobre una copia aislada de la fabrica (Invoke-EnFabricaAislada), su carpeta por GetTempPath() sin mutar TEMP; WaitForExit(300000); Set-Grupo; 26,1 s medidos en wcag22-obelisco"
     }
   ]
 }

@@ -46,7 +46,7 @@ dev-responsive              ✅
 - coordinate frontend WorkUnits
 - implement UI behavior and client-side state
 - apply project/Obelisco-aligned UI patterns
-- ensure accessibility evidence is produced
+- deliver accessibility evidence: the `accessibilityLinks` of each component or pattern, a validated per-criterion register, and which manual tests (browser, keyboard, screen reader) were and were not run
 - ensure responsive behavior is handled
 - implement frontend validation as UX support
 - coordinate authentication UI with `dev-integration`
@@ -64,9 +64,11 @@ UI / Obelisco / GCBA visual patterns
 semantic HTML / keyboard / focus / labels / accessible interaction
 → dev-accessibility
 
-breakpoints / reflow / layout / mobile behavior
+breakpoints / reflow / zoom / layout / mobile behavior
 → dev-responsive
 ```
+
+A WorkUnit that creates or materially changes the interface runs `dev-ui`, then `dev-accessibility`, then `dev-responsive`, and delivers what they produce.
 
 ## Responsibility Boundaries
 
@@ -92,7 +94,11 @@ agentResult:
   status: COMPLETE | PARTIAL | BLOCKED | FAILED
   invokedSkills: []
   uiClassification: []
-  accessibilityEvidence: []
+  accessibilityEvidence:
+    register: <path of the a11y-evidence/1 file>
+    links: <accessibilityLinks delivered by dev-ui>
+    counts: { pass: 0, fail: 0, not_applicable: 0, not_tested: 0 }
+    tests: { browser: not_performed, keyboard: not_performed, screen_reader: not_performed }
   responsiveEvidence: []
   tests: []
   risks: []
@@ -113,6 +119,7 @@ Escalate when:
 ## Prohibited Behavior
 
 - claim custom UI is an official Obelisco component
+- claim accessibility conformance from a static analysis, or without the manual tests the register requires
 - use frontend-only validation as server-side enforcement
 - invent identity-provider behavior
 - bypass accessibility requirements

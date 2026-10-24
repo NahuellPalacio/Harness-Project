@@ -392,9 +392,21 @@ Detailed UI/design-system behavior belongs to `dev-ui`.
 
 Preserve accessibility behavior and do not regress existing accessibility support.
 
-When the WorkUnit introduces meaningful interaction, semantic structure, forms, navigation, or dynamic UI behavior, request the specialized accessibility skill when needed.
+A WorkUnit that creates or materially changes the interface runs the three skills **in this order**:
 
-Detailed accessibility implementation belongs to `dev-accessibility`.
+```text
+dev-ui              → which component or pattern, and its accessibilityLinks
+dev-accessibility   → what those links require, and the evidence per criterion
+dev-responsive      → zoom, reflow, spacing and target size
+```
+
+Deliver evidence, not a claim:
+
+- the `accessibilityLinks` of `dev-ui`, one per component or pattern used;
+- the accessibility register (`dev-accessibility/references/evidence-register.md`) validated with `wcag.py register validate`, with the three manual tests (browser, keyboard, screen reader) marked `performed` only if they were run, and `not_performed` otherwise;
+- the `wcag` entries of `dev-responsive`.
+
+A clean static analysis is not conformance, and the register says so. Detailed accessibility implementation belongs to `dev-accessibility`.
 
 ---
 
@@ -588,6 +600,12 @@ frontendResult:
   ui:
     strategy: OBELISCO_COMPOSITION
     customGcbaUi: false
+
+  accessibilityEvidence:
+    register: evidence.json     # a11y-evidence/1, validated
+    links: 2                    # accessibilityLinks delivered by dev-ui
+    counts: { pass: 0, fail: 0, not_applicable: 1, not_tested: 54 }
+    tests: { browser: not_performed, keyboard: not_performed, screen_reader: not_performed }
 
   evidence:
     - "Existing Obelisco form components reused through dev-ui guidance."
@@ -813,6 +831,7 @@ The implementation result should distinguish:
 - unresolved findings
 - tests executed
 - formal Checks still required
+- accessibility evidence per criterion, with the manual tests that were and were not run
 
 All meaningful implementation decisions must be traceable to either:
 

@@ -1511,9 +1511,20 @@ def test_e16_un_1_0_de_4c6f0f3_se_acepta_y_se_migra_al_escribirlo(t):
     clave_de = lambda u: (u["refutationUnitId"], u["workUnitId"], u["standard"]["ruleKey"])
     t.igual("E-16 los mismos ids, WorkUnits y reglas que 4c6f0f3",
             [clave_de(u) for u in c["base"]], [clave_de(u) for u in c["nuevo"]])
+    # Pisado por docs/cambios/wcag22-obelisco/spec.md (E-58 a E-60): la skill dev-accessibility cambia a
+    # proposito (se reescribio su entrada), y la huella de una skill es lo que invalida una unidad de
+    # refutacion cacheada: las unidades de esa skill cambian de skillFingerprint, y solo ellas. No es una
+    # excepcion de este escenario: las demas unidades siguen siendo la misma, campo por campo.
+    def _comparable(u):
+        return _sin(u, *(("declaredChecks", "skillFingerprint") if u["skillId"] == "dev-accessibility"
+                         else ("declaredChecks",)))
     t.igual("E-16 la misma unidad, salvo declaredChecks (E-31)",
-            [_sin(u, "declaredChecks") for u in c["base"]],
-            [_sin(u, "declaredChecks") for u in c["nuevo"]])
+            [_comparable(u) for u in c["base"]],
+            [_comparable(u) for u in c["nuevo"]])
+    de_accesibilidad = [(b, n) for b, n in zip(c["base"], c["nuevo"]) if n["skillId"] == "dev-accessibility"]
+    t.verdadero("E-16 las unidades de dev-accessibility existen y su huella cambio, porque la skill cambio",
+                len(de_accesibilidad) > 0
+                and all(b["skillFingerprint"] != n["skillFingerprint"] for b, n in de_accesibilidad))
 
     p = c["proyecto"]
     codigo, _, error = _cli_de(BIN, p, "plan", CLAVE, "--replanificar", p / "prop-2.json",

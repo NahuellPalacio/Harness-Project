@@ -1,0 +1,2343 @@
+{
+ "schema": "obelisco-matrix/1",
+ "design_system": {
+  "name": "Obelisco",
+  "version": "V2",
+  "site": "https://gcba.github.io/Obelisco-V2/",
+  "consulted": "2026-10-23",
+  "adoption_guide": "normativa/extractos/Obelisco.md"
+ },
+ "baseline": {
+  "wcag": "2.2",
+  "level": "AA",
+  "status": "proposed by the Harness; Obelisco states \"AA-AAA\" without saying which AAA"
+ },
+ "origins": {
+  "wcag": "Normative text of WCAG 2.2 (W3C Recommendation).",
+  "obelisco": "What the published Obelisco V2 page for that component says; quotes are verbatim and in Spanish.",
+  "harness": "A rule of the Harness or of the project, or a gap Obelisco does not document."
+ },
+ "aaa_additional": [
+  {
+   "sc": "2.4.13",
+   "asked_by": "obelisco",
+   "source": "normativa/extractos/Obelisco.md, checklist de accesibilidad, bloque 4 (el indicador de foco con un mínimo de 3:1)",
+   "note": "A 3:1 focus indicator is already required at AA by 1.4.11 when the author styles it; 2.4.13 adds a minimum size and a change-of-contrast rule."
+  },
+  {
+   "sc": "3.1.5",
+   "asked_by": "obelisco",
+   "source": "normativa/extractos/Obelisco.md, checklist de accesibilidad, bloque 3 (legibilidad del contenido)",
+   "note": "Reading level is a content judgement, not a markup property."
+  },
+  {
+   "sc": "2.2.5",
+   "asked_by": "obelisco",
+   "source": "https://gcba.github.io/Obelisco-V2/patterns (Construir un formulario)",
+   "note": "Re-authenticating without data loss."
+  },
+  {
+   "sc": "2.4.8",
+   "asked_by": "obelisco",
+   "source": "https://gcba.github.io/Obelisco-V2/components/breadcrumb",
+   "note": "Location."
+  },
+  {
+   "sc": "1.4.6",
+   "asked_by": "obelisco",
+   "source": "https://gcba.github.io/Obelisco-V2/components/colors",
+   "note": "The page cites it without stating a level."
+  }
+ ],
+ "discrepancies": [
+  "Obelisco's checklist asks for WCAG 2.2 \"AA-AAA\" and defines no AAA set: the Harness reads it as AA plus the AAA criteria Obelisco names (`aaa_additional`).",
+  "Obelisco's component pages link most criteria to WCAG 2.1 Understanding pages; the criteria and levels they state are the same in 2.2.",
+  "The adoption guide checklist cites 1.4.2 Audio Control for \"media that autoplay can be paused or stopped\"; pausing moving content is 2.2.2 Pause, Stop, Hide (Level A).",
+  "Obelisco's pages for several components (validation, tabs, tooltip, collapsible, carousel, switch, horizontal and vertical navigation, steps) publish an Accessibility tab without content at the consultation date."
+ ],
+ "components": [
+  {
+   "id": "form-text",
+   "name": "Campo de texto",
+   "kind": "form-field",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/form-text",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.6",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "3.3.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "4.1.2",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1",
+      "3.3.2"
+     ],
+     "text": "Every text field has a label that identifies and describes its purpose.",
+     "quote_es": "Cada campo de texto debe tener una etiqueta para identificar y describir su propósito."
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "3.3.2"
+     ],
+     "text": "The placeholder does not replace the label and carries no crucial information.",
+     "quote_es": "no debe sustituir a la etiqueta (label) ni contener información crucial"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "Do not use a prefix or suffix as the only indicator of the expected data: screen readers do not read them.",
+     "quote_es": "Recomendamos no utilizar únicamente prefijos o sufijos, ya que los lectores de pantalla no los leerán."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.3.5"
+     ],
+     "text": "Fields that collect data about the user carry the matching `autocomplete` token."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "3.3.8",
+      "4.1.2"
+     ],
+     "text": "A password field allows paste and password managers; the show-password icon button has an accessible name."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.3",
+      "3.3.2"
+     ],
+     "text": "A visible label whose text is contained in the accessible name."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.1"
+     ],
+     "text": "State and errors are not conveyed by colour alone."
+    }
+   ],
+   "verification": {
+    "static": [
+     "control-no-accessible-name",
+     "control-label-missing-in-file",
+     "label-for-broken",
+     "aria-reference-broken",
+     "aria-reference-no-text",
+     "control-placeholder-only"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "form-select",
+   "name": "Campo de selección",
+   "kind": "form-field",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/form-select",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.6",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "3.3.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "4.1.2",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1",
+      "3.3.2",
+      "4.1.2"
+     ],
+     "text": "Associate the `<label>` with the `<select>` through matching `for` and `id`.",
+     "quote_es": "Utilizá el atributo for para asociar una etiqueta"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "3.2.2"
+     ],
+     "text": "Choosing an option does not change the context unannounced."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.3",
+      "3.3.2"
+     ],
+     "text": "A visible label whose text is contained in the accessible name."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.1"
+     ],
+     "text": "State and errors are not conveyed by colour alone."
+    }
+   ],
+   "verification": {
+    "static": [
+     "control-no-accessible-name",
+     "control-label-missing-in-file",
+     "label-for-broken",
+     "aria-reference-broken",
+     "aria-reference-no-text",
+     "control-placeholder-only"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "form-check",
+   "name": "Casilla de verificación",
+   "kind": "form-field",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/form-check",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.6",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "4.1.2",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1",
+      "4.1.2"
+     ],
+     "text": "A checkbox always comes with a clear label tied to the option it represents.",
+     "quote_es": "siempre debe ir acompañado de una etiqueta"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "4.1.2"
+     ],
+     "text": "A temporarily disabled control uses `disabled`, is kept out of the focus order and its state reaches assistive technology.",
+     "quote_es": "debe evitarse que el foco del teclado llegue al componente, y debe comunicarse su estado a tecnologías de asistencia"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "A group of related checkboxes is a `fieldset` with a `legend`."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.3",
+      "3.3.2"
+     ],
+     "text": "A visible label whose text is contained in the accessible name."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.1"
+     ],
+     "text": "State and errors are not conveyed by colour alone."
+    }
+   ],
+   "verification": {
+    "static": [
+     "control-no-accessible-name",
+     "control-label-missing-in-file",
+     "label-for-broken",
+     "aria-reference-broken",
+     "aria-reference-no-text",
+     "control-placeholder-only"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "form-radio",
+   "name": "Botón de radio",
+   "kind": "form-field",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/form-radio",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.6",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "4.1.2",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1",
+      "4.1.2"
+     ],
+     "text": "A radio button always comes with a clear label tied to the option it represents.",
+     "quote_es": "siempre debe ir acompañado de una etiqueta"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.3.1",
+      "4.1.2"
+     ],
+     "text": "A radio group is a `fieldset` with a `legend` (or `role=radiogroup` with a name)."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.3",
+      "3.3.2"
+     ],
+     "text": "A visible label whose text is contained in the accessible name."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.1"
+     ],
+     "text": "State and errors are not conveyed by colour alone."
+    }
+   ],
+   "verification": {
+    "static": [
+     "control-no-accessible-name",
+     "control-label-missing-in-file",
+     "label-for-broken",
+     "aria-reference-broken",
+     "aria-reference-no-text",
+     "control-placeholder-only"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "form-search",
+   "name": "Campo de búsqueda",
+   "kind": "form-field",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/form-search",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.5",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "The search field always has a clear `<label>`: it is what tells a screen-reader user what it is for.",
+     "quote_es": "El buscador siempre debe tener una etiqueta"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.4.5"
+     ],
+     "text": "A search is one of at least two ways to find a page, except inside a process."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.3",
+      "3.3.2"
+     ],
+     "text": "A visible label whose text is contained in the accessible name."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.1"
+     ],
+     "text": "State and errors are not conveyed by colour alone."
+    }
+   ],
+   "verification": {
+    "static": [
+     "control-no-accessible-name",
+     "control-label-missing-in-file",
+     "label-for-broken",
+     "aria-reference-broken",
+     "aria-reference-no-text",
+     "control-placeholder-only"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "form-file",
+   "name": "Carga de archivo",
+   "kind": "form-field",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/form-file",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.6",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "3.2.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "3.3.3",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "A file upload always comes with a clear label tied to the action.",
+     "quote_es": "siempre debe ir acompañado de una etiqueta"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "3.3.3"
+     ],
+     "text": "Error messages say which formats are valid instead of a vague \"select a valid format\".",
+     "quote_es": "No uses mensajes poco claros, como"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.3",
+      "3.3.2"
+     ],
+     "text": "A visible label whose text is contained in the accessible name."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.1"
+     ],
+     "text": "State and errors are not conveyed by colour alone."
+    }
+   ],
+   "verification": {
+    "static": [
+     "control-no-accessible-name",
+     "control-label-missing-in-file",
+     "label-for-broken",
+     "aria-reference-broken",
+     "aria-reference-no-text",
+     "control-placeholder-only"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "form-validation",
+   "name": "Validación",
+   "kind": "form-field",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/form-validation",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": false,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "3.3.1",
+      "4.1.2",
+      "4.1.3"
+     ],
+     "text": "An error is identified in text, tied to its field with `aria-describedby` and `aria-invalid`, and announced without moving focus away from where the user is."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "3.3.3"
+     ],
+     "text": "The message suggests the correction when it is known."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.1"
+     ],
+     "text": "An error is not conveyed by colour alone."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Obelisco publishes no accessibility section for validation: these requirements come from WCAG, not from the design system."
+    }
+   ],
+   "verification": {
+    "static": [
+     "control-no-accessible-name",
+     "control-label-missing-in-file",
+     "label-for-broken",
+     "aria-reference-broken",
+     "aria-reference-no-text"
+    ],
+    "manual": [
+     "browser",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "button",
+   "name": "Botones",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/button",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.5.8",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.1.1",
+      "4.1.2"
+     ],
+     "text": "An icon-only button carries a semantic label (`aria-label`) with the text of the action.",
+     "quote_es": "se debe colocar una etiqueta semántica (aria-label) en el código con el texto descriptivo de la acción"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.4.6"
+     ],
+     "text": "The label starts with a verb that reflects the action.",
+     "quote_es": "La etiqueta del botón siempre debe comenzar con un verbo que refleje la acción consecuente"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.3"
+     ],
+     "text": "The accessible name contains the visible label text."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.1.1",
+      "4.1.2"
+     ],
+     "text": "A button is a native `<button>`; a clickable `<div>` or `<span>` needs role, tabindex and key handlers."
+    }
+   ],
+   "verification": {
+    "static": [
+     "button-no-accessible-name"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "link",
+   "name": "Enlace",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/link",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.4",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "3.2.4",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.4.4"
+     ],
+     "text": "A link has an `aria-label` that explains the kind of link and where it goes.",
+     "quote_es": "los enlaces deben tener el atributo aria-label con una descripción explicativa"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.3"
+     ],
+     "text": "When `aria-label` is used, it contains the visible link text."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.1"
+     ],
+     "text": "A link inside a block of text is distinguishable by more than colour."
+    }
+   ],
+   "verification": {
+    "static": [
+     "link-no-accessible-name",
+     "link-generic-text"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "modal",
+   "name": "Modal",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/modal",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.1.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.4.3"
+     ],
+     "text": "On open, focus goes to the first element that accepts input, or to the primary button when the modal has no fields.",
+     "quote_es": "el foco inicial debe estar en la primera ubicación que acepte la entrada de información de una persona usuaria"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.1.2",
+      "2.4.3"
+     ],
+     "text": "Focus stays inside the modal while it is open and the background is neither navigable nor interactive.",
+     "quote_es": "Mientras el modal esté visible, el contenido de fondo no debe ser navegable ni interactivo."
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.4.3"
+     ],
+     "text": "Closing returns focus to the element that opened the modal.",
+     "quote_es": "Cuando se cierra el modal, el foco debe volver al elemento que activó el modal."
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "4.1.2"
+     ],
+     "text": "The container is a dialog, titled through `aria-labelledby`.",
+     "quote_es": "Vincular el título del modal con el contenedor del diálogo con aria-labelledby"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.1.2"
+     ],
+     "text": "Escape closes it, so there is always a keyboard exit."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.4.11"
+     ],
+     "text": "Focus is never entirely hidden by other fixed content."
+    }
+   ],
+   "verification": {
+    "static": [
+     "aria-reference-broken",
+     "aria-reference-no-text"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "table",
+   "name": "Tablas",
+   "kind": "organism",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/table",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.3.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.12",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.1.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.2.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.5.3",
+     "declared_level": "A"
+    },
+    {
+     "sc": "4.1.3",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "Header cells use `scope` to tie the heading to its data cells.",
+     "quote_es": "Los encabezados deben incluir el atributo scope"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "4.1.2",
+      "2.5.3"
+     ],
+     "text": "Interactive cells use native elements and their labels say which row they act on.",
+     "quote_es": "estos deben implementarse con etiquetas semánticas nativas"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "A data table is never replaced by layout markup, and a layout table is not marked up as data."
+    }
+   ],
+   "verification": {
+    "static": [
+     "table-without-headers",
+     "button-no-accessible-name"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "tabs",
+   "name": "Pestañas",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/tabs",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": false,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "4.1.2",
+      "1.3.1"
+     ],
+     "text": "Tabs expose `tablist`, `tab` and `tabpanel`, the selected state and the relation between tab and panel."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.1.1",
+      "2.4.3"
+     ],
+     "text": "Arrow keys move between tabs; the panel is reachable from the selected tab by Tab."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Obelisco publishes no accessibility section for tabs; the keyboard model is a custom decision to design and test."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "alert",
+   "name": "Alertas",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/alert",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "4.1.3"
+     ],
+     "text": "`role=alert` makes the screen reader announce the alert without moving focus.",
+     "quote_es": "informa al lector de pantalla que el contenido es importante y requiere atención inmediata"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "Title and description are associated with `aria-labelledby` and `aria-describedby`.",
+     "quote_es": "Se recomienda usar aria-labelledby y aria-describedby para garantizar una lectura secuencial."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "4.1.3"
+     ],
+     "text": "Reserve `role=alert` for what needs immediate attention; use `role=status` for the rest."
+    }
+   ],
+   "verification": {
+    "static": [
+     "aria-reference-broken",
+     "aria-reference-no-text"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "status-message",
+   "name": "Mensaje de estado",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/status-message",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.1.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.3",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.4",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "4.1.3"
+     ],
+     "text": "A status message is exposed through `role=status`, `role=alert` or `aria-live` so it is announced without receiving focus; the region exists before the update."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "The page lists no `role` or live region for this component: the requirement above is not Obelisco guidance."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "tooltip",
+   "name": "Tooltip",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/tooltip",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": false,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.13"
+     ],
+     "text": "Content that appears on hover or focus is dismissible with Escape, hoverable and persistent."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.1.1",
+      "4.1.2"
+     ],
+     "text": "It appears on keyboard focus as well as on hover, and is tied to its trigger with `aria-describedby`."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Obelisco publishes no accessibility section for the tooltip."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "pagination",
+   "name": "Paginado",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/pagination",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.3.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.12",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.1.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.2.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.5.3",
+     "declared_level": "A"
+    },
+    {
+     "sc": "4.1.3",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1",
+      "4.1.2"
+     ],
+     "text": "The pager is a `<nav>` with an `aria-label` that says it is pagination, holding a list.",
+     "quote_es": "La etiqueta que engloba al paginado debe ser un"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "4.1.2"
+     ],
+     "text": "The current page carries `aria-current=\"page\"`.",
+     "quote_es": "deberá tener activado el atributo aria-current"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.5.3"
+     ],
+     "text": "Each page link has an `aria-label` that names the page.",
+     "quote_es": "debe estar acompañada de aria-label indicando la página a la que se redirigía"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.8"
+     ],
+     "text": "The page links are at least 24 by 24 CSS px, or spaced so 24 px circles do not overlap."
+    }
+   ],
+   "verification": {
+    "static": [
+     "link-no-accessible-name"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "breadcrumb",
+   "name": "Migas de pan",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/breadcrumb",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.3",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "3.2.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.8",
+     "declared_level": "AAA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "A `<nav>` identified as secondary navigation through `aria-label`.",
+     "quote_es": "están identificadas como una navegación secundaria a través del atributo aria-label"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.4.8"
+     ],
+     "text": "Obelisco cites 2.4.8 Location, which is Level AAA: it is an additional requirement, not part of the AA baseline."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "4.1.2"
+     ],
+     "text": "The current page is marked `aria-current=\"page\"`."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "collapse",
+   "name": "Colapsables",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/collapse",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": false,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "4.1.2"
+     ],
+     "text": "The trigger is a native `<button>` with `aria-expanded` and `aria-controls` pointing at its panel."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.1.1",
+      "2.4.7"
+     ],
+     "text": "It opens and closes with Enter and Space and the focus stays visible."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Obelisco publishes no accessibility section for collapsibles."
+    }
+   ],
+   "verification": {
+    "static": [
+     "aria-reference-broken"
+    ],
+    "manual": [
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "nav-horizontal",
+   "name": "Navegación horizontal",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/nav-horizontal",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": false,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.3.1",
+      "4.1.2"
+     ],
+     "text": "A `<nav>` with an `aria-label` when there is more than one; the current item is marked `aria-current`."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.4.1",
+      "3.2.3"
+     ],
+     "text": "A skip link reaches the main content and the order of repeated navigation is the same on every page."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Obelisco publishes no accessibility section for this component."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "nav-vertical",
+   "name": "Navegación vertical",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/nav-vertical",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": false,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.3.1",
+      "4.1.2"
+     ],
+     "text": "A `<nav>` with an `aria-label` when there is more than one; the current item is marked `aria-current`."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.1.1",
+      "2.4.7"
+     ],
+     "text": "Nested levels are reachable and operable by keyboard and focus stays visible."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Obelisco publishes no accessibility section for this component."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "header",
+   "name": "Encabezado (header)",
+   "kind": "organism",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/header",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.4.1"
+     ],
+     "text": "A skip link lets the user jump over the header and land on the body.",
+     "quote_es": "la persona usuaria puede saltar el encabezado (header) y continuar directamente en el cuerpo de la página"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.1.1",
+      "2.4.4"
+     ],
+     "text": "The logo is a link to home and its `alt` includes the word \"Inicio\".",
+     "quote_es": "dentro del atributo alt es necesario incluir la palabra"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.4.11"
+     ],
+     "text": "A sticky header must not entirely hide a focused element: reserve `scroll-padding-top`."
+    }
+   ],
+   "verification": {
+    "static": [
+     "img-missing-alt",
+     "link-no-accessible-name"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "footer",
+   "name": "Pie de página (footer)",
+   "kind": "organism",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/footer",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.10",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.4",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.1.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "Hidden headings (`sr-only`) let a screen-reader user move through the blocks of the footer.",
+     "quote_es": "Se crearon encabezados ocultos con la clase sr-only para facilitar la navegación de los distintos bloques del pie de página."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.10",
+      "1.4.4"
+     ],
+     "text": "Text still reflows at 320 CSS px and resizes to 200%."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "steps-form",
+   "name": "Pasos de un formulario",
+   "kind": "organism",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/steps-form",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": false,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "3.3.7"
+     ],
+     "text": "Information already entered in the process is prefilled or selectable, not asked again."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "3.3.4"
+     ],
+     "text": "A review-and-confirm step precedes a legal, financial or data-changing submission."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.3.1",
+      "4.1.2"
+     ],
+     "text": "The current step is exposed (`aria-current=\"step\"` or text) and the steps are an ordered list."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Obelisco publishes no accessibility section for the steps component."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "grid",
+   "name": "Grilla",
+   "kind": "style",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/grid",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.4.10",
+     "declared_level": null
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.4.10"
+     ],
+     "text": "Responsive grids respond to the window size without losing content or functionality (Reflow).",
+     "quote_es": "es requisito que las grillas responsivas respondan al tamaño de la ventana del navegador"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.10",
+      "1.4.12",
+      "1.3.4"
+     ],
+     "text": "Reflow holds at 320 CSS px wide and 256 CSS px tall, and text spacing and orientation are not blocked."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Responsive behaviour is owned by `dev-responsive`; this row only links it to its criteria."
+    }
+   ],
+   "verification": {
+    "static": [
+     "viewport-blocks-zoom"
+    ],
+    "manual": [
+     "browser"
+    ]
+   }
+  },
+  {
+   "id": "dropdown-nav",
+   "name": "Desplegable de navegación",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/dropdown-nav",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.4",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.1.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "4.1.2",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "4.1.2"
+     ],
+     "text": "The button that opens the menu announces it (`aria-haspopup`) and its state (`aria-expanded` false/true).",
+     "quote_es": "Recomendamos utilizar aria expanded con valor"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.1.1",
+      "2.1.2"
+     ],
+     "text": "Arrow keys move between items, Escape closes and returns focus to the button."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "dropdown-sel",
+   "name": "Desplegable de selección",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/dropdown-sel",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.4",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.1.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "4.1.2",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "4.1.2"
+     ],
+     "text": "The button that opens the dropdown exposes a dynamic `aria-label` with the selection count.",
+     "quote_es": "El botón que abre el desplegable debe exponer un aria-label dinámico."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.3"
+     ],
+     "text": "The accessible name contains the visible label."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "cards",
+   "name": "Tarjetas",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/cards",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.4.3",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.1.2",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "A group of cards without a preceding `<h2>` gets one hidden with `sr-only`.",
+     "quote_es": "no contenga un título con Etiqueta"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.1.1"
+     ],
+     "text": "An informative image or icon has an `alt`; a decorative one has an empty `alt`.",
+     "quote_es": "En caso de que la imagen o el ícono sea decorativo, el atributo alt debe estar vacío."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.8"
+     ],
+     "text": "An interactive card has one clear target of at least 24 by 24 CSS px."
+    }
+   ],
+   "verification": {
+    "static": [
+     "img-missing-alt"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "access",
+   "name": "Accesos",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/access",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "2.1.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.4.7",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.4.4",
+      "4.1.2"
+     ],
+     "text": "Each access is a link or button with a name that says where it goes."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "The accessibility tab of this page repeats the text of the alert component (`role=alert`): check it against the real component before relying on it."
+    }
+   ],
+   "verification": {
+    "static": [
+     "link-no-accessible-name",
+     "button-no-accessible-name"
+    ],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "progress-bar",
+   "name": "Barra de progreso",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/progress-bar",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1"
+     ],
+     "text": "Progress is communicated in text, not only visually.",
+     "quote_es": "Asegurar que el estado del progreso sea comunicado en texto, no solo de forma visual."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "4.1.2",
+      "4.1.3"
+     ],
+     "text": "A dynamic progress bar uses `role=progressbar` with value attributes, and its updates are announced."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "spinner",
+   "name": "Spinner",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/spinner",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.4.11",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.3",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "1.4.4",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "3.2.4",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "4.1.2",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.1.1"
+     ],
+     "text": "The spinner is not reachable or operable by keyboard.",
+     "quote_es": "el spinner no debe ser recorrido ni operado por teclado"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "4.1.3"
+     ],
+     "text": "Loading is announced through a status region with visually hidden text."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   },
+   "notes": [
+    "Obelisco asks for `role=status` together with `aria-live=assertive`. `role=status` implies `polite` and an explicit `aria-live` overrides it: the interruption is Obelisco's decision, not a WCAG requirement."
+   ]
+  },
+  {
+   "id": "switch",
+   "name": "Switch",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/switch",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": false,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "4.1.2",
+      "1.4.1"
+     ],
+     "text": "A switch is a native checkbox or exposes `role=switch` with `aria-checked`, a visible label and a state that does not depend on colour alone."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.5.8"
+     ],
+     "text": "The target is at least 24 by 24 CSS px or spaced."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Obelisco publishes no accessibility section for the switch."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "carousel",
+   "name": "Carrusel",
+   "kind": "component",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/carousel",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": false,
+   "declared": [],
+   "requirements": [
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.2.2"
+     ],
+     "text": "Automatic rotation can be paused, stopped or hidden."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.1.1",
+      "4.1.2",
+      "2.5.1"
+     ],
+     "text": "Previous, next and indicator controls are operable by keyboard and have names; a swipe has a single-pointer alternative."
+    },
+    {
+     "origin": "harness",
+     "sc": [],
+     "text": "Obelisco publishes no accessibility section for the carousel."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   }
+  },
+  {
+   "id": "colors",
+   "name": "Colores",
+   "kind": "style",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/components/colors",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.4.1",
+     "declared_level": null
+    },
+    {
+     "sc": "1.4.11",
+     "declared_level": null
+    },
+    {
+     "sc": "1.4.6",
+     "declared_level": null
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.4.1"
+     ],
+     "text": "Colour is not the only means to convey information, indicate an action, prompt a response or distinguish a visual element.",
+     "quote_es": "El color no debe usarse como el único medio para transmitir información, indicar una acción, generar una respuesta o distinguir un elemento visual."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "1.4.3",
+      "1.4.11"
+     ],
+     "text": "Text is at least 4.5:1 (3:1 large) and UI boundaries and states at least 3:1, including an author-styled focus indicator."
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.4.6"
+     ],
+     "text": "Obelisco cites 1.4.6 Contrast (Enhanced), Level AAA: an additional requirement, not part of the AA baseline."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser"
+    ]
+   }
+  },
+  {
+   "id": "form-pattern",
+   "name": "Patrón: construir un formulario",
+   "kind": "pattern",
+   "obelisco_page": "https://gcba.github.io/Obelisco-V2/patterns",
+   "obelisco_consulted": "2026-10-23",
+   "obelisco_accessibility_documented": true,
+   "declared": [
+    {
+     "sc": "1.3.1",
+     "declared_level": "A"
+    },
+    {
+     "sc": "2.2.5",
+     "declared_level": "AAA"
+    },
+    {
+     "sc": "2.4.6",
+     "declared_level": "AA"
+    },
+    {
+     "sc": "3.2.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "4.1.2",
+     "declared_level": "A"
+    },
+    {
+     "sc": "3.3.2",
+     "declared_level": "A"
+    }
+   ],
+   "requirements": [
+    {
+     "origin": "obelisco",
+     "sc": [
+      "1.3.1",
+      "3.3.2"
+     ],
+     "text": "Form fields always have a visible `Label` that a screen reader can read.",
+     "quote_es": "Los campos de formulario siempre deben contar con un Label identificador visible y legible por los lectores de pantalla."
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "2.2.5"
+     ],
+     "text": "If the session expires, the user can re-authenticate and continue without losing data. This is 2.2.5, Level AAA: an additional requirement.",
+     "quote_es": "Si la sesión expira, la persona usuaria debe poder reautenticarse y continuar desde donde estaba, sin pérdida de datos."
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "3.3.4"
+     ],
+     "text": "Users can review their data before sending, especially in multi-page forms with legal information or irreversible transactions.",
+     "quote_es": "Las personas deben poder revisar sus datos antes de enviar el formulario"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "3.2.2"
+     ],
+     "text": "Fields do not change the context automatically (navigate away, submit) without the user confirming.",
+     "quote_es": "Evitar que los campos de formulario cambien automáticamente el contexto"
+    },
+    {
+     "origin": "obelisco",
+     "sc": [
+      "3.3.2"
+     ],
+     "text": "Instructions go before the form so that anyone, screen-reader users included, finds them from the start.",
+     "quote_es": "Estas instrucciones deben ir antes del formulario"
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "2.2.1"
+     ],
+     "text": "A content-imposed time limit, a session timeout included, can be turned off, adjusted or extended, unless an exception applies."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "3.3.1",
+      "3.3.3",
+      "3.3.7"
+     ],
+     "text": "Errors are identified in text with a suggestion; data entered earlier in the process is not asked again."
+    },
+    {
+     "origin": "wcag",
+     "sc": [
+      "3.3.8"
+     ],
+     "text": "A login does not require a cognitive function test without an alternative."
+    }
+   ],
+   "verification": {
+    "static": [],
+    "manual": [
+     "browser",
+     "keyboard",
+     "screen_reader"
+    ]
+   },
+   "notes": [
+    "The page names \"Labels or Instructions\" without its number: it is 3.3.2.",
+    "The page cites technique G98 (review and confirm before submitting)."
+   ]
+  }
+ ],
+ "custom": {
+  "id": "custom",
+  "name": "UI sin componente de Obelisco (CUSTOM_GCBA_UI)",
+  "kind": "custom",
+  "obelisco_page": null,
+  "declared": [],
+  "requirements": [
+   {
+    "origin": "harness",
+    "sc": [
+     "4.1.2",
+     "1.3.1"
+    ],
+    "text": "Role or native element, accessible name and states are designed explicitly, not inherited from a look-alike."
+   },
+   {
+    "origin": "harness",
+    "sc": [
+     "2.1.1",
+     "2.1.2",
+     "2.4.3"
+    ],
+    "text": "A keyboard model is written down: keys, order, how to leave the component."
+   },
+   {
+    "origin": "harness",
+    "sc": [
+     "2.4.7",
+     "1.4.11",
+     "2.4.11"
+    ],
+    "text": "A focus model is written down: where focus goes on open, close and error, and a visible indicator of at least 3:1."
+   },
+   {
+    "origin": "harness",
+    "sc": [
+     "4.1.3"
+    ],
+    "text": "Dynamic updates are announced without moving focus."
+   },
+   {
+    "origin": "harness",
+    "sc": [
+     "1.4.3",
+     "1.4.11",
+     "2.5.8",
+     "1.4.10"
+    ],
+    "text": "Text and UI contrast, target size and reflow are measured in a browser, not assumed."
+   }
+  ],
+  "verification": {
+   "static": [
+    "control-no-accessible-name",
+    "button-no-accessible-name",
+    "clickable-not-keyboard",
+    "aria-hidden-focusable",
+    "tabindex-positive"
+   ],
+   "manual": [
+    "browser",
+    "keyboard",
+    "screen_reader"
+   ]
+  }
+ }
+}

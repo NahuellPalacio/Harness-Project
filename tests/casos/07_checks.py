@@ -26,7 +26,12 @@ def _evento_real(payload_generico, proyecto, ruta_archivo):
 
 
 def test_paridad_de_hallazgos(t):
-    """E-16 — mismos hallazgos, texto incluido, que la version PowerShell."""
+    """E-16 — mismos hallazgos, texto incluido, que la version PowerShell.
+
+    Con una excepcion a proposito: dev-accesibilidad-html. Su caso del testigo se reescribio en
+    wcag22-obelisco (E-57) porque el check cambio de contrato —ya no avisa dos <h1>, que WCAG 2.2 no
+    exige, y cada aviso cita su criterio y su nivel—; el campo "nota" del caso lo dice. Los otros
+    cuatro siguen siendo la paridad que este test siempre afirmo."""
     testigo = json.loads((RAIZ / "tests/fixtures/paridad-checks.json").read_text("utf-8"))
 
     for caso in testigo["casos"]:

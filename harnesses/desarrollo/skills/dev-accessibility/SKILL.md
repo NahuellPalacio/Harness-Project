@@ -1,586 +1,105 @@
 ---
 name: dev-accessibility
-description: Use when frontend work has to stay accessible on a GCBA / DGISIS application — accessible structure and semantics, keyboard operability, focus behaviour, labels, status communication, colour and contrast intent, and the reflow the WorkUnit needs — on documented Obelisco components and on custom UI alike. It reviews and implements; it never self-certifies legal compliance, which stays with the configured checks and the review process. Owned by dev-frontend.
+description: Use when frontend work has to stay accessible on a GCBA / DGISIS application — WCAG 2.2 AA criteria (and the AAA ones Obelisco names), accessible names and semantics, keyboard and focus, forms, status messages, contrast — on documented Obelisco components and on custom UI alike. It reviews, implements and records evidence per criterion; it never self-certifies conformance. Owned by dev-frontend.
 ---
 
 # Skill: dev-accessibility
 
-## Purpose
+Implements and reviews accessibility for GCBA frontend work, on documented Obelisco components and on custom UI. Owned by `dev-frontend`. Related: `dev-ui` (which component), `dev-responsive` (zoom, reflow, target size), `dev-frontend-implementation`, `dev-quality-validation`, `dev-security-analysis` when authentication or session behaviour is involved.
 
-Implement and review frontend accessibility behavior for GCBA applications across both documented Obelisco components and custom UI.
+It never self-certifies conformance. A clean static analysis is not conformance.
 
-This skill belongs to the `dev-frontend` agent.
+## Three sources, never mixed
 
-It is not limited to Obelisco components.
+| Source | What it is | Tag |
+|---|---|---|
+| WCAG 2.2 | The normative requirement (W3C Recommendation) | `wcag` |
+| Obelisco V2 | What the design system publishes for that component | `obelisco` |
+| Harness / project | A rule of the Harness or of the project, or a gap Obelisco does not document | `harness` |
 
-Its responsibility is to ensure that frontend implementation preserves accessible structure, keyboard operability, focus behavior, labels, semantics, status communication, color/contrast intent, and responsive reflow requirements applicable to the WorkUnit.
+Say which one a requirement comes from. Detail: `references/scope-and-sources.md`.
 
-This skill does not self-certify legal or formal accessibility compliance.
+## Target
 
-Formal acceptance remains the responsibility of configured Checks and review processes.
+- Base: **WCAG 2.2 AA** = A + AA. It is a proposal of the Harness, not a rule a document fixed.
+- Additional: the AAA criteria Obelisco names (2.4.13, 3.1.5, 2.2.5, 2.4.8, 1.4.6) are extra, tracked only when the project's target lists them. Never present one as AA.
+- 4.1.1 Parsing was removed in WCAG 2.2: record it as not applicable. Markup defects with user impact go under 1.3.1 or 4.1.2.
+- Counts and levels come from `scripts/wcag.py` (`count`, `list`, `criterion`), never from memory. A wrong level is the commonest factual error: 1.3.4 Orientation is AA, 2.4.13 Focus Appearance is AAA.
 
----
+## Workflow — deterministic first, the model last
 
-## Owner
+1. **Link the change to its requirements.** For each component or pattern the change uses, run `python scripts/wcag.py component <id>` (or `custom`). It prints the criteria Obelisco declares, the extra requirements with their origin, and how each is verified. The `dev-ui` result carries them as `accessibilityLinks`.
+2. **The light check runs by itself** after every write of HTML, a template or JSX/TSX (`dev-accesibilidad-html`). It reports only failures and defects the file decides alone. Silence means nothing more than that.
+3. **Full review when the scope asks for it** — a new or changed page, form, dialog, navigation or custom component:
+   `python scripts/review.py <paths> --register evidence.json --components <ids>`
+   It adds heuristics, recommendations and what a file cannot decide, and states what it could not analyse.
+4. **Contrast** of explicit pairs: `python scripts/contrast.py <fg> <bg> [--backdrop <color>] [--size <px>]`. Transparency is composed; a translucent background with no backdrop gets no number, only the missing piece.
+5. **Manual passes** — browser (zoom, reflow, target size, rendered contrast, focus not obscured), keyboard, screen reader. Mark one `performed` in the register only if it was run; otherwise it stays `not_performed`.
+6. **Record evidence per criterion** (`references/evidence-register.md`) and validate it: `python scripts/wcag.py register validate evidence.json`. Before delivering any text that cites criteria: `python scripts/wcag.py levels <file>`.
 
-Primary owner:
+## Where to read — by task
 
-`dev-frontend`
+Read one row, not all. `python scripts/wcag.py task <id>` prints the criteria of a row.
 
-Related skills:
+| Task | Read |
+|---|---|
+| `forms` | `references/task-forms.md` |
+| `keyboard-focus` | `references/task-keyboard-focus.md` |
+| `color-contrast` | `references/task-color-contrast.md` |
+| `structure-semantics` | `references/task-structure-semantics.md` |
+| `dynamic-media` | `references/task-dynamic-media.md` |
+| `responsive` | the `dev-responsive` skill |
 
-- `dev-ui`
-- `dev-responsive`
-- `dev-frontend-implementation`
-- `dev-quality-validation`
-- `dev-security-analysis` when accessibility behavior intersects authentication/session/security
+| Need | Ask |
+|---|---|
+| One criterion: level, tests it needs, normative text | `wcag.py criterion 2.4.11` |
+| An Obelisco component or pattern | `wcag.py component form-text` |
+| A defined term (target, essential, change of context) | `wcag.py term target` |
+| What the sources are and how they are weighed | `references/scope-and-sources.md` |
+| The register format and its rules | `references/evidence-register.md` |
+| What static analysis covers and what it never will | `references/static-coverage.md` |
+| The 86 criteria, one source of truth (levels, names, the manual tests each needs) | `references/wcag22-criteria.json` |
+| Component → requirements → verification, as Obelisco and WCAG state them | `references/obelisco-matrix.json` |
 
----
+Normative text, test procedures and techniques: `references/wcag22/`, read through `wcag.py`, never whole.
 
-# Source Model
+## Custom components
 
-Primary GCBA design-system references:
+Obelisco covers many components; a custom one is not accessible because it looks like one. Define, at minimum: role or native element, accessible name, states, keyboard model, focus model, disabled and error behaviour, and which updates a screen reader must hear. If any is unproven, return `CUSTOM_COMPONENT_ACCESSIBILITY_REVIEW_REQUIRED`. The matrix row `custom` lists the floor, and all three manual passes apply.
 
-- https://gcba.github.io/Obelisco-V2/getting-started
-- https://gcba.github.io/Obelisco-V2/components/colors
-- https://gcba.github.io/Obelisco-V2/components/cards
-- https://gcba.github.io/Obelisco-V2/components/table
-- https://gcba.github.io/Obelisco-V2/components/grid
-- https://gcba.github.io/Obelisco-V2/patterns
-- https://gcba.github.io/Obelisco-V2/docs/Guía_de_adopción_de_Obelisco_v2.pdf
-
-Obelisco V2 documents accessibility-oriented components and explicitly references WCAG 2.2 criteria in component/pattern guidance.
-
-This skill operationalizes those concerns for the frontend WorkUnit.
-
-It must not claim that this Markdown file replaces WCAG, applicable law, Obelisco documentation, or formal accessibility assessment.
-
----
-
-# Core Principle
-
-> If a person cannot understand, reach, operate, or perceive the UI through the supported accessible interaction modes, the frontend implementation is incomplete.
-
----
-
-# Scope
-
-This skill may analyze and implement:
-
-```text
-semantic HTML
-keyboard navigation
-focus visibility
-focus order
-keyboard traps
-labels
-headings
-accessible names
-alt text
-form instructions
-required/optional field communication
-error communication
-status messages
-table semantics
-color usage
-contrast risks
-non-text contrast
-dynamic UI announcements
-re-authentication continuity
-reflow-related accessibility
-```
-
----
-
-# Obelisco and Custom UI
-
-For documented Obelisco components:
-
-- preserve documented semantic structure
-- preserve accessibility attributes
-- preserve keyboard behavior
-- preserve focus behavior
-- do not strip documented accessibility markup
-
-For `CUSTOM_GCBA_UI`:
-
-- derive accessible behavior explicitly
-- do not assume visual similarity to Obelisco makes the component accessible
-- require stronger validation for custom interactive behavior
-
----
-
-# Mandatory Workflow
-
-```text
-1. Identify interactive and informational structure
-2. Inspect semantic markup
-3. Inspect keyboard reachability
-4. Inspect focus visibility/order
-5. Inspect accessible names and labels
-6. Inspect form/error/status behavior
-7. Inspect color/contrast usage
-8. Inspect images/icons
-9. Inspect dynamic interaction
-10. Inspect table/list/navigation semantics
-11. Inspect reflow/accessibility interaction
-12. Run available accessibility tests
-13. Declare formal checks still required
-```
-
----
-
-# Semantic Structure
-
-Prefer semantic native HTML elements when they express the intended behavior.
-
-Examples:
-
-```text
-navigation → nav / appropriate navigation structure
-action → button
-link/navigation → a
-form field → native input/select/textarea where appropriate
-table data → table/th/td
-headings → ordered heading structure
-```
-
-Do not replace semantic native controls with generic clickable containers without a justified reason and equivalent accessible behavior.
-
----
-
-# Keyboard Operability
-
-Interactive functionality must be usable by keyboard where applicable.
-
-Validate:
-
-```text
-Tab navigation
-Enter/Space activation as appropriate
-arrow-key behavior where required by the component pattern
-escape/close behavior where applicable
-ability to leave the component
-```
-
-Return:
-
-`KEYBOARD_ACCESSIBILITY_RISK`
-
-when required interaction cannot be completed by keyboard.
-
----
-
-# Focus
-
-Interactive UI must preserve visible focus.
-
-Validate:
-
-```text
-focus indicator visible
-logical focus order
-focus not lost after dynamic action
-focus returns appropriately after overlays/modals when applicable
-no keyboard trap
-```
-
-Do not remove focus outlines without providing an equivalent accessible focus treatment.
-
-Return:
-
-`FOCUS_MANAGEMENT_RISK`
-
-when behavior is unsafe or unclear.
-
----
-
-# Forms
-
-Forms must preserve accessible labeling and structure.
-
-Obelisco form guidance explicitly emphasizes visible labels and understandable form structure.
-
-Validate:
-
-```text
-visible label
-programmatic label association
-field purpose understandable
-required/optional state understandable
-instructions available before interaction where required
-validation errors associated with the field
-form-level error summary when appropriate
-logical field order
-no unexpected context change on input
-```
-
-For multi-step or irreversible flows, confirm whether review/confirmation behavior is required by the WorkUnit/pattern.
-
----
-
-# Status and Dynamic Messages
-
-Dynamic status messages should be available to assistive technologies when they convey relevant state changes without moving focus.
-
-Examples:
-
-```text
-saved successfully
-validation failed
-search results updated
-upload completed
-operation unavailable
-```
-
-Do not rely solely on visual appearance.
-
-Return:
-
-`STATUS_MESSAGE_ACCESSIBILITY_RISK`
-
-when important dynamic feedback is not programmatically available.
-
----
-
-# Color and Contrast
-
-Obelisco documents semantic color usage and WCAG-oriented contrast behavior.
-
-Apply:
-
-```text
-do not use color as the only information channel
-preserve semantic meaning of design-system colors
-avoid arbitrary out-of-palette colors unless explicitly justified
-preserve sufficient text/non-text contrast
-```
-
-Automated contrast tooling may be used when available.
-
-Formal compliance remains a Check/review responsibility.
-
-Return:
-
-`COLOR_CONTRAST_RISK`
-
-when evidence indicates a likely problem.
-
----
-
-# Images and Icons
-
-Determine whether an image/icon is:
-
-```text
-informative
-functional
-decorative
-```
-
-Informative content requires an accessible textual equivalent.
-
-Decorative imagery should not create unnecessary assistive-technology noise.
-
-Functional icons require an accessible name that describes the action.
-
-Do not use an icon alone when the action becomes ambiguous.
-
----
-
-# Tables
-
-For real tabular data:
-
-- use semantic table markup
-- identify headers
-- preserve header-to-cell relationships
-- use native interactive elements inside cells
-- provide clear accessible names for row-specific actions
-
-Do not use tables only for layout.
-
-Coordinate responsive overflow/reflow with:
-
-`dev-responsive`
-
----
-
-# Headings
-
-Heading structure must communicate content hierarchy.
-
-Do not choose heading levels only for visual size.
-
-Visual styling and semantic hierarchy are separate concerns.
-
-When a group requires a semantic heading for assistive navigation but visual repetition is undesirable, use an approved visually-hidden technique consistent with the design system/project.
-
----
-
-# Session Expiration
-
-When a frontend flow can lose user-entered data because an authenticated session expires, inspect the applicable product/identity behavior.
-
-Obelisco form guidance recommends enabling re-authentication without unnecessary data loss and warning users when appropriate.
-
-Do not invent authentication behavior from this skill.
-
-Coordinate with the applicable identity/integration skill.
-
----
-
-# Custom Components
-
-Custom interactive components require explicit accessibility design.
-
-At minimum define:
-
-```text
-role/semantics
-accessible name
-keyboard model
-focus model
-states
-disabled behavior
-error behavior
-screen-reader relevant updates
-```
-
-If this cannot be proven:
-
-return:
-
-`CUSTOM_COMPONENT_ACCESSIBILITY_REVIEW_REQUIRED`
-
----
-
-# Automated vs Manual Validation
-
-Automated accessibility tools are useful but insufficient by themselves.
-
-Evidence should distinguish:
-
-```text
-STATIC/AUTOMATED
-KEYBOARD_MANUAL
-SCREEN_READER_MANUAL
-VISUAL_CONTRAST
-FORM_FLOW
-OTHER_MANUAL
-```
-
-Do not report formal accessibility completion solely because an automated scan passes.
-
----
-
-# Required Capabilities
-
-Typical capabilities:
-
-```text
-repository.read
-repository.search
-repository.write
-
-frontend.components.inspect
-accessibility.inspect
-html.semantic.inspect
-tests.run
-```
-
-Optional:
-
-```text
-accessibility.automated.run
-contrast.inspect
-browser.interaction.test
-```
-
-If unavailable:
-
-return:
-
-`CAPABILITY_GAP`
-
-The skill must not create Tools directly.
-
----
-
-# Required Checks
-
-Potential Checks:
-
-```text
-semantic HTML
-keyboard navigation
-focus visibility/order
-form labels
-accessible names
-image alt behavior
-table semantics
-status messages
-color/contrast
-responsive reflow
-automated accessibility scan
-manual accessibility review
-```
-
-If a required Check does not exist:
-
-return:
-
-`CHECK_GAP`
-
-The skill must not self-approve formal accessibility compliance.
-
----
-
-# Result Statuses
-
-Supported statuses:
-
-```text
-COMPLETE
-PARTIAL
-MISSING_CONTEXT
-
-KEYBOARD_ACCESSIBILITY_RISK
-FOCUS_MANAGEMENT_RISK
-FORM_ACCESSIBILITY_RISK
-STATUS_MESSAGE_ACCESSIBILITY_RISK
-COLOR_CONTRAST_RISK
-SEMANTIC_STRUCTURE_RISK
-TABLE_ACCESSIBILITY_RISK
-CUSTOM_COMPONENT_ACCESSIBILITY_REVIEW_REQUIRED
-
-CAPABILITY_GAP
-CHECK_GAP
-POLICY_BLOCKED
-APPROVAL_REQUIRED
-SECURITY_REVIEW_REQUIRED
-
-FAILED
-```
-
----
-
-# Output Contract
-
-Example:
+## Result
 
 ```yaml
 accessibilityResult:
-
-  status: COMPLETE
-
-  semantics:
-    validated: true
-
-  keyboard:
-    validated: true
-    trapsDetected: false
-
-  focus:
-    visible: true
-    orderValidated: true
-    customManagementRequired: false
-
-  forms:
-    labelsValidated: true
-    errorAssociationValidated: true
-
-  statusMessages:
-    validated: true
-
-  color:
-    colorOnlyCommunicationDetected: false
-    contrastRiskDetected: false
-
-  media:
-    altBehaviorValidated: true
-
-  customComponents:
-    reviewed: []
-
-  validation:
-    automated: PASS
-    keyboardManual: PASS
-    screenReaderManual: NOT_EXECUTED
-
-  requiredChecks:
-    - accessibility-automated
-    - accessibility-manual
-
+  status: PARTIAL
+  target: { wcag: "2.2", level: AA, additional: [] }
+  register: { path: evidence.json, validated: true, pass: 0, fail: 2, not_applicable: 1, not_tested: 52 }
+  tests: { browser: not_performed, keyboard: not_performed, screen_reader: not_performed }
+  staticAnalysis: { run: true, filesAnalyzed: 3, notAnalyzed: 1 }
+  links: []            # the accessibilityLinks of dev-ui
+  requiredChecks: [accessibility-automated, accessibility-manual]
   risks: []
   assumptions: []
-  evidence: []
 ```
 
----
+`COMPLETE` needs a validated register with no `fail` and every `pass` backed by the manual passes it requires. Anything less is `PARTIAL`.
 
-# Model Routing Metadata
+## Statuses
 
-## STANDARD
+`COMPLETE` · `PARTIAL` · `MISSING_CONTEXT` · `KEYBOARD_ACCESSIBILITY_RISK` · `FOCUS_MANAGEMENT_RISK` · `FORM_ACCESSIBILITY_RISK` · `STATUS_MESSAGE_ACCESSIBILITY_RISK` · `COLOR_CONTRAST_RISK` · `SEMANTIC_STRUCTURE_RISK` · `TABLE_ACCESSIBILITY_RISK` · `CUSTOM_COMPONENT_ACCESSIBILITY_REVIEW_REQUIRED` · `CAPABILITY_GAP` · `CHECK_GAP` · `POLICY_BLOCKED` · `APPROVAL_REQUIRED` · `SECURITY_REVIEW_REQUIRED` · `FAILED`
 
-Use for:
+Return a `CAPABILITY_GAP` or `CHECK_GAP` when a tool or a formal Check is missing. Never create Tools.
 
-- semantic corrections
-- labels
-- standard keyboard/focus behavior
-- Obelisco component accessibility preservation
-- straightforward forms/tables
+## Model routing
 
-## REASONING
+STANDARD: semantic fixes, labels, standard keyboard and focus, preserving Obelisco accessibility, plain forms and tables. REASONING: custom interactive components, complex focus, dynamic updates, multi-step forms with session recovery, conflicts between the project and the criteria. PREMIUM: exceptional ambiguity only, behind the Human Model Gate.
 
-Consider when:
+## Prohibited
 
-- custom interactive components exist
-- focus management is complex
-- dynamic UI has significant assistive-technology behavior
-- multi-step forms/session recovery interact
-- existing UI patterns conflict with accessibility requirements
-
-## PREMIUM
-
-Only for exceptional ambiguity/complexity after lower tiers are insufficient.
-
-Premium execution requires the Human Model Gate.
-
----
-
-# Prohibited Behavior
-
-This skill must not:
-
-- declare legal/formal compliance without configured validation
-- rely only on automated scans
-- remove semantic HTML for styling convenience
-- create keyboard traps
-- remove visible focus without equivalent replacement
-- use color as the only critical information channel
-- hide labels visually and programmatically when a field needs an accessible name
-- use generic div/span controls when native controls solve the behavior
-- invent authentication/session requirements
-- silently rewrite product content
-- self-approve Checks
-- create Tools directly
-- bypass Policies
-
----
-
-# Success Criteria
-
-This skill is successful when it:
-
-- preserves understandable semantic structure
-- supports keyboard operation
-- preserves visible/logical focus
-- provides labels and accessible names
-- exposes relevant status/error information
-- avoids color-only communication
-- handles images/icons appropriately
-- preserves table/form semantics
-- identifies custom-component risks
-- distinguishes automated from manual evidence
-- declares formal accessibility Checks still required
+- Declaring legal or formal conformance, or relying on an automated scan alone.
+- Writing a criterion's level, a count, or a technique id from memory.
+- Presenting an AAA criterion as AA, or an Obelisco guideline as WCAG, or a Harness rule as either.
+- Reporting a recommendation (one `<h1>`, a `<main>`) as a WCAG failure.
+- Replacing native controls with `div` or `span`; removing visible focus without an equal replacement; creating keyboard traps.
+- Using colour as the only channel; hiding a label both visually and programmatically.
+- Inventing authentication or session requirements; rewriting product content; self-approving Checks; bypassing Policies.

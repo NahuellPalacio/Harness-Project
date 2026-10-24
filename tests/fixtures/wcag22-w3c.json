@@ -1,0 +1,5036 @@
+{
+ "source": "https://www.w3.org/WAI/WCAG22/wcag.json",
+ "retrieved": "2026-10-23",
+ "sha256": "3a034865a879a7d874b60ff2aec7f430cf37bc1597a1e00985680fd80ef5cf75",
+ "note": "Testigo externo de los niveles, nombres y tecnicas de WCAG 2.2. Los tests contrastan contra el JSON del harness; no se edita a mano.",
+ "criteria": [
+  {
+   "id": "1.1.1",
+   "name": "Non-text Content",
+   "level": "A",
+   "principle": "1",
+   "guideline": "1.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.2.1",
+   "name": "Audio-only and Video-only (Prerecorded)",
+   "level": "A",
+   "principle": "1",
+   "guideline": "1.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.2.2",
+   "name": "Captions (Prerecorded)",
+   "level": "A",
+   "principle": "1",
+   "guideline": "1.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.2.3",
+   "name": "Audio Description or Media Alternative (Prerecorded)",
+   "level": "A",
+   "principle": "1",
+   "guideline": "1.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.2.4",
+   "name": "Captions (Live)",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.2.5",
+   "name": "Audio Description (Prerecorded)",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.2.6",
+   "name": "Sign Language (Prerecorded)",
+   "level": "AAA",
+   "principle": "1",
+   "guideline": "1.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.2.7",
+   "name": "Extended Audio Description (Prerecorded)",
+   "level": "AAA",
+   "principle": "1",
+   "guideline": "1.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.2.8",
+   "name": "Media Alternative (Prerecorded)",
+   "level": "AAA",
+   "principle": "1",
+   "guideline": "1.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.2.9",
+   "name": "Audio-only (Live)",
+   "level": "AAA",
+   "principle": "1",
+   "guideline": "1.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.3.1",
+   "name": "Info and Relationships",
+   "level": "A",
+   "principle": "1",
+   "guideline": "1.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.3.2",
+   "name": "Meaningful Sequence",
+   "level": "A",
+   "principle": "1",
+   "guideline": "1.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.3.3",
+   "name": "Sensory Characteristics",
+   "level": "A",
+   "principle": "1",
+   "guideline": "1.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.3.4",
+   "name": "Orientation",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.3",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.3.5",
+   "name": "Identify Input Purpose",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.3",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.3.6",
+   "name": "Identify Purpose",
+   "level": "AAA",
+   "principle": "1",
+   "guideline": "1.3",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.1",
+   "name": "Use of Color",
+   "level": "A",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.2",
+   "name": "Audio Control",
+   "level": "A",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.3",
+   "name": "Contrast (Minimum)",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.4",
+   "name": "Resize Text",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.5",
+   "name": "Images of Text",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.6",
+   "name": "Contrast (Enhanced)",
+   "level": "AAA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.7",
+   "name": "Low or No Background Audio",
+   "level": "AAA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.8",
+   "name": "Visual Presentation",
+   "level": "AAA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.9",
+   "name": "Images of Text (No Exception)",
+   "level": "AAA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.10",
+   "name": "Reflow",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.11",
+   "name": "Non-text Contrast",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.12",
+   "name": "Text Spacing",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "1.4.13",
+   "name": "Content on Hover or Focus",
+   "level": "AA",
+   "principle": "1",
+   "guideline": "1.4",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.1.1",
+   "name": "Keyboard",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.1.2",
+   "name": "No Keyboard Trap",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.1.3",
+   "name": "Keyboard (No Exception)",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.1.4",
+   "name": "Character Key Shortcuts",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.1",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.2.1",
+   "name": "Timing Adjustable",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.2.2",
+   "name": "Pause, Stop, Hide",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.2.3",
+   "name": "No Timing",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.2.4",
+   "name": "Interruptions",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.2.5",
+   "name": "Re-authenticating",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.2.6",
+   "name": "Timeouts",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.2",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.3.1",
+   "name": "Three Flashes or Below Threshold",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.3.2",
+   "name": "Three Flashes",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.3.3",
+   "name": "Animation from Interactions",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.3",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.1",
+   "name": "Bypass Blocks",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.2",
+   "name": "Page Titled",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.3",
+   "name": "Focus Order",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.4",
+   "name": "Link Purpose (In Context)",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.5",
+   "name": "Multiple Ways",
+   "level": "AA",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.6",
+   "name": "Headings and Labels",
+   "level": "AA",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.7",
+   "name": "Focus Visible",
+   "level": "AA",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.8",
+   "name": "Location",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.9",
+   "name": "Link Purpose (Link Only)",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.10",
+   "name": "Section Headings",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.11",
+   "name": "Focus Not Obscured (Minimum)",
+   "level": "AA",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.12",
+   "name": "Focus Not Obscured (Enhanced)",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.4.13",
+   "name": "Focus Appearance",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.4",
+   "versions": [
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.5.1",
+   "name": "Pointer Gestures",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.5",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.5.2",
+   "name": "Pointer Cancellation",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.5",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.5.3",
+   "name": "Label in Name",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.5",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.5.4",
+   "name": "Motion Actuation",
+   "level": "A",
+   "principle": "2",
+   "guideline": "2.5",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.5.5",
+   "name": "Target Size (Enhanced)",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.5",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.5.6",
+   "name": "Concurrent Input Mechanisms",
+   "level": "AAA",
+   "principle": "2",
+   "guideline": "2.5",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.5.7",
+   "name": "Dragging Movements",
+   "level": "AA",
+   "principle": "2",
+   "guideline": "2.5",
+   "versions": [
+    "2.2"
+   ]
+  },
+  {
+   "id": "2.5.8",
+   "name": "Target Size (Minimum)",
+   "level": "AA",
+   "principle": "2",
+   "guideline": "2.5",
+   "versions": [
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.1.1",
+   "name": "Language of Page",
+   "level": "A",
+   "principle": "3",
+   "guideline": "3.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.1.2",
+   "name": "Language of Parts",
+   "level": "AA",
+   "principle": "3",
+   "guideline": "3.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.1.3",
+   "name": "Unusual Words",
+   "level": "AAA",
+   "principle": "3",
+   "guideline": "3.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.1.4",
+   "name": "Abbreviations",
+   "level": "AAA",
+   "principle": "3",
+   "guideline": "3.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.1.5",
+   "name": "Reading Level",
+   "level": "AAA",
+   "principle": "3",
+   "guideline": "3.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.1.6",
+   "name": "Pronunciation",
+   "level": "AAA",
+   "principle": "3",
+   "guideline": "3.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.2.1",
+   "name": "On Focus",
+   "level": "A",
+   "principle": "3",
+   "guideline": "3.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.2.2",
+   "name": "On Input",
+   "level": "A",
+   "principle": "3",
+   "guideline": "3.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.2.3",
+   "name": "Consistent Navigation",
+   "level": "AA",
+   "principle": "3",
+   "guideline": "3.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.2.4",
+   "name": "Consistent Identification",
+   "level": "AA",
+   "principle": "3",
+   "guideline": "3.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.2.5",
+   "name": "Change on Request",
+   "level": "AAA",
+   "principle": "3",
+   "guideline": "3.2",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.2.6",
+   "name": "Consistent Help",
+   "level": "A",
+   "principle": "3",
+   "guideline": "3.2",
+   "versions": [
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.3.1",
+   "name": "Error Identification",
+   "level": "A",
+   "principle": "3",
+   "guideline": "3.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.3.2",
+   "name": "Labels or Instructions",
+   "level": "A",
+   "principle": "3",
+   "guideline": "3.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.3.3",
+   "name": "Error Suggestion",
+   "level": "AA",
+   "principle": "3",
+   "guideline": "3.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.3.4",
+   "name": "Error Prevention (Legal, Financial, Data)",
+   "level": "AA",
+   "principle": "3",
+   "guideline": "3.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.3.5",
+   "name": "Help",
+   "level": "AAA",
+   "principle": "3",
+   "guideline": "3.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.3.6",
+   "name": "Error Prevention (All)",
+   "level": "AAA",
+   "principle": "3",
+   "guideline": "3.3",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.3.7",
+   "name": "Redundant Entry",
+   "level": "A",
+   "principle": "3",
+   "guideline": "3.3",
+   "versions": [
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.3.8",
+   "name": "Accessible Authentication (Minimum)",
+   "level": "AA",
+   "principle": "3",
+   "guideline": "3.3",
+   "versions": [
+    "2.2"
+   ]
+  },
+  {
+   "id": "3.3.9",
+   "name": "Accessible Authentication (Enhanced)",
+   "level": "AAA",
+   "principle": "3",
+   "guideline": "3.3",
+   "versions": [
+    "2.2"
+   ]
+  },
+  {
+   "id": "4.1.2",
+   "name": "Name, Role, Value",
+   "level": "A",
+   "principle": "4",
+   "guideline": "4.1",
+   "versions": [
+    "2.0",
+    "2.1",
+    "2.2"
+   ]
+  },
+  {
+   "id": "4.1.3",
+   "name": "Status Messages",
+   "level": "AA",
+   "principle": "4",
+   "guideline": "4.1",
+   "versions": [
+    "2.1",
+    "2.2"
+   ]
+  }
+ ],
+ "removed": [
+  {
+   "id": "4.1.1",
+   "name": "Parsing (Obsolete and removed)",
+   "versions": [
+    "2.0",
+    "2.1"
+   ]
+  }
+ ],
+ "techniques": {
+  "ARIA1": {
+   "title": "Using the aria-describedby property to provide a descriptive label for user interface controls",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "3.3.2"
+   ]
+  },
+  "ARIA10": {
+   "title": "Using aria-labelledby to provide a text alternative for non-text content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "ARIA11": {
+   "title": "Using ARIA landmarks to identify regions of a page",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "1.3.6",
+    "2.4.1"
+   ]
+  },
+  "ARIA12": {
+   "title": "Using role=heading to identify headings",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "ARIA13": {
+   "title": "Using aria-labelledby to name regions and landmarks",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "ARIA14": {
+   "title": "Using aria-label to provide an accessible name where a visible label cannot be used",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "ARIA15": {
+   "title": "Using aria-describedby to provide descriptions of images",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "ARIA16": {
+   "title": "Using aria-labelledby to provide a name for user interface controls",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "4.1.2"
+   ]
+  },
+  "ARIA17": {
+   "title": "Using grouping roles to identify related form controls",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "3.3.2"
+   ]
+  },
+  "ARIA18": {
+   "title": "Using aria-alertdialog to Identify Errors",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.3",
+    "4.1.3"
+   ]
+  },
+  "ARIA19": {
+   "title": "Using ARIA role=alert or Live Regions to Identify Errors",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "4.1.3"
+   ]
+  },
+  "ARIA2": {
+   "title": "Identifying a required field with the aria-required property",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "1.3.1",
+    "3.3.1",
+    "3.3.2"
+   ]
+  },
+  "ARIA20": {
+   "title": "Using the region role to identify a region of the page",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "ARIA21": {
+   "title": "Using aria-invalid to Indicate An Error Field",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1"
+   ]
+  },
+  "ARIA22": {
+   "title": "Using role=status to present status messages",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.3"
+   ]
+  },
+  "ARIA23": {
+   "title": "Using role=log to identify sequential information updates",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.3"
+   ]
+  },
+  "ARIA24": {
+   "title": "Semantically identifying a font icon with role=\"img\"",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "ARIA25": {
+   "title": "Using an ARIA live region to convey the status of a progress bar",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.3"
+   ]
+  },
+  "ARIA26": {
+   "title": "Using aria-current to identify the current item in a set",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "2.4.8"
+   ]
+  },
+  "ARIA27": {
+   "title": "Using ariaNotify to convey the status of a progress bar",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.3"
+   ]
+  },
+  "ARIA4": {
+   "title": "Using a WAI-ARIA role to expose the role of a user interface component",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "ARIA5": {
+   "title": "Using WAI-ARIA state and property attributes to expose the state of a user interface component",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "ARIA6": {
+   "title": "Using aria-label to provide labels for objects",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "ARIA7": {
+   "title": "Using aria-labelledby for link purpose",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4"
+   ]
+  },
+  "ARIA8": {
+   "title": "Using aria-label for link purpose",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "ARIA9": {
+   "title": "Using aria-labelledby to concatenate a label from several text nodes",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1",
+    "3.3.2"
+   ]
+  },
+  "C12": {
+   "title": "Using percent for font sizes",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.4",
+    "1.4.5",
+    "1.4.8",
+    "1.4.9"
+   ]
+  },
+  "C13": {
+   "title": "Using named font sizes",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.4",
+    "1.4.5",
+    "1.4.8",
+    "1.4.9"
+   ]
+  },
+  "C14": {
+   "title": "Using em units for font sizes",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.4",
+    "1.4.5",
+    "1.4.8",
+    "1.4.9"
+   ]
+  },
+  "C15": {
+   "title": "Using CSS to change the presentation of a user interface component when it receives focus",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.1",
+    "2.4.7"
+   ]
+  },
+  "C17": {
+   "title": "Scaling form elements which contain text",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "1.4.4"
+   ]
+  },
+  "C18": {
+   "title": "Using CSS margin and padding rules instead of spacer images for layout design",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "C19": {
+   "title": "Specifying alignment either to the left or right in CSS",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "C20": {
+   "title": "Using relative measurements to set column widths so that lines can average 80 characters or less when the browser is resized",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.4",
+    "1.4.8"
+   ]
+  },
+  "C21": {
+   "title": "Specifying line spacing in CSS",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.12",
+    "1.4.8"
+   ]
+  },
+  "C22": {
+   "title": "Using CSS to control visual presentation of text",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "1.4.4",
+    "1.4.5",
+    "1.4.9"
+   ]
+  },
+  "C23": {
+   "title": "Specifying text and background colors of secondary content such as banners, features and navigation in CSS while not specifying text and background colors of the main content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "C24": {
+   "title": "Using percentage values in CSS for container sizes",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "C25": {
+   "title": "Specifying borders and layout in CSS to delineate areas of a web page while not specifying text and text-background colors",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "C27": {
+   "title": "Making the DOM order match the visual order",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.2",
+    "2.4.3"
+   ]
+  },
+  "C28": {
+   "title": "Specifying the size of text containers using em units",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.12",
+    "1.4.4"
+   ]
+  },
+  "C30": {
+   "title": "Using CSS to replace text with images of text and providing user interface controls to switch",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.5",
+    "1.4.9"
+   ]
+  },
+  "C31": {
+   "title": "Using CSS Flexbox to reflow content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.10"
+   ]
+  },
+  "C32": {
+   "title": "Using media queries and grid CSS to reflow columns",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.10"
+   ]
+  },
+  "C33": {
+   "title": "Allowing for Reflow with Long URLs and Strings of Text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.10"
+   ]
+  },
+  "C34": {
+   "title": "Using media queries to un-fixing sticky headers / footers",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "1.4.10"
+   ]
+  },
+  "C35": {
+   "title": "Allowing for text spacing without wrapping",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.12"
+   ]
+  },
+  "C36": {
+   "title": "Allowing for text spacing override",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.12"
+   ]
+  },
+  "C37": {
+   "title": "Using CSS max-width and height to fit images",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "1.4.10"
+   ]
+  },
+  "C38": {
+   "title": "Using CSS width, max-width and flexbox to fit labels and inputs",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.10"
+   ]
+  },
+  "C39": {
+   "title": "Using the CSS prefers-reduced-motion query to prevent motion",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.3.3"
+   ]
+  },
+  "C40": {
+   "title": "Creating a two-color focus indicator to ensure sufficient contrast with all components",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.11",
+    "2.4.13",
+    "2.4.7"
+   ]
+  },
+  "C41": {
+   "title": "Creating a strong focus indicator within the component",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.13"
+   ]
+  },
+  "C42": {
+   "title": "Using min-height and min-width on target container to ensure sufficient target spacing",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.8"
+   ]
+  },
+  "C43": {
+   "title": "Using CSS scroll-padding to un-obscure content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.11",
+    "2.4.12"
+   ]
+  },
+  "C44": {
+   "title": "Using CSS to ensure targets are at least 44 by 44 CSS pixels",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.5"
+   ]
+  },
+  "C45": {
+   "title": "Using CSS :focus-visible to provide keyboard focus indication",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.7"
+   ]
+  },
+  "C6": {
+   "title": "Positioning content based on structural markup",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.2",
+    "1.4.5",
+    "1.4.9",
+    "2.4.1"
+   ]
+  },
+  "C7": {
+   "title": "Using CSS to hide a portion of the link text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "C8": {
+   "title": "Using CSS letter-spacing to control spacing within a word",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.2",
+    "1.4.12",
+    "1.4.5",
+    "1.4.9"
+   ]
+  },
+  "C9": {
+   "title": "Using CSS to include decorative images",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "F1": {
+   "title": "Failure of Success Criterion 1.3.2 due to changing the meaning of content by positioning information with CSS",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.2"
+   ]
+  },
+  "F10": {
+   "title": "Failure of Success Criterion 2.1.2 and Conformance Requirement 5 due to combining multiple content formats in a way that traps users inside one format type",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.1.2"
+   ]
+  },
+  "F100": {
+   "title": "Failure of Success Criterion 1.3.4 due to showing a message asking to reorient device",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.4"
+   ]
+  },
+  "F101": {
+   "title": "Failure of Success Criterion 2.5.2 due to activating a control on the down-event",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.5.2"
+   ]
+  },
+  "F102": {
+   "title": "Failure of Success Criterion 1.4.10 due to content disappearing and not being available when content has reflowed",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.10"
+   ]
+  },
+  "F103": {
+   "title": "Failure of Success Criterion 4.1.3 due to providing status messages that cannot be programmatically determined through role or properties",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "4.1.3"
+   ]
+  },
+  "F104": {
+   "title": "Failure of Success Criterion 1.4.12 due to clipped or overlapped content when text spacing is adjusted",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.12"
+   ]
+  },
+  "F105": {
+   "title": "Failure of Success Criterion 2.5.1 due to providing functionality via a path-based gesture without simple pointer alternative",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.5.1"
+   ]
+  },
+  "F106": {
+   "title": "Failure due to inability to deactivate motion actuation",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.5.4"
+   ]
+  },
+  "F107": {
+   "title": "Failure of Success Criterion 1.3.5 due to incorrect autocomplete attribute values",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.5"
+   ]
+  },
+  "F108": {
+   "title": "Failure of Success Criterion 2.5.7 Dragging Movements due to not providing a single pointer method that does not require a dragging movement",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.5.7"
+   ]
+  },
+  "F109": {
+   "title": "Failure of Success Criterion 3.3.8 and 3.3.9 due to preventing password or code re-entry in the same format",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.3.8",
+    "3.3.9"
+   ]
+  },
+  "F110": {
+   "title": "Failure of Success Criterion 2.4.11 Focus Not Obscured (Minimum) due to a sticky footer or header completely hiding focused elements",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.4.11"
+   ]
+  },
+  "F111": {
+   "title": "Failure of Success Criteria 1.3.1, 2.5.3, and 4.1.2 due to a control with visible label text but no accessible name",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1",
+    "2.5.3",
+    "4.1.2"
+   ]
+  },
+  "F112": {
+   "title": "Failure of Success Criterion 2.2.2 due to using blinking content that lasts for more than five seconds without a mechanism to stop it",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.2.2"
+   ]
+  },
+  "F113": {
+   "title": "Failure of Success Criterion 1.2.5 due to not using available pauses in dialogue to provide audio descriptions of important visual content",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.2.5"
+   ]
+  },
+  "F12": {
+   "title": "Failure of Success Criterion 2.2.5 due to having a session time limit without a mechanism for saving user's input and re-establishing that information upon re-authentication",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.2.5"
+   ]
+  },
+  "F13": {
+   "title": "Failure of Success Criterion 1.1.1 and 1.4.1 due to having a text alternative that does not include information that is conveyed by color differences in the image",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1",
+    "1.4.1"
+   ]
+  },
+  "F14": {
+   "title": "Failure of Success Criterion 1.3.3 due to identifying content only by its shape or location",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.3"
+   ]
+  },
+  "F15": {
+   "title": "Failure of Success Criterion 4.1.2 due to implementing custom controls that do not use an accessibility API for the technology, or do so incompletely",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "F16": {
+   "title": "Failure of Success Criterion 2.2.2 due to including scrolling content where movement is not essential to the activity without also including a mechanism to pause and restart the content",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.2.2"
+   ]
+  },
+  "F2": {
+   "title": "Failure of Success Criterion 1.3.1 due to using changes in text presentation to convey information without using the appropriate markup or text",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "F20": {
+   "title": "Failure of Success Criterion 1.1.1 and 4.1.2 due to not updating text alternatives when changes to non-text content occur",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1",
+    "4.1.2"
+   ]
+  },
+  "F22": {
+   "title": "Failure of Success Criterion 3.2.5 due to opening windows that are not requested by the user",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "F23": {
+   "title": "Failure of 1.4.2 due to playing a sound longer than 3 seconds where there is no mechanism to turn it off",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.2"
+   ]
+  },
+  "F24": {
+   "title": "Failure of Success Criterion 1.4.3, 1.4.6 and 1.4.8 due to specifying foreground colors without specifying background colors or vice versa",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.3",
+    "1.4.6",
+    "1.4.8"
+   ]
+  },
+  "F25": {
+   "title": "Failure of Success Criterion 2.4.2 due to the title of a web page not identifying the contents",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.4.2"
+   ]
+  },
+  "F26": {
+   "title": "Failure of Success Criterion 1.3.3 due to using a graphical symbol alone to convey information",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.3"
+   ]
+  },
+  "F3": {
+   "title": "Failure of Success Criterion 1.1.1 due to conveying information exclusively using CSS background images",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "F30": {
+   "title": "Failure of Success Criterion 1.1.1 and 1.2.1 due to using text alternatives that are not alternatives (e.g., filenames or placeholder text)",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1",
+    "1.2.1"
+   ]
+  },
+  "F31": {
+   "title": "Failure of Success Criterion 3.2.4 due to using two different labels for the same function on different web pages within a set of web pages",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.2.4"
+   ]
+  },
+  "F32": {
+   "title": "Failure of Success Criterion 1.3.2 due to using white space characters to control spacing within a word",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.2"
+   ]
+  },
+  "F33": {
+   "title": "Failure of Success Criterion 1.3.1 and 1.3.2 due to using white space characters to create multiple columns in plain text content",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1",
+    "1.3.2"
+   ]
+  },
+  "F34": {
+   "title": "Failure of Success Criterion 1.3.1 and 1.3.2 due to using white space characters to format tables in plain text content",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1",
+    "1.3.2"
+   ]
+  },
+  "F36": {
+   "title": "Failure of Success Criterion 3.2.2 due to automatically submitting a form and presenting new content without prior warning when the last field in the form is given a value",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.2.2"
+   ]
+  },
+  "F37": {
+   "title": "Failure of Success Criterion 3.2.2 due to launching a new window without prior warning when the selection of a radio button, check box or select list is changed",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.2.2"
+   ]
+  },
+  "F38": {
+   "title": "Failure of Success Criterion 1.1.1 due to not marking up decorative images in HTML in a way that allows assistive technology to ignore them",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "F39": {
+   "title": "Failure of Success Criterion 1.1.1 due to providing a text alternative that is not null (e.g., alt=\"spacer\" or alt=\"image\") for images that should be ignored by assistive technology",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "F40": {
+   "title": "Failure due to using meta redirect with a time limit",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.2.1",
+    "2.2.4",
+    "3.2.5"
+   ]
+  },
+  "F41": {
+   "title": "Failure of Success Criterion 2.2.1, 2.2.4, and 3.2.5 due to using meta refresh to reload the page",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.2.1",
+    "2.2.4",
+    "3.2.5"
+   ]
+  },
+  "F42": {
+   "title": "Failure of Success Criteria 1.3.1, 2.1.1, 2.1.3, or 4.1.2 when emulating links",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1",
+    "2.1.1",
+    "4.1.2"
+   ]
+  },
+  "F43": {
+   "title": "Failure of Success Criterion 1.3.1 due to using structural markup in a way that does not represent relationships in the content",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "F44": {
+   "title": "Failure of Success Criterion 2.4.3 due to using tabindex to create a tab order that does not preserve meaning and operability",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.4.3"
+   ]
+  },
+  "F46": {
+   "title": "Failure of Success Criterion 1.3.1 due to using th elements, caption elements, or non-empty summary attributes in layout tables",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "F48": {
+   "title": "Failure of Success Criterion 1.3.1 due to using the pre element to markup tabular information",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "F49": {
+   "title": "Failure of Success Criterion 1.3.2 due to using an HTML layout table that does not make sense when linearized",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.2"
+   ]
+  },
+  "F50": {
+   "title": "Failure of Success Criterion 2.2.2 due to a script that causes a blink effect without a mechanism to stop the blinking at 5 seconds or less",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.2.2"
+   ]
+  },
+  "F52": {
+   "title": "Failure of Success Criterion 3.2.5 due to opening a new window as soon as a new page is loaded",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "F54": {
+   "title": "Failure of Success Criterion 2.1.1 due to using only pointing-device-specific event handlers (including gesture) for a function",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.1.1"
+   ]
+  },
+  "F55": {
+   "title": "Failure of Success Criteria 2.1.1, 2.4.7, 2.4.13, and 3.2.1 due to using script to remove focus when focus is received",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.1.1",
+    "2.4.13",
+    "2.4.7",
+    "3.2.1"
+   ]
+  },
+  "F58": {
+   "title": "Failure of Success Criterion 2.2.1 due to using server-side techniques to automatically redirect pages after a time-out",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.2.1"
+   ]
+  },
+  "F59": {
+   "title": "Failure of Success Criterion 4.1.2 due to using script to make div or span a user interface control in HTML without providing a role for the control",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "F60": {
+   "title": "Failure of Success Criterion 3.2.5 due to launching a new window when a user enters text into an input field",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "F61": {
+   "title": "Failure of Success Criterion 3.2.5 due to complete change of main content through an automatic update that the user cannot disable from within the content",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "F63": {
+   "title": "Failure of Success Criterion 2.4.4 due to providing link context only in content that is not related to the link",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.4.4"
+   ]
+  },
+  "F65": {
+   "title": "Failure of Success Criterion 1.1.1 due to omitting the alt attribute or text alternative on img elements, area elements, and input elements of type \"image\"",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "F66": {
+   "title": "Failure of Success Criterion 3.2.3 due to presenting navigation links in a different relative order on different pages",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.2.3"
+   ]
+  },
+  "F67": {
+   "title": "Failure of Success Criterion 1.1.1 and 1.2.1 due to providing long descriptions for non-text content that does not serve the same purpose or does not present the same information",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1",
+    "1.2.1"
+   ]
+  },
+  "F68": {
+   "title": "Failure of Success Criterion 4.1.2 due to a user interface control not having a programmatically determined name",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "F69": {
+   "title": "Failure of Success Criterion 1.4.4 when resizing visually rendered text up to 200 percent causes the text, image or controls to be clipped, truncated or obscured",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.4"
+   ]
+  },
+  "F7": {
+   "title": "Failure of Success Criterion 2.2.2 due to an object or applet that has blinking content without a mechanism to pause the content that blinks for more than five seconds",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.2.2"
+   ]
+  },
+  "F71": {
+   "title": "Failure of Success Criterion 1.1.1 due to using text look-alikes to represent text without providing a text alternative",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "F72": {
+   "title": "Failure of Success Criterion 1.1.1 due to using ASCII art without providing a text alternative",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "F73": {
+   "title": "Failure of Success Criterion 1.4.1 due to creating links that are not visually evident without color vision",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.1"
+   ]
+  },
+  "F74": {
+   "title": "Failure of Success Criterion 1.2.2 and 1.2.8 due to not labeling a synchronized media alternative to text as an alternative",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.2.2",
+    "1.2.8"
+   ]
+  },
+  "F75": {
+   "title": "Failure of Success Criterion 1.2.2 by providing synchronized media without captions when the synchronized media presents more information than is presented on the page",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.2.2"
+   ]
+  },
+  "F78": {
+   "title": "Failure of Success Criterion 1.4.11, 2.4.7 and 2.4.13 due to styling element outlines and borders in a way that removes or renders non-visible the visual focus indicator",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.11",
+    "2.4.13",
+    "2.4.7"
+   ]
+  },
+  "F79": {
+   "title": "Failure of Success Criterion 4.1.2 due to the focus state of a user interface component not being programmatically determinable or no notification of change of focus state available",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "F8": {
+   "title": "Failure of Success Criterion 1.2.2 due to captions omitting some dialogue or important sound effects",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.2.2"
+   ]
+  },
+  "F80": {
+   "title": "Failure of Success Criterion 1.4.4 when text-based form controls do not resize when visually rendered text is resized up to 200%",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.4"
+   ]
+  },
+  "F81": {
+   "title": "Failure of Success Criterion 1.4.1 due to identifying required or error fields using color differences only",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.1"
+   ]
+  },
+  "F82": {
+   "title": "Failure of Success Criterion 3.3.2 by visually formatting a set of phone number fields but not including a text label",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.3.2"
+   ]
+  },
+  "F83": {
+   "title": "Failure of Success Criterion 1.4.3 and 1.4.6 due to using background images that do not provide sufficient contrast with foreground text (or images of text)",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.3",
+    "1.4.6"
+   ]
+  },
+  "F84": {
+   "title": "Failure of Success Criterion 2.4.9 due to using a non-specific link such as \"click here\" or \"more\" without a mechanism to change the link text to specific text.",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.4.9"
+   ]
+  },
+  "F85": {
+   "title": "Failure of Success Criterion 2.4.3 due to using dialogs or menus that are not adjacent to their trigger control in the sequential navigation order",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.4.3"
+   ]
+  },
+  "F86": {
+   "title": "Failure of Success Criterion 4.1.2 due to not providing names for each part of a multi-part form field, such as a US telephone number",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "F88": {
+   "title": "Failure of Success Criterion 1.4.8 due to using text that is justified (aligned to both the left and the right margins)",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "F89": {
+   "title": "Failure of Success Criteria 2.4.4, 2.4.9 and 4.1.2 due to not providing an accessible name for an image which is the only content in a link",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.9",
+    "4.1.2"
+   ]
+  },
+  "F9": {
+   "title": "Failure of Success Criterion 3.2.5 due to changing the context when the user removes focus from a form element",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "F90": {
+   "title": "Failure of Success Criterion 1.3.1 for incorrectly associating table headers and content via the headers and id attributes",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "F91": {
+   "title": "Failure of Success Criterion 1.3.1 for not correctly marking up table headers",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "F92": {
+   "title": "Failure of Success Criterion 1.3.1 due to the use of role presentation on content which conveys semantic information",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "F93": {
+   "title": "Failure of Success Criterion 1.4.2 for absence of a way to pause or stop an HTML5 media element that autoplays",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.2"
+   ]
+  },
+  "F94": {
+   "title": "Failure of Success Criterion 1.4.4 due to incorrect use of viewport units to resize text",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.4"
+   ]
+  },
+  "F95": {
+   "title": "Failure of Success Criterion 1.4.13 due to content shown on hover not being hoverable",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.4.13"
+   ]
+  },
+  "F96": {
+   "title": "Failure due to the accessible name not containing the visible label text",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.5.3"
+   ]
+  },
+  "F97": {
+   "title": "Failure due to locking the orientation to landscape or portrait view",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "1.3.4"
+   ]
+  },
+  "F98": {
+   "title": "Failure due to interactions being limited to touch-only on touchscreen devices",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.5.6"
+   ]
+  },
+  "F99": {
+   "title": "Failure of Success Criterion 2.1.4 due to implementing character key shortcuts that cannot be turned off or remapped",
+   "kinds": [
+    "failure"
+   ],
+   "scs": [
+    "2.1.4"
+   ]
+  },
+  "G1": {
+   "title": "Adding a link at the top of each page that goes directly to the main content area",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.1"
+   ]
+  },
+  "G10": {
+   "title": "Creating components using a technology that supports the accessibility API features of the platforms on which the user agents will be run to expose the names and roles, allow user-settable properties to be directly set, and provide notification of changes",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "G100": {
+   "title": "Providing a short text alternative which is the accepted name or a descriptive name of the non-text content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G101": {
+   "title": "Providing the definition of a word or phrase used in an unusual or restricted way",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.3"
+   ]
+  },
+  "G102": {
+   "title": "Providing the expansion or explanation of an abbreviation",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.4"
+   ]
+  },
+  "G103": {
+   "title": "Providing visual illustrations, pictures, and symbols to help explain ideas, events, and processes",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.5"
+   ]
+  },
+  "G105": {
+   "title": "Saving data so that it can be used after a user re-authenticates",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.5"
+   ]
+  },
+  "G107": {
+   "title": "Using \"activate\" rather than \"focus\" as a trigger for changes of context",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.1"
+   ]
+  },
+  "G108": {
+   "title": "Using markup features to expose the name and role, allow user-settable properties to be directly set, and provide notification of changes",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "G11": {
+   "title": "Creating content that blinks for less than 5 seconds",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.2"
+   ]
+  },
+  "G110": {
+   "title": "Using an instant client-side redirect",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "G111": {
+   "title": "Using color and pattern",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.1"
+   ]
+  },
+  "G112": {
+   "title": "Using inline definitions",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.3"
+   ]
+  },
+  "G115": {
+   "title": "Using semantic elements to mark up structure",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "G117": {
+   "title": "Using text to convey information that is conveyed by variations in presentation of text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "G120": {
+   "title": "Providing the pronunciation immediately following the word",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.6"
+   ]
+  },
+  "G121": {
+   "title": "Linking to pronunciations",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.6"
+   ]
+  },
+  "G123": {
+   "title": "Adding a link at the beginning of a block of repeated content to go to the end of the block",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.1"
+   ]
+  },
+  "G124": {
+   "title": "Adding links at the top of the page to each area of the content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.1"
+   ]
+  },
+  "G125": {
+   "title": "Providing links to navigate to related web pages",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.5"
+   ]
+  },
+  "G126": {
+   "title": "Providing a list of links to all other web pages",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.5"
+   ]
+  },
+  "G127": {
+   "title": "Identifying a web page's relationship to a larger collection of web pages",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.2",
+    "2.4.8"
+   ]
+  },
+  "G128": {
+   "title": "Indicating current location within navigation bars",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.8"
+   ]
+  },
+  "G13": {
+   "title": "Describing what will happen before a change to a form control that causes a change of context to occur is made",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.2",
+    "3.3.2"
+   ]
+  },
+  "G130": {
+   "title": "Providing descriptive headings",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.6"
+   ]
+  },
+  "G131": {
+   "title": "Providing descriptive labels",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.6",
+    "3.3.2"
+   ]
+  },
+  "G133": {
+   "title": "Providing a checkbox on the first page of a multipart form that allows users to ask for longer session time limit or no session time limit",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.1"
+   ]
+  },
+  "G135": {
+   "title": "Using the accessibility API features of a technology to expose names and roles, to allow user-settable properties to be directly set, and to provide notification of changes",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "G138": {
+   "title": "Using semantic markup whenever color cues are used",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "G139": {
+   "title": "Creating a mechanism that allows users to jump to errors",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.3"
+   ]
+  },
+  "G14": {
+   "title": "Ensuring that information conveyed by color differences is also available in text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.1"
+   ]
+  },
+  "G140": {
+   "title": "Separating information and structure from presentation to enable different presentations",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "1.4.5",
+    "1.4.9"
+   ]
+  },
+  "G141": {
+   "title": "Organizing a page using headings",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "2.4.10"
+   ]
+  },
+  "G142": {
+   "title": "Using a technology that has commonly-available user agents that support zoom",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.4"
+   ]
+  },
+  "G143": {
+   "title": "Providing a text alternative that describes the purpose of the CAPTCHA",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G144": {
+   "title": "Ensuring that the web page contains another CAPTCHA serving the same purpose using a different modality",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G145": {
+   "title": "Ensuring that a contrast ratio of at least 3:1 exists between text (and images of text) and background behind the text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.3"
+   ]
+  },
+  "G146": {
+   "title": "Using liquid layout",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.4",
+    "1.4.8"
+   ]
+  },
+  "G148": {
+   "title": "Not specifying background color, not specifying text color, and not using technology features that change those defaults",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.3",
+    "1.4.6",
+    "1.4.8"
+   ]
+  },
+  "G149": {
+   "title": "Using user interface components that are highlighted by the user agent when they receive focus",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.7"
+   ]
+  },
+  "G15": {
+   "title": "Using a tool to ensure that content does not violate the general flash threshold or red flash threshold",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.3.1"
+   ]
+  },
+  "G150": {
+   "title": "Providing text based alternatives for live audio-only content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.9"
+   ]
+  },
+  "G151": {
+   "title": "Providing a link to a text transcript of a prepared statement or script if the script is followed",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.9"
+   ]
+  },
+  "G152": {
+   "title": "Setting animated gif images to stop blinking after n cycles (within 5 seconds)",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.2"
+   ]
+  },
+  "G153": {
+   "title": "Making the text easier to read",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.5"
+   ]
+  },
+  "G155": {
+   "title": "Providing a checkbox in addition to a submit button",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.4"
+   ]
+  },
+  "G156": {
+   "title": "Using a technology that has commonly-available user agents that can change the foreground and background of blocks of text",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.3",
+    "1.4.6",
+    "1.4.8"
+   ]
+  },
+  "G157": {
+   "title": "Incorporating a live audio captioning service into a web page",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.9"
+   ]
+  },
+  "G158": {
+   "title": "Providing an alternative for time-based media for audio-only content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.1"
+   ]
+  },
+  "G159": {
+   "title": "Providing an alternative for time-based media for video-only content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.1",
+    "1.2.8"
+   ]
+  },
+  "G160": {
+   "title": "Providing sign language versions of information, ideas, and processes that must be understood in order to use the content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.5"
+   ]
+  },
+  "G161": {
+   "title": "Providing a search function to help users find content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.5"
+   ]
+  },
+  "G162": {
+   "title": "Positioning labels to maximize predictability of relationships",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "2.5.3",
+    "3.3.2"
+   ]
+  },
+  "G163": {
+   "title": "Using standard diacritical marks that can be turned off",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.6"
+   ]
+  },
+  "G164": {
+   "title": "Providing a stated time within which an online request (or transaction) may be amended or canceled by the user after making the request",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.4"
+   ]
+  },
+  "G165": {
+   "title": "Using the default focus indicator for the platform so that high visibility default focus indicators will carry over",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.7"
+   ]
+  },
+  "G166": {
+   "title": "Providing audio that describes the important video content and describing it as such",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.1"
+   ]
+  },
+  "G167": {
+   "title": "Using an adjacent button to label the purpose of a field",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.2"
+   ]
+  },
+  "G168": {
+   "title": "Requesting confirmation to continue with selected action",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.4"
+   ]
+  },
+  "G169": {
+   "title": "Aligning text on only one side",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "G17": {
+   "title": "Ensuring that a contrast ratio of at least 7:1 exists between text (and images of text) and background behind the text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.6"
+   ]
+  },
+  "G170": {
+   "title": "Providing a control near the beginning of the web page that turns off sounds that play automatically",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.2"
+   ]
+  },
+  "G171": {
+   "title": "Playing sounds only on user request",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.2"
+   ]
+  },
+  "G172": {
+   "title": "Providing a mechanism to remove full justification of text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "G173": {
+   "title": "Providing a version of a movie with audio descriptions",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.5"
+   ]
+  },
+  "G174": {
+   "title": "Providing a control with a sufficient contrast ratio that allows users to switch to a presentation that uses sufficient contrast",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.11",
+    "1.4.3",
+    "1.4.6"
+   ]
+  },
+  "G175": {
+   "title": "Providing a multi color selection tool on the page for foreground and background colors",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "G176": {
+   "title": "Keeping the flashing area small enough",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.3.1"
+   ]
+  },
+  "G177": {
+   "title": "Providing suggested correction text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.3",
+    "4.1.3"
+   ]
+  },
+  "G178": {
+   "title": "Providing controls on the web page that allow users to incrementally change the size of all text on the page up to 200 percent",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.4"
+   ]
+  },
+  "G179": {
+   "title": "Ensuring that there is no loss of content or functionality when the text resizes and text containers do not change their width",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.4"
+   ]
+  },
+  "G18": {
+   "title": "Ensuring that a contrast ratio of at least 4.5:1 exists between text (and images of text) and background behind the text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.3",
+    "1.4.6"
+   ]
+  },
+  "G180": {
+   "title": "Providing the user with a means to set the time limit to 10 times the default time limit",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.1"
+   ]
+  },
+  "G181": {
+   "title": "Encoding user data as hidden or encrypted data in a re-authorization page",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.5"
+   ]
+  },
+  "G182": {
+   "title": "Ensuring that additional visual cues are available when text color differences are used to convey information",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.1"
+   ]
+  },
+  "G183": {
+   "title": "Using a contrast ratio of at least 3:1 to distinguish inline text links from surrounding text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.1"
+   ]
+  },
+  "G184": {
+   "title": "Providing text instructions at the beginning of a form or set of fields that describes the necessary input",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.2",
+    "3.3.5"
+   ]
+  },
+  "G185": {
+   "title": "Linking to all of the pages on the site from the home page",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.5"
+   ]
+  },
+  "G186": {
+   "title": "Using a control in the web page that stops moving, blinking, or auto-updating content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.2"
+   ]
+  },
+  "G188": {
+   "title": "Providing a button on the page to increase line spaces and paragraph spaces",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "G189": {
+   "title": "Providing a control near the beginning of the web page that changes the link text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "G19": {
+   "title": "Ensuring that no component of the content flashes more than three times in any 1-second period",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.3.1",
+    "2.3.2"
+   ]
+  },
+  "G191": {
+   "title": "Providing a link, button, or other mechanism that reloads the page without any blinking content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.2"
+   ]
+  },
+  "G193": {
+   "title": "Providing help by an assistant in the web page",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.5",
+    "4.1.3"
+   ]
+  },
+  "G194": {
+   "title": "Providing spell checking and suggestions for text input",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.5",
+    "4.1.3"
+   ]
+  },
+  "G195": {
+   "title": "Using an author-supplied, visible focus indicator",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.11",
+    "2.4.13",
+    "2.4.7"
+   ]
+  },
+  "G196": {
+   "title": "Using a text alternative on one item within a group of images that describes all items in the group",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G197": {
+   "title": "Using labels, names, and text alternatives consistently for content that has the same functionality",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.4"
+   ]
+  },
+  "G198": {
+   "title": "Providing a way for the user to turn the time limit off",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.1"
+   ]
+  },
+  "G199": {
+   "title": "Providing success feedback when data is submitted successfully",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.3",
+    "3.3.4",
+    "4.1.3"
+   ]
+  },
+  "G200": {
+   "title": "Opening new windows and tabs from a link only when necessary",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "G201": {
+   "title": "Giving users advanced warning when opening a new window",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.6",
+    "2.4.9",
+    "3.2.5"
+   ]
+  },
+  "G202": {
+   "title": "Ensuring keyboard control for all functionality",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.1.1"
+   ]
+  },
+  "G203": {
+   "title": "Using a static text alternative to describe a talking head video",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.5"
+   ]
+  },
+  "G204": {
+   "title": "Not interfering with the user agent's reflow of text as the viewing window is narrowed",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.8"
+   ]
+  },
+  "G205": {
+   "title": "Including a text cue for colored form control labels",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.1"
+   ]
+  },
+  "G206": {
+   "title": "Providing options within the content to switch to a layout that does not require the user to scroll horizontally to read a line of text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.10",
+    "1.4.8"
+   ]
+  },
+  "G207": {
+   "title": "Ensuring that a contrast ratio of 3:1 is provided for icons",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.11"
+   ]
+  },
+  "G208": {
+   "title": "Including the text of the visible label as part of the accessible name",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.3"
+   ]
+  },
+  "G209": {
+   "title": "Provide sufficient contrast at the boundaries between adjoining colors",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.11"
+   ]
+  },
+  "G21": {
+   "title": "Ensuring that users are not trapped in content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.1.2"
+   ]
+  },
+  "G210": {
+   "title": "Ensuring that drag-and-drop actions can be cancelled",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.2"
+   ]
+  },
+  "G211": {
+   "title": "Matching the accessible name to the visible label",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.3"
+   ]
+  },
+  "G212": {
+   "title": "Using native controls to ensure functionality is triggered on the up-event.",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.2"
+   ]
+  },
+  "G213": {
+   "title": "Provide conventional controls and an application setting for motion activated input",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.4"
+   ]
+  },
+  "G214": {
+   "title": "Using a control to allow access to content in different orientations which is otherwise restricted",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.4"
+   ]
+  },
+  "G215": {
+   "title": "Providing controls to achieve the same result as path based or multipoint gestures",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.1"
+   ]
+  },
+  "G216": {
+   "title": "Providing single point activation for a control slider",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.1"
+   ]
+  },
+  "G217": {
+   "title": "Providing a mechanism to allow users to remap or turn off character key shortcuts",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.1.4"
+   ]
+  },
+  "G218": {
+   "title": "Email link authentication",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.8",
+    "3.3.9"
+   ]
+  },
+  "G219": {
+   "title": "Ensuring that an alternative is available for dragging movements that operate on content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.5.7"
+   ]
+  },
+  "G220": {
+   "title": "Provide a contact-us link in a consistent location",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.6"
+   ]
+  },
+  "G221": {
+   "title": "Provide data from a previous step in a process",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.7"
+   ]
+  },
+  "G224": {
+   "title": "Accounting for meaningful text indentation and Reflow",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.10"
+   ]
+  },
+  "G225": {
+   "title": "Section panels that scroll horizontally are designed to fit within a width of 320 CSS pixels on a vertically scrolling page",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.10"
+   ]
+  },
+  "G226": {
+   "title": "Providing audio descriptions by incorporating narration in the soundtrack",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.5"
+   ]
+  },
+  "G4": {
+   "title": "Allowing the content to be paused and restarted from where it was paused",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.1",
+    "2.2.2"
+   ]
+  },
+  "G5": {
+   "title": "Allowing users to complete an activity without any time limit",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.3"
+   ]
+  },
+  "G53": {
+   "title": "Identifying the purpose of a link using link text combined with the text of the enclosing sentence",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4"
+   ]
+  },
+  "G54": {
+   "title": "Including a sign language interpreter in the video stream",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.6"
+   ]
+  },
+  "G55": {
+   "title": "Linking to definitions",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.3",
+    "3.1.4"
+   ]
+  },
+  "G56": {
+   "title": "Mixing audio files so that non-speech sounds are at least 20 decibels lower than the speech audio content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.7"
+   ]
+  },
+  "G57": {
+   "title": "Ordering the content in a meaningful sequence",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.2"
+   ]
+  },
+  "G58": {
+   "title": "Placing a link to the alternative for time-based media immediately next to the non-text content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.8"
+   ]
+  },
+  "G59": {
+   "title": "Placing the interactive elements in an order that follows sequences and relationships within the content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.3"
+   ]
+  },
+  "G60": {
+   "title": "Playing a sound that turns off automatically within three seconds",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.2"
+   ]
+  },
+  "G61": {
+   "title": "Presenting repeated components in the same relative order each time they appear",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.3"
+   ]
+  },
+  "G62": {
+   "title": "Providing a glossary",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.3",
+    "3.1.4",
+    "3.1.6"
+   ]
+  },
+  "G63": {
+   "title": "Providing a site map",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.5",
+    "2.4.8"
+   ]
+  },
+  "G64": {
+   "title": "Providing a Table of Contents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.5"
+   ]
+  },
+  "G65": {
+   "title": "Providing a breadcrumb trail",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.8"
+   ]
+  },
+  "G68": {
+   "title": "Providing a short text alternative that describes the purpose of live audio-only and live video-only content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G69": {
+   "title": "Providing an alternative for time based media",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.8"
+   ]
+  },
+  "G70": {
+   "title": "Providing a function to search an online dictionary",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.3",
+    "3.1.4"
+   ]
+  },
+  "G71": {
+   "title": "Providing a help link on every web page",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.5"
+   ]
+  },
+  "G73": {
+   "title": "Providing a long description in another location with a link to it that is immediately adjacent to the non-text content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G74": {
+   "title": "Providing a long description in text near the non-text content, with a reference to the location of the long description in the short description",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G75": {
+   "title": "Providing a mechanism to postpone any updating of content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.4"
+   ]
+  },
+  "G76": {
+   "title": "Providing a mechanism to request an update of the content instead of updating automatically",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.4",
+    "3.2.5"
+   ]
+  },
+  "G78": {
+   "title": "Providing a second, user-selectable, audio track that includes audio descriptions",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.5"
+   ]
+  },
+  "G79": {
+   "title": "Providing a spoken version of the text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.5"
+   ]
+  },
+  "G8": {
+   "title": "Providing a movie with extended audio descriptions",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.5",
+    "1.2.7"
+   ]
+  },
+  "G80": {
+   "title": "Providing a submit button to initiate a change of context",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.2"
+   ]
+  },
+  "G81": {
+   "title": "Providing a synchronized video of the sign language interpreter that can be displayed in a different viewport or overlaid on the image by the player",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.6"
+   ]
+  },
+  "G82": {
+   "title": "Providing a text alternative that identifies the purpose of interactive non-text content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G83": {
+   "title": "Providing text descriptions to identify required fields that were not completed",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.2",
+    "4.1.3"
+   ]
+  },
+  "G84": {
+   "title": "Providing a text description when the user provides information that is not in the list of allowed values",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.3",
+    "4.1.3"
+   ]
+  },
+  "G85": {
+   "title": "Providing a text description when user input falls outside the required format or values",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.3",
+    "4.1.3"
+   ]
+  },
+  "G86": {
+   "title": "Providing a text summary that can be understood by people with lower secondary education level reading ability",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.5"
+   ]
+  },
+  "G87": {
+   "title": "Providing closed captions",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.2",
+    "1.2.4"
+   ]
+  },
+  "G88": {
+   "title": "Providing descriptive titles for web pages",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.2"
+   ]
+  },
+  "G89": {
+   "title": "Providing expected data format and example",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.2",
+    "3.3.5"
+   ]
+  },
+  "G9": {
+   "title": "Creating captions for live synchronized media",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.4"
+   ]
+  },
+  "G90": {
+   "title": "Providing keyboard-triggered event handlers",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.1.1"
+   ]
+  },
+  "G91": {
+   "title": "Providing link text that describes the purpose of a link",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "G92": {
+   "title": "Providing long description for non-text content that serves the same purpose and presents the same information",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G93": {
+   "title": "Providing open (always visible) captions",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.2",
+    "1.2.4"
+   ]
+  },
+  "G94": {
+   "title": "Providing short text alternative for non-text content that serves the same purpose and presents the same information as the non-text content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G95": {
+   "title": "Providing short text alternatives that provide a brief description of the non-text content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "G96": {
+   "title": "Providing textual identification of items that otherwise rely only on sensory information to be understood",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.3"
+   ]
+  },
+  "G97": {
+   "title": "Providing the first use of an abbreviation immediately before or after the expanded form",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.4"
+   ]
+  },
+  "G98": {
+   "title": "Providing the ability for the user to review and correct answers before submitting",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.4"
+   ]
+  },
+  "G99": {
+   "title": "Providing the ability to recover deleted information",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.4"
+   ]
+  },
+  "H100": {
+   "title": "Providing properly marked up email and password inputs",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.8",
+    "3.3.9"
+   ]
+  },
+  "H101": {
+   "title": "Using semantic HTML elements to identify regions of a page",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "H102": {
+   "title": "Creating modal dialogs with the HTML dialog element",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.3"
+   ]
+  },
+  "H2": {
+   "title": "Combining adjacent image and text links for the same resource",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1",
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "H24": {
+   "title": "Providing text alternatives for the area elements of image maps",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1",
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "H25": {
+   "title": "Providing a title using the title element",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.2"
+   ]
+  },
+  "H28": {
+   "title": "Providing definitions for abbreviations by using the abbr element",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "3.1.4"
+   ]
+  },
+  "H30": {
+   "title": "Providing link text that describes the purpose of a link for anchor elements",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1",
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "H32": {
+   "title": "Providing submit buttons",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.2"
+   ]
+  },
+  "H33": {
+   "title": "Supplementing link text with the title attribute",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "H34": {
+   "title": "Using a Unicode right-to-left mark (RLM) or left-to-right mark (LRM) to mix text direction inline",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.2"
+   ]
+  },
+  "H36": {
+   "title": "Using alt attributes on images used as submit buttons",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "H37": {
+   "title": "Using alt attributes on img elements",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "H39": {
+   "title": "Using caption elements to associate data table captions with data tables",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "H40": {
+   "title": "Using description lists",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.3"
+   ]
+  },
+  "H42": {
+   "title": "Using h1-h6 to identify headings",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "H43": {
+   "title": "Using id and headers attributes to associate data cells with header cells in data tables",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "H44": {
+   "title": "Using label elements to associate text labels with form controls",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1",
+    "1.3.1",
+    "3.3.2",
+    "4.1.2"
+   ]
+  },
+  "H48": {
+   "title": "Using ol, ul and dl for lists or groups of links",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "H49": {
+   "title": "Using semantic markup to mark emphasized or special text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "H51": {
+   "title": "Using table markup to present tabular information",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "H53": {
+   "title": "Using the body of the object element",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1",
+    "1.2.3",
+    "1.2.8"
+   ]
+  },
+  "H54": {
+   "title": "Using the dfn element to identify the defining instance of a word or phrase",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.3"
+   ]
+  },
+  "H56": {
+   "title": "Using the dir attribute on an inline element to resolve problems with nested directional runs",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.2"
+   ]
+  },
+  "H57": {
+   "title": "Using the language attribute on the HTML element",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.1"
+   ]
+  },
+  "H58": {
+   "title": "Using language attributes to identify changes in the human language",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.2"
+   ]
+  },
+  "H62": {
+   "title": "Using the ruby element",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.6"
+   ]
+  },
+  "H63": {
+   "title": "Using the scope attribute to associate header cells with data cells in data tables",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "H64": {
+   "title": "Using the title attribute of the iframe element",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.1",
+    "4.1.2"
+   ]
+  },
+  "H65": {
+   "title": "Using the title attribute to identify form controls when the label element cannot be used",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1",
+    "1.3.1",
+    "4.1.2"
+   ]
+  },
+  "H67": {
+   "title": "Using null alt text and no title attribute on img elements for images that assistive technology should ignore",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "H69": {
+   "title": "Providing heading elements at the beginning of each section of content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.1",
+    "2.4.10"
+   ]
+  },
+  "H71": {
+   "title": "Providing a description for groups of form controls using fieldset and legend elements",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "3.3.2"
+   ]
+  },
+  "H76": {
+   "title": "Using meta refresh to create an instant client-side redirect",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "H77": {
+   "title": "Identifying the purpose of a link using link text combined with its enclosing list item",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4"
+   ]
+  },
+  "H78": {
+   "title": "Identifying the purpose of a link using link text combined with its enclosing paragraph",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4"
+   ]
+  },
+  "H79": {
+   "title": "Identifying the purpose of a link in a data table using the link text combined with its enclosing table cell and associated table header cells",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4"
+   ]
+  },
+  "H80": {
+   "title": "Identifying the purpose of a link using link text combined with the preceding heading element",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "2.4.4"
+   ]
+  },
+  "H81": {
+   "title": "Identifying the purpose of a link in a nested list using link text combined with the parent list item under which the list is nested",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4"
+   ]
+  },
+  "H83": {
+   "title": "Using the target attribute to open a new window on user request and indicating this in link text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "H84": {
+   "title": "Using a button with a select element to perform an action",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.2"
+   ]
+  },
+  "H85": {
+   "title": "Using optgroup to group option elements inside a select",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "H86": {
+   "title": "Providing text alternatives for emojis, emoticons, ASCII art, and leetspeak",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "H88": {
+   "title": "Using HTML according to spec",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "4.1.2"
+   ]
+  },
+  "H89": {
+   "title": "Using the title attribute to provide context-sensitive help",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "3.3.5"
+   ]
+  },
+  "H90": {
+   "title": "Indicating required form controls using label or legend",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.2"
+   ]
+  },
+  "H91": {
+   "title": "Using HTML form controls and links",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.1.1",
+    "4.1.2"
+   ]
+  },
+  "H95": {
+   "title": "Using the track element to provide captions",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.2"
+   ]
+  },
+  "H96": {
+   "title": "Using the track element to provide audio descriptions",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "1.2.1",
+    "1.2.3",
+    "1.2.5",
+    "1.2.7"
+   ]
+  },
+  "H97": {
+   "title": "Grouping related links using the nav element",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "2.4.1"
+   ]
+  },
+  "H98": {
+   "title": "Using HTML autocomplete attributes",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.5"
+   ]
+  },
+  "H99": {
+   "title": "Provide a page-selection mechanism",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "2.4.5"
+   ]
+  },
+  "PDF1": {
+   "title": "Applying text alternatives to images with the Alt entry in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "PDF10": {
+   "title": "Providing labels for interactive form controls in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "3.3.2",
+    "4.1.2"
+   ]
+  },
+  "PDF11": {
+   "title": "Providing links and link text using the Link annotation and the /Link structure element in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "2.1.1",
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "PDF12": {
+   "title": "Providing name, role, value information for form fields in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "4.1.2"
+   ]
+  },
+  "PDF13": {
+   "title": "Providing replacement text using the /Alt entry for links in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "PDF14": {
+   "title": "Providing running headers and footers in PDF documents",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "2.4.8",
+    "3.2.3"
+   ]
+  },
+  "PDF15": {
+   "title": "Providing submit buttons with the submit-form action in PDF forms",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.2"
+   ]
+  },
+  "PDF16": {
+   "title": "Setting the default language using the /Lang entry in the document catalog of a PDF document",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.1"
+   ]
+  },
+  "PDF17": {
+   "title": "Specifying consistent page numbering for PDF documents",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "2.4.8",
+    "3.2.3"
+   ]
+  },
+  "PDF18": {
+   "title": "Specifying the document title using the Title entry in the document information dictionary of a PDF document",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.2"
+   ]
+  },
+  "PDF19": {
+   "title": "Specifying the language for a passage or phrase with the Lang entry in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.1",
+    "3.1.2"
+   ]
+  },
+  "PDF2": {
+   "title": "Creating bookmarks in PDF documents",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "2.4.5"
+   ]
+  },
+  "PDF20": {
+   "title": "Using Adobe Acrobat Pro's Table Editor to repair mistagged tables",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "PDF21": {
+   "title": "Using List tags for lists in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "PDF22": {
+   "title": "Indicating when user input falls outside the required format or values in PDF forms",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.3"
+   ]
+  },
+  "PDF23": {
+   "title": "Providing interactive form controls in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.1.1"
+   ]
+  },
+  "PDF3": {
+   "title": "Ensuring correct tab and reading order in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.2",
+    "2.1.1",
+    "2.4.3"
+   ]
+  },
+  "PDF4": {
+   "title": "Hiding decorative images with the Artifact tag in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.1.1"
+   ]
+  },
+  "PDF5": {
+   "title": "Indicating required form controls in PDF forms",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.2"
+   ]
+  },
+  "PDF6": {
+   "title": "Using table elements for table markup in PDF Documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "PDF7": {
+   "title": "Performing OCR on a scanned PDF document to provide actual text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.5",
+    "1.4.9"
+   ]
+  },
+  "PDF8": {
+   "title": "Providing definitions for abbreviations via an E entry for a structure element",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.1.4"
+   ]
+  },
+  "PDF9": {
+   "title": "Providing headings by marking content with heading tags in PDF documents",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1",
+    "2.4.1"
+   ]
+  },
+  "SCR1": {
+   "title": "Allowing the user to extend the default time limit",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.1"
+   ]
+  },
+  "SCR14": {
+   "title": "Using scripts to make nonessential alerts optional",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.4",
+    "4.1.3"
+   ]
+  },
+  "SCR16": {
+   "title": "Providing a script that warns the user a time limit is about to expire",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.1"
+   ]
+  },
+  "SCR18": {
+   "title": "Providing client-side validation and alert",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.3",
+    "3.3.4"
+   ]
+  },
+  "SCR19": {
+   "title": "Using an onchange event on a select element without causing a change of context",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.2",
+    "3.2.5"
+   ]
+  },
+  "SCR2": {
+   "title": "Using redundant keyboard and mouse event handlers",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.1.1"
+   ]
+  },
+  "SCR20": {
+   "title": "Using both keyboard and other device-specific functions",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.1.1"
+   ]
+  },
+  "SCR22": {
+   "title": "Using scripts to control blinking and stop it in five seconds or less",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.2"
+   ]
+  },
+  "SCR24": {
+   "title": "Using progressive enhancement to open new windows on user request",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.6",
+    "2.4.9",
+    "3.2.5"
+   ]
+  },
+  "SCR26": {
+   "title": "Inserting dynamic content into the Document Object Model immediately following its trigger element",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.3"
+   ]
+  },
+  "SCR27": {
+   "title": "Reordering page sections using the Document Object Model",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.3"
+   ]
+  },
+  "SCR28": {
+   "title": "Using an expandable and collapsible menu to bypass block of content",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.1"
+   ]
+  },
+  "SCR29": {
+   "title": "Adding keyboard-accessible actions to static HTML elements",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "2.1.1"
+   ]
+  },
+  "SCR30": {
+   "title": "Using scripts to change the link text",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.4",
+    "2.4.9"
+   ]
+  },
+  "SCR31": {
+   "title": "Using script to change the background color or border of the element with focus",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.4.7"
+   ]
+  },
+  "SCR32": {
+   "title": "Providing client-side validation and adding error text via the DOM",
+   "kinds": [
+    "advisory",
+    "sufficient"
+   ],
+   "scs": [
+    "3.3.1",
+    "3.3.3"
+   ]
+  },
+  "SCR33": {
+   "title": "Using script to scroll content, and providing a mechanism to pause it",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.1",
+    "2.2.2"
+   ]
+  },
+  "SCR34": {
+   "title": "Calculating size and position in a way that scales with text size",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.10",
+    "1.4.4",
+    "1.4.8"
+   ]
+  },
+  "SCR35": {
+   "title": "Making actions keyboard accessible by using the onclick event of anchors and buttons",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.1.1"
+   ]
+  },
+  "SCR36": {
+   "title": "Providing a mechanism to allow users to display moving, scrolling, or auto-updating text in a static window or area",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.2.1"
+   ]
+  },
+  "SCR39": {
+   "title": "Making content on focus or hover hoverable, dismissible, and persistent",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.4.13"
+   ]
+  },
+  "SCR40": {
+   "title": "Using the CSS prefers-reduced-motion query in JavaScript to prevent motion",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "2.3.3"
+   ]
+  },
+  "SM1": {
+   "title": "Adding extended audio description in SMIL 1.0",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.5",
+    "1.2.7"
+   ]
+  },
+  "SM11": {
+   "title": "Providing captions through synchronized text streams in SMIL 1.0",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.2",
+    "1.2.4"
+   ]
+  },
+  "SM12": {
+   "title": "Providing captions through synchronized text streams in SMIL 2.0",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.2",
+    "1.2.4"
+   ]
+  },
+  "SM13": {
+   "title": "Providing sign language interpretation through synchronized video streams in SMIL 1.0",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.6"
+   ]
+  },
+  "SM14": {
+   "title": "Providing sign language interpretation through synchronized video streams in SMIL 2.0",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.6"
+   ]
+  },
+  "SM2": {
+   "title": "Adding extended audio description in SMIL 2.0",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.5",
+    "1.2.7"
+   ]
+  },
+  "SM6": {
+   "title": "Providing audio description in SMIL 1.0",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.5"
+   ]
+  },
+  "SM7": {
+   "title": "Providing audio description in SMIL 2.0",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.2.3",
+    "1.2.5"
+   ]
+  },
+  "SVR1": {
+   "title": "Implementing automatic redirects on the server side instead of on the client side",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "3.2.5"
+   ]
+  },
+  "SVR5": {
+   "title": "Specifying the default language in the HTTP header",
+   "kinds": [
+    "advisory"
+   ],
+   "scs": [
+    "3.1.1"
+   ]
+  },
+  "T1": {
+   "title": "Using standard text formatting conventions for paragraphs",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "T2": {
+   "title": "Using standard text formatting conventions for lists",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  },
+  "T3": {
+   "title": "Using standard text formatting conventions for headings",
+   "kinds": [
+    "sufficient"
+   ],
+   "scs": [
+    "1.3.1"
+   ]
+  }
+ }
+}

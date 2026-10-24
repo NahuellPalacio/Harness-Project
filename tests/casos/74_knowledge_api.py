@@ -4126,6 +4126,16 @@ PROTEGIDOS_DE_KNOWLEDGE_API = (
     "docs/adr/0013-modelo-de-dominio-canonico.md", "docs/adr/0014-el-contrato-de-ejecucion.md",
     "docs/adr/0015-el-motor-minimo-de-ejecucion.md", "docs/adr/0016-la-ejecucion-de-un-grafo.md",
 )
+# Pisado por docs/cambios/wcag22-obelisco/spec.md (E-58 a E-60): la integracion de WCAG 2.2 con Obelisco
+# modifica a proposito el agente de frontend y cuatro skills de frontend (dev-accessibility, dev-ui,
+# dev-responsive y dev-frontend-implementation, con sus carpetas references/ y scripts/). No son una
+# excepcion de KA-E53: se saltean esas cinco rutas y nada mas, para que siga cuidando que ningun otro agente
+# ni skill cambie.
+SALVO_ACCESIBILIDAD = (":(exclude)harnesses/desarrollo/agents/dev-frontend.md",
+                       ":(exclude)harnesses/desarrollo/skills/dev-accessibility",
+                       ":(exclude)harnesses/desarrollo/skills/dev-ui",
+                       ":(exclude)harnesses/desarrollo/skills/dev-responsive",
+                       ":(exclude)harnesses/desarrollo/skills/dev-frontend-implementation")
 
 
 def _subcomandos_del_cli():
@@ -4151,9 +4161,11 @@ def test_ka_e53_lo_que_no_se_toca_es_el_de_la_base(t):
         codigo, archivos = _git("ls-tree", "-r", "--name-only", BASE, "--", ruta)
         t.verdadero("KA-E53 (control) %s existe en %s: la guarda no mira una ruta que no es" % (ruta, BASE),
                     codigo == 0 and archivos.strip() != "")
-    codigo, cambiados = _git("diff", "--no-renames", "--name-only", BASE, "--", *PROTEGIDOS_DE_KNOWLEDGE_API)
+    codigo, cambiados = _git("diff", "--no-renames", "--name-only", BASE, "--", *PROTEGIDOS_DE_KNOWLEDGE_API,
+                             *SALVO_ACCESIBILIDAD)
     t.igual("KA-E53 ningun archivo protegido cambio contra %s" % BASE, (0, []), (codigo, cambiados.split()))
-    codigo, nuevos = _git("ls-files", "--others", "--exclude-standard", "--", *PROTEGIDOS_DE_KNOWLEDGE_API)
+    codigo, nuevos = _git("ls-files", "--others", "--exclude-standard", "--", *PROTEGIDOS_DE_KNOWLEDGE_API,
+                          *SALVO_ACCESIBILIDAD)
     t.igual("KA-E53 y no hay archivos nuevos entre ellos", (0, []), (codigo, nuevos.split()))
     subcomandos = _subcomandos_del_cli() or []
     t.igual("KA-E53 dev-harness.py sigue con trece subcomandos, con ejecutar", (13, True), (len(subcomandos), "ejecutar" in subcomandos))

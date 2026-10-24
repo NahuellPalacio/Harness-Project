@@ -2727,6 +2727,54 @@ refutation ruled VP-E11 upheld on that reading.
 Fix. Either add the interval check to the aggregator (the intervals are already in the record, spec section 15.1)
 with its own scenario and mutation, or strike the third outcome from F11. A change to the runner and its spec.
 
+## What the WCAG 2.2 integration with Obelisco left open
+
+Written on 2026-10-23 from `docs/cambios/wcag22-obelisco/spec.md`. The change is built and tested on branch
+`wcag22-obelisco`; it is not released (0.36.0 is reserved for the cleanup of 6.1, and closing is its own ritual).
+
+### The three manual passes of accessibility have no executor
+
+The register of `dev-accessibility` records browser, keyboard and screen reader as `performed` or `not_performed`,
+and refuses a `pass` that depends on one that was not performed. Nothing in the harness runs them: every register
+starts and stays `not_performed` until a person does it and says so. The static review is explicit that a clean
+run proves nothing about contrast, focus, keyboard or reflow, and the register keeps those criteria `not_tested`.
+`docs/cambios/d4-comportamiento-responsive/spec.md` already left the same hole for the viewport matrix.
+
+Fix. Wire a browser run (Playwright plus an accessibility scan) behind `dev-quality-validation`, whose result enters
+the register as `evidence_types: ["browser"]` with its build and runtime. It does not replace the keyboard and
+screen-reader passes, which stay human.
+
+### The Obelisco matrix is a snapshot of the published pages and nothing detects that it aged
+
+`references/obelisco-matrix.json` was built on 2026-10-23 from the pages of `https://gcba.github.io/Obelisco-V2/`
+(34 rows, each with its page and date). Obelisco publishes releases (`/documentation/releases`) and several
+components have an Accessibility tab without content (validation, tabs, tooltip, collapsible, carousel, switch,
+horizontal and vertical navigation, steps). When a page is filled in or a criterion changes, the matrix keeps
+saying the old thing, with its date, and no check compares it.
+
+Fix. Not known. A comparison of the declared criteria of each row against the live page is possible, but it needs
+network access the suite does not have and a decision on what a mismatch should do.
+
+### Contrast pairs are never read from the code
+
+`scripts/contrast.py` is exact on the pairs it is given and honest about what it cannot resolve (`var(--x)`,
+`currentColor`, a translucent background without a backdrop). Nobody extracts the pairs: the model has to supply
+them, and `references/task-color-contrast.md` says to test every state. A tabulated list of the ratios between
+Obelisco's semantic colours would remove most of the guessing, and it is not built.
+
+Fix. Tabulate the text and non-text ratios of the Obelisco colour tokens against each documented background, from
+the tokens of the installed Obelisco version, and check them with `contrast.py`.
+
+### The parity witness of `dev-accesibilidad-html` was rewritten by hand
+
+`tests/fixtures/paridad-checks.json` proved that the Python checks answer what the PowerShell ones answered.
+Its case for `dev-accesibilidad-html` now carries the new answers and a `nota` saying so (the two-`<h1>` notice is
+gone, a `<title>` notice is new, every notice cites a criterion and a level). `tests/generar-testigo.ps1` still
+generates that file from `.ps1` checks that no longer exist, so regenerating it would erase the change.
+
+Fix. Retire the generator, or rewrite it over the Python checks, and drop the word «parity» from a case that no
+longer is one.
+
 ## Verification that was not done
 
 ### The migration of a human decision was never exercised on a real 0.30.0 plan

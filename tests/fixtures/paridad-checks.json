@@ -23,11 +23,12 @@
       "archivo": "tests/fixtures/proyecto-checks/pagina.html",
       "config": null,
       "hallazgos": [
-        "[a11y] pagina.html: <html> sin atributo lang. El lector de pantalla necesita saber el idioma para elegir la fonetica; sin eso lee el castellano como si fuera ingles.",
-        "[a11y] pagina.html: 1 <img> sin atributo alt — L5. Si la imagen es decorativa va alt=\"\" vacio, que es una afirmacion; que el atributo falte no dice nada.",
-        "[a11y] pagina.html: 1 control(es) de formulario sin forma de nombrarlos — L6. Sin id que un <label for> pueda apuntar, ni aria-label, el control se anuncia como \"cuadro de edicion\" y nada mas.",
-        "[a11y] pagina.html: hay 2 elementos <h1>. Va uno solo: los demas niveles son h2 en adelante, sin saltos."
-      ]
+        "[a11y] pagina.html: <html> sin atributo lang (criterio 3.1.1, nivel A). El lector de pantalla necesita saber el idioma para elegir la fonética; sin eso lee el castellano como si fuera inglés. Agregá lang=\"es\".",
+        "[a11y] pagina.html: el documento no tiene <title> o está vacío (criterio 2.4.2, nivel A). Es lo primero que anuncia un lector de pantalla al abrir la página.",
+        "[a11y] pagina.html: 1 <img> sin atributo alt — L5 (criterio 1.1.1, nivel A). Si la imagen es decorativa va alt=\"\" vacío, que es una afirmación; que el atributo falte no dice nada.",
+        "[a11y] pagina.html: 1 control de formulario sin nombre accesible — L6 (criterio 4.1.2, nivel A). Un id no es un nombre: hace falta una <label for> que lo apunte y tenga texto, una <label> que lo envuelva, un aria-label o un aria-labelledby que resuelva a texto."
+      ],
+      "nota": "Cambiado a propósito en wcag22-obelisco (E-57): el aviso de dos <h1> se retira —WCAG 2.2 no lo exige—, el de título es nuevo y los demás citan criterio y nivel. Ya no es paridad con PowerShell; es el testigo del check actual."
     },
     {
       "check": "dev-api-rutas",

@@ -429,18 +429,52 @@ try {
                 '.claude\harness\bin\desarrollo\conocimiento\acceso.py',
                 '.claude\harness\bin\desarrollo\conocimiento\corpus.py',
                 '.claude\harness\bin\desarrollo\conocimiento\recuperador_local.py')
+            # Pisado por docs/cambios/wcag22-obelisco/spec.md (E-62 a E-65): la integracion de WCAG 2.2 con
+            # Obelisco instala a proposito 23 archivos nuevos: el motor del check de accesibilidad, diez
+            # referencias, los ocho textos del W3C con su SOURCE.md y los tres scripts de dev-accessibility.
+            # Tampoco son de harness-unico: se suman a lo esperado en E-15 y se saltean en E-16, como los de
+            # Task 3, 4, 5 y 6. Que se instalen, se actualicen y se desinstalen lo protege E-62 a E-65 de
+            # 78-wcag22-obelisco-instalador.ps1.
+            $huAgregadosPorAccesibilidad = @(
+                '.claude\harness\checks\desarrollo\lib\a11y.py',
+                '.claude\skills\dev-accessibility\references\evidence-register.md',
+                '.claude\skills\dev-accessibility\references\obelisco-matrix.json',
+                '.claude\skills\dev-accessibility\references\scope-and-sources.md',
+                '.claude\skills\dev-accessibility\references\static-coverage.md',
+                '.claude\skills\dev-accessibility\references\task-color-contrast.md',
+                '.claude\skills\dev-accessibility\references\task-dynamic-media.md',
+                '.claude\skills\dev-accessibility\references\task-forms.md',
+                '.claude\skills\dev-accessibility\references\task-keyboard-focus.md',
+                '.claude\skills\dev-accessibility\references\task-structure-semantics.md',
+                '.claude\skills\dev-accessibility\references\wcag22-criteria.json',
+                '.claude\skills\dev-accessibility\references\wcag22\conformance.md',
+                '.claude\skills\dev-accessibility\references\wcag22\glossary.md',
+                '.claude\skills\dev-accessibility\references\wcag22\input-purposes.md',
+                '.claude\skills\dev-accessibility\references\wcag22\operable.md',
+                '.claude\skills\dev-accessibility\references\wcag22\perceivable.md',
+                '.claude\skills\dev-accessibility\references\wcag22\robust.md',
+                '.claude\skills\dev-accessibility\references\wcag22\SOURCE.md',
+                '.claude\skills\dev-accessibility\references\wcag22\understandable.md',
+                '.claude\skills\dev-accessibility\references\wcag22\whats-new-in-2-2.md',
+                '.claude\skills\dev-accessibility\scripts\contrast.py',
+                '.claude\skills\dev-accessibility\scripts\review.py',
+                '.claude\skills\dev-accessibility\scripts\wcag.py')
 
             # E-15
             # Task 5 / GD-25: se suman las dos de la ejecucion de un grafo.
             # Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3): se suman tambien las
             # cuatro de Knowledge Access.
-            $esperadas = @(@($huARutas | Where-Object { $huManifiestosViejos -notcontains $_ }) + $huAgregadosPorContratoDeEjecucion + $huAgregadosPorMotorDeEjecucion + $huAgregadosPorEjecucionDeGrafo + $huAgregadosPorKnowledgeApi | Sort-Object)
-            Assert-Igual 'E-15 las rutas del lock son las de 0.28.0 sin los dos manifiestos, mas las cuatro del contrato de ejecucion, las seis del motor, las dos de la ejecucion de un grafo y las cuatro de Knowledge Access' ($esperadas -join '|') ($huBRutas -join '|')
+            # Pisado por docs/cambios/wcag22-obelisco/spec.md: y las 23 de accesibilidad.
+            $esperadas = @(@($huARutas | Where-Object { $huManifiestosViejos -notcontains $_ }) + $huAgregadosPorContratoDeEjecucion + $huAgregadosPorMotorDeEjecucion + $huAgregadosPorEjecucionDeGrafo + $huAgregadosPorKnowledgeApi + $huAgregadosPorAccesibilidad | Sort-Object)
+            Assert-Igual 'E-15 las rutas del lock son las de 0.28.0 sin los dos manifiestos, mas las cuatro del contrato de ejecucion, las seis del motor, las dos de la ejecucion de un grafo, las cuatro de Knowledge Access y las 23 de accesibilidad' ($esperadas -join '|') ($huBRutas -join '|')
             # Eran 259 sobre 0.28.0 sola; sobre ea2dff7 suman los archivos de Flow Governance
             # (integracion-flow-governance-0-31): 282. Con las cuatro del contrato de ejecucion, 286, con
             # las seis del motor minimo, 292, con las dos de la ejecucion de un grafo (Task 5 / GD-25),
             # 294, y con las cuatro de Knowledge Access (Task 6, docs/cambios/knowledge-api/spec.md), 298.
-            Assert-Igual 'E-15 son 298: las 282 de ea2dff7, las cuatro del contrato de ejecucion, las seis del motor, las dos de la ejecucion de un grafo y las cuatro de Knowledge Access' 298 $huBRutas.Count
+            # Las 23 de accesibilidad (docs/cambios/wcag22-obelisco/spec.md) quedan fuera de esta cuenta y
+            # se cuentan en la linea de abajo: 74_knowledge_api.py (KA-E57) guarda esta linea tal cual.
+            Assert-Igual 'E-15 son 298: las 282 de ea2dff7, las cuatro del contrato de ejecucion, las seis del motor, las dos de la ejecucion de un grafo y las cuatro de Knowledge Access' 298 (@($huBRutas | Where-Object { $huAgregadosPorAccesibilidad -notcontains $_ }).Count)
+            Assert-Igual 'E-15 son 321: las 298 de arriba y las 23 de accesibilidad (WCAG 2.2 con Obelisco)' 321 $huBRutas.Count
 
             # E-16
             $tocados = @('.claude\settings.json', '.claude\harness\run-hook.cmd', '.claude\harness\hooks\session-start.py',
@@ -475,6 +509,18 @@ try {
             # lock (E-15 sigue en 298). dev-harness.py tambien lo toca, y ya esta entre las cinco de
             # $tocados.
             $huTocadosPorKnowledgeApi = @('.claude\harness\bin\desarrollo\contexto\repositorio.py')
+            # Pisado por docs/cambios/wcag22-obelisco/spec.md (E-58 a E-60): la integracion de WCAG 2.2 con
+            # Obelisco modifica a proposito seis archivos instalados de la base 0.28.0: el agente de
+            # frontend, el check de accesibilidad y las cuatro skills de frontend. No son excepciones de
+            # harness-unico: se saltean en E-16 como los del modelo de dominio, para que E-16 siga cuidando
+            # lo suyo. NO se suman a E-15, porque ya estan en el lock.
+            $huTocadosPorAccesibilidad = @(
+                '.claude\agents\dev-frontend.md',
+                '.claude\harness\checks\desarrollo\dev-accesibilidad-html.py',
+                '.claude\skills\dev-accessibility\SKILL.md',
+                '.claude\skills\dev-frontend-implementation\SKILL.md',
+                '.claude\skills\dev-responsive\SKILL.md',
+                '.claude\skills\dev-ui\SKILL.md')
             $distintos = @()
             foreach ($ruta in $huBRutas) {
                 if ($tocados -contains $ruta) { continue }
@@ -489,6 +535,10 @@ try {
                 # Pisado por docs/cambios/knowledge-api/spec.md (Task 6, seccion 34.3): tampoco los cuatro
                 # de Knowledge Access, que se instalan a proposito.
                 if ($huAgregadosPorKnowledgeApi -contains $ruta) { continue }
+                # Pisado por docs/cambios/wcag22-obelisco/spec.md: tampoco los 23 de accesibilidad, que se
+                # instalan a proposito, ni los seis que esa integracion modifica a proposito.
+                if ($huAgregadosPorAccesibilidad -contains $ruta) { continue }
+                if ($huTocadosPorAccesibilidad -contains $ruta) { continue }
                 if (-not $huAHash.ContainsKey($ruta)) { $distintos += "$ruta (no estaba)"; continue }
                 if ((Get-HuHash (Join-Path $huB $ruta)) -ne $huAHash[$ruta]) { $distintos += $ruta }
             }

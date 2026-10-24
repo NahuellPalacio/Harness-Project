@@ -1,0 +1,1257 @@
+{
+ "schema": "wcag22-criteria/1",
+ "wcag_version": "2.2",
+ "source": {
+  "recommendation": "https://www.w3.org/TR/WCAG22/",
+  "data": "https://www.w3.org/WAI/WCAG22/wcag.json",
+  "data_sha256": "3a034865a879a7d874b60ff2aec7f430cf37bc1597a1e00985680fd80ef5cf75",
+  "retrieved": "2026-10-23"
+ },
+ "counting_rule": "Counts are derived from `criteria`; none is written by hand. 4.1.1 Parsing is in `removed`: WCAG 2.2 marks it obsolete and gives it no level.",
+ "requires_basis": "Harness rule, not W3C. A criterion lists the manual test families that must have been performed before it can be recorded as `pass`. Derived from the minimum manual passes of the wcag22 audit workflow and kept conservative: when in doubt it asks for a test.",
+ "families": [
+  "browser",
+  "keyboard",
+  "screen_reader"
+ ],
+ "levels": [
+  "A",
+  "AA",
+  "AAA"
+ ],
+ "criteria": [
+  {
+   "id": "1.1.1",
+   "name": "Non-text Content",
+   "level": "A",
+   "principle": "perceivable",
+   "guideline": "1.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "1.2.1",
+   "name": "Audio-only and Video-only (Prerecorded)",
+   "level": "A",
+   "principle": "perceivable",
+   "guideline": "1.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.2.2",
+   "name": "Captions (Prerecorded)",
+   "level": "A",
+   "principle": "perceivable",
+   "guideline": "1.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.2.3",
+   "name": "Audio Description or Media Alternative (Prerecorded)",
+   "level": "A",
+   "principle": "perceivable",
+   "guideline": "1.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.2.4",
+   "name": "Captions (Live)",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.2.5",
+   "name": "Audio Description (Prerecorded)",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.2.6",
+   "name": "Sign Language (Prerecorded)",
+   "level": "AAA",
+   "principle": "perceivable",
+   "guideline": "1.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.2.7",
+   "name": "Extended Audio Description (Prerecorded)",
+   "level": "AAA",
+   "principle": "perceivable",
+   "guideline": "1.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.2.8",
+   "name": "Media Alternative (Prerecorded)",
+   "level": "AAA",
+   "principle": "perceivable",
+   "guideline": "1.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.2.9",
+   "name": "Audio-only (Live)",
+   "level": "AAA",
+   "principle": "perceivable",
+   "guideline": "1.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.3.1",
+   "name": "Info and Relationships",
+   "level": "A",
+   "principle": "perceivable",
+   "guideline": "1.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "1.3.2",
+   "name": "Meaningful Sequence",
+   "level": "A",
+   "principle": "perceivable",
+   "guideline": "1.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "1.3.3",
+   "name": "Sensory Characteristics",
+   "level": "A",
+   "principle": "perceivable",
+   "guideline": "1.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": []
+  },
+  {
+   "id": "1.3.4",
+   "name": "Orientation",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.3.5",
+   "name": "Identify Input Purpose",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": []
+  },
+  {
+   "id": "1.3.6",
+   "name": "Identify Purpose",
+   "level": "AAA",
+   "principle": "perceivable",
+   "guideline": "1.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "1.4.1",
+   "name": "Use of Color",
+   "level": "A",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.2",
+   "name": "Audio Control",
+   "level": "A",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": true,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.3",
+   "name": "Contrast (Minimum)",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.4",
+   "name": "Resize Text",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.5",
+   "name": "Images of Text",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.6",
+   "name": "Contrast (Enhanced)",
+   "level": "AAA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.7",
+   "name": "Low or No Background Audio",
+   "level": "AAA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.8",
+   "name": "Visual Presentation",
+   "level": "AAA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.9",
+   "name": "Images of Text (No Exception)",
+   "level": "AAA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.10",
+   "name": "Reflow",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.11",
+   "name": "Non-text Contrast",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.12",
+   "name": "Text Spacing",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "1.4.13",
+   "name": "Content on Hover or Focus",
+   "level": "AA",
+   "principle": "perceivable",
+   "guideline": "1.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard",
+    "browser"
+   ]
+  },
+  {
+   "id": "2.1.1",
+   "name": "Keyboard",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "2.1.2",
+   "name": "No Keyboard Trap",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.1",
+   "new_in_22": false,
+   "interference": true,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "2.1.3",
+   "name": "Keyboard (No Exception)",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "2.1.4",
+   "name": "Character Key Shortcuts",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "2.2.1",
+   "name": "Timing Adjustable",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.2.2",
+   "name": "Pause, Stop, Hide",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.2",
+   "new_in_22": false,
+   "interference": true,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.2.3",
+   "name": "No Timing",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.2.4",
+   "name": "Interruptions",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.2.5",
+   "name": "Re-authenticating",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.2.6",
+   "name": "Timeouts",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.3.1",
+   "name": "Three Flashes or Below Threshold",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.3",
+   "new_in_22": false,
+   "interference": true,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.3.2",
+   "name": "Three Flashes",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.3.3",
+   "name": "Animation from Interactions",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.4.1",
+   "name": "Bypass Blocks",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "2.4.2",
+   "name": "Page Titled",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": []
+  },
+  {
+   "id": "2.4.3",
+   "name": "Focus Order",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "2.4.4",
+   "name": "Link Purpose (In Context)",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "2.4.5",
+   "name": "Multiple Ways",
+   "level": "AA",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page_set",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.4.6",
+   "name": "Headings and Labels",
+   "level": "AA",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "2.4.7",
+   "name": "Focus Visible",
+   "level": "AA",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "2.4.8",
+   "name": "Location",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.4.9",
+   "name": "Link Purpose (Link Only)",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "2.4.10",
+   "name": "Section Headings",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "2.4.11",
+   "name": "Focus Not Obscured (Minimum)",
+   "level": "AA",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": true,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard",
+    "browser"
+   ]
+  },
+  {
+   "id": "2.4.12",
+   "name": "Focus Not Obscured (Enhanced)",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": true,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard",
+    "browser"
+   ]
+  },
+  {
+   "id": "2.4.13",
+   "name": "Focus Appearance",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.4",
+   "new_in_22": true,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard",
+    "browser"
+   ]
+  },
+  {
+   "id": "2.5.1",
+   "name": "Pointer Gestures",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.5",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.5.2",
+   "name": "Pointer Cancellation",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.5",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.5.3",
+   "name": "Label in Name",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.5",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "2.5.4",
+   "name": "Motion Actuation",
+   "level": "A",
+   "principle": "operable",
+   "guideline": "2.5",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.5.5",
+   "name": "Target Size (Enhanced)",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.5",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.5.6",
+   "name": "Concurrent Input Mechanisms",
+   "level": "AAA",
+   "principle": "operable",
+   "guideline": "2.5",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.5.7",
+   "name": "Dragging Movements",
+   "level": "AA",
+   "principle": "operable",
+   "guideline": "2.5",
+   "new_in_22": true,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "2.5.8",
+   "name": "Target Size (Minimum)",
+   "level": "AA",
+   "principle": "operable",
+   "guideline": "2.5",
+   "new_in_22": true,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "3.1.1",
+   "name": "Language of Page",
+   "level": "A",
+   "principle": "understandable",
+   "guideline": "3.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": []
+  },
+  {
+   "id": "3.1.2",
+   "name": "Language of Parts",
+   "level": "AA",
+   "principle": "understandable",
+   "guideline": "3.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "3.1.3",
+   "name": "Unusual Words",
+   "level": "AAA",
+   "principle": "understandable",
+   "guideline": "3.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": []
+  },
+  {
+   "id": "3.1.4",
+   "name": "Abbreviations",
+   "level": "AAA",
+   "principle": "understandable",
+   "guideline": "3.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": []
+  },
+  {
+   "id": "3.1.5",
+   "name": "Reading Level",
+   "level": "AAA",
+   "principle": "understandable",
+   "guideline": "3.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": []
+  },
+  {
+   "id": "3.1.6",
+   "name": "Pronunciation",
+   "level": "AAA",
+   "principle": "understandable",
+   "guideline": "3.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "3.2.1",
+   "name": "On Focus",
+   "level": "A",
+   "principle": "understandable",
+   "guideline": "3.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "3.2.2",
+   "name": "On Input",
+   "level": "A",
+   "principle": "understandable",
+   "guideline": "3.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "3.2.3",
+   "name": "Consistent Navigation",
+   "level": "AA",
+   "principle": "understandable",
+   "guideline": "3.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page_set",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "3.2.4",
+   "name": "Consistent Identification",
+   "level": "AA",
+   "principle": "understandable",
+   "guideline": "3.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page_set",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "3.2.5",
+   "name": "Change on Request",
+   "level": "AAA",
+   "principle": "understandable",
+   "guideline": "3.2",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "keyboard"
+   ]
+  },
+  {
+   "id": "3.2.6",
+   "name": "Consistent Help",
+   "level": "A",
+   "principle": "understandable",
+   "guideline": "3.2",
+   "new_in_22": true,
+   "interference": false,
+   "scope": "page_set",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "3.3.1",
+   "name": "Error Identification",
+   "level": "A",
+   "principle": "understandable",
+   "guideline": "3.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "3.3.2",
+   "name": "Labels or Instructions",
+   "level": "A",
+   "principle": "understandable",
+   "guideline": "3.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "3.3.3",
+   "name": "Error Suggestion",
+   "level": "AA",
+   "principle": "understandable",
+   "guideline": "3.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "3.3.4",
+   "name": "Error Prevention (Legal, Financial, Data)",
+   "level": "AA",
+   "principle": "understandable",
+   "guideline": "3.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "3.3.5",
+   "name": "Help",
+   "level": "AAA",
+   "principle": "understandable",
+   "guideline": "3.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": []
+  },
+  {
+   "id": "3.3.6",
+   "name": "Error Prevention (All)",
+   "level": "AAA",
+   "principle": "understandable",
+   "guideline": "3.3",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "3.3.7",
+   "name": "Redundant Entry",
+   "level": "A",
+   "principle": "understandable",
+   "guideline": "3.3",
+   "new_in_22": true,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "3.3.8",
+   "name": "Accessible Authentication (Minimum)",
+   "level": "AA",
+   "principle": "understandable",
+   "guideline": "3.3",
+   "new_in_22": true,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "3.3.9",
+   "name": "Accessible Authentication (Enhanced)",
+   "level": "AAA",
+   "principle": "understandable",
+   "guideline": "3.3",
+   "new_in_22": true,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "browser"
+   ]
+  },
+  {
+   "id": "4.1.2",
+   "name": "Name, Role, Value",
+   "level": "A",
+   "principle": "robust",
+   "guideline": "4.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  },
+  {
+   "id": "4.1.3",
+   "name": "Status Messages",
+   "level": "AA",
+   "principle": "robust",
+   "guideline": "4.1",
+   "new_in_22": false,
+   "interference": false,
+   "scope": "page",
+   "requires": [
+    "screen_reader"
+   ]
+  }
+ ],
+ "removed": [
+  {
+   "id": "4.1.1",
+   "name": "Parsing",
+   "status": "obsolete and removed in WCAG 2.2",
+   "level": null,
+   "reason": "WCAG 2.2 removed it; W3C advises to treat it as always satisfied for HTML and XML content. Markup defects with user impact are reported under 1.3.1 or 4.1.2.",
+   "route_to": [
+    "1.3.1",
+    "4.1.2"
+   ]
+  }
+ ],
+ "tasks": {
+  "forms": {
+   "title": "Forms, validation, authentication and multi-step processes",
+   "guide": "task-forms.md",
+   "criteria": [
+    "1.3.1",
+    "1.3.5",
+    "1.4.1",
+    "2.2.1",
+    "2.4.6",
+    "2.5.3",
+    "3.2.2",
+    "3.3.1",
+    "3.3.2",
+    "3.3.3",
+    "3.3.4",
+    "3.3.7",
+    "3.3.8",
+    "4.1.2",
+    "4.1.3"
+   ],
+   "additional_aaa": [
+    "2.2.5"
+   ]
+  },
+  "keyboard-focus": {
+   "title": "Keyboard operation, focus, dialogs, menus and tabs",
+   "guide": "task-keyboard-focus.md",
+   "criteria": [
+    "1.4.13",
+    "2.1.1",
+    "2.1.2",
+    "2.1.4",
+    "2.4.1",
+    "2.4.3",
+    "2.4.7",
+    "2.4.11",
+    "3.2.1",
+    "3.2.2"
+   ],
+   "additional_aaa": [
+    "2.4.13"
+   ]
+  },
+  "color-contrast": {
+   "title": "Colour, contrast and non-colour cues",
+   "guide": "task-color-contrast.md",
+   "criteria": [
+    "1.3.3",
+    "1.4.1",
+    "1.4.3",
+    "1.4.11"
+   ],
+   "additional_aaa": [
+    "1.4.6"
+   ]
+  },
+  "structure-semantics": {
+   "title": "Document structure, headings, landmarks, links, tables and images",
+   "guide": "task-structure-semantics.md",
+   "criteria": [
+    "1.1.1",
+    "1.3.1",
+    "1.3.2",
+    "1.4.5",
+    "2.4.1",
+    "2.4.2",
+    "2.4.4",
+    "2.4.5",
+    "2.4.6",
+    "3.1.1",
+    "3.1.2",
+    "4.1.2"
+   ],
+   "additional_aaa": [
+    "2.4.8",
+    "3.1.5"
+   ]
+  },
+  "dynamic-media": {
+   "title": "Status messages, dynamic updates, media and motion",
+   "guide": "task-dynamic-media.md",
+   "criteria": [
+    "1.2.1",
+    "1.2.2",
+    "1.2.3",
+    "1.2.4",
+    "1.2.5",
+    "1.4.2",
+    "1.4.13",
+    "2.2.1",
+    "2.2.2",
+    "2.3.1",
+    "4.1.3"
+   ],
+   "additional_aaa": []
+  },
+  "responsive": {
+   "title": "Zoom, reflow, text spacing, orientation and target size",
+   "skill": "dev-responsive",
+   "criteria": [
+    "1.3.4",
+    "1.4.4",
+    "1.4.10",
+    "1.4.12",
+    "2.4.11",
+    "2.5.1",
+    "2.5.2",
+    "2.5.7",
+    "2.5.8"
+   ],
+   "additional_aaa": []
+  }
+ }
+}

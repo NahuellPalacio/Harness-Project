@@ -291,6 +291,32 @@ def _fuente_base_de_64(base=BASE):
     return crudo.decode("utf-8") if codigo == 0 else ""
 
 
+# Pisado por docs/cambios/wcag22-obelisco/spec.md (E-58 a E-60): la skill dev-accessibility cambia a
+# proposito, y con ella su skillFingerprint, que es lo que invalida una unidad de refutacion cacheada. La
+# comparacion de unidades de E-16 de 64 lo exceptua solo para las unidades de esa skill. Esta guarda no se
+# afloja: acepta la fuente de esa funcion si es la de la base con ESTE bloque cambiado, y nada mas.
+ADAPTADAS_DE_64 = {
+    "test_e16_un_1_0_de_4c6f0f3_se_acepta_y_se_migra_al_escribirlo": (
+        '    t.igual("E-16 la misma unidad, salvo declaredChecks (E-31)",\n'
+        '            [_sin(u, "declaredChecks") for u in c["base"]],\n'
+        '            [_sin(u, "declaredChecks") for u in c["nuevo"]])\n',
+        '    # Pisado por docs/cambios/wcag22-obelisco/spec.md (E-58 a E-60): la skill dev-accessibility cambia a\n'
+        '    # proposito (se reescribio su entrada), y la huella de una skill es lo que invalida una unidad de\n'
+        '    # refutacion cacheada: las unidades de esa skill cambian de skillFingerprint, y solo ellas. No es una\n'
+        '    # excepcion de este escenario: las demas unidades siguen siendo la misma, campo por campo.\n'
+        '    def _comparable(u):\n'
+        '        return _sin(u, *(("declaredChecks", "skillFingerprint") if u["skillId"] == "dev-accessibility"\n'
+        '                         else ("declaredChecks",)))\n'
+        '    t.igual("E-16 la misma unidad, salvo declaredChecks (E-31)",\n'
+        '            [_comparable(u) for u in c["base"]],\n'
+        '            [_comparable(u) for u in c["nuevo"]])\n'
+        '    de_accesibilidad = [(b, n) for b, n in zip(c["base"], c["nuevo"]) if n["skillId"] == "dev-accessibility"]\n'
+        '    t.verdadero("E-16 las unidades de dev-accessibility existen y su huella cambio, porque la skill cambio",\n'
+        '                len(de_accesibilidad) > 0\n'
+        '                and all(b["skillFingerprint"] != n["skillFingerprint"] for b, n in de_accesibilidad))\n'),
+}
+
+
 def _corre_de_64(t, eid, funciones, base=BASE):
     """Corre tests de Task 2 desde aca: que sigan en verde, y que su fuente sea la de la base."""
     fuente = _fuente_base_de_64(base)
@@ -298,8 +324,14 @@ def _corre_de_64(t, eid, funciones, base=BASE):
     for funcion in funciones:
         t.verdadero("%s %s existe en la base y ahora" % (eid, funcion),
                     _fuente_de(fuente, funcion) is not None and _fuente_de(ahora, funcion) is not None)
+        esperada = _fuente_de(fuente, funcion)
+        if funcion in ADAPTADAS_DE_64 and esperada is not None:
+            viejo, nuevo = ADAPTADAS_DE_64[funcion]
+            t.igual("%s %s tiene, en la base, el bloque que la integracion de WCAG 2.2 cambia" % (eid, funcion),
+                    1, esperada.count(viejo))
+            esperada = esperada.replace(viejo, nuevo)
         t.igual("%s %s no cambio respecto de %s" % (eid, funcion, base),
-                _fuente_de(fuente, funcion), _fuente_de(ahora, funcion))
+                esperada, _fuente_de(ahora, funcion))
         r = CORRER.Resultados()
         try:
             getattr(M64, funcion)(r)

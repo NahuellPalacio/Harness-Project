@@ -33,10 +33,19 @@ comparten contrato, presupuesto y la misma regla de diseño: salir temprano.
 - **`dev-infra-en-codigo.py`** — servidores por nombre DNS y nunca por IP, y configuración
   afuera del código. Una IP solo se reporta en posición de host; las de loopback y las de
   documentación no se tocan nunca.
-- **`dev-accesibilidad-html.py`** — lo comprobable del marcado por ley 26.653 / WCAG: `lang`
-  en `<html>`, `alt` presente en las imágenes (`alt=""` es correcto y no se reporta), controles
-  de formulario que puedan tener etiqueta, y un único `<h1>`. No juzga contraste ni orden de
-  lectura: para eso hace falta renderizar.
+- **`dev-accesibilidad-html.py`** — lo comprobable del marcado por ley 26.653 / WCAG 2.2, en HTML,
+  plantillas (Blade, Angular, Twig, Jinja, Handlebars, EJS…) y JSX/TSX, cada uno con su tokenizador
+  (`lib/a11y.py`). Es el check liviano: solo emite `fallo` y `defecto` —`lang`, `<title>`, `alt`
+  (`alt=""` es correcto y no se reporta), controles, botones y enlaces sin nombre accesible,
+  referencias ARIA rotas o sin texto, `<label for>` rotas, ids repetidos y referenciados—, cada uno
+  con su criterio y su nivel. Un `id` solo no es una etiqueta; un control envuelto en una `<label>`
+  con texto sí tiene nombre. Un único `<h1>` es una recomendación, no un fallo, y sale solo de la
+  revisión completa (`skills/dev-accessibility/scripts/review.py`), igual que las heurísticas y lo
+  que el archivo no alcanza a decidir. No juzga contraste ni orden de lectura: para eso hace falta
+  renderizar. Ver [`docs/accesibilidad.md`](../accesibilidad.md).
+- **`lib/a11y.py`** — el motor de ese análisis: el árbol de HTML y el de JSX, el nombre accesible de
+  un control, las reglas con su criterio, su nivel, su tipo y su origen. Importa `html.parser` y
+  compila sus expresiones recién al usarlas: el cargador de checks lo importa en cada escritura.
 - **`lib/dev.py`** — lo que todos los checks de desarrollo hacen igual: leer del disco el
   archivo que se acaba de escribir (no del evento, porque una edición manda solo el fragmento),
   descartar rutas generadas, ubicar el número de línea y formatear una lista de ejemplos.
@@ -62,5 +71,5 @@ comparten contrato, presupuesto y la misma regla de diseño: salir temprano.
 - `comun/checks/claude-md-zonas.py`
 - `harnesses/desarrollo/checks/dev-codebase-forma.py`, `dev-api-rutas.py`,
   `dev-dependencias.py`, `dev-infra-en-codigo.py`, `dev-accesibilidad-html.py`
-- `harnesses/desarrollo/checks/lib/dev.py`
+- `harnesses/desarrollo/checks/lib/dev.py`, `harnesses/desarrollo/checks/lib/a11y.py`
 - Los casos de borde de los cuatro checks de desarrollo, en `tests/casos/08_checks_borde.py`.

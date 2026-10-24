@@ -166,6 +166,24 @@ when the UI requires horizontal/vertical behavior that compromises comprehension
 
 ---
 
+# Zoom, Reflow and Target Size (WCAG 2.2)
+
+In the Harness, adaptation, zoom and reflow belong to this skill. The criteria of the task: `python .claude/skills/dev-accessibility/scripts/wcag.py task responsive`. Obelisco's grid page cites Reflow; the thresholds below are WCAG's.
+
+| Criterion | Level | Threshold |
+|---|---|---|
+| 1.4.4 Resize Text | AA | Text resizes to 200% with no loss of content or functionality; never block zoom (`user-scalable=no`, `maximum-scale` below 2) |
+| 1.4.10 Reflow | AA | No two-dimensional scrolling at 320 CSS px wide for content that scrolls vertically, or 256 CSS px tall for content that scrolls horizontally; data tables and maps are excepted |
+| 1.4.12 Text Spacing | AA | Nothing is lost with line height 1.5, paragraph spacing 2 times the font size, letter spacing 0.12 em and word spacing 0.16 em |
+| 1.3.4 Orientation | AA | Works in portrait and landscape unless one is essential |
+| 2.5.8 Target Size (Minimum) | AA | Targets at least 24 by 24 CSS px, or spaced so 24 px circles do not overlap; inline, equivalent, user-agent and essential targets are excepted |
+| 2.4.11 Focus Not Obscured (Minimum) | AA | A sticky header or footer never hides the focused element entirely: `scroll-padding` equal to its height |
+| 2.5.5 Target Size (Enhanced) | AAA | 44 by 44 CSS px. Additional, not AA; Obelisco does not name it |
+
+**How they are verified.** Static analysis reaches almost none of this: the full review reports `viewport-blocks-zoom` and nothing more. Every threshold needs a rendered page, so they are **browser** checks. Record the browser pass as `performed` in the accessibility register only after running it, at the project's viewports (DESKTOP, TABLET, MOBILE), at 320 CSS px wide, and at 200% and 400% zoom. Until then it stays `not_performed`.
+
+---
+
 # Sidebars and Secondary Regions
 
 Current Obelisco grid guidance states that tablet/mobile layouts place sections one below another and do not preserve desktop-style lateral sections in the same form.
@@ -515,6 +533,13 @@ responsiveResult:
       - TABLET
       - MOBILE
 
+  wcag:                       # PASS | FAIL | NOT_PERFORMED — browser checks, never inferred
+    resizeText200: PASS
+    reflow320x256: PASS
+    textSpacing: PASS
+    orientation: PASS
+    targetSize24: PASS
+
   requiredChecks:
     - responsive-reflow
     - visual-regression
@@ -523,6 +548,8 @@ responsiveResult:
   assumptions: []
   evidence: []
 ```
+
+A `wcag` entry is `NOT_PERFORMED` unless the page was run in a browser; the accessibility register takes it from here.
 
 ---
 

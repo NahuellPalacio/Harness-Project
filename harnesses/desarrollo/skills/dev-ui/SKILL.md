@@ -563,30 +563,25 @@ when applicable.
 
 # Relationship with Accessibility
 
-`dev-ui` must design for accessibility but does not replace the specialized accessibility skill.
+`dev-ui` chooses and composes the interface. `dev-accessibility` owns the criteria and how they are verified. They meet in one rule:
 
-Use:
+> Every component or pattern chosen produces one `accessibilityLinks` row: what it is, how it was chosen, which accessibility requirements it carries and how each one is verified.
 
-```text
-dev-ui
-→ chooses and composes UI
-
-dev-accessibility
-→ validates/implements accessibility behavior in depth
+```yaml
+accessibilityLinks:
+  - component: form-text          # an id of dev-accessibility/references/obelisco-matrix.json, or `custom`
+    strategy: OBELISCO_COMPONENT  # one of the four UI strategies above
+    wcagCriteria: [1.3.1, 2.5.3, 3.3.2, 4.1.2]
+    verification:
+      static: [control-no-accessible-name]
+      manual: [keyboard, screen_reader]
 ```
 
-When UI contains:
-
-- custom interactive controls
-- complex forms
-- dynamic status changes
-- keyboard interactions
-- tables
-- modals
-- navigation
-- custom focus behavior
-
-request `dev-accessibility` as needed.
+- Take the row from `python .claude/skills/dev-accessibility/scripts/wcag.py component <id>`. Do not retype requirements from memory.
+- A custom surface, or anything the matrix has no row for, links to `custom`: its keyboard model, focus model and name are designed explicitly and all three manual passes apply.
+- A change to the interface with no `accessibilityLinks` returns `ACCESSIBILITY_REVIEW_REQUIRED`.
+- Keep the markup Obelisco documents for the component (labels, `aria-*`, keys). Obelisco's guidance is not WCAG: say which of the two a requirement is. An AAA criterion Obelisco names is additional, never AA.
+- Request `dev-accessibility` for custom interactive controls, complex forms, dynamic status changes, keyboard interaction, tables, modals, navigation and custom focus behaviour.
 
 ---
 
@@ -734,7 +729,7 @@ uiResult:
 
   components:
     reused:
-      - input
+      - form-text
       - button
       - table
       - pagination
@@ -748,6 +743,15 @@ uiResult:
 
   accessibility:
     specialistReviewRequired: true
+    accessibilityLinks:
+      - component: form-text
+        strategy: OBELISCO_COMPOSITION
+        wcagCriteria: [1.3.1, 2.5.3, 3.3.2, 4.1.2]
+        verification: { static: [control-no-accessible-name], manual: [keyboard, screen_reader] }
+      - component: table
+        strategy: OBELISCO_COMPOSITION
+        wcagCriteria: [1.3.1, 1.3.2, 4.1.2]
+        verification: { static: [table-without-headers], manual: [keyboard, screen_reader] }
 
   states:
     - default

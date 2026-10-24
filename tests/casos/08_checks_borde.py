@@ -148,11 +148,15 @@ def test_dev_accesibilidad_html(t):
     todo = " ".join(rh)
     t.verdadero("detecta html sin lang", "sin atributo lang" in todo)
     t.verdadero("detecta img sin alt", "sin atributo alt" in todo)
-    t.verdadero("detecta el control sin nombre", "sin forma de nombrarlos" in todo)
-    t.verdadero("detecta los dos h1", "2 elementos <h1>" in todo)
+    t.verdadero("detecta el control sin nombre", "sin nombre accesible" in todo)
+    t.verdadero("detecta el documento sin title", "no tiene <title>" in todo)
+    # wcag22-obelisco E-45 y E-57: dos <h1> no incumplen ningun criterio de WCAG 2.2. Antes salia
+    # como un hallazgo [a11y] con el mismo peso que una imagen sin alt; ahora no sale.
+    t.no_contiene("dos h1 no se avisan: no son un fallo de WCAG 2.2", "h1", todo)
 
     html_bien = (
         '<html lang="es">\n'
+        '<head><title>Pagina</title></head>\n'
         '<body>\n'
         '  <h1>Titulo</h1>\n'
         '  <img src="logo.png" alt="Escudo del GCBA">\n'
@@ -165,7 +169,7 @@ def test_dev_accesibilidad_html(t):
             len(_correr("dev-accesibilidad-html.py", "pagina.html", html_bien)))
 
     # alt vacio es una afirmacion -"esta imagen es decorativa"- y es correcta.
-    decorativa = '<html lang="es"><h1>x</h1><img src="linea.png" alt=""></html>'
+    decorativa = '<html lang="es"><head><title>x</title></head><h1>x</h1><img src="linea.png" alt=""></html>'
     t.igual("alt vacio es correcto y no se reporta", 0,
             len(_correr("dev-accesibilidad-html.py", "pagina.html", decorativa)))
 
@@ -175,7 +179,7 @@ def test_dev_accesibilidad_html(t):
             len(_correr("dev-accesibilidad-html.py", "tarjeta.component.html", parcial)))
 
     # Los campos ocultos y los botones no llevan etiqueta.
-    ocultos = ('<html lang="es"><h1>x</h1><input type="hidden" name="token">'
+    ocultos = ('<html lang="es"><head><title>x</title></head><h1>x</h1><input type="hidden" name="token">'
                '<input type="submit" value="Enviar"></html>')
     t.igual("hidden y submit no piden etiqueta", 0,
             len(_correr("dev-accesibilidad-html.py", "pagina.html", ocultos)))

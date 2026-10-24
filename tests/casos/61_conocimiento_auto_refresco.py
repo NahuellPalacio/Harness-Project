@@ -277,6 +277,11 @@ def _del_arbol(patrones):
     return sorted(salida)
 
 
+# Las carpetas que dev-accessibility suma a proposito (docs/cambios/wcag22-obelisco/spec.md).
+NUEVOS_DE_ACCESIBILIDAD = ("harnesses/desarrollo/skills/dev-accessibility/references/",
+                           "harnesses/desarrollo/skills/dev-accessibility/scripts/")
+
+
 # -- E-01 a E-06: que no cambia de lugar ----------------------------------------------
 
 def test_e01_e02_ni_agent_ni_skill_nuevos(t):
@@ -287,7 +292,11 @@ def test_e01_e02_ni_agent_ni_skill_nuevos(t):
         if antes is None:
             t.verdadero("%s: git disponible para comparar" % escenario, False)
             continue
-        t.igual("%s: los mismos archivos que en 0.26.0" % escenario, antes, _del_arbol(patrones))
+        # Pisado por docs/cambios/wcag22-obelisco/spec.md: la skill dev-accessibility suma a proposito las
+        # carpetas references/ y scripts/. No es una skill nueva (su SKILL.md ya estaba en 0.26.0): se
+        # saltean esas dos carpetas y nada mas, para que el escenario siga cuidando que no haya otra.
+        ahora = [r for r in _del_arbol(patrones) if not r.startswith(NUEVOS_DE_ACCESIBILIDAD)]
+        t.igual("%s: los mismos archivos que en 0.26.0" % escenario, antes, ahora)
 
 
 def test_e03_la_observacion_es_la_de_fuentes(t):

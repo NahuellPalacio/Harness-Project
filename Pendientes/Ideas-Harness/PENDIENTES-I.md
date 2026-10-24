@@ -610,3 +610,37 @@ Cost. Either rename about 129 rows in their suites, which changes names that tes
 declare in the spec of phase B that point 5 does not apply to the real tree. It has to be decided before phase B.
 
 Status. Open, not planned. It is for phase B (Task 7).
+
+### Run the evaluations of the `wcag22` skill against the integrated harness
+
+The HTML that came with the skill (`wcag22-eval-review.html`, three evals, one run each) measured the whole skill
+loaded against no skill: pass rate 0.963 against 0.967, tokens 138,813 against 82,764 (+67.7 %), time 388 s against
+218 s. Written on 2026-10-23 as the one claim `docs/cambios/wcag22-obelisco/spec.md` could not make: that the
+integrated `dev-accessibility` produces better model output, because the evals use files (`login.html` and the
+others) that the HTML does not carry. The change measured what is deterministic — sizes loaded, and a labelled
+corpus for the static check — and says nothing about the quality of what a model writes.
+
+Problem it solves. Without a comparable run, «uses fewer tokens» and «answers better» stay unproven for the
+integration, and the only evidence is a single run per eval.
+
+Cost. Rebuild the three eval inputs (the login page with its planted failures, the modal brief, the question in
+Spanish), run each against the baseline and the integrated skill with several runs per configuration, and grade with
+the same assertions plus the three the grader suggested: the mechanism of keyboard submission, 2.4.5 as not
+applicable by the process exception, and cross-page criteria as `not_tested`. It touches no code of the harness.
+
+Status. Open, not planned.
+
+### Read Vue, Svelte and Razor in the static accessibility engine
+
+`checks/lib/a11y.py` reads HTML, templates (Blade, Angular, Twig, Jinja, Handlebars, EJS) and JSX/TSX. A `.vue`,
+`.svelte` or `.cshtml` file is listed as not analysed by the full review and ignored by the light check. Written on
+2026-10-23 from the exclusions of `docs/cambios/wcag22-obelisco/spec.md`.
+
+Problem it solves. A project on Vue or Razor gets no static accessibility feedback at all, and the register says so
+instead of pretending.
+
+Cost. A tokenizer per format, with its bindings (`v-bind`, `{#if}`, `@Html.`) and its own corpus of labelled cases.
+Each one is about the size of the JSX tokenizer. It is only worth it for a format a project of the organisation
+actually uses; nobody has said which.
+
+Status. Open, not planned: no project has asked for it.

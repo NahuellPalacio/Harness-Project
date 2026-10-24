@@ -2300,6 +2300,16 @@ PROTEGIDOS = ("harnesses/desarrollo/bin/flujo", "harnesses/desarrollo/bin/estado
               "comun/agents", "comun/skills", "harnesses/desarrollo/reglas", "install.ps1",
               "manifest.json", ADR_13, "comun/schemas/orchestration-plan.schema.json",
               "comun/schemas/task-flow-state.schema.json")
+# Pisado por docs/cambios/wcag22-obelisco/spec.md (E-58 a E-60): la integracion de WCAG 2.2 con Obelisco
+# modifica a proposito el agente de frontend y cuatro skills de frontend (dev-accessibility, dev-ui,
+# dev-responsive y dev-frontend-implementation, con sus carpetas references/ y scripts/). No son una
+# excepcion de este escenario: se saltean esas cinco rutas y nada mas, para que ME-E49 siga cuidando que
+# ningun otro agente ni skill cambie.
+SALVO_ACCESIBILIDAD = (":(exclude)harnesses/desarrollo/agents/dev-frontend.md",
+                       ":(exclude)harnesses/desarrollo/skills/dev-accessibility",
+                       ":(exclude)harnesses/desarrollo/skills/dev-ui",
+                       ":(exclude)harnesses/desarrollo/skills/dev-responsive",
+                       ":(exclude)harnesses/desarrollo/skills/dev-frontend-implementation")
 # Los de Task 3, todavia sin commitear: su huella es la del arbol de la base de Task 4.
 HUELLAS_DE_TASK_3 = {
     "harnesses/desarrollo/bin/ejecucion/contrato.py":
@@ -2318,9 +2328,9 @@ def test_me_e49_lo_que_no_se_toca(t):
     codigo, _ = _git_raiz("cat-file", "-e", BASE + "^{commit}")
     t.igual("ME-E49 la base %s esta en este clon" % BASE, 0, codigo)
     for ruta in PROTEGIDOS:
-        codigo, _ = _git_raiz("diff", "--quiet", BASE, "--", ruta)
+        codigo, _ = _git_raiz("diff", "--quiet", BASE, "--", ruta, *SALVO_ACCESIBILIDAD)
         t.igual("ME-E49 %s es el de %s" % (ruta, BASE), 0, codigo)
-    codigo, nuevos = _git_raiz("ls-files", "--others", "--exclude-standard", "--", *PROTEGIDOS)
+    codigo, nuevos = _git_raiz("ls-files", "--others", "--exclude-standard", "--", *PROTEGIDOS, *SALVO_ACCESIBILIDAD)
     t.igual("ME-E49 no hay archivos nuevos entre ellos", (0, ""), (codigo, nuevos.strip()))
     for ruta, huella in sorted(HUELLAS_DE_TASK_3.items()):
         t.igual("ME-E49 %s es el de Task 3" % ruta, huella,

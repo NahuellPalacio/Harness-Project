@@ -1,0 +1,935 @@
+{
+ "schema": "a11y-corpus/1",
+ "note": "Casos etiquetados por quien construyo el check. Miden que los defectos conocidos estan cubiertos; no son una muestra de codigo ajeno.",
+ "problems": [
+  "id-sin-etiqueta",
+  "label-envolvente",
+  "aria",
+  "h1",
+  "fragmento",
+  "jsx",
+  "plantilla",
+  "alt",
+  "lang",
+  "title",
+  "nombre"
+ ],
+ "cases": [
+  {
+   "id": "html-label-for-ok",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label for=\"n\">Nombre</label>\n<input id=\"n\" type=\"text\">\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "id-sin-etiqueta"
+   ],
+   "kind": "negative",
+   "note": "el control con id y su label for: silencio"
+  },
+  {
+   "id": "html-id-sin-label",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<input id=\"n\" type=\"text\">\n</body>\n</html>\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "id-sin-etiqueta"
+   ],
+   "kind": "positive",
+   "note": "el id solo no es un nombre"
+  },
+  {
+   "id": "html-label-envolvente",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label>Nombre <input type=\"text\"></label>\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "label-envolvente"
+   ],
+   "kind": "negative",
+   "note": "falso positivo del check anterior"
+  },
+  {
+   "id": "html-label-envolvente-vacia",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label><input type=\"text\"></label>\n</body>\n</html>\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "label-envolvente"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-label-for-sin-texto",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label for=\"n\"></label>\n<input id=\"n\" type=\"text\">\n</body>\n</html>\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "id-sin-etiqueta"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-aria-label",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<input type=\"search\" aria-label=\"Buscar\">\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "aria"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "html-aria-label-en-blanco",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<input type=\"search\" aria-label=\"   \">\n</body>\n</html>\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "aria"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-labelledby-ok",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<span id=\"t\">Nombre</span>\n<input type=\"text\" aria-labelledby=\"t\">\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "aria"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "html-labelledby-varios",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<span id=\"a\">Calle</span><span id=\"b\">Numero</span>\n<input type=\"text\" aria-labelledby=\"x a b\">\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "aria"
+   ],
+   "kind": "negative",
+   "note": "basta que uno resuelva con texto"
+  },
+  {
+   "id": "html-labelledby-roto",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<input type=\"text\" aria-labelledby=\"no-existe\">\n</body>\n</html>\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "aria"
+   ],
+   "kind": "positive",
+   "note": "el check anterior lo daba por nombrado"
+  },
+  {
+   "id": "html-labelledby-sin-texto",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<span id=\"t\"></span>\n<input type=\"text\" aria-labelledby=\"t\">\n</body>\n</html>\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "aria"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-labelledby-roto-con-label",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label for=\"n\">Nombre</label>\n<input id=\"n\" type=\"text\" aria-labelledby=\"no-existe\">\n</body>\n</html>\n",
+   "light": [
+    "aria-reference-broken"
+   ],
+   "covers": [
+    "aria"
+   ],
+   "kind": "positive",
+   "note": "tiene nombre por la label; la referencia rota es un defecto"
+  },
+  {
+   "id": "html-describedby-roto",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label for=\"n\">Nombre</label>\n<input id=\"n\" type=\"text\" aria-describedby=\"ayuda\">\n</body>\n</html>\n",
+   "light": [
+    "aria-reference-broken"
+   ],
+   "covers": [
+    "aria"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-describedby-sin-texto",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label for=\"n\">Nombre</label>\n<input id=\"n\" type=\"text\" aria-describedby=\"ayuda\">\n<p id=\"ayuda\"></p>\n</body>\n</html>\n",
+   "light": [
+    "aria-reference-no-text"
+   ],
+   "covers": [
+    "aria"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-describedby-ok",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label for=\"n\">Nombre</label>\n<input id=\"n\" type=\"text\" aria-describedby=\"ayuda\">\n<p id=\"ayuda\">Como figura en el DNI</p>\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "aria"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "html-select-textarea-sin-nombre",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<select><option>a</option></select>\n<textarea></textarea>\n</body>\n</html>\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "id-sin-etiqueta"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-hidden-submit-ok",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<input type=\"hidden\" name=\"t\">\n<input type=\"submit\" value=\"Enviar\">\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "id-sin-etiqueta"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "html-sin-lang",
+   "file": "p.html",
+   "content": "<html>\n<head><title>x</title></head>\n<body><h1>x</h1></body>\n</html>\n",
+   "light": [
+    "html-missing-lang"
+   ],
+   "covers": [
+    "lang"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-lang-es-ar",
+   "file": "p.html",
+   "content": "<html lang=\"es-AR\">\n<head><title>x</title></head>\n<body><h1>x</h1></body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "lang"
+   ],
+   "kind": "negative",
+   "note": "un codigo regional valido"
+  },
+  {
+   "id": "html-lang-invalido",
+   "file": "p.html",
+   "content": "<html lang=\"español\">\n<head><title>x</title></head>\n<body><h1>x</h1></body>\n</html>\n",
+   "light": [
+    "html-invalid-lang"
+   ],
+   "covers": [
+    "lang"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-sin-title",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head></head>\n<body><h1>x</h1></body>\n</html>\n",
+   "light": [
+    "document-missing-title"
+   ],
+   "covers": [
+    "title"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-dos-h1",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<h1>Dos</h1>\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "h1"
+   ],
+   "kind": "negative",
+   "note": "WCAG 2.2 no exige un unico h1: el check anterior lo reportaba",
+   "full": [
+    "heading-multiple-h1"
+   ]
+  },
+  {
+   "id": "html-sin-h1",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>x</title></head>\n<body><p>sin titulo</p></body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "h1"
+   ],
+   "kind": "negative",
+   "note": "",
+   "full": [
+    "heading-no-h1"
+   ]
+  },
+  {
+   "id": "html-tabindex-positivo",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<button type=\"button\" tabindex=\"3\">Ir</button>\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "nombre"
+   ],
+   "kind": "negative",
+   "note": "una heuristica: el check liviano calla, la revision completa la dice",
+   "full": [
+    "tabindex-positive"
+   ]
+  },
+  {
+   "id": "html-autocomplete-faltante",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label for=\"email\">Correo</label>\n<input id=\"email\" name=\"email\" type=\"email\">\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "id-sin-etiqueta"
+   ],
+   "kind": "negative",
+   "note": "el campo tiene nombre; falta el autocomplete, que es una heuristica",
+   "full": [
+    "autocomplete-missing"
+   ]
+  },
+  {
+   "id": "html-placeholder-solo",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<input type=\"text\" placeholder=\"Nombre\">\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "nombre"
+   ],
+   "kind": "negative",
+   "note": "Obelisco: el placeholder no sustituye a la label. Es un probable, no un fallo",
+   "full": [
+    "control-placeholder-only"
+   ]
+  },
+  {
+   "id": "html-img-sin-alt",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<img src=\"a.png\">\n</body>\n</html>\n",
+   "light": [
+    "img-missing-alt"
+   ],
+   "covers": [
+    "alt"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-img-alt-vacio",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<img src=\"a.png\" alt=\"\">\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "alt"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "html-img-presentation",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<img src=\"a.png\" role=\"presentation\">\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "alt"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "html-boton-icono",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<button type=\"button\"><span class=\"material-symbols-rounded\" aria-hidden=\"true\">delete</span></button>\n</body>\n</html>\n",
+   "light": [
+    "button-no-accessible-name"
+   ],
+   "covers": [
+    "nombre"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-boton-con-aria-label",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<button type=\"button\" aria-label=\"Eliminar\"><span class=\"material-symbols-rounded\" aria-hidden=\"true\">delete</span></button>\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "nombre"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "html-enlace-vacio",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<a href=\"/x\"></a>\n</body>\n</html>\n",
+   "light": [
+    "link-no-accessible-name"
+   ],
+   "covers": [
+    "nombre"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-enlace-con-texto",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<a href=\"/x\">Ver tramites</a>\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "nombre"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "html-enlace-sin-href-ok",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<a>ancla</a>\n</body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "nombre"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "html-label-for-roto",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label for=\"zzz\">Nombre</label>\n<input id=\"n\" type=\"text\" aria-label=\"Nombre\">\n</body>\n</html>\n",
+   "light": [
+    "label-for-broken"
+   ],
+   "covers": [
+    "aria"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-id-repetido-referenciado",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<label for=\"n\">Nombre</label>\n<input id=\"n\" type=\"text\">\n<input id=\"n\" type=\"text\" aria-label=\"Otro\">\n</body>\n</html>\n",
+   "light": [
+    "duplicate-id-referenced"
+   ],
+   "covers": [
+    "aria"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-iframe-sin-title",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<iframe src=\"/mapa\"></iframe>\n</body>\n</html>\n",
+   "light": [
+    "iframe-missing-title"
+   ],
+   "covers": [
+    "nombre"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-input-image-sin-alt",
+   "file": "p.html",
+   "content": "<html lang=\"es\">\n<head><title>Pagina</title></head>\n<body>\n<h1>Uno</h1>\n<input type=\"image\" src=\"ok.png\">\n</body>\n</html>\n",
+   "light": [
+    "input-image-missing-alt"
+   ],
+   "covers": [
+    "alt"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "html-corrupto",
+   "file": "p.html",
+   "content": "<<<<>>>> <input",
+   "light": [],
+   "covers": [
+    "robustez"
+   ],
+   "kind": "negative",
+   "note": "no explota"
+  },
+  {
+   "id": "frag-id-solo",
+   "file": "campo.component.html",
+   "content": "<input id=\"n\" type=\"text\">",
+   "light": [
+    "control-label-missing-in-file"
+   ],
+   "covers": [
+    "fragmento",
+    "id-sin-etiqueta"
+   ],
+   "kind": "positive",
+   "note": "en un fragmento es un defecto, no un fallo: la etiqueta podria vivir en otro archivo"
+  },
+  {
+   "id": "frag-id-dentro-de-componente",
+   "file": "campo.component.html",
+   "content": "<app-campo><input id=\"n\" type=\"text\"></app-campo>",
+   "light": [],
+   "covers": [
+    "fragmento",
+    "componente"
+   ],
+   "kind": "negative",
+   "note": "el componente propio puede traer la etiqueta por dentro: no se decide"
+  },
+  {
+   "id": "frag-id-con-label-dinamica",
+   "file": "campo.blade.php",
+   "content": "<label for=\"{{ $otro }}\">Nombre</label>\n<input id=\"n\" type=\"text\">",
+   "light": [],
+   "covers": [
+    "fragmento",
+    "plantilla"
+   ],
+   "kind": "negative",
+   "note": "una label con for dinamico puede apuntar a este control: no se decide"
+  },
+  {
+   "id": "frag-sin-id",
+   "file": "campo.component.html",
+   "content": "<input type=\"text\">",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "fragmento"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "frag-label-envolvente",
+   "file": "campo.component.html",
+   "content": "<label>Nombre <input type=\"text\"></label>",
+   "light": [],
+   "covers": [
+    "fragmento",
+    "label-envolvente"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "frag-sin-h1-ni-lang",
+   "file": "tarjeta.component.html",
+   "content": "<div class=\"tarjeta\"><p>Un fragmento</p></div>",
+   "light": [],
+   "covers": [
+    "fragmento",
+    "h1"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "blade-label-dinamica",
+   "file": "campo.blade.php",
+   "content": "<label for=\"{{ $id }}\">{{ $label }}</label>\n<input id=\"{{ $id }}\" type=\"text\">",
+   "light": [],
+   "covers": [
+    "plantilla"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "blade-aria-label-expresion",
+   "file": "campo.blade.php",
+   "content": "<input type=\"text\" aria-label=\"{{ __('buscar') }}\">",
+   "light": [],
+   "covers": [
+    "plantilla"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "blade-directiva-en-el-tag",
+   "file": "campo.blade.php",
+   "content": "<input type=\"text\" @if($x) disabled @endif aria-label=\"Nombre\">",
+   "light": [],
+   "covers": [
+    "plantilla"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "blade-documento-titulo-expresion",
+   "file": "layout.blade.php",
+   "content": "<html lang=\"{{ app()->getLocale() }}\">\n<head><title>{{ $titulo }}</title></head>\n<body><h1>{{ $titulo }}</h1></body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "plantilla",
+    "title"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "blade-layout-con-include",
+   "file": "layout.blade.php",
+   "content": "<html lang=\"es\">\n<head>@include('partials.head')</head>\n<body><h1>x</h1><input id=\"q\" type=\"text\"></body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "plantilla",
+    "fragmento"
+   ],
+   "kind": "negative",
+   "note": "el titulo y la etiqueta pueden venir del include: mundo abierto"
+  },
+  {
+   "id": "jinja-bloque-titulo",
+   "file": "pagina.njk",
+   "content": "<html lang=\"es\">\n<head><title>{% block title %}{% endblock %}</title></head>\n<body><h1>x</h1></body>\n</html>\n",
+   "light": [],
+   "covers": [
+    "plantilla",
+    "title"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "angular-binding-aria-label",
+   "file": "campo.component.html",
+   "content": "<input type=\"text\" [attr.aria-label]=\"etiqueta\">",
+   "light": [],
+   "covers": [
+    "plantilla"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "angular-img-sin-alt",
+   "file": "foto.component.html",
+   "content": "<img [src]=\"url\">",
+   "light": [
+    "img-missing-alt"
+   ],
+   "covers": [
+    "plantilla",
+    "alt"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "angular-img-con-alt-binding",
+   "file": "foto.component.html",
+   "content": "<img [src]=\"url\" [alt]=\"texto\">",
+   "light": [],
+   "covers": [
+    "plantilla",
+    "alt"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "angular-ngif-directiva",
+   "file": "campo.component.html",
+   "content": "<div *ngIf=\"ok\"><label>Nombre <input type=\"text\" (input)=\"cambio($event)\"></label></div>",
+   "light": [],
+   "covers": [
+    "plantilla"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "jsx-label-htmlfor",
+   "file": "Campo.tsx",
+   "content": "export const C = () => (\n  <>\n    <label htmlFor=\"n\">Nombre</label>\n    <input id=\"n\" type=\"text\" />\n  </>\n);\n",
+   "light": [],
+   "covers": [
+    "jsx",
+    "id-sin-etiqueta"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "jsx-id-solo",
+   "file": "Campo.tsx",
+   "content": "export const C = () => <input id=\"n\" type=\"text\" />;\n",
+   "light": [
+    "control-label-missing-in-file"
+   ],
+   "covers": [
+    "jsx",
+    "fragmento",
+    "id-sin-etiqueta"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "jsx-id-dentro-de-componente",
+   "file": "Campo.tsx",
+   "content": "export const C = () => <Field><input id=\"n\" type=\"text\" /></Field>;\n",
+   "light": [],
+   "covers": [
+    "jsx",
+    "componente"
+   ],
+   "kind": "negative",
+   "note": "<Field> puede traer la etiqueta por dentro"
+  },
+  {
+   "id": "jsx-id-dinamico",
+   "file": "Campo.tsx",
+   "content": "export const C = ({ id }: any) => <input id={id} type=\"text\" />;\n",
+   "light": [],
+   "covers": [
+    "jsx",
+    "fragmento"
+   ],
+   "kind": "negative",
+   "note": "el id viene de una expresion: la etiqueta puede apuntarle desde otro lado"
+  },
+  {
+   "id": "jsx-sin-id",
+   "file": "Campo.tsx",
+   "content": "export const C = () => <input type=\"text\" />;\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "jsx"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "jsx-img-sin-alt",
+   "file": "Foto.tsx",
+   "content": "export const F = ({ u }: { u: string }) => <img src={u} />;\n",
+   "light": [
+    "img-missing-alt"
+   ],
+   "covers": [
+    "jsx",
+    "alt"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "jsx-img-alt-vacio",
+   "file": "Foto.tsx",
+   "content": "export const F = ({ u }: { u: string }) => <img src={u} alt=\"\" />;\n",
+   "light": [],
+   "covers": [
+    "jsx",
+    "alt"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "jsx-aria-label-expresion",
+   "file": "Campo.tsx",
+   "content": "export const C = () => <input type=\"text\" aria-label={t(\"buscar\")} />;\n",
+   "light": [],
+   "covers": [
+    "jsx"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "jsx-spread",
+   "file": "Campo.tsx",
+   "content": "export const C = (props: any) => <input {...props} />;\n",
+   "light": [],
+   "covers": [
+    "jsx",
+    "spread"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "jsx-componente-propio",
+   "file": "Campo.tsx",
+   "content": "export const C = () => <TextField label=\"Nombre\" />;\n",
+   "light": [],
+   "covers": [
+    "jsx",
+    "componente"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "jsx-genericos-y-comparaciones",
+   "file": "util.tsx",
+   "content": "const f = <T,>(x: T) => x;\nconst g = (a: number, b: number) => (a < b ? 1 : 2);\nconst h: Array<string> = [];\nexport const C = () => <input type=\"text\" />;\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "jsx",
+    "genericos"
+   ],
+   "kind": "positive",
+   "note": "los genericos y los < no rompen el tokenizador"
+  },
+  {
+   "id": "jsx-mayor-en-expresion",
+   "file": "Campo.tsx",
+   "content": "export const C = ({ a, b }: any) => (\n  <div title={a > b ? \"x\" : \"y\"}>\n    <input type=\"text\" />\n  </div>\n);\n",
+   "light": [
+    "control-no-accessible-name"
+   ],
+   "covers": [
+    "jsx"
+   ],
+   "kind": "positive",
+   "note": "un > dentro de { } no cierra la etiqueta"
+  },
+  {
+   "id": "jsx-boton-con-componente",
+   "file": "Boton.tsx",
+   "content": "export const B = () => <button><Icon name=\"delete\" /></button>;\n",
+   "light": [],
+   "covers": [
+    "jsx",
+    "componente"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "jsx-boton-icono-oculto",
+   "file": "Boton.tsx",
+   "content": "export const B = () => <button><span aria-hidden=\"true\">x</span></button>;\n",
+   "light": [
+    "button-no-accessible-name"
+   ],
+   "covers": [
+    "jsx"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "jsx-label-envolvente",
+   "file": "Campo.tsx",
+   "content": "export const C = () => <label>Nombre <input type=\"text\" /></label>;\n",
+   "light": [],
+   "covers": [
+    "jsx",
+    "label-envolvente"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "jsx-label-expresion",
+   "file": "Campo.tsx",
+   "content": "export const C = ({ id, label }: any) => (\n  <>\n    <label htmlFor={id}>{label}</label>\n    <input id={id} type=\"text\" />\n  </>\n);\n",
+   "light": [],
+   "covers": [
+    "jsx",
+    "id-sin-etiqueta"
+   ],
+   "kind": "negative",
+   "note": ""
+  },
+  {
+   "id": "jsx-map-con-img",
+   "file": "Lista.tsx",
+   "content": "export const L = ({ items }: any) => (\n  <ul>\n    {items.map((i: string) => <li key={i}><img src={i} /></li>)}\n  </ul>\n);\n",
+   "light": [
+    "img-missing-alt"
+   ],
+   "covers": [
+    "jsx",
+    "alt"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "jsx-html-sin-lang",
+   "file": "layout.tsx",
+   "content": "export default function Layout({ children }: any) {\n  return (\n    <html>\n      <body>{children}</body>\n    </html>\n  );\n}\n",
+   "light": [
+    "html-missing-lang"
+   ],
+   "covers": [
+    "jsx",
+    "lang"
+   ],
+   "kind": "positive",
+   "note": ""
+  },
+  {
+   "id": "ts-no-es-del-check",
+   "file": "algo.ts",
+   "content": "<img src=\"a.png\"><input type=\"text\">",
+   "light": [],
+   "covers": [
+    "alcance"
+   ],
+   "kind": "negative",
+   "note": "un .ts no le incumbe"
+  }
+ ]
+}
