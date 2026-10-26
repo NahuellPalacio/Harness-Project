@@ -1,8 +1,8 @@
 # La Ficha de Proyecto y `fuentes` dicen por qué no encontraron lo que buscaban
 
-**Estado:** APPROVED FOR CONSTRUCTION · **Fecha:** 26-10-2026 · **Versión de partida:** 0.36.0 (`5a2d0ea`, tag `v0.36.0`, igual a
-`origin/main`) · **Release previsto:** sin número todavía: 0.37.0 es de la Task 6.2 (en pausa, sin commit), y el que
-cierre segundo toma 0.38.0 · **Origen:** el registro de hallazgos del proyecto ASI (APWIGELEC), entradas 2, 3 y 4,
+**Estado:** verificado y cerrado · **Fecha:** 26-10-2026 · **Versión de partida:** 0.36.0 (`5a2d0ea`, tag `v0.36.0`, igual a
+`origin/main`) · **Versión:** 0.36.1 (un patch: son reparaciones, y deja 0.37.0 a la Task 6.2, que está en pausa y sin
+commit) · **Origen:** el registro de hallazgos del proyecto ASI (APWIGELEC), entradas 2, 3 y 4,
 anotadas el 26-10-2026 en `Pendientes/Fix-Harness/PENDIENTES-FH.md` (fila 21 de la tabla) · **Aprobación:** Nahuel
 Palacio, 26-10-2026: aprobada como estaba escrita, para construir. La refutación independiente después de construir
 sigue siendo obligatoria.

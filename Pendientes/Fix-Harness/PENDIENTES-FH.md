@@ -32,12 +32,11 @@ running order.
 | 18 | ES0902 still declares nine controls that are not built | Down from thirteen with Vu9 and Vu10 in 0.25.0. Whoever reads "ES0902 installed" can easily read "ES0902 complied with" |
 | 19 | Nothing produces the G2 severity mapping | Every real run of the acceptance threshold comes out `VULNERABILITY_RISK_MAPPING_UNRESOLVED`, so the threshold is installed and unusable |
 | 20 | The shared secret catalogue misses five credential forms, and its sample leaks twelve characters | The hook shows 12 of the 20 characters of an AWS key in the transcript, and the security ledger had to grow its own redaction layer to avoid it |
-| 21 | `fuentes` looks for the wrong type of Ficha and never says why | Three entries of the ASI log: the default type does not exist in their Jira, the real reason is dropped before the message, and the hint names a channel that is not in use |
-| 22 | The ES0903 check judges any string that starts with `/api/`, tests included | It fired on every edit of a test that builds a fake request; a warning that repeats and is wrong is the one that teaches people to ignore the rest |
-| 23 | The installer says things that are broken or untrue about versions | `-Update` prints empty versions as a blank, asks to restart a bar that is already drawing, and does not say which `0.x.0` it installed |
+| 21 | The ES0903 check judges any string that starts with `/api/`, tests included | It fired on every edit of a test that builds a fake request; a warning that repeats and is wrong is the one that teaches people to ignore the rest |
+| 22 | The installer says things that are broken or untrue about versions | `-Update` prints empty versions as a blank, asks to restart a bar that is already drawing, and does not say which `0.x.0` it installed |
 
-Items 21 to 23 come from the log of the ASI project (see «What using the harness on a real project found and left
-open») and are the next three fixes, one change each.
+Items 21 and 22 come from the log of the ASI project (see «What using the harness on a real project found and left
+open») and are the next two fixes, one change each.
 
 Item 1 is the most serious in what it says: it is the only place where the harness says
 `HOMOLOGATED` for something the ratified rule rejects. 0.19.0 released the backlog of verdict files
@@ -2800,40 +2799,23 @@ day it was written. Two are not here because they are closed: the `EOFError` of 
 question helper was removed and `setup` shows the configuration instead of asking), and the Context Bar without limit
 or thresholds closed in 0.28.0. Two more are here only for what stays open: the two versions called `0.36.0` were
 untangled on 2026-10-26 (`main` and `origin/main` moved to the tag, Task 6.2 became 0.37.0), and the `[a11y]` false
-positive no longer shows on a reconstruction (last entry).
+positive no longer shows on a reconstruction (last entry). The three entries about the Ficha and `fuentes` closed as
+0.36.1 and left this file, except what stays open of the first one.
 
-### The default type of the Ficha de Proyecto does not exist in the Jira of ASI
+### The default type of the Ficha de Proyecto may still not match the Jira of ASI
 
-`TIPO_POR_DEFECTO = "Ficha de Proyecto"` (`bin/contexto/proyecto.py:16`) and the real type in
-`asi-jira-cloud.atlassian.net` is `.ASI Ficha de proyecto`, with the leading dot and a lowercase «proyecto».
-Verified on 2026-09-25 with `contexto APWIGELEC-108`: `evento=contexto.tarea tipo=.ASI Ficha de proyecto` and
-`ficha=ninguna`. That project worked around it with `"fichaTipoDeIssue": ".ASI Ficha de proyecto"` in
-`.claude\harness.config.json`, a key that appears only in `UPGRADE.md` 0.16.0 → 0.17.0.
+`TIPO_POR_DEFECTO = "Ficha de Proyecto"` (`bin/contexto/proyecto.py`) and the real type in `asi-jira-cloud.atlassian.net`
+is `.ASI Ficha de proyecto`, with the leading dot and a lowercase «proyecto». Seen on 2026-09-25 with
+`contexto APWIGELEC-108`: `evento=contexto.tarea tipo=.ASI Ficha de proyecto` and `ficha=ninguna`. That project worked
+around it with `"fichaTipoDeIssue": ".ASI Ficha de proyecto"` in `.claude\harness.config.json`.
 
-The remedy depends on a fact nobody has written down: whether every project of that Jira uses that name. If it does,
-it becomes the default. If it does not, `setup` has to show `fichaTipoDeIssue` among what it prints, and say where it
-is set. Related to the supposition at item 16 of the table.
+Since 0.36.1 the mismatch explains itself: `setup` prints the type and where it comes from, and `fuentes` and `contexto`
+name the real type of the ticket when it looks like the one searched. The default itself was not moved, because nobody has
+written down whether every project of that Jira uses that name.
 
-### `fuentes --aceptar` does not say why it did not find the Ficha
-
-`_observar_por_ficha` (`bin/dev-harness.py:898`) builds an accumulator, `contexto_proyecto.resolver` writes the real
-cause in it (`bin/contexto/proyecto.py:64`: there is no issue of type «…» in the project), and then the function
-returns the generic `"no se pudo resolver la Ficha de Proyecto del ticket %s"` (`dev-harness.py:923`): the gaps of
-the accumulator never reach the message. Seen on 2026-09-25: `evento=fuentes.ficha ficha=ninguna` and `harness: ES0902
-no se puede aceptar (FRESHNESS_UNVERIFIED): no hay canal: no hay nada observado que aceptar.` Finding the cause meant
-running `contexto` and reading the code.
-
-Fix. The message carries the gaps of the accumulator. When the ticket that was passed is itself the Ficha (its type
-differs from `fichaTipoDeIssue` but looks like it), it says so and names the value: «APWIGELEC-108 is of type
-'.ASI Ficha de proyecto'; set `fichaTipoDeIssue`».
-
-### The notices of `fuentes` suggest `--archivo` even when the channel is the Ficha
-
-`bin/orquestacion/registro_fuentes.py:188` writes `(fuentes --archivo <dir> --aceptar <id>)` as a fixed text. On
-2026-09-25, with `fuentes APWIGELEC-108`, every source without a hash said that, although the channel in use was Jira.
-
-Fix. The notice names the command of the active channel: `fuentes APWIGELEC-108 --aceptar ES0901`. The module that
-writes it does not know the channel today, so it has to receive it.
+Fix. If it does, `TIPO_POR_DEFECTO` becomes `.ASI Ficha de proyecto`, and the scenarios that pin the old default move with
+it: E-03 of `79_ficha_y_fuentes_que_se_explican.py` and E-09 of `19_contexto.py`. If it does not, nothing is left to do
+here. Related to the supposition at item 16 of the table.
 
 ### The ES0903 check takes a synthetic URL inside a test for an API route
 

@@ -3,6 +3,45 @@
 Formato: cada versión lista lo que cambió a nivel funcional. Las versiones siguen
 `MAJOR.MINOR.PATCH`, como exige ES0901 para el software de aplicación del organismo.
 
+## [0.36.1] — 2026-10-26
+
+**Cuando `fuentes` no encuentra la Ficha de Proyecto, dice por qué; `setup` dice con qué tipo la busca; y el aviso de un hash faltante nombra el comando del canal que se está usando.**
+
+El 25-09-2026, en el proyecto ASI, `fuentes APWIGELEC-108 --aceptar ES0902` no aceptó nada y dijo solo `ficha=ninguna` y
+`no hay canal: no hay nada observado que aceptar`. La causa (el tipo de issue de la Ficha en su Jira es
+`.ASI Ficha de proyecto` y el harness busca `Ficha de Proyecto`) estaba anotada en el código y se descartaba antes de
+llegar a la persona. Esta versión cierra los hallazgos 2, 3 y 4 de ese registro. **No cambia el tipo por defecto ni lo
+elige consultando a Jira**: lo sugiere y la persona lo escribe.
+
+### Agregado
+
+- **La causa llega a la persona** — `fuentes <CLAVE>` y el rechazo de `--aceptar` dicen lo que el resolvedor de la Ficha
+  anotó: no hay ningún issue de ese tipo en el proyecto, hay más de uno (y cuáles), falta `jira.issue.search`, o Jira
+  contestó un error (y cuál)
+- **La sugerencia del tipo** — si el ticket que se pasó es de un tipo que se parece al buscado (uno contiene al otro, sin
+  mayúsculas), la causa lo nombra y dice que hay que escribirlo en `fichaTipoDeIssue` de `.claude/harness.config.json`;
+  también la ve `contexto`
+- **`setup` dice el tipo** — una línea con el tipo de issue con que se busca la Ficha de Proyecto y si es el valor por
+  defecto o lo puso el proyecto
+- **Tests** — `79_ficha_y_fuentes_que_se_explican.py` (68 comprobaciones, 16 escenarios): la compuerta completa da
+  50.959 de 50.959 sobre el trabajo
+
+### Cambiado
+
+- **El aviso del hash faltante sugiere el comando del canal en uso**: `fuentes <CLAVE> --aceptar <ID>` con una clave de
+  Jira, y `fuentes --archivo <dir> --aceptar <ID>` con `--archivo`; sin ninguno, nombra las dos. Antes decía siempre
+  `--archivo`
+- **Cuatro guardas de Tasks cerradas se adaptaron** con «Pisado por» (`65`, `72`, `74` y el instalador de `63`): saltean
+  solo lo que este cambio toca a propósito y exigen que contra la base cambió únicamente `hallazgos` y se agregó únicamente
+  `como_aceptar`; ninguna se aflojó. Ver [UPGRADE.md](UPGRADE.md) para lo que se nota en un proyecto
+
+### Lo que no se cumplió, sin maquillar
+
+- **Nunca se corrió contra el Jira real de ASI**: todo el caso corre contra un Jira simulado, y falta verlo en una terminal
+  con el tipo `.ASI Ficha de proyecto`
+- **El default no se movió**: depende de saber si todos los proyectos de ese Jira usan ese nombre; está en
+  `PENDIENTES-FH.md` con su condición, junto con los otros hallazgos de ASI
+
 ## [0.36.0] — 2026-10-24
 
 **`dev-accessibility` cuenta los criterios de WCAG 2.2 desde una sola fuente contrastada con el W3C, enlaza cada componente de Obelisco con lo que hay que verificar, y su check deja de inventar fallos; la entrega lleva un registro por criterio que nunca aprueba desde un análisis estático.**

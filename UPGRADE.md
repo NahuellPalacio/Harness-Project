@@ -23,6 +23,24 @@ Quedan como `<archivo>.nuevo` al lado del tuyo, para que hagas el merge vos.
 
 ---
 
+## 0.36.0 → 0.36.1
+
+`-Update` alcanza. No hay que migrar nada a mano: el `-Update` reemplaza tres archivos de `.claude/harness/bin/desarrollo/`
+(`dev-harness.py`, `contexto/proyecto.py` y `orquestacion/registro_fuentes.py`). Ningún hook, regla, check ni subcomando
+cambia, no hay archivos nuevos y el mínimo de Python sigue siendo 3.9.
+
+Lo que se nota en un proyecto:
+
+- **`fuentes` y `contexto` dicen por qué no encontraron la Ficha** (el tipo buscado y el proyecto, o el conflicto, o la
+  capacidad que falta, o el código que contestó Jira), y si el ticket es de un tipo parecido, cuál es y dónde escribirlo.
+  Si tu Jira llama distinto al tipo de la Ficha, esa sugerencia es lo que antes había que descubrir leyendo el código.
+- **`setup` imprime una línea más**, `Ficha de Proyecto: se busca por el tipo de issue «…»`, con su origen.
+- **El aviso de un hash faltante** nombra `fuentes <CLAVE> --aceptar <ID>` cuando corriste `fuentes` con una clave.
+- **Si editaste a mano alguno de esos tres archivos**, `-Update` no lo pisa: queda como `<archivo>.nuevo` al lado del tuyo
+  para que hagas el merge vos.
+
+---
+
 ## 0.35.0 → 0.36.0
 
 `-Update` alcanza. No hay que migrar nada a mano: el `-Update` instala los 23 archivos nuevos (el motor

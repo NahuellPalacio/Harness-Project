@@ -1,6 +1,6 @@
 # Verificación — La Ficha de Proyecto y `fuentes` dicen por qué no encontraron lo que buscaban
 
-**Estado:** verificado, sin cerrar como versión · **Fecha:** 26-10-2026 · **Versión:** sin número (se decide al cerrar)
+**Estado:** cerrado · **Fecha:** 26-10-2026 · **Versión:** 0.36.1
 
 Este documento es lo que cierra el cambio según [ADR-0006](../../adr/0006-sdd-como-metodo-de-los-proyectos.md): el veredicto
 por escenario de quien verificó, que no es quien construyó. Los veredictos los emitió `harness-spec-refuter` el
