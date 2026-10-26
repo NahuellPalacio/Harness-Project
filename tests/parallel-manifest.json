@@ -808,6 +808,14 @@
       "maxSeconds": 35.0,
       "timeoutSeconds": 1200,
       "reason": "I; instala, actualiza y desinstala con el install.ps1 real sobre una copia aislada de la fabrica (Invoke-EnFabricaAislada), su carpeta por GetTempPath() sin mutar TEMP; WaitForExit(300000); Set-Grupo; 26,1 s medidos en wcag22-obelisco"
+    },
+    {
+      "suite": "79_ficha_y_fuentes_que_se_explican.py",
+      "class": "parallel",
+      "lane": null,
+      "maxSeconds": 8.0,
+      "timeoutSeconds": 1200,
+      "reason": "P; solo temporales propios (tempfile) y dev-harness.py en proceso contra el Jira falso de 19_contexto.py, sin red, sin tocar RAIZ ni el entorno; E-01 a E-16 de docs/cambios/ficha-y-fuentes-que-se-explican/spec.md; 2 s medidos en hallazgos-asi"
     }
   ]
 }

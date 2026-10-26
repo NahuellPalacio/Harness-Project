@@ -32,6 +32,12 @@ running order.
 | 18 | ES0902 still declares nine controls that are not built | Down from thirteen with Vu9 and Vu10 in 0.25.0. Whoever reads "ES0902 installed" can easily read "ES0902 complied with" |
 | 19 | Nothing produces the G2 severity mapping | Every real run of the acceptance threshold comes out `VULNERABILITY_RISK_MAPPING_UNRESOLVED`, so the threshold is installed and unusable |
 | 20 | The shared secret catalogue misses five credential forms, and its sample leaks twelve characters | The hook shows 12 of the 20 characters of an AWS key in the transcript, and the security ledger had to grow its own redaction layer to avoid it |
+| 21 | `fuentes` looks for the wrong type of Ficha and never says why | Three entries of the ASI log: the default type does not exist in their Jira, the real reason is dropped before the message, and the hint names a channel that is not in use |
+| 22 | The ES0903 check judges any string that starts with `/api/`, tests included | It fired on every edit of a test that builds a fake request; a warning that repeats and is wrong is the one that teaches people to ignore the rest |
+| 23 | The installer says things that are broken or untrue about versions | `-Update` prints empty versions as a blank, asks to restart a bar that is already drawing, and does not say which `0.x.0` it installed |
+
+Items 21 to 23 come from the log of the ASI project (see «What using the harness on a real project found and left
+open») and are the next three fixes, one change each.
 
 Item 1 is the most serious in what it says: it is the only place where the harness says
 `HOMOLOGATED` for something the ratified rule rejects. 0.19.0 released the backlog of verdict files
@@ -2785,6 +2791,141 @@ lock. Four `claude` sessions were open on the machine. The same suite alone on a
 change. It is the same family as D-T4 of 6.1, where the cold start of `powershell.exe` killed VP-E08 at 3 s.
 
 The remedy is not known: the wait is a clock, and what number is safe under load has not been measured.
+
+## What using the harness on a real project found and left open
+
+Written on 2026-10-26 from the findings log of the ASI project (twelve entries, 2026-09-25 to 2026-10-26, 0.24.0 to
+0.36.0; the log lives in that project, not here). Each entry below was checked against `main` (`5a2d0ea`) on the
+day it was written. Two are not here because they are closed: the `EOFError` of `setup` went with 0.26.0 (the
+question helper was removed and `setup` shows the configuration instead of asking), and the Context Bar without limit
+or thresholds closed in 0.28.0. Two more are here only for what stays open: the two versions called `0.36.0` were
+untangled on 2026-10-26 (`main` and `origin/main` moved to the tag, Task 6.2 became 0.37.0), and the `[a11y]` false
+positive no longer shows on a reconstruction (last entry).
+
+### The default type of the Ficha de Proyecto does not exist in the Jira of ASI
+
+`TIPO_POR_DEFECTO = "Ficha de Proyecto"` (`bin/contexto/proyecto.py:16`) and the real type in
+`asi-jira-cloud.atlassian.net` is `.ASI Ficha de proyecto`, with the leading dot and a lowercase «proyecto».
+Verified on 2026-09-25 with `contexto APWIGELEC-108`: `evento=contexto.tarea tipo=.ASI Ficha de proyecto` and
+`ficha=ninguna`. That project worked around it with `"fichaTipoDeIssue": ".ASI Ficha de proyecto"` in
+`.claude\harness.config.json`, a key that appears only in `UPGRADE.md` 0.16.0 → 0.17.0.
+
+The remedy depends on a fact nobody has written down: whether every project of that Jira uses that name. If it does,
+it becomes the default. If it does not, `setup` has to show `fichaTipoDeIssue` among what it prints, and say where it
+is set. Related to the supposition at item 16 of the table.
+
+### `fuentes --aceptar` does not say why it did not find the Ficha
+
+`_observar_por_ficha` (`bin/dev-harness.py:898`) builds an accumulator, `contexto_proyecto.resolver` writes the real
+cause in it (`bin/contexto/proyecto.py:64`: there is no issue of type «…» in the project), and then the function
+returns the generic `"no se pudo resolver la Ficha de Proyecto del ticket %s"` (`dev-harness.py:923`): the gaps of
+the accumulator never reach the message. Seen on 2026-09-25: `evento=fuentes.ficha ficha=ninguna` and `harness: ES0902
+no se puede aceptar (FRESHNESS_UNVERIFIED): no hay canal: no hay nada observado que aceptar.` Finding the cause meant
+running `contexto` and reading the code.
+
+Fix. The message carries the gaps of the accumulator. When the ticket that was passed is itself the Ficha (its type
+differs from `fichaTipoDeIssue` but looks like it), it says so and names the value: «APWIGELEC-108 is of type
+'.ASI Ficha de proyecto'; set `fichaTipoDeIssue`».
+
+### The notices of `fuentes` suggest `--archivo` even when the channel is the Ficha
+
+`bin/orquestacion/registro_fuentes.py:188` writes `(fuentes --archivo <dir> --aceptar <id>)` as a fixed text. On
+2026-09-25, with `fuentes APWIGELEC-108`, every source without a hash said that, although the channel in use was Jira.
+
+Fix. The notice names the command of the active channel: `fuentes APWIGELEC-108 --aceptar ES0901`. The module that
+writes it does not know the channel today, so it has to receive it.
+
+### The ES0903 check takes a synthetic URL inside a test for an API route
+
+Reproduced on 2026-10-26 on `main` with the line of the log, in a PHP test: `$request = Request::create('/api/uploads',
+'POST');` gives `[ES0903] DebateManagementTest.php: ruta(s) de API sin version — /api/uploads (L8)`. In the ASI
+project the application has no API routes, the test builds a fake request to check that `PostTooLargeException`
+answers 413, and the notice repeated on every edit of that file even when the line was not touched.
+
+The cause is in `checks/dev-api-rutas.py:53`: any quoted string that starts with `/api/` in a `.php`, `.js`, `.ts`,
+`.java`, `.cs` or `.py` file counts, and the only paths skipped are generated ones (`dev.es_ruta_generada`: `vendor`,
+`node_modules`, `dist`…), not `tests/`.
+
+Fix. Two ways, and which one is cheaper has not been measured. The check reads route definitions (`routes/*.php`,
+`Route::get`, decorators…) and not any string, which is exact and different per language. Or it skips `tests/`, which
+is one line and leaves the false positive in any other file that builds a URL for another reason.
+
+### `-Update` prints empty versions as a blank and glues the long names
+
+`install.ps1:995` prints `"$($f.id) aceptada $($f.acceptedVersion), observada $($f.observedVersion): $($f.sourceState)"`,
+so a source without a version comes out as `Obelisco aceptada , observada :`. `harness --verbose`
+(`bin/dev-harness.py:411`) prints `—` for the same value, so each output resolves the gap its own way. Seen on
+2026-09-30 (0.27.0), again on 2026-10-01 (0.28.0) and reported again with 0.36.0. In the same log, the «Versiones»
+block of `harness --verbose` has a name column of fixed width, `GuiaDGISIS` fills it and glues to the value
+(`GuiaDGISIS 1.0SOURCE_MISSING`), and `Obelisco`, with no accepted version, appears in «Fuentes» and not in
+«Versiones». That block was not read for this entry.
+
+Fix. One function formats an empty version as `—` for both outputs, the column width is computed on the longest name,
+and it is decided whether a source without an accepted version enters «Versiones», even as `—`.
+
+### `-Update` asks to restart a Context Bar that is already drawing
+
+Seen on 2026-09-30 and again on 2026-10-01: `-Update` ended with `Context Bar configurada. Reiniciá la sesión de Claude
+Code para activarla.` and seconds later `harness --verbose` said `Context Bar ✓ ACTIVA`, version 1.2.0 already drawn
+by the same session, and `Reinicio de Claude Code no hace falta`. `UPGRADE.md` 0.27.0 → 0.28.0 does not mention a
+restart either.
+
+What the code does: `install.ps1:2218` prints the notice when `Get-EstadoDeLaBarra` reads `RELOAD_REQUIRED`, and that
+function reads the state the installer itself wrote in `harness.installation.json`, before the session has drawn the
+bar again. `-Doctor` uses `Get-BarraEnVivo` instead. The comment above it (`install.ps1:2214`) says the intention is
+to say that a restart «may» be needed; the text says «Reiniciá».
+
+Fix. Not decided. Either `-Update` asks `Get-BarraEnVivo` before it asks for a restart, or the text says what the
+comment says. Why the saved state is `RELOAD_REQUIRED` after an update that changed the bar was not read.
+
+### The installer does not say which `0.x.0` it is installing
+
+On 2026-10-26 two things were called `0.36.0` in `C:\dev\Harness-Project`: the tag `v0.36.0` (object `e2a7198`, on
+`5a2d0ea`, WCAG 2.2) and the working tree of `main`, with `VERSION` at `0.36.0` and uncommitted (Task 6.2).
+`git diff --stat v0.36.0` on that tree gave 68 files. Installing from it would have written the label `0.36.0`
+without the WCAG change, which reaches projects through `comun/` and `harnesses/`. The ASI project was installed from
+the clean worktree at the tag instead, and `-Doctor` said «Todo en orden» either way.
+
+The conflict itself is closed: on 2026-10-26 `main` and `origin/main` moved to `5a2d0ea` and 6.2 became 0.37.0. What
+stays open is that nothing would have warned.
+
+Fix. `install.ps1` warns when the `VERSION` of the tree it installs from matches no tag, or when the tree has
+uncommitted changes or its `HEAD` is not the tagged commit. Installing from a copy without `.git` has to stay silent,
+and the exact condition needs a spec.
+
+### Only part of the versions are tags
+
+On 2026-09-25 the repository had one tag, `v0.19.0`. On 2026-10-26 `git ls-remote --tags origin` lists `v0.19.0`,
+`v0.31.0`, `v0.32.0`, `v0.33.0`, `v0.34.0`, `v0.35.0`, `v0.36.0` and `wcag22-obelisco-2026-10-24`. Versions 0.20.0 to
+0.30.0 exist as commits and not as tags, and there is no release on GitHub. Without a tag a project cannot be pinned
+to a version, nor go back with `git checkout v0.x.0`.
+
+Fix. Tag each of 0.20.0 to 0.30.0 on the commit whose subject says «<version> cierra», after checking each one by
+hand, and add the tag to the ritual of `close-a-version`, which today does not mention it. Publishing tags goes to
+the remote, so whoever owns the repository decides.
+
+### The repository declares no licence
+
+On 2026-09-25 the API of the repository answered `license: null`, and on 2026-10-26 the root still has no `LICENSE`.
+The repository is public. Until a licence exists, nobody outside the authors may legally reuse it.
+
+This is a decision of whoever holds the rights, not a file to write. The repository mixes things that may not be the
+author's to license: `normativa/extractos/` holds extracts of ES0901, ES0902, ES0903, GuiaDGISIS and Obelisco, part of
+the commits carry a `buenosaires.gob.ar` address, and `terceros/terceros.lock.json` records one origin under MIT
+(`gentle-ai`), whose notice has to stay. The policy of the organisation about publishing software was not looked up.
+No remedy is proposed until that is known: the options are a licence chosen by the rights holder, or making the
+repository private.
+
+### The `[a11y]` false positive on `=>` inside Blade was not confirmed on the real file
+
+The log reported on 2026-09-29 (0.26.0) that `show.blade.php` of the ASI project got `2 <img> sin atributo alt` on
+every edit, with both images having `alt="{{ $published['desktop']['alt'] ?? '' }}"` and a `=>` earlier in the tag.
+On 2026-10-26 a reconstruction of that markup (two `<img>` with `alt` and a `=>` in the `route(...)` call) gave 0
+notices with the check of 0.36.0, and a control with one `<img>` really missing its `alt` gave 1. The real file was
+not read: it lives in the other project.
+
+Fix. After updating the ASI project to 0.36.0, run the check on the real file. If it is quiet, the finding closes in
+the version note that records the confirmation.
 
 ## Verification that was not done
 

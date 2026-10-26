@@ -4136,6 +4136,29 @@ SALVO_ACCESIBILIDAD = (":(exclude)harnesses/desarrollo/agents/dev-frontend.md",
                        ":(exclude)harnesses/desarrollo/skills/dev-ui",
                        ":(exclude)harnesses/desarrollo/skills/dev-responsive",
                        ":(exclude)harnesses/desarrollo/skills/dev-frontend-implementation")
+# Pisado por docs/cambios/ficha-y-fuentes-que-se-explican/spec.md (E-12 a E-15): esa correccion modifica a
+# proposito `hallazgos` de orquestacion/registro_fuentes.py (el aviso del hash faltante nombra el canal en uso)
+# y agrega `como_aceptar`. No es una excepcion de KA-E53: se saltea ese archivo y nada mas, y se exige que,
+# contra la base, solo `hallazgos` cambio, solo `como_aceptar` se agrego y el resto del modulo es igual.
+REGISTRO_FUENTES = "harnesses/desarrollo/bin/orquestacion/registro_fuentes.py"
+SALVO_FICHA_Y_FUENTES = (":(exclude)" + REGISTRO_FUENTES,)
+
+
+def _lo_que_cambio_el_modulo(texto_de_la_base, texto_actual):
+    """(funciones que cambiaron, funciones agregadas, si lo que no es una funcion es igual), por AST."""
+    def _funciones(texto):
+        # El segmento de una funcion decorada no incluye su decorador: se suma aparte.
+        return {n.name: (ast.get_source_segment(texto, n) or "")
+                + "".join(ast.dump(d) for d in n.decorator_list)
+                for n in ast.parse(texto).body if isinstance(n, ast.FunctionDef)}
+
+    def _resto(texto):
+        return [ast.dump(n) for n in ast.parse(texto).body if not isinstance(n, ast.FunctionDef)]
+    viejo = texto_de_la_base.replace("\r\n", "\n")
+    nuevo = texto_actual.replace("\r\n", "\n")
+    f_viejas, f_nuevas = _funciones(viejo), _funciones(nuevo)
+    return (sorted(n for n in f_viejas if f_nuevas.get(n) != f_viejas[n]),
+            sorted(set(f_nuevas) - set(f_viejas)), _resto(viejo) == _resto(nuevo))
 
 
 def _subcomandos_del_cli():
@@ -4162,11 +4185,18 @@ def test_ka_e53_lo_que_no_se_toca_es_el_de_la_base(t):
         t.verdadero("KA-E53 (control) %s existe en %s: la guarda no mira una ruta que no es" % (ruta, BASE),
                     codigo == 0 and archivos.strip() != "")
     codigo, cambiados = _git("diff", "--no-renames", "--name-only", BASE, "--", *PROTEGIDOS_DE_KNOWLEDGE_API,
-                             *SALVO_ACCESIBILIDAD)
+                             *SALVO_ACCESIBILIDAD, *SALVO_FICHA_Y_FUENTES)
     t.igual("KA-E53 ningun archivo protegido cambio contra %s" % BASE, (0, []), (codigo, cambiados.split()))
     codigo, nuevos = _git("ls-files", "--others", "--exclude-standard", "--", *PROTEGIDOS_DE_KNOWLEDGE_API,
-                          *SALVO_ACCESIBILIDAD)
+                          *SALVO_ACCESIBILIDAD, *SALVO_FICHA_Y_FUENTES)
     t.igual("KA-E53 y no hay archivos nuevos entre ellos", (0, []), (codigo, nuevos.split()))
+    codigo, de_la_base = _git("show", "%s:%s" % (BASE, REGISTRO_FUENTES))
+    t.igual("KA-E53 registro_fuentes.py esta en la base", 0, codigo)
+    cambiadas, agregadas, resto = _lo_que_cambio_el_modulo(
+        de_la_base, (RAIZ / REGISTRO_FUENTES).read_text(encoding="utf-8"))
+    t.igual("KA-E53 registro_fuentes.py: contra la base solo cambio hallazgos", ["hallazgos"], cambiadas)
+    t.igual("KA-E53 registro_fuentes.py: solo se agrego como_aceptar", ["como_aceptar"], agregadas)
+    t.verdadero("KA-E53 registro_fuentes.py: lo que no es una funcion es el de la base", resto)
     subcomandos = _subcomandos_del_cli() or []
     t.igual("KA-E53 dev-harness.py sigue con trece subcomandos, con ejecutar", (13, True), (len(subcomandos), "ejecutar" in subcomandos))
     t.contiene("KA-E53 y ejecutar sigue con su --grafo", '"--grafo"', _leer(CLI))

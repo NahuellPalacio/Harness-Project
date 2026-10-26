@@ -58,7 +58,17 @@ Se busca por tipo de issue, dentro del mismo proyecto Jira del ticket:
 { "fichaTipoDeIssue": "Ficha de Proyecto" }
 ```
 
-en `.claude/harness.config.json`. Los campos salen de partir su descripción por
+en `.claude/harness.config.json`. Sin la clave, el tipo es `Ficha de Proyecto`. El nombre
+tiene que ser el que tiene el tipo en tu Jira: en el de ASI es `.ASI Ficha de proyecto`, con el
+punto adelante y «proyecto» en minúscula, y ahí hay que escribirlo. `setup` dice con qué tipo
+se busca y de dónde sale.
+
+Si no hay ningún issue de ese tipo en el proyecto, `fuentes` y `contexto` dicen cuál se buscó
+en qué proyecto. Y si el ticket que pasaste es de un tipo que se parece (uno contiene al otro,
+sin mayúsculas), lo nombran y te dicen que lo escribas en `fichaTipoDeIssue`. No lo eligen por
+vos: la Ficha tiene que ser la que vos dijiste.
+
+Los campos salen de partir su descripción por
 encabezados —`Objetivos`, `Alcance`, `Reglas`, `Arquitectura`— y por eso el bloque viaja
 marcado `inferred`: Jira no tiene un campo "objetivos", y esto es una heurística.
 

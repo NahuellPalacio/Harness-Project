@@ -521,6 +521,14 @@ try {
                 '.claude\skills\dev-frontend-implementation\SKILL.md',
                 '.claude\skills\dev-responsive\SKILL.md',
                 '.claude\skills\dev-ui\SKILL.md')
+            # Pisado por docs/cambios/ficha-y-fuentes-que-se-explican/spec.md (E-04 a E-15): esa correccion
+            # modifica a proposito dos archivos instalados de la base 0.28.0: el resolvedor de la Ficha y
+            # el registro de fuentes. No son excepciones de harness-unico: se saltean en E-16 como los de
+            # arriba, y se exige que lo instalado sea lo que hay en la fabrica. NO se suman a E-15, porque
+            # ya estan en el lock.
+            $huTocadosPorFichaYFuentes = @(
+                '.claude\harness\bin\desarrollo\contexto\proyecto.py',
+                '.claude\harness\bin\desarrollo\orquestacion\registro_fuentes.py')
             $distintos = @()
             foreach ($ruta in $huBRutas) {
                 if ($tocados -contains $ruta) { continue }
@@ -539,10 +547,17 @@ try {
                 # instalan a proposito, ni los seis que esa integracion modifica a proposito.
                 if ($huAgregadosPorAccesibilidad -contains $ruta) { continue }
                 if ($huTocadosPorAccesibilidad -contains $ruta) { continue }
+                # Pisado por docs/cambios/ficha-y-fuentes-que-se-explican/spec.md: tampoco los dos que esa
+                # correccion modifica a proposito (se controlan abajo contra la fabrica).
+                if ($huTocadosPorFichaYFuentes -contains $ruta) { continue }
                 if (-not $huAHash.ContainsKey($ruta)) { $distintos += "$ruta (no estaba)"; continue }
                 if ((Get-HuHash (Join-Path $huB $ruta)) -ne $huAHash[$ruta]) { $distintos += $ruta }
             }
             Assert-Vacio 'E-16 cada archivo tiene el contenido de la base, salvo las excepciones listadas' ($distintos -join ', ')
+            foreach ($ruta in $huTocadosPorFichaYFuentes) {
+                $enFabrica = Join-Path $script:Raiz ($ruta -replace '^\.claude\\harness\\bin\\desarrollo\\', 'harnesses\desarrollo\bin\')
+                Assert-Igual "E-16 $ruta instalado es el de la fabrica" (Get-HuHash $enFabrica) (Get-HuHash (Join-Path $huB $ruta))
+            }
 
             # E-18, E-19, E-20, E-23
             Assert-Igual 'E-18 harness.config.json igual al de 0.28.0' $huAConfig (Get-HuNormalizado (Join-Path $huB '.claude\harness.config.json'))

@@ -230,6 +230,18 @@ def mostrar_configuracion(consola, resolucion, solo=None):
         consola.linea("Variables nuevas del contrato: %s (ver .env.example)." % ", ".join(nuevas))
 
 
+def mostrar_tipo_de_ficha(consola, config_harness):
+    """El tipo de issue con que se busca la Ficha de Proyecto, y de donde sale ese valor."""
+    puesto = config_harness.get("fichaTipoDeIssue")
+    if puesto:
+        consola.linea("Ficha de Proyecto: se busca por el tipo de issue «%s» (lo puso el proyecto "
+                      "en .claude/harness.config.json)." % puesto)
+    else:
+        consola.linea("Ficha de Proyecto: se busca por el tipo de issue «%s» (el valor por defecto). "
+                      "Si en tu Jira se llama distinto, escribilo en `fichaTipoDeIssue` de "
+                      ".claude/harness.config.json." % contexto_proyecto.TIPO_POR_DEFECTO)
+
+
 # -- el bootstrap --------------------------------------------------------------
 
 def _sin_validar(motivo):
@@ -790,8 +802,15 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
         # Un registro que no se puede leer entero no se lee a medias: es lo que la persona
         # tiene que arreglar antes de seguir, y por eso sale 2 y no 0.
         raise FallaDelHarness(str(e))
-    hallazgos = orq_fuentes.hallazgos(registro)
+    if args.archivo:
+        pedido = {"archivo": True}
+    elif args.argumento and CLAVE_JIRA.match(str(args.argumento)):
+        pedido = {"clave": str(args.argumento)}
+    else:
+        pedido = None
+    hallazgos = orq_fuentes.hallazgos(registro, canal=pedido)
 
+    causas = []
     canal = None
     observaciones = []
 
@@ -812,7 +831,9 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
                 "con el directorio de los originales.")
         canal, observaciones = _observar_por_ficha(
             clave, args, proyecto, rutas, config, almacen, timeout, consola,
-            transporte, transporte_bytes, entradas, previo)
+            transporte, transporte_bytes, entradas, previo, causas)
+        for causa in causas:
+            consola.linea("  causa: " + causa)
 
     else:
         consola.linea("Sin clave de Jira ni --archivo no hay canal que consultar: cada fuente "
@@ -821,7 +842,7 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
     aceptadas = []
     if args.aceptar:
         # Antes de escribir nada: si una no se puede aceptar, no se acepta ninguna.
-        aceptadas = _aceptar(args, rutas, entradas, observaciones, canal, decisiones)
+        aceptadas = _aceptar(args, rutas, entradas, observaciones, canal, decisiones, causas)
 
     try:
         documento = orq_refresco.resolver_y_escribir(entradas, observaciones, canal, decisiones,
@@ -862,7 +883,7 @@ def resolver_fuentes(args, proyecto, rutas, config, almacen, timeout, consola,
     return 0
 
 
-def _aceptar(args, rutas, entradas, observaciones, canal, decisiones):
+def _aceptar(args, rutas, entradas, observaciones, canal, decisiones, causas=()):
     """Registra como aceptada la identidad observada EN ESTA CORRIDA de cada fuente pedida.
 
     🔴 Se acepta lo que se acaba de mirar, nunca un estado guardado: la version, el SHA-256 del
@@ -887,6 +908,8 @@ def _aceptar(args, rutas, entradas, observaciones, canal, decisiones):
         obs = por_id.get(sid)
         codigo, motivo = orq_frescura.aceptable(entrada, obs, disponible, args.regresion)
         if codigo:
+            if not disponible and causas:
+                motivo = "%s. Causa: %s" % (motivo, " ".join(causas))
             raise FallaDelHarness("%s no se puede aceptar (%s): %s. No se escribio nada."
                                   % (sid, codigo, motivo))
         nuevas[sid] = orq_frescura.decision_de_aceptacion(
@@ -896,11 +919,14 @@ def _aceptar(args, rutas, entradas, observaciones, canal, decisiones):
 
 
 def _observar_por_ficha(clave, args, proyecto, rutas, config, almacen, timeout, consola,
-                        transporte, transporte_bytes, entradas, previo):
+                        transporte, transporte_bytes, entradas, previo, causas=None):
     """Los adjuntos de la Ficha de Proyecto del ticket. Devuelve (canal, observaciones).
 
     La Ficha se resuelve con el mismo resolvedor del Bloque 2. Una segunda busqueda con un
     criterio parecido es como un dia una encuentra la Ficha y la otra no.
+
+    Si no la encuentra, `causas` (una lista que pasa quien llama) recibe lo que el resolvedor
+    anoto: por que no, en sus palabras.
     """
     capacidades = _json_o_vacio(rutas["capacidades"]).get("capacidades") or {}
     jira = armar(IntegracionJira, config, almacen, timeout, transporte)
@@ -913,12 +939,21 @@ def _observar_por_ficha(clave, args, proyecto, rutas, config, almacen, timeout, 
     except contexto_tarea.TareaNoResuelta as e:
         raise FallaDelHarness(str(e))
 
+    # Lo que anote el resolvedor de la Ficha, y solo eso: el de la tarea comparte el acumulador y
+    # anota lo suyo (los criterios de aceptacion), que no es la causa de que falte la Ficha.
+    antes = (len(acumulador.missing), len(acumulador.conflicts),
+             len(acumulador.missing_capabilities))
     ficha, campos_ficha = contexto_proyecto.resolver(
         jira, campos_tarea, CATALOGO(), _config_harness(rutas), acumulador)
     clave_ficha = ficha["ficha"]["key"]
     consola.evento("fuentes.ficha", ficha=clave_ficha or "ninguna")
 
     if not clave_ficha or campos_ficha is None:
+        # La causa no entra en el canal: el canal se escribe tal cual en harness.fuentes.json
+        # (`ficha`), y la causa es de esta corrida, no del estado. Va por la lista de quien llama.
+        if causas is not None:
+            causas.extend(acumulador.missing[antes[0]:] + acumulador.conflicts[antes[1]:]
+                          + acumulador.missing_capabilities[antes[2]:])
         return {"reachable": False,
                 "reason": "no se pudo resolver la Ficha de Proyecto del ticket %s" % clave}, []
 
@@ -2169,6 +2204,9 @@ def comando(args, transporte=None, transporte_bytes=None):
         consola.linea("")
         mostrar_configuracion(consola, config,
                               args.argumento if args.comando == "reconfigurar" else None)
+        if args.comando == "setup":
+            consola.linea("")
+            mostrar_tipo_de_ficha(consola, _config_harness(rutas))
         consola.linea("")
         consola.linea("Para cambiar algo, editá %s (Claude no puede leerlo) y volvé a correr "
                       "`dev-harness.py %s`: se revalida." % (

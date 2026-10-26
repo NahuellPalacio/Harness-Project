@@ -31,6 +31,26 @@ def ficha_vacia(estado="missing"):
             "rules": [], "architecture": "", "knowledge_status": estado}
 
 
+def _tipo_del_ticket(campos_tarea):
+    """El nombre del tipo de issue del ticket que se paso, o vacio si no se sabe."""
+    tipo = campos_tarea.get("issuetype") if isinstance(campos_tarea, dict) else None
+    if isinstance(tipo, dict):
+        return str(tipo.get("name") or "")
+    return str(tipo or "")
+
+
+def _se_parece(tipo_del_ticket, tipo_buscado):
+    """Un tipo se parece al buscado si uno contiene al otro, sin mayusculas, y no son iguales.
+
+    Se decide sin red y no elige nada: solo deja decir «el ticket que pasaste es de un tipo
+    que se parece al que se busco». `.ASI Ficha de proyecto` contiene `ficha de proyecto`;
+    `Historia de Usuario`, no.
+    """
+    a = tipo_del_ticket.strip().lower()
+    b = tipo_buscado.strip().lower()
+    return bool(a) and bool(b) and a != b and (a in b or b in a)
+
+
 def resolver(jira, campos_tarea, catalogo, config, acumulador):
     """La seccion `project`. Nunca levanta: sin ficha, el contexto sale igual."""
     proyecto = campos_tarea.get("project") if isinstance(campos_tarea, dict) else None
@@ -61,8 +81,14 @@ def resolver(jira, campos_tarea, catalogo, config, acumulador):
 
     encontrados = (respuesta.datos() or {}).get("issues") or []
     if not encontrados:
-        acumulador.falta('la Ficha de Proyecto: no hay ningun issue de tipo "%s" en el '
-                         'proyecto %s' % (tipo, clave_proyecto))
+        causa = ('la Ficha de Proyecto: no hay ningun issue de tipo "%s" en el '
+                 'proyecto %s' % (tipo, clave_proyecto))
+        del_ticket = _tipo_del_ticket(campos_tarea)
+        if _se_parece(del_ticket, tipo):
+            causa += ('. El ticket que se paso es de tipo "%s", que se parece: si ese es el tipo '
+                      'de la Ficha, escribilo en `fichaTipoDeIssue` de '
+                      '.claude/harness.config.json' % del_ticket)
+        acumulador.falta(causa)
         return vacio, None
 
     if len(encontrados) > 1:

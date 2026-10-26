@@ -169,7 +169,21 @@ def validar(doc=None, desde=None):
     return {"schemaErrors": errores, "sources": estados}
 
 
-def hallazgos(doc=None, desde=None):
+def como_aceptar(sid, canal=None):
+    """El comando que acepta `sid` por el canal que la persona esta usando.
+
+    `canal` dice cual: {"clave": "ASI-1"} es la Ficha de ese ticket, {"archivo": True} es una
+    carpeta de originales. Sin canal no se sabe, y se nombran las dos formas.
+    """
+    if canal and canal.get("clave"):
+        return "fuentes %s --aceptar %s" % (canal["clave"], sid)
+    if canal and canal.get("archivo"):
+        return "fuentes --archivo <dir> --aceptar %s" % sid
+    return ("fuentes <CLAVE-DE-JIRA> --aceptar %s, o fuentes --archivo <dir> --aceptar %s"
+            % (sid, sid))
+
+
+def hallazgos(doc=None, desde=None, canal=None):
     """Lo que hay que decirle a una persona, en texto. Vacio es que no hay nada que decir."""
     documento = doc if doc is not None else cargar(desde)
     informe = validar(documento, desde)
@@ -184,6 +198,6 @@ def hallazgos(doc=None, desde=None):
                           % (f.get("id"), f.get("extract")))
         elif estado == SIN_HASH:
             salida.append("la fuente %s no tiene hash aceptado: su integridad no se puede "
-                          "verificar hasta que alguien acepte el original (fuentes "
-                          "--archivo <dir> --aceptar %s)" % (f.get("id"), f.get("id")))
+                          "verificar hasta que alguien acepte el original (%s)"
+                          % (f.get("id"), como_aceptar(f.get("id"), canal)))
     return salida

@@ -272,10 +272,35 @@ def _sin_base(t, eid, base=BASE):
             "no esta el commit %s en este clon: no hay contra que comparar" % base)
 
 
-def _igual_a_la_base(ruta, base=BASE):
+def _igual_a_la_base(ruta, base=BASE, salvo=()):
     """Si el archivo es el de la base, con la normalizacion de fin de linea de git."""
-    codigo, _ = M64._git("diff", "--quiet", base, "--", ruta)
+    codigo, _ = M64._git("diff", "--quiet", base, "--", ruta, *salvo)
     return codigo == 0
+
+
+# Pisado por docs/cambios/ficha-y-fuentes-que-se-explican/spec.md (E-12 a E-15): esa correccion modifica a
+# proposito `hallazgos` de orquestacion/registro_fuentes.py (el aviso del hash faltante nombra el canal en uso)
+# y agrega `como_aceptar`. No es una excepcion de EX-G11: se saltea ese archivo y nada mas, y se exige que,
+# contra la base, solo `hallazgos` cambio, solo `como_aceptar` se agrego y el resto del modulo es igual.
+REGISTRO_FUENTES = "harnesses/desarrollo/bin/orquestacion/registro_fuentes.py"
+SALVO_FICHA_Y_FUENTES = (":(exclude)" + REGISTRO_FUENTES,)
+
+
+def _lo_que_cambio_el_modulo(texto_de_la_base, texto_actual):
+    """(funciones que cambiaron, funciones agregadas, si lo que no es una funcion es igual), por AST."""
+    def _funciones(texto):
+        # El segmento de una funcion decorada no incluye su decorador: se suma aparte.
+        return {n.name: (ast.get_source_segment(texto, n) or "")
+                + "".join(ast.dump(d) for d in n.decorator_list)
+                for n in ast.parse(texto).body if isinstance(n, ast.FunctionDef)}
+
+    def _resto(texto):
+        return [ast.dump(n) for n in ast.parse(texto).body if not isinstance(n, ast.FunctionDef)]
+    viejo = texto_de_la_base.replace("\r\n", "\n")
+    nuevo = texto_actual.replace("\r\n", "\n")
+    f_viejas, f_nuevas = _funciones(viejo), _funciones(nuevo)
+    return (sorted(n for n in f_viejas if f_nuevas.get(n) != f_viejas[n]),
+            sorted(set(f_nuevas) - set(f_viejas)), _resto(viejo) == _resto(nuevo))
 
 
 def _fuente_de(texto, funcion):
@@ -1720,10 +1745,19 @@ def test_ex_g11_lo_de_0_31_no_se_toca(t):
     existentes = [r for r in PROTEGIDOS_031 if (RAIZ / r).exists()]
     t.igual("EX-G11 todo lo protegido existe", list(PROTEGIDOS_031), existentes)
     for ruta in existentes:
-        t.verdadero("EX-G11 %s es el de %s" % (ruta, BASE_031), _igual_a_la_base(ruta, BASE_031))
-    codigo, crudo = M64._git("ls-files", "--others", "--exclude-standard", "--", *existentes)
+        t.verdadero("EX-G11 %s es el de %s" % (ruta, BASE_031),
+                    _igual_a_la_base(ruta, BASE_031, SALVO_FICHA_Y_FUENTES))
+    codigo, crudo = M64._git("ls-files", "--others", "--exclude-standard", "--", *existentes,
+                             *SALVO_FICHA_Y_FUENTES)
     t.igual("EX-G11 no hay archivos nuevos en lo protegido", (0, ""),
             (codigo, crudo.decode("utf-8").strip()))
+    codigo, de_la_base = M64._git("show", "%s:%s" % (BASE_031, REGISTRO_FUENTES))
+    t.igual("EX-G11 registro_fuentes.py esta en la base", 0, codigo)
+    cambiadas, agregadas, resto = _lo_que_cambio_el_modulo(
+        de_la_base.decode("utf-8"), (RAIZ / REGISTRO_FUENTES).read_text(encoding="utf-8"))
+    t.igual("EX-G11 registro_fuentes.py: contra la base solo cambio hallazgos", ["hallazgos"], cambiadas)
+    t.igual("EX-G11 registro_fuentes.py: solo se agrego como_aceptar", ["como_aceptar"], agregadas)
+    t.verdadero("EX-G11 registro_fuentes.py: lo que no es una funcion es el de la base", resto)
 
 
 CONTEXTOS_DEL_FLUJO = {"SessionTaskBinding": "Work Intake", "FlowRequiredInput": "Planning",

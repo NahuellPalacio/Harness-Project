@@ -2310,6 +2310,31 @@ SALVO_ACCESIBILIDAD = (":(exclude)harnesses/desarrollo/agents/dev-frontend.md",
                        ":(exclude)harnesses/desarrollo/skills/dev-ui",
                        ":(exclude)harnesses/desarrollo/skills/dev-responsive",
                        ":(exclude)harnesses/desarrollo/skills/dev-frontend-implementation")
+# Pisado por docs/cambios/ficha-y-fuentes-que-se-explican/spec.md (E-12 a E-15): esa correccion modifica a
+# proposito `hallazgos` de orquestacion/registro_fuentes.py (el aviso del hash faltante nombra el canal en uso)
+# y agrega `como_aceptar`. No es una excepcion de este escenario: se saltea ese archivo y nada mas, y se exige
+# que, contra la base, solo `hallazgos` cambio, solo `como_aceptar` se agrego y el resto del modulo es igual.
+REGISTRO_FUENTES = "harnesses/desarrollo/bin/orquestacion/registro_fuentes.py"
+SALVO_FICHA_Y_FUENTES = (":(exclude)" + REGISTRO_FUENTES,)
+
+
+def _lo_que_cambio_el_modulo(texto_de_la_base, texto_actual):
+    """(funciones que cambiaron, funciones agregadas, si lo que no es una funcion es igual), por AST."""
+    def _funciones(texto):
+        # El segmento de una funcion decorada no incluye su decorador: se suma aparte.
+        return {n.name: (ast.get_source_segment(texto, n) or "")
+                + "".join(ast.dump(d) for d in n.decorator_list)
+                for n in ast.parse(texto).body if isinstance(n, ast.FunctionDef)}
+
+    def _resto(texto):
+        return [ast.dump(n) for n in ast.parse(texto).body if not isinstance(n, ast.FunctionDef)]
+    viejo = texto_de_la_base.replace("\r\n", "\n")
+    nuevo = texto_actual.replace("\r\n", "\n")
+    f_viejas, f_nuevas = _funciones(viejo), _funciones(nuevo)
+    return (sorted(n for n in f_viejas if f_nuevas.get(n) != f_viejas[n]),
+            sorted(set(f_nuevas) - set(f_viejas)), _resto(viejo) == _resto(nuevo))
+
+
 # Los de Task 3, todavia sin commitear: su huella es la del arbol de la base de Task 4.
 HUELLAS_DE_TASK_3 = {
     "harnesses/desarrollo/bin/ejecucion/contrato.py":
@@ -2328,10 +2353,19 @@ def test_me_e49_lo_que_no_se_toca(t):
     codigo, _ = _git_raiz("cat-file", "-e", BASE + "^{commit}")
     t.igual("ME-E49 la base %s esta en este clon" % BASE, 0, codigo)
     for ruta in PROTEGIDOS:
-        codigo, _ = _git_raiz("diff", "--quiet", BASE, "--", ruta, *SALVO_ACCESIBILIDAD)
+        codigo, _ = _git_raiz("diff", "--quiet", BASE, "--", ruta, *SALVO_ACCESIBILIDAD,
+                              *SALVO_FICHA_Y_FUENTES)
         t.igual("ME-E49 %s es el de %s" % (ruta, BASE), 0, codigo)
-    codigo, nuevos = _git_raiz("ls-files", "--others", "--exclude-standard", "--", *PROTEGIDOS, *SALVO_ACCESIBILIDAD)
+    codigo, nuevos = _git_raiz("ls-files", "--others", "--exclude-standard", "--", *PROTEGIDOS,
+                               *SALVO_ACCESIBILIDAD, *SALVO_FICHA_Y_FUENTES)
     t.igual("ME-E49 no hay archivos nuevos entre ellos", (0, ""), (codigo, nuevos.strip()))
+    codigo, de_la_base = _git_raiz("show", "%s:%s" % (BASE, REGISTRO_FUENTES))
+    t.igual("ME-E49 registro_fuentes.py esta en la base", 0, codigo)
+    cambiadas, agregadas, resto = _lo_que_cambio_el_modulo(
+        de_la_base, (RAIZ / REGISTRO_FUENTES).read_text(encoding="utf-8"))
+    t.igual("ME-E49 registro_fuentes.py: contra la base solo cambio hallazgos", ["hallazgos"], cambiadas)
+    t.igual("ME-E49 registro_fuentes.py: solo se agrego como_aceptar", ["como_aceptar"], agregadas)
+    t.verdadero("ME-E49 registro_fuentes.py: lo que no es una funcion es el de la base", resto)
     for ruta, huella in sorted(HUELLAS_DE_TASK_3.items()):
         t.igual("ME-E49 %s es el de Task 3" % ruta, huella,
                 hashlib.sha256((RAIZ / ruta).read_bytes()).hexdigest())
