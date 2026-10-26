@@ -23,8 +23,8 @@ elige consultando a Jira**: lo sugiere y la persona lo escribe.
   también la ve `contexto`
 - **`setup` dice el tipo** — una línea con el tipo de issue con que se busca la Ficha de Proyecto y si es el valor por
   defecto o lo puso el proyecto
-- **Tests** — `79_ficha_y_fuentes_que_se_explican.py` (68 comprobaciones, 16 escenarios): la compuerta completa da
-  50.959 de 50.959 sobre el trabajo
+- **Tests** — `79_ficha_y_fuentes_que_se_explican.py` (68 comprobaciones, 16 escenarios): la primera compuerta completa
+  dio 50.959 de 50.959 sobre el trabajo, y la segunda, sobre el commit del cierre, 50.961 de 50.962 (ver abajo)
 
 ### Cambiado
 
@@ -37,6 +37,10 @@ elige consultando a Jira**: lo sugiere y la persona lo escribe.
 
 ### Lo que no se cumplió, sin maquillar
 
+- **La compuerta completa no dio verde sobre el commit publicado.** La segunda corrida dio un rojo en
+  `72_motor_de_ejecucion` ME-E18, una carrera de dos procesos del motor de ejecución que este cambio no toca; `72` solo
+  dio 550/550 justo después y está anotado en `PENDIENTES-FH.md` como sensible a la carga. No se repitió la compuerta
+  entera: se publicó a pedido de Nahuel Palacio para no esperar otra corrida de unos 70 minutos
 - **Nunca se corrió contra el Jira real de ASI**: todo el caso corre contra un Jira simulado, y falta verlo en una terminal
   con el tipo `.ASI Ficha de proyecto`
 - **El default no se movió**: depende de saber si todos los proyectos de ese Jira usan ese nombre; está en

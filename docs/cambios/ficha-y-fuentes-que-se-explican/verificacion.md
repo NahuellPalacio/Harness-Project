@@ -60,6 +60,10 @@ están aflojadas más allá de lo que la spec declara.
 - **Segunda compuerta completa, sobre el commit del cierre (`4721de5`):** **50.961 de 50.962**, salida 1, en 4.864 s. El
   único rojo fue `72_motor_de_ejecucion` ME-E18, una carrera entre dos procesos que no es de este cambio (el motor no se
   tocó). `72` solo dio 550/550 en 383 s justo después. Anotado en `PENDIENTES-FH.md`.
+- **No hubo una tercera compuerta en verde.** La versión se publicó con ese único rojo sin repetir, a pedido de Nahuel
+  Palacio el 26-10-2026, que prefirió no esperar otra corrida de unos 70 minutos. Es la excepción a «verde antes de dar
+  algo por hecho»: lo que la sostiene es la primera compuerta (50.959 de 50.959), `72` solo en verde y los casos focales
+  de lo que cambió, no una compuerta completa verde sobre el commit publicado.
 
 ## Lo que la verificación encontró y no habría encontrado un test verde
 
