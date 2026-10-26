@@ -2791,6 +2791,23 @@ change. It is the same family as D-T4 of 6.1, where the cold start of `powershel
 
 The remedy is not known: the wait is a clock, and what number is safe under load has not been measured.
 
+### `72_motor_de_ejecucion` ME-E18 fails on a loaded machine, when the second process gets `DELEGATION_NOT_ALLOWED`
+
+Seen on 2026-10-26 in the second full gate of 0.36.1 (commit `4721de5`): 50,961 of 50,962, one row red:
+`ME-E18 veinte carreras sin punto de encuentro: una Execution, un duplicado y un turno cada vez`, with
+`carrera-00: 1 Execution(s), ['DELEGATION_NOT_ALLOWED'], 1 turno(s)`. In the twenty unsynchronised races, two processes
+launched together are expected to end with one Execution and one `DUPLICATE_EXECUTION`; here the second one was
+answered `DELEGATION_NOT_ALLOWED` (raised at `bin/ejecucion/admision.py:286`). The machine was in use for other work.
+The same suite alone passed 550/550 (383 s) right after, and the first full gate of the same change passed 550/550. The
+engine was not touched by that change: KA-E53 of `74_knowledge_api.py` pins `bin/ejecucion/` to `v0.33.0`.
+
+The cause was not investigated: what was seen is that the outcome of the race depends on timing, and that the test admits
+only one of the two answers.
+
+Fix. Not known. Either the engine gives the same answer to the second process whichever way the race falls, or the test
+admits both when the race is not synchronised. Which one is right is a question of the minimal execution engine
+(`docs/cambios/minimal-execution-engine/spec.md`), not of this change.
+
 ## What using the harness on a real project found and left open
 
 Written on 2026-10-26 from the findings log of the ASI project (twelve entries, 2026-09-25 to 2026-10-26, 0.24.0 to

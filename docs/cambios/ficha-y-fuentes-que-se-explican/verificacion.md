@@ -52,11 +52,14 @@ están aflojadas más allá de lo que la spec declara.
 
 ## La compuerta
 
-- **Compuerta completa, 26-10-2026:** `.\tests\Invoke-Tests.ps1` dio **50.959 de 50.959** (PowerShell 1.016, Python 49.943),
-  salida 0, en 4.150 s. Corrió sobre el árbol con el caso nuevo y las cuatro guardas adaptadas.
+- **Primera compuerta completa, 26-10-2026:** `.\tests\Invoke-Tests.ps1` dio **50.959 de 50.959** (PowerShell 1.016,
+  Python 49.943), salida 0, en 4.150 s. Corrió sobre el árbol con el caso nuevo y las cuatro guardas adaptadas.
 - **Después de esa corrida cambiaron solo tests**, a partir de lo que encontró la verificación (abajo): `79`, y el
-  ayudante de AST de `65`, `72` y `74`. **No se volvió a correr la compuerta entera.** Se corrieron los casos que cambiaron
-  y los que los leen: `79` 68/68, `65` 679/679, `72` 550/550, `74` 2.378/2.378 y el instalador de `63` 191/191.
+  ayudante de AST de `65`, `72` y `74`. Se corrieron los casos que cambiaron y los que los leen: `79` 68/68, `65` 679/679,
+  `72` 550/550, `74` 2.378/2.378 y el instalador de `63` 191/191.
+- **Segunda compuerta completa, sobre el commit del cierre (`4721de5`):** **50.961 de 50.962**, salida 1, en 4.864 s. El
+  único rojo fue `72_motor_de_ejecucion` ME-E18, una carrera entre dos procesos que no es de este cambio (el motor no se
+  tocó). `72` solo dio 550/550 en 383 s justo después. Anotado en `PENDIENTES-FH.md`.
 
 ## Lo que la verificación encontró y no habría encontrado un test verde
 
